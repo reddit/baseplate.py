@@ -1,0 +1,5 @@
+This directory contains inventory files for intersphinx.
+
+They are here so that this library can be built as a debian package without
+contacting external servers (as required for clean-room builds e.g. on
+Launchpad).
