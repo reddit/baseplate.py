@@ -91,6 +91,9 @@ class TimespanTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             config.Timespan("a b c")
 
+        with self.assertRaises(ValueError):
+            config.Timespan("3.2 hours")
+
     def test_timespan(self):
         result = config.Timespan("1 second")
         self.assertEqual(result.total_seconds(), 1)

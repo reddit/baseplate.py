@@ -91,10 +91,7 @@ def Integer(text):
     to configure a non-whole number.
 
     """
-    as_float = float(text)
-    if not as_float.is_integer():
-        raise ValueError("an integer was expected")
-    return int(as_float)
+    return int(text)
 
 
 def Boolean(text):
