@@ -1,7 +1,7 @@
 """Helpers that integrate common client libraries with baseplate's diagnostics.
 
 This package contains modules which integrate various client libraries with
-Baseplate's diagnostics and tracing facilities. When using these helpersr,
+Baseplate's diagnostics and tracing facilities. When using these helpers,
 trace information and monitoring are automatically collected and sent on for
 you.
 
