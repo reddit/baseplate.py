@@ -46,6 +46,10 @@ class RedisConnectionAdapter(redis.StrictRedis):
             return super(RedisConnectionAdapter, self).execute_command(
                 command, *args, **kwargs)
 
+    # these commands are not yet implemented because i haven't taken the time
+    # to look at if they go through `execute_command` like the basic commands
+    # (e.g. "get" and "set") do. if these commands end up needed, it should
+    # just be some elbow grease to get them going.
     def pipeline(self, *args, **kwargs):
         raise NotImplementedError
 
