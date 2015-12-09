@@ -99,7 +99,7 @@ class Baseplate(object):
     def add_to_context(self, name, context_factory):  # pragma: nocover
         """Add an attribute to each request's context object.
 
-        On each request, the factory will asked to create an appropriate
+        On each request, the factory will be asked to create an appropriate
         object to attach to the :term:`context object`.
 
         :param str name: The attribute on the context object to attach the
