@@ -8,7 +8,7 @@ An abbreviated example of it in use::
     def make_app(app_config):
         configurator = Configurator()
 
-        agent = Baseplate()
+        baseplate = Baseplate()
         baseplate_config = BaseplateConfigurator(baseplate)
         configurator.include(baseplate_config.includeme)
 
