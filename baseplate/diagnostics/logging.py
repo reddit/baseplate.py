@@ -16,6 +16,6 @@ class LoggingBaseplateObserver(BaseplateObserver):
     the thread name to the current request's trace ID.
 
     """
-    def make_root_observer(self, context, root_span):  # pragma: nocover
+    def on_root_span_created(self, context, root_span):  # pragma: nocover
         threading.current_thread().name = str(root_span.trace_id)
         return None

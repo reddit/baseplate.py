@@ -9,10 +9,12 @@ import random
 class BaseplateObserver(object):
     """Interface for an observer that watches Baseplate."""
 
-    def make_root_observer(self, context, root_span):  # pragma: nocover
-        """Return a RootSpanObserver instance for a new root span.
+    def on_root_span_created(self, context, root_span):  # pragma: nocover
+        """Called when a root span is created.
 
-        :py:class:`Baseplate` calls this when a new request begins.
+        :py:class:`Baseplate` calls this when a new request begins. If a
+            :py:class:`RootSpanObserver` instance is returned, it will receive
+            events from that root span.
 
         :param context: The :term:`context object` for this request.
         :param baseplate.core.RootSpan root_span: The root span representing
@@ -43,11 +45,12 @@ class SpanObserver(object):  # pragma: nocover
 class RootSpanObserver(SpanObserver):
     """Interface for an observer that watches the root span."""
 
-    def make_child_observer(self, span):  # pragma: nocover
-        """Return a SpanObserver instance for a new span.
+    def on_child_span_created(self, span):  # pragma: nocover
+        """Called when a child span is created.
 
         :py:class:`RootSpan` objects call this when a new child span is
-        created.
+            created. If a :py:class:`SpanObserver` instance is returned,
+            it will receive events from that span.
 
         :param baseplate.core.Span span: The new child span.
         :return: A :py:class:`SpanObserver` for this request,
@@ -126,7 +129,7 @@ class Baseplate(object):
         """
         root_span = RootSpan(trace_id, parent_id, span_id, name)
         for observer in self.observers:
-            root_observer = observer.make_root_observer(context, root_span)
+            root_observer = observer.on_root_span_created(context, root_span)
             if root_observer:
                 root_span._register(root_observer)
         return root_span
@@ -209,7 +212,7 @@ class RootSpan(Span):
         span_id = random.getrandbits(64)
         span = Span(self.trace_id, self.id, span_id, name)
         for observer in self.observers:
-            child_observer = observer.make_child_observer(span)
+            child_observer = observer.on_child_span_created(span)
             if child_observer:
                 span._register(child_observer)
         return span

@@ -18,7 +18,7 @@ class ContextObserverTests(unittest.TestCase):
         mock_span = mock.Mock(spec=Span)
 
         observer = ContextObserver("some_attribute", mock_factory)
-        observer.make_root_observer(mock_context, mock_span)
+        observer.on_root_span_created(mock_context, mock_span)
 
         self.assertEqual(mock_context.some_attribute,
             mock_factory.make_context.return_value)

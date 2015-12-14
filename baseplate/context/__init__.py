@@ -50,7 +50,7 @@ class ContextObserver(BaseplateObserver):
         self.name = name
         self.context_factory = context_factory
 
-    def make_root_observer(self, context, root_span):
+    def on_root_span_created(self, context, root_span):
         context_obj = self.context_factory.make_context(self.name, root_span)
         setattr(context, self.name, context_obj)
         return None

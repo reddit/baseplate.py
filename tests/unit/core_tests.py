@@ -27,16 +27,16 @@ class BaseplateTests(unittest.TestCase):
         root_span = baseplate.make_root_span(mock_context, 1, 2, "name", 3)
 
         self.assertEqual(baseplate.observers, [mock_observer])
-        self.assertEqual(mock_observer.make_root_observer.call_count, 1)
-        self.assertEqual(mock_observer.make_root_observer.call_args,
+        self.assertEqual(mock_observer.on_root_span_created.call_count, 1)
+        self.assertEqual(mock_observer.on_root_span_created.call_args,
             mock.call(mock_context, root_span))
         self.assertEqual(root_span.observers,
-            [mock_observer.make_root_observer.return_value])
+            [mock_observer.on_root_span_created.return_value])
 
     def test_null_root_observer(self):
         mock_context = mock.Mock()
         mock_observer = mock.Mock(spec=BaseplateObserver)
-        mock_observer.make_root_observer.return_value = None
+        mock_observer.on_root_span_created.return_value = None
 
         baseplate = Baseplate()
         baseplate.register(mock_observer)
@@ -80,7 +80,7 @@ class RootSpanTests(unittest.TestCase):
         mock_child = mock.Mock(spec=Span)
 
         mock_observer = mock.Mock(spec=RootSpanObserver)
-        mock_child = mock_observer.make_child_observer.return_value
+        mock_child = mock_observer.on_child_span_created.return_value
 
         root_span = RootSpan("trace", "parent", "id", "name")
         root_span._register(mock_observer)
@@ -91,13 +91,13 @@ class RootSpanTests(unittest.TestCase):
         self.assertEqual(child_span.trace_id, "trace")
         self.assertEqual(child_span.parent_id, "id")
         self.assertEqual(child_span.observers, [mock_child])
-        self.assertEqual(mock_observer.make_child_observer.call_count, 1)
-        self.assertEqual(mock_observer.make_child_observer.call_args,
+        self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
+        self.assertEqual(mock_observer.on_child_span_created.call_args,
             mock.call(child_span))
 
     def test_null_child(self):
         mock_observer = mock.Mock(spec=RootSpanObserver)
-        mock_observer.make_child_observer.return_value = None
+        mock_observer.on_child_span_created.return_value = None
 
         root_span = RootSpan("trace", "parent", "id", "name")
         root_span._register(mock_observer)

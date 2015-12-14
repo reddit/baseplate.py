@@ -41,15 +41,15 @@ class ConfiguratorTests(unittest.TestCase):
     def test_no_trace_headers(self):
         self.test_app.get("/example")
 
-        self.assertEqual(self.observer.make_root_observer.call_count, 1)
+        self.assertEqual(self.observer.on_root_span_created.call_count, 1)
 
-        context, root_span = self.observer.make_root_observer.call_args[0]
+        context, root_span = self.observer.on_root_span_created.call_args[0]
         self.assertIsInstance(context, Request)
         self.assertEqual(root_span.trace_id, "no-trace")
         self.assertEqual(root_span.parent_id, "no-parent")
         self.assertEqual(root_span.id, "no-span")
 
-        mock_root_observer = self.observer.make_root_observer.return_value
+        mock_root_observer = self.observer.on_root_span_created.return_value
         self.assertTrue(mock_root_observer.on_start.called)
         self.assertTrue(mock_root_observer.on_stop.called)
 
@@ -60,19 +60,19 @@ class ConfiguratorTests(unittest.TestCase):
             "X-Span": "3456",
         })
 
-        self.assertEqual(self.observer.make_root_observer.call_count, 1)
+        self.assertEqual(self.observer.on_root_span_created.call_count, 1)
 
-        context, root_span = self.observer.make_root_observer.call_args[0]
+        context, root_span = self.observer.on_root_span_created.call_args[0]
         self.assertIsInstance(context, Request)
         self.assertEqual(root_span.trace_id, "1234")
         self.assertEqual(root_span.parent_id, "2345")
         self.assertEqual(root_span.id, "3456")
 
-        mock_root_observer = self.observer.make_root_observer.return_value
+        mock_root_observer = self.observer.on_root_span_created.return_value
         self.assertTrue(mock_root_observer.on_start.called)
         self.assertTrue(mock_root_observer.on_stop.called)
 
     def test_not_found(self):
         self.test_app.get("/nope", status=404)
 
-        self.assertFalse(self.observer.make_root_observer.called)
+        self.assertFalse(self.observer.on_root_span_created.called)

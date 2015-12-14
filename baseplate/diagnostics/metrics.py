@@ -25,7 +25,7 @@ class MetricsBaseplateObserver(BaseplateObserver):
     def __init__(self, client):
         self.client = client
 
-    def make_root_observer(self, context, root_span):
+    def on_root_span_created(self, context, root_span):
         context.metrics = self.client.batch()
         return MetricsRootSpanObserver(context.metrics, "server." + root_span.name)
 
@@ -46,7 +46,7 @@ class MetricsSpanObserver(SpanObserver):
 
 
 class MetricsRootSpanObserver(MetricsSpanObserver):
-    def make_child_observer(self, span):  # pragma: nocover
+    def on_child_span_created(self, span):  # pragma: nocover
         return MetricsSpanObserver(self.batch, "clients." + span.name)
 
     def on_stop(self):
