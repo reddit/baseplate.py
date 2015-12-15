@@ -8,6 +8,7 @@ common things a service needs with as few surprises as possible.
    :maxdepth: 1
 
    quickstart
+   diagnostics
    server
    api/index
    glossary

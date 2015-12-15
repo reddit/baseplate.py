@@ -1,5 +1,5 @@
-baseplate-serve
-===============
+Serving requests: baseplate-serve
+=================================
 
 Baseplate comes with a simple Gevent-based server for both Thrift and WSGI
 applications called ``baseplate-serve2`` or ``baseplate-serve3`` depending
