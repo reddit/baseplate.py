@@ -34,7 +34,7 @@ def _make_protocol(endpoint):
     return THeaderProtocol.THeaderProtocol(trans)
 
 
-class ThriftPoolError(Exception):
+class ThriftPoolError(Thrift.TException):
     """The base class for all thrift connection pool errors."""
     pass
 
@@ -139,5 +139,11 @@ class ThriftConnectionPool(object):
         except Thrift.TException:
             prot.trans.close()
             raise
+        except socket.timeout:
+            prot.trans.close()
+            raise TimeoutError
+        except socket.error as exc:
+            prot.trans.close()
+            raise ThriftPoolError(str(exc))
         finally:
             self._release(prot)
