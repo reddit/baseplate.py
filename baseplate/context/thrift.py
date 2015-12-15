@@ -27,7 +27,7 @@ class ThriftContextFactory(ContextFactory):
         self.pool = pool
         self.client_cls = client_cls
 
-    def make_context(self, name, root_span):
+    def make_object_for_context(self, name, root_span):
         return PooledClientProxy(self.client_cls, self.pool, root_span, name)
 
 

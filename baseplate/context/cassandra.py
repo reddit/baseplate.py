@@ -22,7 +22,7 @@ class CassandraContextFactory(ContextFactory):
     def __init__(self, session):
         self.session = session
 
-    def make_context(self, name, root_span):
+    def make_object_for_context(self, name, root_span):
         return CassandraSessionAdapter(name, root_span, self.session)
 
 

@@ -27,7 +27,7 @@ class RedisContextFactory(ContextFactory):
     def __init__(self, connection_pool):
         self.connection_pool = connection_pool
 
-    def make_context(self, name, root_span):
+    def make_object_for_context(self, name, root_span):
         return RedisConnectionAdapter(name, root_span, self.connection_pool)
 
 

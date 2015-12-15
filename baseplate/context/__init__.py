@@ -35,12 +35,12 @@ class ContextFactory(object):
 
     Objects implementing this interface can be passed to
     :py:meth:`baseplate.core.Baseplate.add_to_context`. The return value of
-    :py:meth:`make_context` will be added to the :term:`context object` with
-    the name specified in ``add_to_context``.
+    :py:meth:`make_object_for_context` will be added to the :term:`context
+    object` with the name specified in ``add_to_context``.
 
     """
 
-    def make_context(self, name, root_span):  # pragma: nocover
+    def make_object_for_context(self, name, root_span):  # pragma: nocover
         """Return an object that can be added to the context object."""
         raise NotImplementedError
 
@@ -51,6 +51,6 @@ class ContextObserver(BaseplateObserver):
         self.context_factory = context_factory
 
     def on_root_span_created(self, context, root_span):
-        context_obj = self.context_factory.make_context(self.name, root_span)
-        setattr(context, self.name, context_obj)
+        context_attr = self.context_factory.make_object_for_context(self.name, root_span)
+        setattr(context, self.name, context_attr)
         return None

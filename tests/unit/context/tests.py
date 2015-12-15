@@ -21,4 +21,4 @@ class ContextObserverTests(unittest.TestCase):
         observer.on_root_span_created(mock_context, mock_span)
 
         self.assertEqual(mock_context.some_attribute,
-            mock_factory.make_context.return_value)
+            mock_factory.make_object_for_context.return_value)
