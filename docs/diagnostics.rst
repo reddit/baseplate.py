@@ -27,7 +27,7 @@ Observers
 ---------
 
 To actually do something with all these spans, Baseplate provides observer
-interfaces which recieve notification of events happening in the application
+interfaces which receive notification of events happening in the application
 via calls to various methods.
 
 The base type of observer is :py:class:`~baseplate.core.BaseplateObserver`
