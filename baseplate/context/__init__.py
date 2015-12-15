@@ -6,8 +6,8 @@ trace information and monitoring are automatically collected and sent on for
 you.
 
 To use these helpers, use the
-:py:meth:`baseplate.core.Baseplate.add_to_context` method on your application's
-:py:class:`baseplate.core.Baseplate` object::
+:py:meth:`~baseplate.core.Baseplate.add_to_context` method on your
+application's :py:class:`~baseplate.core.Baseplate` object::
 
     client = SomeClient("server, server, server")
     baseplate.add_to_context("my_client", SomeContextFactory(client))
@@ -19,7 +19,7 @@ and then a context-aware version of the client will show up on the
         context.my_client.make_some_remote_call()
 
 If a library you want isn't supported here, it can be added to your own
-application by subclassing :py:class:`baseplate.context.ContextFactory`.
+application by subclassing :py:class:`~baseplate.context.ContextFactory`.
 
 """
 from __future__ import absolute_import
@@ -34,7 +34,7 @@ class ContextFactory(object):
     """An interface for adding stuff to the context object.
 
     Objects implementing this interface can be passed to
-    :py:meth:`baseplate.core.Baseplate.add_to_context`. The return value of
+    :py:meth:`~baseplate.core.Baseplate.add_to_context`. The return value of
     :py:meth:`make_object_for_context` will be added to the :term:`context
     object` with the name specified in ``add_to_context``.
 
