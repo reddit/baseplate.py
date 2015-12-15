@@ -32,6 +32,7 @@ Observers
 
 .. autoclass:: RootSpanObserver
    :members:
+   :inherited-members:
 
 .. autoclass:: SpanObserver
    :members:

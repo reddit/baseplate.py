@@ -13,8 +13,8 @@ class BaseplateObserver(object):
         """Called when a root span is created.
 
         :py:class:`Baseplate` calls this when a new request begins. If a
-            :py:class:`RootSpanObserver` instance is returned, it will receive
-            events from that root span.
+        :py:class:`RootSpanObserver` instance is returned, it will receive
+        events from that root span.
 
         :param context: The :term:`context object` for this request.
         :param baseplate.core.RootSpan root_span: The root span representing
@@ -49,8 +49,8 @@ class RootSpanObserver(SpanObserver):
         """Called when a child span is created.
 
         :py:class:`RootSpan` objects call this when a new child span is
-            created. If a :py:class:`SpanObserver` instance is returned,
-            it will receive events from that span.
+        created. If a :py:class:`SpanObserver` instance is returned, it will
+        receive events from that span.
 
         :param baseplate.core.Span span: The new child span.
         :return: A :py:class:`SpanObserver` for this request,
