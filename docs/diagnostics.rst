@@ -16,8 +16,10 @@ expensive calculations, the time spent in these actions is represented by child
 :py:class:`~baseplate.core.Span` instances.
 
 Spans have names and IDs and track their parent relationships. When calls are
-made to remote services, the names, IDs, and other data are passed along as
-possible so that requests can be correlated across the whole system.
+made to remote services, the information that identifies the local child span
+representing that service call is passed along to the remote service and
+becomes the root span in the remote service. This allows requests to be traced
+across the infrastructure.
 
 Small bits of data, called annotations, can be attached to spans as well. This
 could be the URL fetched, or how many items were sent in a batch, or whatever
