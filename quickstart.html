@@ -1,0 +1,152 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Quick Start &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="index.html" />
+    <link rel="next" title="Diagnostics: Spans and Observers" href="diagnostics.html" />
+    <link rel="prev" title="Baseplate" href="index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="quick-start">
+<h1>Quick Start<a class="headerlink" href="#quick-start" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h2>
+<p>To install Baseplate, use the debian packages:</p>
+<div class="highlight-python"><div class="highlight"><pre>sudo add-apt-repository ppa:reddit/ppa
+sudo apt-get update
+sudo apt-get install python-gevent python-baseplate
+</pre></div>
+</div>
+<p>or clone it and install it yourself:</p>
+<div class="highlight-python"><div class="highlight"><pre>git clone git@github.com:reddit/baseplate
+cd baseplate/
+make
+make tests
+sudo make install
+</pre></div>
+</div>
+</div>
+<div class="section" id="cookiecutter">
+<h2>Cookiecutter<a class="headerlink" href="#cookiecutter" title="Permalink to this headline">¶</a></h2>
+<p>Baseplate has a few <a class="reference external" href="https://cookiecutter.readthedocs.org">Cookiecutter</a>
+templates available to make a skeleton for your new project.</p>
+<p>For <a class="reference external" href="https://github.com/reddit/reddit-cookiecutter-thrift">Thrift</a>:</p>
+<div class="highlight-python"><div class="highlight"><pre>cookiecutter git@github.com:reddit/reddit-cookiecutter-thrift
+</pre></div>
+</div>
+<p>For <a class="reference external" href="https://github.com/reddit/reddit-cookiecutter-pyramid">Pyramid</a>:</p>
+<div class="highlight-python"><div class="highlight"><pre>cookiecutter git@github.com:reddit/reddit-cookiecutter-pyramid
+</pre></div>
+</div>
+<p>The templates have liberal &#8220;TODO&#8221;s for you to fill in your application. Good
+luck!</p>
+</div>
+<div class="section" id="serving">
+<h2>Serving<a class="headerlink" href="#serving" title="Permalink to this headline">¶</a></h2>
+<p>Once your service is ready (or right now if you are impatient)  you can start
+serving requests:</p>
+<div class="highlight-python"><div class="highlight"><pre>baseplate-serve2 example.ini
+</pre></div>
+</div>
+<p>For more info on this mysterious <tt class="docutils literal"><span class="pre">baseplate-serve2</span></tt>, check out the <a class="reference external" href="server.html">chapter
+about the baseplate server</a>.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Baseplate</a></li>
+      <li>Next: <a href="diagnostics.html" title="next chapter">Diagnostics: Spans and Observers</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="_sources/quickstart.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

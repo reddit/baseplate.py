@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>baseplate.diagnostics &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="../../../index.html" />
+    <link rel="up" title="API Reference" href="../../index.html" />
+    <link rel="next" title="baseplate.integration" href="../integration/index.html" />
+    <link rel="prev" title="baseplate.core" href="../core.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-baseplate.diagnostics">
+<span id="baseplate-diagnostics"></span><h1>baseplate.diagnostics<a class="headerlink" href="#module-baseplate.diagnostics" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="observers">
+<h2>Observers<a class="headerlink" href="#observers" title="Permalink to this headline">¶</a></h2>
+<p>Observers watch Baseplate for events that happen during requests, such as
+requests starting and ending and service calls being made. Observers can also
+add attributes to the <a class="reference internal" href="../../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> for your application to use during
+the request. Under the hood, the context factories
+(<a class="reference internal" href="../context/index.html#module-baseplate.context" title="baseplate.context"><tt class="xref py py-mod docutils literal"><span class="pre">baseplate.context</span></tt></a>) are implemented as observers.</p>
+<dl class="class">
+<dt id="baseplate.diagnostics.logging.LoggingBaseplateObserver">
+<em class="property">class </em><tt class="descclassname">baseplate.diagnostics.logging.</tt><tt class="descname">LoggingBaseplateObserver</tt><a class="headerlink" href="#baseplate.diagnostics.logging.LoggingBaseplateObserver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Logging observer.</p>
+<p>This observer adds request context to the thread-local state so that the
+log formatters can give more informative logs. Currently, this just sets
+the thread name to the current request&#8217;s trace ID.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.diagnostics.metrics.MetricsBaseplateObserver">
+<em class="property">class </em><tt class="descclassname">baseplate.diagnostics.metrics.</tt><tt class="descname">MetricsBaseplateObserver</tt><big>(</big><em>client</em><big>)</big><a class="headerlink" href="#baseplate.diagnostics.metrics.MetricsBaseplateObserver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Metrics collecting observer.</p>
+<p>This observer reports metrics to statsd. It does two important things:</p>
+<ul class="simple">
+<li>it tracks the time taken in serving each request.</li>
+<li>it batches all metrics generated during a request into as few packets
+as possible.</li>
+</ul>
+<p>The batch is accessible to your application during requests as the
+<tt class="docutils literal"><span class="pre">metrics</span></tt> attribute on the <a class="reference internal" href="../../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>client</strong> (<a class="reference internal" href="../metrics.html#baseplate.metrics.Client" title="baseplate.metrics.Client"><em>baseplate.metrics.Client</em></a>) &#8211; The client where metrics will be
+sent.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../../index.html">
+    <img class="logo" src="../../../_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+      <li>Previous: <a href="../core.html" title="previous chapter">baseplate.core</a></li>
+      <li>Next: <a href="../integration/index.html" title="next chapter">baseplate.integration</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="../../../_sources/api/baseplate/diagnostics/index.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

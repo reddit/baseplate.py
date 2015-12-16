@@ -1,0 +1,229 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>baseplate.context &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="../../../index.html" />
+    <link rel="up" title="API Reference" href="../../index.html" />
+    <link rel="next" title="baseplate.core" href="../core.html" />
+    <link rel="prev" title="baseplate.config" href="../config.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-baseplate.context">
+<span id="baseplate-context"></span><h1>baseplate.context<a class="headerlink" href="#module-baseplate.context" title="Permalink to this headline">¶</a></h1>
+<p>Helpers that integrate common client libraries with baseplate&#8217;s diagnostics.</p>
+<p>This package contains modules which integrate various client libraries with
+Baseplate&#8217;s diagnostics and tracing facilities. When using these helpers,
+trace information and monitoring are automatically collected and sent on for
+you.</p>
+<p>To use these helpers, use the
+<a class="reference internal" href="../core.html#baseplate.core.Baseplate.add_to_context" title="baseplate.core.Baseplate.add_to_context"><tt class="xref py py-meth docutils literal"><span class="pre">add_to_context()</span></tt></a> method on your
+application&#8217;s <a class="reference internal" href="../core.html#baseplate.core.Baseplate" title="baseplate.core.Baseplate"><tt class="xref py py-class docutils literal"><span class="pre">Baseplate</span></tt></a> object:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">client</span> <span class="o">=</span> <span class="n">SomeClient</span><span class="p">(</span><span class="s">&quot;server, server, server&quot;</span><span class="p">)</span>
+<span class="n">baseplate</span><span class="o">.</span><span class="n">add_to_context</span><span class="p">(</span><span class="s">&quot;my_client&quot;</span><span class="p">,</span> <span class="n">SomeContextFactory</span><span class="p">(</span><span class="n">client</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>and then a context-aware version of the client will show up on the
+<a class="reference internal" href="../../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> during requests:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">my_handler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">my_client</span><span class="o">.</span><span class="n">make_some_remote_call</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If a library you want isn&#8217;t supported here, it can be added to your own
+application by subclassing <a class="reference internal" href="#baseplate.context.ContextFactory" title="baseplate.context.ContextFactory"><tt class="xref py py-class docutils literal"><span class="pre">ContextFactory</span></tt></a>.</p>
+<div class="section" id="services">
+<h2>Services<a class="headerlink" href="#services" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="baseplate.context.thrift.ThriftContextFactory">
+<em class="property">class </em><tt class="descclassname">baseplate.context.thrift.</tt><tt class="descname">ThriftContextFactory</tt><big>(</big><em>pool</em>, <em>client_cls</em><big>)</big><a class="headerlink" href="#baseplate.context.thrift.ThriftContextFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Thrift client pool context factory.</p>
+<p>This factory will attach a proxy object with the same interface as your
+thrift client to an attribute on the <a class="reference internal" href="../../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a>. When a thrift
+method is called on this proxy object, it will check out a connection from
+the connection pool and execute the RPC, automatically recording diagnostic
+information.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>pool</strong> (<em>baseplate.thrift_pool.ConnectionPool</em>) &#8211; The connection pool.</li>
+<li><strong>client_cls</strong> &#8211; The class object of a Thrift-generated client class,
+e.g. <tt class="docutils literal"><span class="pre">YourService.Client</span></tt>.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="data-stores">
+<h2>Data Stores<a class="headerlink" href="#data-stores" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="baseplate.context.cassandra.CassandraContextFactory">
+<em class="property">class </em><tt class="descclassname">baseplate.context.cassandra.</tt><tt class="descname">CassandraContextFactory</tt><big>(</big><em>session</em><big>)</big><a class="headerlink" href="#baseplate.context.cassandra.CassandraContextFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Cassandra session context factory.</p>
+<p>This factory will attach a proxy object which acts like a
+<a class="reference external" href="https://datastax.github.io/python-driver/api/cassandra/cluster.html#cassandra.cluster.Session" title="(in Cassandra Driver v3.0.0)"><tt class="xref py py-class docutils literal"><span class="pre">cassandra.cluster.Session</span></tt></a> to an attribute on the <a class="reference internal" href="../../../glossary.html#term-context-object"><em class="xref std std-term">context
+object</em></a>. The <tt class="docutils literal"><span class="pre">execute</span></tt>, <tt class="docutils literal"><span class="pre">execute_async</span></tt> or <tt class="docutils literal"><span class="pre">prepare</span></tt> methods will
+automatically record diagnostic information.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>session</strong> (<a class="reference external" href="https://datastax.github.io/python-driver/api/cassandra/cluster.html#cassandra.cluster.Session" title="(in Cassandra Driver v3.0.0)"><em>cassandra.cluster.Session</em></a>) &#8211; A configured session object.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.context.redis.RedisContextFactory">
+<em class="property">class </em><tt class="descclassname">baseplate.context.redis.</tt><tt class="descname">RedisContextFactory</tt><big>(</big><em>connection_pool</em><big>)</big><a class="headerlink" href="#baseplate.context.redis.RedisContextFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Redis client context factory.</p>
+<p>This factory will attach a proxy object which acts like a
+<a class="reference external" href="https://redis-py.readthedocs.org/en/latest/index.html#redis.StrictRedis" title="(in redis-py v2.4.9)"><tt class="xref py py-class docutils literal"><span class="pre">redis.StrictRedis</span></tt></a> object to an attribute on the <a class="reference internal" href="../../../glossary.html#term-context-object"><em class="xref std std-term">context
+object</em></a>. When redis commands are executed via this proxy object, they will
+use connections from the provided <a class="reference external" href="https://redis-py.readthedocs.org/en/latest/index.html#redis.ConnectionPool" title="(in redis-py v2.4.9)"><tt class="xref py py-class docutils literal"><span class="pre">redis.ConnectionPool</span></tt></a> and
+automatically record diagnostic information.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Pipelines, transactions, locks, and pubsub are currently unsupported.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>connection_pool</strong> (<a class="reference external" href="https://redis-py.readthedocs.org/en/latest/index.html#redis.ConnectionPool" title="(in redis-py v2.4.9)"><em>redis.ConnectionPool</em></a>) &#8211; A connection pool.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="diy-the-factory">
+<h2>DIY: The Factory<a class="headerlink" href="#diy-the-factory" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Stuff beyond this point is only useful if you are implementing your own
+context helpers. You can stop reading here if the stuff above already has
+you covered!</p>
+</div>
+<dl class="class">
+<dt id="baseplate.context.ContextFactory">
+<em class="property">class </em><tt class="descclassname">baseplate.context.</tt><tt class="descname">ContextFactory</tt><a class="headerlink" href="#baseplate.context.ContextFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>An interface for adding stuff to the context object.</p>
+<p>Objects implementing this interface can be passed to
+<a class="reference internal" href="../core.html#baseplate.core.Baseplate.add_to_context" title="baseplate.core.Baseplate.add_to_context"><tt class="xref py py-meth docutils literal"><span class="pre">add_to_context()</span></tt></a>. The return value of
+<a class="reference internal" href="#baseplate.context.ContextFactory.make_object_for_context" title="baseplate.context.ContextFactory.make_object_for_context"><tt class="xref py py-meth docutils literal"><span class="pre">make_object_for_context()</span></tt></a> will be added to the <a class="reference internal" href="../../../glossary.html#term-context-object"><em class="xref std std-term">context
+object</em></a> with the name specified in <tt class="docutils literal"><span class="pre">add_to_context</span></tt>.</p>
+<dl class="method">
+<dt id="baseplate.context.ContextFactory.make_object_for_context">
+<tt class="descname">make_object_for_context</tt><big>(</big><em>name</em>, <em>root_span</em><big>)</big><a class="headerlink" href="#baseplate.context.ContextFactory.make_object_for_context" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an object that can be added to the context object.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../../index.html">
+    <img class="logo" src="../../../_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+      <li>Previous: <a href="../config.html" title="previous chapter">baseplate.config</a></li>
+      <li>Next: <a href="../core.html" title="next chapter">baseplate.core</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="../../../_sources/api/baseplate/context/index.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

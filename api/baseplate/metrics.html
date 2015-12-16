@@ -1,0 +1,416 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>baseplate.metrics &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="../../index.html" />
+    <link rel="up" title="API Reference" href="../index.html" />
+    <link rel="next" title="baseplate.thrift_pool" href="thrift_pool.html" />
+    <link rel="prev" title="baseplate.integration" href="integration/index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-baseplate.metrics">
+<span id="baseplate-metrics"></span><h1>baseplate.metrics<a class="headerlink" href="#module-baseplate.metrics" title="Permalink to this headline">¶</a></h1>
+<p>Application metrics via statsd.</p>
+<p>A client for the application metrics aggregator <a class="reference external" href="https://github.com/etsy/statsd">statsd</a>. Metrics sent to
+statsd are aggregated and written to graphite. Statsd is generally used for
+whole-system health monitoring and insight into usage patterns.</p>
+<p>Basic example usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="kn">from</span> <span class="nn">baseplate</span> <span class="kn">import</span> <span class="n">make_metrics_client</span>
+
+<span class="n">client</span> <span class="o">=</span> <span class="n">make_metrics_client</span><span class="p">(</span><span class="n">app_config</span><span class="p">)</span>
+<span class="n">client</span><span class="o">.</span><span class="n">counter</span><span class="p">(</span><span class="s">&quot;events.connect&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">increment</span><span class="p">()</span>
+<span class="n">client</span><span class="o">.</span><span class="n">gauge</span><span class="p">(</span><span class="s">&quot;connections&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">increment</span><span class="p">()</span>
+<span class="n">client</span><span class="o">.</span><span class="n">gauge</span><span class="p">(</span><span class="s">&quot;workers&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">timer</span><span class="p">(</span><span class="s">&quot;something.todo&quot;</span><span class="p">):</span>
+    <span class="n">do_something</span><span class="p">()</span>
+    <span class="n">do_something_else</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>If you have multiple metrics to send, you can batch them up for efficiency:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="n">client</span><span class="o">.</span><span class="n">batch</span><span class="p">()</span> <span class="k">as</span> <span class="n">batch</span><span class="p">:</span>
+    <span class="n">batch</span><span class="o">.</span><span class="n">counter</span><span class="p">(</span><span class="s">&quot;froozles&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">increment</span><span class="p">()</span>
+    <span class="n">batch</span><span class="o">.</span><span class="n">counter</span><span class="p">(</span><span class="s">&quot;blargs&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">decrement</span><span class="p">(</span><span class="n">delta</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">batch</span><span class="o">.</span><span class="n">timer</span><span class="p">(</span><span class="s">&quot;something&quot;</span><span class="p">):</span>
+        <span class="n">do_another_thing</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>and the batch will be sent in as few packets as possible when the <cite>with</cite> block
+ends.</p>
+<div class="section" id="clients">
+<h2>Clients<a class="headerlink" href="#clients" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="baseplate.metrics.make_client">
+<tt class="descclassname">baseplate.metrics.</tt><tt class="descname">make_client</tt><big>(</big><em>namespace</em>, <em>endpoint</em><big>)</big><a class="headerlink" href="#baseplate.metrics.make_client" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a configured client.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>namespace</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The root key to namespace all metrics under.</li>
+<li><strong>endpoint</strong> (<a class="reference internal" href="config.html#baseplate.config.EndpointConfiguration" title="baseplate.config.EndpointConfiguration"><em>baseplate.config.EndpointConfiguration</em></a>) &#8211; The endpoint to
+send metrics to or <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a>.  If <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a>, the returned
+client will discard all metrics.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A configured client.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#baseplate.metrics.Client" title="baseplate.metrics.Client"><tt class="xref py py-class docutils literal"><span class="pre">baseplate.metrics.Client</span></tt></a></p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last"><a class="reference internal" href="index.html#baseplate.make_metrics_client" title="baseplate.make_metrics_client"><tt class="xref py py-func docutils literal"><span class="pre">baseplate.make_metrics_client()</span></tt></a>.</p>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.metrics.Client">
+<em class="property">class </em><tt class="descclassname">baseplate.metrics.</tt><tt class="descname">Client</tt><a class="headerlink" href="#baseplate.metrics.Client" title="Permalink to this definition">¶</a></dt>
+<dd><p>A client for statsd.</p>
+<dl class="method">
+<dt id="baseplate.metrics.Client.batch">
+<tt class="descname">batch</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.metrics.Client.batch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a client-like object which batches up metrics.</p>
+<p>Batching metrics can reduce the number of packets that are sent to
+the stats aggregator.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#baseplate.metrics.Batch" title="baseplate.metrics.Batch"><tt class="xref py py-class docutils literal"><span class="pre">Batch</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Client.counter">
+<tt class="descname">counter</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Client.counter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Counter with the given name.</p>
+<p>The sample rate is currently up to your application to enforce.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name the counter should have.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#baseplate.metrics.Counter" title="baseplate.metrics.Counter"><tt class="xref py py-class docutils literal"><span class="pre">Counter</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Client.gauge">
+<tt class="descname">gauge</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Client.gauge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Gauge with the given name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name the gauge should have.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#baseplate.metrics.Gauge" title="baseplate.metrics.Gauge"><tt class="xref py py-class docutils literal"><span class="pre">Gauge</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Client.timer">
+<tt class="descname">timer</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Client.timer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Timer with the given name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name the timer should have.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#baseplate.metrics.Timer" title="baseplate.metrics.Timer"><tt class="xref py py-class docutils literal"><span class="pre">Timer</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.metrics.Batch">
+<em class="property">class </em><tt class="descclassname">baseplate.metrics.</tt><tt class="descname">Batch</tt><a class="headerlink" href="#baseplate.metrics.Batch" title="Permalink to this definition">¶</a></dt>
+<dd><p>A batch of metrics to send to statsd.</p>
+<p>The batch also supports the <a class="reference external" href="https://docs.python.org/3/reference/datamodel.html#context-managers">context manager protocol</a>, for use with
+Python&#8217;s <tt class="docutils literal"><span class="pre">with</span></tt> statement. When the context is exited, the batch will
+automatically <a class="reference internal" href="#baseplate.metrics.Batch.flush" title="baseplate.metrics.Batch.flush"><tt class="xref py py-meth docutils literal"><span class="pre">flush()</span></tt></a>.</p>
+<dl class="method">
+<dt id="baseplate.metrics.Batch.flush">
+<tt class="descname">flush</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.metrics.Batch.flush" title="Permalink to this definition">¶</a></dt>
+<dd><p>Immediately send the batched metrics.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Batch.counter">
+<tt class="descname">counter</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Batch.counter" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Counter with the given name.</p>
+<p>The sample rate is currently up to your application to enforce.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name the counter should have.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#baseplate.metrics.Counter" title="baseplate.metrics.Counter"><tt class="xref py py-class docutils literal"><span class="pre">Counter</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Batch.gauge">
+<tt class="descname">gauge</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Batch.gauge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Gauge with the given name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name the gauge should have.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#baseplate.metrics.Gauge" title="baseplate.metrics.Gauge"><tt class="xref py py-class docutils literal"><span class="pre">Gauge</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Batch.timer">
+<tt class="descname">timer</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Batch.timer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a Timer with the given name.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name the timer should have.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="#baseplate.metrics.Timer" title="baseplate.metrics.Timer"><tt class="xref py py-class docutils literal"><span class="pre">Timer</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="metrics">
+<h2>Metrics<a class="headerlink" href="#metrics" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="baseplate.metrics.Counter">
+<em class="property">class </em><tt class="descclassname">baseplate.metrics.</tt><tt class="descname">Counter</tt><a class="headerlink" href="#baseplate.metrics.Counter" title="Permalink to this definition">¶</a></dt>
+<dd><p>A counter for counting events over time.</p>
+<dl class="method">
+<dt id="baseplate.metrics.Counter.increment">
+<tt class="descname">increment</tt><big>(</big><em>delta=1</em>, <em>sample_rate=1.0</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Counter.increment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Increment the counter.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>delta</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The amount to increase the counter by.</li>
+<li><strong>sample_rate</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) &#8211; What rate this counter is sampled at. [0-1].</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Counter.decrement">
+<tt class="descname">decrement</tt><big>(</big><em>delta=1</em>, <em>sample_rate=1.0</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Counter.decrement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decrement the counter.</p>
+<p>This is equivalent to <a class="reference internal" href="#baseplate.metrics.Counter.increment" title="baseplate.metrics.Counter.increment"><tt class="xref py py-meth docutils literal"><span class="pre">increment()</span></tt></a> with delta negated.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.metrics.Timer">
+<em class="property">class </em><tt class="descclassname">baseplate.metrics.</tt><tt class="descname">Timer</tt><a class="headerlink" href="#baseplate.metrics.Timer" title="Permalink to this definition">¶</a></dt>
+<dd><p>A timer for recording elapsed times.</p>
+<p>The timer also supports the <a class="reference external" href="https://docs.python.org/3/reference/datamodel.html#context-managers">context manager protocol</a>, for use with
+Python&#8217;s <tt class="docutils literal"><span class="pre">with</span></tt> statement. When the context is entered the timer will
+<a class="reference internal" href="#baseplate.metrics.Timer.start" title="baseplate.metrics.Timer.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> and when exited, the timer will automatically
+<a class="reference internal" href="#baseplate.metrics.Timer.stop" title="baseplate.metrics.Timer.stop"><tt class="xref py py-meth docutils literal"><span class="pre">stop()</span></tt></a>.</p>
+<dl class="method">
+<dt id="baseplate.metrics.Timer.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.metrics.Timer.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the current time as the start of the timer.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Timer.stop">
+<tt class="descname">stop</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.metrics.Timer.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Stop the timer and record the total elapsed time.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.metrics.Gauge">
+<em class="property">class </em><tt class="descclassname">baseplate.metrics.</tt><tt class="descname">Gauge</tt><a class="headerlink" href="#baseplate.metrics.Gauge" title="Permalink to this definition">¶</a></dt>
+<dd><p>A gauge representing an arbitrary value.</p>
+<p>Gauges maintain their value over time if not updated. They can be changed
+by relative amounts or have their values wholesale replaced.</p>
+<dl class="method">
+<dt id="baseplate.metrics.Gauge.increment">
+<tt class="descname">increment</tt><big>(</big><em>delta=1</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Gauge.increment" title="Permalink to this definition">¶</a></dt>
+<dd><p>Increment the value of the gauge.</p>
+<p>This will change the value of the gauge relative to what it was before.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>delta</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The amount to change the gauge by.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Gauge.decrement">
+<tt class="descname">decrement</tt><big>(</big><em>delta=1</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Gauge.decrement" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decrement the value of the gauge.</p>
+<p>This is equivalent to <a class="reference internal" href="#baseplate.metrics.Gauge.increment" title="baseplate.metrics.Gauge.increment"><tt class="xref py py-meth docutils literal"><span class="pre">increment()</span></tt></a> with delta negated.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.metrics.Gauge.replace">
+<tt class="descname">replace</tt><big>(</big><em>new_value</em><big>)</big><a class="headerlink" href="#baseplate.metrics.Gauge.replace" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replace the value held by the gauge.</p>
+<p>This will replace the value held by the gauge with no concern for its
+previous value.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Due to the way the protocol works, it is not possible to
+replace gauge values with negative numbers.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>new_value</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The new value to store in the gauge.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API Reference</a><ul>
+      <li>Previous: <a href="integration/index.html" title="previous chapter">baseplate.integration</a></li>
+      <li>Next: <a href="thrift_pool.html" title="next chapter">baseplate.thrift_pool</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="../../_sources/api/baseplate/metrics.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

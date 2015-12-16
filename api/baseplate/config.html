@@ -1,0 +1,292 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>baseplate.config &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="../../index.html" />
+    <link rel="up" title="API Reference" href="../index.html" />
+    <link rel="next" title="baseplate.context" href="context/index.html" />
+    <link rel="prev" title="baseplate" href="index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-baseplate.config">
+<span id="baseplate-config"></span><h1>baseplate.config<a class="headerlink" href="#module-baseplate.config" title="Permalink to this headline">¶</a></h1>
+<p>Configuration parsing and validation.</p>
+<p>This module provides <tt class="docutils literal"><span class="pre">parse_config</span></tt> which turns a dictionary of stringy keys
+and values into a structured and typed configuration object.</p>
+<p>For example, an INI file like the following:</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[app:main]</span>
+<span class="na">simple</span> <span class="o">=</span> <span class="s">true</span>
+<span class="na">cards</span> <span class="o">=</span> <span class="s">clubs, spades, diamonds</span>
+<span class="na">nested.once</span> <span class="o">=</span> <span class="s">1</span>
+<span class="na">nested.really.deep</span> <span class="o">=</span> <span class="s">3 seconds</span>
+</pre></div>
+</div>
+<p>Might be parsed like this:</p>
+<div class="highlight-py"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">CARDS</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">OneOf</span><span class="p">(</span><span class="n">clubs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">spades</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">diamonds</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">hearts</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cfg</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">parse_config</span><span class="p">(</span><span class="n">raw_config</span><span class="p">,</span> <span class="p">{</span>
+<span class="gp">... </span>    <span class="s">&quot;simple&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">Boolean</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s">&quot;cards&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">TupleOf</span><span class="p">(</span><span class="n">CARDS</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s">&quot;nested&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>        <span class="s">&quot;once&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span>
+<span class="gp">...</span>
+<span class="gp">... </span>        <span class="s">&quot;really&quot;</span><span class="p">:</span> <span class="p">{</span>
+<span class="gp">... </span>            <span class="s">&quot;deep&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">Timespan</span><span class="p">,</span>
+<span class="gp">... </span>        <span class="p">},</span>
+<span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span><span class="p">})</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">simple</span><span class="p">)</span>
+<span class="go">True</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">cards</span><span class="p">)</span>
+<span class="go">[1, 2, 3]</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">nested</span><span class="o">.</span><span class="n">really</span><span class="o">.</span><span class="n">deep</span><span class="p">)</span>
+<span class="go">0:00:03</span>
+</pre></div>
+</div>
+<div class="section" id="parser">
+<h2>Parser<a class="headerlink" href="#parser" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="baseplate.config.parse_config">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">parse_config</tt><big>(</big><em>config</em>, <em>spec</em><big>)</big><a class="headerlink" href="#baseplate.config.parse_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse options against a spec and return a structured representation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>config</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#dict" title="(in Python v3.4)"><em>dict</em></a>) &#8211; The raw stringy configuration dictionary.</li>
+<li><strong>spec</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#dict" title="(in Python v3.4)"><em>dict</em></a>) &#8211; A specification of what the config should look like.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><a class="reference internal" href="#baseplate.config.ConfigurationError" title="baseplate.config.ConfigurationError"><tt class="xref py py-exc docutils literal"><span class="pre">ConfigurationError</span></tt></a> The configuration violated the spec.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A structured configuration object.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="value-types">
+<h2>Value Types<a class="headerlink" href="#value-types" title="Permalink to this headline">¶</a></h2>
+<p>Each option can have a type specified. Some types compose with other types to
+make complicated expressions.</p>
+<dl class="function">
+<dt id="baseplate.config.String">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">String</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#baseplate.config.String" title="Permalink to this definition">¶</a></dt>
+<dd><p>A raw string.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.Float">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">Float</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#baseplate.config.Float" title="Permalink to this definition">¶</a></dt>
+<dd><p>A floating-point number.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.Integer">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">Integer</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#baseplate.config.Integer" title="Permalink to this definition">¶</a></dt>
+<dd><p>An integer.</p>
+<p>To prevent mistakes, this will raise an error if the user attempts
+to configure a non-whole number.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.Boolean">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">Boolean</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#baseplate.config.Boolean" title="Permalink to this definition">¶</a></dt>
+<dd><p>True or False, case insensitive.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.Endpoint">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">Endpoint</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#baseplate.config.Endpoint" title="Permalink to this definition">¶</a></dt>
+<dd><p>A remote endpoint to connect to.</p>
+<p>Returns an <a class="reference internal" href="#baseplate.config.EndpointConfiguration" title="baseplate.config.EndpointConfiguration"><tt class="xref py py-class docutils literal"><span class="pre">EndpointConfiguration</span></tt></a>.</p>
+<p>If the endpoint is a hostname:port pair, the <tt class="docutils literal"><span class="pre">family</span></tt> will be
+<a class="reference external" href="https://docs.python.org/3.4/library/socket.html#socket.AF_INET" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">socket.AF_INET</span></tt></a> and <tt class="docutils literal"><span class="pre">address</span></tt> will be a two-tuple of host and
+port, as expected by <a class="reference external" href="https://docs.python.org/3.4/library/socket.html#module-socket" title="(in Python v3.4)"><tt class="xref py py-mod docutils literal"><span class="pre">socket</span></tt></a>.</p>
+<p>If the endpoint contains a slash (<tt class="docutils literal"><span class="pre">/</span></tt>), it will be interpreted as a path
+to a UNIX domain socket. The <tt class="docutils literal"><span class="pre">family</span></tt> will be <a class="reference external" href="https://docs.python.org/3.4/library/socket.html#socket.AF_UNIX" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">socket.AF_UNIX</span></tt></a>
+and <tt class="docutils literal"><span class="pre">address</span></tt> will be the path as a string.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.Timespan">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">Timespan</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#baseplate.config.Timespan" title="Permalink to this definition">¶</a></dt>
+<dd><p>A span of time.</p>
+<p>This takes a string of the form &#8220;1 second&#8221; or &#8220;3 days&#8221; and returns a
+<a class="reference external" href="https://docs.python.org/3.4/library/datetime.html#datetime.timedelta" title="(in Python v3.4)"><tt class="xref py py-class docutils literal"><span class="pre">datetime.timedelta</span></tt></a> representing that span of time.</p>
+<p>Units supported are: seconds, minutes, hours, days.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.OneOf">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">OneOf</tt><big>(</big><em>**options</em><big>)</big><a class="headerlink" href="#baseplate.config.OneOf" title="Permalink to this definition">¶</a></dt>
+<dd><p>One of several pre-decided options.</p>
+<p>For each <tt class="docutils literal"><span class="pre">option</span></tt>, the name is what should be in the configuration file
+and the value is what it is mapped to.</p>
+<p>For example:</p>
+<div class="highlight-py"><div class="highlight"><pre><span class="n">OneOf</span><span class="p">(</span><span class="n">hearts</span><span class="o">=</span><span class="s">&quot;H&quot;</span><span class="p">,</span> <span class="n">spades</span><span class="o">=</span><span class="s">&quot;S&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>would parse:</p>
+<div class="highlight-py"><div class="highlight"><pre><span class="s">&quot;hearts&quot;</span>
+</pre></div>
+</div>
+<p>into:</p>
+<div class="highlight-py"><div class="highlight"><pre><span class="s">&quot;H&quot;</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.TupleOf">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">TupleOf</tt><big>(</big><em>T</em><big>)</big><a class="headerlink" href="#baseplate.config.TupleOf" title="Permalink to this definition">¶</a></dt>
+<dd><p>A comma-delimited list of type T.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.Optional">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">Optional</tt><big>(</big><em>T</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#baseplate.config.Optional" title="Permalink to this definition">¶</a></dt>
+<dd><p>An option of type T, or <tt class="docutils literal"><span class="pre">default</span></tt> if not configured.</p>
+</dd></dl>
+
+<p>If you need something custom or fancy for your application, just use a
+callable which takes a string and returns the parsed value or raises
+<a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><tt class="xref py py-exc docutils literal"><span class="pre">ValueError</span></tt></a>.</p>
+</div>
+<div class="section" id="data-types">
+<h2>Data Types<a class="headerlink" href="#data-types" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="baseplate.config.EndpointConfiguration">
+<em class="property">class </em><tt class="descclassname">baseplate.config.</tt><tt class="descname">EndpointConfiguration</tt><a class="headerlink" href="#baseplate.config.EndpointConfiguration" title="Permalink to this definition">¶</a></dt>
+<dd><p>A description of a remote endpoint.</p>
+<p>This is a 2-tuple of (<tt class="docutils literal"><span class="pre">family</span></tt> and <tt class="docutils literal"><span class="pre">address</span></tt>).</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">family</span></tt></dt>
+<dd>One of <a class="reference external" href="https://docs.python.org/3.4/library/socket.html#socket.AF_INET" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">socket.AF_INET</span></tt></a> or <a class="reference external" href="https://docs.python.org/3.4/library/socket.html#socket.AF_UNIX" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">socket.AF_UNIX</span></tt></a>.</dd>
+<dt><tt class="docutils literal"><span class="pre">address</span></tt></dt>
+<dd>An address appropriate for the <tt class="docutils literal"><span class="pre">family</span></tt>.</dd>
+</dl>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last"><a class="reference internal" href="#baseplate.config.Endpoint" title="baseplate.config.Endpoint"><tt class="xref py py-func docutils literal"><span class="pre">baseplate.config.Endpoint()</span></tt></a></p>
+</div>
+</dd></dl>
+
+</div>
+<div class="section" id="exceptions">
+<h2>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this headline">¶</a></h2>
+<dl class="exception">
+<dt id="baseplate.config.ConfigurationError">
+<em class="property">exception </em><tt class="descclassname">baseplate.config.</tt><tt class="descname">ConfigurationError</tt><big>(</big><em>key</em>, <em>error</em><big>)</big><a class="headerlink" href="#baseplate.config.ConfigurationError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised when the configuration violates the spec.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API Reference</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">baseplate</a></li>
+      <li>Next: <a href="context/index.html" title="next chapter">baseplate.context</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="../../_sources/api/baseplate/config.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

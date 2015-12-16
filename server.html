@@ -1,0 +1,188 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Serving requests: baseplate-serve &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="index.html" />
+    <link rel="next" title="API Reference" href="api/index.html" />
+    <link rel="prev" title="Diagnostics: Spans and Observers" href="diagnostics.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="serving-requests-baseplate-serve">
+<h1>Serving requests: baseplate-serve<a class="headerlink" href="#serving-requests-baseplate-serve" title="Permalink to this headline">¶</a></h1>
+<p>Baseplate comes with a simple Gevent-based server for both Thrift and WSGI
+applications called <tt class="docutils literal"><span class="pre">baseplate-serve2</span></tt> or <tt class="docutils literal"><span class="pre">baseplate-serve3</span></tt> depending
+on which version of Python you would like to use.</p>
+<div class="section" id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Permalink to this headline">¶</a></h2>
+<p>There is one required parameter on the command line, the path to an INI-format
+configuration file. There should be two sections in the file: the server
+section and the app section. The section headers look like <tt class="docutils literal"><span class="pre">server:main</span></tt> or
+<tt class="docutils literal"><span class="pre">app:main</span></tt> where the part before the <tt class="docutils literal"><span class="pre">:</span></tt> is the type of section and the
+part after is the &#8220;name&#8221;. Baseplate looks for sections named <tt class="docutils literal"><span class="pre">main</span></tt> by
+default but can be overridden with the <tt class="docutils literal"><span class="pre">--server-name</span></tt> and <tt class="docutils literal"><span class="pre">--app-name</span></tt>
+options.</p>
+</div>
+<div class="section" id="the-server">
+<h2>The Server<a class="headerlink" href="#the-server" title="Permalink to this headline">¶</a></h2>
+<p>Here&#8217;s an example of a <tt class="docutils literal"><span class="pre">server</span></tt> section:</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[server:main]</span>
+<span class="na">factory</span> <span class="o">=</span> <span class="s">baseplate.server.thrift</span>
+<span class="na">stop_timeout</span> <span class="o">=</span> <span class="s">30</span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">factory</span></tt> tells baseplate what code to use to run the server. Baseplate
+comes with two servers built in:</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">baseplate.server.thrift</span></tt></dt>
+<dd>A Gevent Thrift server.</dd>
+<dt><tt class="docutils literal"><span class="pre">baseplate.server.wsgi</span></tt></dt>
+<dd>A Gevent WSGI server.</dd>
+</dl>
+<p>Both take two optional configurables as well:</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">max_concurrency</span></tt></dt>
+<dd>The maximum number of simultaneous clients the server will handle. Unlimited
+by default.</dd>
+<dt><tt class="docutils literal"><span class="pre">stop_timeout</span></tt></dt>
+<dd>How long, in seconds, to wait for active connections to finish up gracefully
+when shutting down. By default, the server will shut down immediately.</dd>
+</dl>
+</div>
+<div class="section" id="the-application">
+<h2>The Application<a class="headerlink" href="#the-application" title="Permalink to this headline">¶</a></h2>
+<p>And now the real bread and butter, your <tt class="docutils literal"><span class="pre">app</span></tt> section:</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[app:main]</span>
+<span class="na">factory</span> <span class="o">=</span> <span class="s">my_app.processor:make_processor</span>
+<span class="na">foo</span> <span class="o">=</span> <span class="s">3</span>
+<span class="na">bar</span> <span class="o">=</span> <span class="s">22</span>
+<span class="na">noodles.blah</span> <span class="o">=</span> <span class="s">one, two, three</span>
+</pre></div>
+</div>
+<p>The <tt class="docutils literal"><span class="pre">app</span></tt> section also takes a <tt class="docutils literal"><span class="pre">factory</span></tt>.  This should be the name of a
+callable in your code which builds and returns your application. The part
+before the <tt class="docutils literal"><span class="pre">:</span></tt> is a Python module. The part after the <tt class="docutils literal"><span class="pre">:</span></tt> is the name of a
+callable object within that module.</p>
+<p>The rest of the options in the <tt class="docutils literal"><span class="pre">app</span></tt> section of the configuration file get
+passed as a dictionary to your application callable. You can parse these
+options with <a class="reference internal" href="api/baseplate/config.html#module-baseplate.config" title="baseplate.config"><tt class="xref py py-mod docutils literal"><span class="pre">baseplate.config</span></tt></a>.</p>
+<p>The application factory should return an appropriate object for your server:</p>
+<dl class="docutils">
+<dt>Thrift</dt>
+<dd>A <tt class="docutils literal"><span class="pre">TProcessor</span></tt>.</dd>
+<dt>WSGI</dt>
+<dd>A WSGI callable.</dd>
+</dl>
+</div>
+<div class="section" id="einhorn">
+<h2>Einhorn<a class="headerlink" href="#einhorn" title="Permalink to this headline">¶</a></h2>
+<p><tt class="docutils literal"><span class="pre">baseplate-serve</span></tt> can run as a worker in <a class="reference external" href="https://github.com/stripe/einhorn">Stripe&#8217;s Einhorn socket manager</a>.
+This allows Einhorn to handle binding the socket, worker management, rolling
+restarts, and worker health checks.</p>
+<p>Baseplate supports Einhorn&#8217;s &#8220;manual ACK&#8221; protocol. Once the application is
+loaded and ready to serve, Baseplate notifies the Einhorn master process via
+its command socket.</p>
+<p>An example command line:</p>
+<div class="highlight-ini"><div class="highlight"><pre>einhorn -g -m manual -n 4 --bind localhost:9190 \
+   baseplate-serve2 myapp.ini
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="index.html">
+    <img class="logo" src="_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="diagnostics.html" title="previous chapter">Diagnostics: Spans and Observers</a></li>
+      <li>Next: <a href="api/index.html" title="next chapter">API Reference</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="_sources/server.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

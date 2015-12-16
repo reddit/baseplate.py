@@ -1,0 +1,411 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>baseplate.core &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="../../index.html" />
+    <link rel="up" title="API Reference" href="../index.html" />
+    <link rel="next" title="baseplate.diagnostics" href="diagnostics/index.html" />
+    <link rel="prev" title="baseplate.context" href="context/index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-baseplate.core">
+<span id="baseplate-core"></span><h1>baseplate.core<a class="headerlink" href="#module-baseplate.core" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="baseplate">
+<h2>Baseplate<a class="headerlink" href="#baseplate" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="baseplate.core.Baseplate">
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">Baseplate</tt><a class="headerlink" href="#baseplate.core.Baseplate" title="Permalink to this definition">¶</a></dt>
+<dd><p>The core of the Baseplate diagnostics framework.</p>
+<p>This class coordinates monitoring and tracing of service calls made to
+and from this service. See <a class="reference internal" href="integration/index.html#module-baseplate.integration" title="baseplate.integration"><tt class="xref py py-mod docutils literal"><span class="pre">baseplate.integration</span></tt></a> for how to
+integrate it with the application framework you are using.</p>
+<dl class="method">
+<dt id="baseplate.core.Baseplate.register">
+<tt class="descname">register</tt><big>(</big><em>observer</em><big>)</big><a class="headerlink" href="#baseplate.core.Baseplate.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register an observer.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>observer</strong> (<a class="reference internal" href="#baseplate.core.BaseplateObserver" title="baseplate.core.BaseplateObserver"><em>baseplate.core.BaseplateObserver</em></a>) &#8211; An observer.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Baseplate.configure_logging">
+<tt class="descname">configure_logging</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.Baseplate.configure_logging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add request context to the logging system.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Baseplate.configure_metrics">
+<tt class="descname">configure_metrics</tt><big>(</big><em>metrics_client</em><big>)</big><a class="headerlink" href="#baseplate.core.Baseplate.configure_metrics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send timing metrics to the given client.</p>
+<p>This also adds a <a class="reference internal" href="metrics.html#baseplate.metrics.Batch" title="baseplate.metrics.Batch"><tt class="xref py py-class docutils literal"><span class="pre">baseplate.metrics.Batch</span></tt></a> object to the
+<tt class="docutils literal"><span class="pre">metrics</span></tt> attribute on the <a class="reference internal" href="../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> where you can add
+your own application-specific metrics. The batch is automatically
+flushed at the end of the request.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>metrics_client</strong> (<a class="reference internal" href="metrics.html#baseplate.metrics.Client" title="baseplate.metrics.Client"><em>baseplate.metrics.Client</em></a>) &#8211; Metrics client to send
+request metrics to.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Baseplate.add_to_context">
+<tt class="descname">add_to_context</tt><big>(</big><em>name</em>, <em>context_factory</em><big>)</big><a class="headerlink" href="#baseplate.core.Baseplate.add_to_context" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an attribute to each request&#8217;s context object.</p>
+<p>On each request, the factory will be asked to create an appropriate
+object to attach to the <a class="reference internal" href="../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The attribute on the context object to attach the
+created object to. This may also be used for metric/tracing
+purposes so it should be descriptive.</li>
+<li><strong>context_factory</strong> (<a class="reference internal" href="context/index.html#baseplate.context.ContextFactory" title="baseplate.context.ContextFactory"><em>baseplate.context.ContextFactory</em></a>) &#8211; A factory.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Baseplate.make_root_span">
+<tt class="descname">make_root_span</tt><big>(</big><em>context</em>, <em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.Baseplate.make_root_span" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a root span representing the current request we are handling.</p>
+<p>In a server, a root span represents the time spent on a single incoming
+request. Any calls made to downstream services will be new child spans
+of the root span, and the root span will in turn be the child span of
+whatever upstream request it is part of.</p>
+<p>Any <a class="reference internal" href="#baseplate.core.BaseplateObserver" title="baseplate.core.BaseplateObserver"><tt class="xref py py-class docutils literal"><span class="pre">BaseplateObserver</span></tt></a> objects registered are given an
+opportunity to make <a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> objects to watch the
+new child span.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="spans">
+<h2>Spans<a class="headerlink" href="#spans" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="baseplate.core.RootSpan">
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">RootSpan</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan" title="Permalink to this definition">¶</a></dt>
+<dd><p>A root span represents a request this server is handling.</p>
+<p>The root span is available on the <a class="reference internal" href="../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> during requests as
+the <tt class="docutils literal"><span class="pre">trace</span></tt> attribute.</p>
+<dl class="method">
+<dt id="baseplate.core.RootSpan.make_child">
+<tt class="descname">make_child</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.make_child" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a child span representing an outbound service call.</p>
+<p>Any <a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> objects registered with this span are
+given an opportunity to make <a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> objects to watch
+this span.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.RootSpan.annotate">
+<tt class="descname">annotate</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.annotate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an annotation to the span.</p>
+<p>Annotations are arbitrary key/value pairs that add context and meaning
+to the span, such as a hostname or query string. Observers may
+interpret or ignore annotations as they desire.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the annotation.</li>
+<li><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The value of the annotation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.RootSpan.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the start of the span.</p>
+<p>This notifies any observers that the span has started, which indicates
+that timers etc. should start ticking.</p>
+<p>Spans also support the <a class="reference external" href="https://docs.python.org/3/reference/datamodel.html#context-managers">context manager protocol</a>, for use with
+Python&#8217;s <tt class="docutils literal"><span class="pre">with</span></tt> statement. When the context is entered, the span
+calls <a class="reference internal" href="#baseplate.core.RootSpan.start" title="baseplate.core.RootSpan.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> and when the context is exited it automatically
+calls <a class="reference internal" href="#baseplate.core.RootSpan.stop" title="baseplate.core.RootSpan.stop"><tt class="xref py py-meth docutils literal"><span class="pre">stop()</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.RootSpan.stop">
+<tt class="descname">stop</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the end of the span.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.core.Span">
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">Span</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.Span" title="Permalink to this definition">¶</a></dt>
+<dd><p>A span represents a single RPC within a system.</p>
+<dl class="method">
+<dt id="baseplate.core.Span.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.Span.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the start of the span.</p>
+<p>This notifies any observers that the span has started, which indicates
+that timers etc. should start ticking.</p>
+<p>Spans also support the <a class="reference external" href="https://docs.python.org/3/reference/datamodel.html#context-managers">context manager protocol</a>, for use with
+Python&#8217;s <tt class="docutils literal"><span class="pre">with</span></tt> statement. When the context is entered, the span
+calls <a class="reference internal" href="#baseplate.core.Span.start" title="baseplate.core.Span.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> and when the context is exited it automatically
+calls <a class="reference internal" href="#baseplate.core.Span.stop" title="baseplate.core.Span.stop"><tt class="xref py py-meth docutils literal"><span class="pre">stop()</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Span.annotate">
+<tt class="descname">annotate</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.annotate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an annotation to the span.</p>
+<p>Annotations are arbitrary key/value pairs that add context and meaning
+to the span, such as a hostname or query string. Observers may
+interpret or ignore annotations as they desire.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the annotation.</li>
+<li><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The value of the annotation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Span.stop">
+<tt class="descname">stop</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.Span.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the end of the span.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="observers">
+<h2>Observers<a class="headerlink" href="#observers" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This section is only useful if you are implementing your own observers.  You
+can stop reading here if the stuff above already has you covered!</p>
+</div>
+<dl class="class">
+<dt id="baseplate.core.BaseplateObserver">
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">BaseplateObserver</tt><a class="headerlink" href="#baseplate.core.BaseplateObserver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interface for an observer that watches Baseplate.</p>
+<dl class="method">
+<dt id="baseplate.core.BaseplateObserver.on_root_span_created">
+<tt class="descname">on_root_span_created</tt><big>(</big><em>context</em>, <em>root_span</em><big>)</big><a class="headerlink" href="#baseplate.core.BaseplateObserver.on_root_span_created" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when a root span is created.</p>
+<p><a class="reference internal" href="#baseplate.core.Baseplate" title="baseplate.core.Baseplate"><tt class="xref py py-class docutils literal"><span class="pre">Baseplate</span></tt></a> calls this when a new request begins. If a
+<a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> instance is returned, it will receive
+events from that root span.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>context</strong> &#8211; The <a class="reference internal" href="../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> for this request.</li>
+<li><strong>root_span</strong> (<a class="reference internal" href="#baseplate.core.RootSpan" title="baseplate.core.RootSpan"><em>baseplate.core.RootSpan</em></a>) &#8211; The root span representing
+this request.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> for this request,
+or <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> if not desired.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.core.RootSpanObserver">
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">RootSpanObserver</tt><a class="headerlink" href="#baseplate.core.RootSpanObserver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interface for an observer that watches the root span.</p>
+<dl class="method">
+<dt id="baseplate.core.RootSpanObserver.on_child_span_created">
+<tt class="descname">on_child_span_created</tt><big>(</big><em>span</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpanObserver.on_child_span_created" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when a child span is created.</p>
+<p><a class="reference internal" href="#baseplate.core.RootSpan" title="baseplate.core.RootSpan"><tt class="xref py py-class docutils literal"><span class="pre">RootSpan</span></tt></a> objects call this when a new child span is
+created. If a <a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> instance is returned, it will
+receive events from that span.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>span</strong> (<a class="reference internal" href="#baseplate.core.Span" title="baseplate.core.Span"><em>baseplate.core.Span</em></a>) &#8211; The new child span.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> for this request,
+or <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> if not desired.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.RootSpanObserver.on_annotate">
+<tt class="descname">on_annotate</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpanObserver.on_annotate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when an annotation is added to the observed span.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.RootSpanObserver.on_start">
+<tt class="descname">on_start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.RootSpanObserver.on_start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when the observed span is started.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.RootSpanObserver.on_stop">
+<tt class="descname">on_stop</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.RootSpanObserver.on_stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when the observed span is stopped.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.core.SpanObserver">
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">SpanObserver</tt><a class="headerlink" href="#baseplate.core.SpanObserver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interface for an observer that watches a span.</p>
+<dl class="method">
+<dt id="baseplate.core.SpanObserver.on_start">
+<tt class="descname">on_start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.SpanObserver.on_start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when the observed span is started.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.SpanObserver.on_annotate">
+<tt class="descname">on_annotate</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.SpanObserver.on_annotate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when an annotation is added to the observed span.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.SpanObserver.on_stop">
+<tt class="descname">on_stop</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.SpanObserver.on_stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when the observed span is stopped.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API Reference</a><ul>
+      <li>Previous: <a href="context/index.html" title="previous chapter">baseplate.context</a></li>
+      <li>Next: <a href="diagnostics/index.html" title="next chapter">baseplate.diagnostics</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="../../_sources/api/baseplate/core.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

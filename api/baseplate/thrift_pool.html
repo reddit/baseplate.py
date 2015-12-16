@@ -1,0 +1,185 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>baseplate.thrift_pool &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="../../index.html" />
+    <link rel="up" title="API Reference" href="../index.html" />
+    <link rel="next" title="Glossary" href="../../glossary.html" />
+    <link rel="prev" title="baseplate.metrics" href="metrics.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-baseplate.thrift_pool">
+<span id="baseplate-thrift-pool"></span><h1>baseplate.thrift_pool<a class="headerlink" href="#module-baseplate.thrift_pool" title="Permalink to this headline">¶</a></h1>
+<p>A Thrift client connection pool.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">See <a class="reference internal" href="context/index.html#baseplate.context.thrift.ThriftContextFactory" title="baseplate.context.thrift.ThriftContextFactory"><tt class="xref py py-class docutils literal"><span class="pre">baseplate.context.thrift.ThriftContextFactory</span></tt></a> for
+a convenient way to integrate the pool with your application.</p>
+</div>
+<dl class="class">
+<dt id="baseplate.thrift_pool.ThriftConnectionPool">
+<em class="property">class </em><tt class="descclassname">baseplate.thrift_pool.</tt><tt class="descname">ThriftConnectionPool</tt><a class="headerlink" href="#baseplate.thrift_pool.ThriftConnectionPool" title="Permalink to this definition">¶</a></dt>
+<dd><p>A pool that maintains a queue of open Thrift connections.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>endpoint</strong> (<a class="reference internal" href="config.html#baseplate.config.EndpointConfiguration" title="baseplate.config.EndpointConfiguration"><em>baseplate.config.EndpointConfiguration</em></a>) &#8211; The remote address
+of the Thrift service.</li>
+<li><strong>size</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The maximum number of connections that can be open
+before new attempts to open block.</li>
+<li><strong>max_age</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The maximum number of seconds a connection should be
+kept alive. Connections older than this will be reaped.</li>
+<li><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The maximum number of seconds a connection attempt or
+RPC call can take before a TimeoutError is raised.</li>
+<li><strong>max_retries</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The maximum number of times the pool will attempt
+to open a connection.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="baseplate.thrift_pool.ThriftConnectionPool.connection">
+<tt class="descname">connection</tt><big>(</big><em>*args</em>, <em>**kwds</em><big>)</big><a class="headerlink" href="#baseplate.thrift_pool.ThriftConnectionPool.connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Acquire a connection from the pool.</p>
+<p>This method is to be used with a context manager. It returns a
+connection from the pool, or blocks up to <tt class="xref py py-attr docutils literal"><span class="pre">timeout</span></tt> seconds
+waiting for one if the pool is full and all connections are in use.</p>
+<p>When the context is exited, the connection is returned to the pool.
+However, if it was exited via an unexpected Thrift exception, the
+connection is closed instead because the state of the connection is
+unknown.</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="exceptions">
+<h2>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this headline">¶</a></h2>
+<dl class="exception">
+<dt id="baseplate.thrift_pool.ThriftPoolError">
+<em class="property">exception </em><tt class="descclassname">baseplate.thrift_pool.</tt><tt class="descname">ThriftPoolError</tt><big>(</big><em>message=None</em><big>)</big><a class="headerlink" href="#baseplate.thrift_pool.ThriftPoolError" title="Permalink to this definition">¶</a></dt>
+<dd><p>The base class for all thrift connection pool errors.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="baseplate.thrift_pool.TimeoutError">
+<em class="property">exception </em><tt class="descclassname">baseplate.thrift_pool.</tt><tt class="descname">TimeoutError</tt><big>(</big><em>message=None</em><big>)</big><a class="headerlink" href="#baseplate.thrift_pool.TimeoutError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised when the pool times out during an operation.</p>
+<p>This can be raised if:</p>
+<ul class="simple">
+<li>the pool spends too long waiting for an available connection</li>
+<li>a connection attempt takes too long</li>
+<li>an RPC takes too long</li>
+</ul>
+</dd></dl>
+
+<dl class="exception">
+<dt id="baseplate.thrift_pool.MaxRetriesError">
+<em class="property">exception </em><tt class="descclassname">baseplate.thrift_pool.</tt><tt class="descname">MaxRetriesError</tt><big>(</big><em>message=None</em><big>)</big><a class="headerlink" href="#baseplate.thrift_pool.MaxRetriesError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised when the maximum number of connection attempts is exceeded.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API Reference</a><ul>
+      <li>Previous: <a href="metrics.html" title="previous chapter">baseplate.metrics</a></li>
+      <li>Next: <a href="../../glossary.html" title="next chapter">Glossary</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="../../_sources/api/baseplate/thrift_pool.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>baseplate.integration &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="../../../index.html" />
+    <link rel="up" title="API Reference" href="../../index.html" />
+    <link rel="next" title="baseplate.metrics" href="../metrics.html" />
+    <link rel="prev" title="baseplate.diagnostics" href="../diagnostics/index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-baseplate.integration">
+<span id="baseplate-integration"></span><h1>baseplate.integration<a class="headerlink" href="#module-baseplate.integration" title="Permalink to this headline">¶</a></h1>
+<p>Helpers for integration with various frameworks.</p>
+<p>This package contains modules which integrate Baseplate with common
+application frameworks.</p>
+<p>See one of the submodules below for your framework of choice.</p>
+<div class="section" id="module-baseplate.integration.thrift">
+<span id="thrift"></span><h2>Thrift<a class="headerlink" href="#module-baseplate.integration.thrift" title="Permalink to this headline">¶</a></h2>
+<p>Thrift integration for Baseplate.</p>
+<p>This module provides an implementation of <tt class="xref py py-class docutils literal"><span class="pre">TProcessorEventHandler</span></tt>
+which integrates Baseplate&#8217;s facilities into the Thrift request lifecycle.</p>
+<p>An abbreviated example of it in use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">make_processor</span><span class="p">(</span><span class="n">app_config</span><span class="p">):</span>
+    <span class="n">baseplate</span> <span class="o">=</span> <span class="n">Baseplate</span><span class="p">()</span>
+
+    <span class="n">handler</span> <span class="o">=</span> <span class="n">MyHandler</span><span class="p">()</span>
+    <span class="n">processor</span> <span class="o">=</span> <span class="n">my_thrift</span><span class="o">.</span><span class="n">MyService</span><span class="o">.</span><span class="n">ContextProcessor</span><span class="p">(</span><span class="n">handler</span><span class="p">)</span>
+
+    <span class="n">event_handler</span> <span class="o">=</span> <span class="n">BaseplateProcessorEventHandler</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">baseplate</span><span class="p">)</span>
+    <span class="n">processor</span><span class="o">.</span><span class="n">setEventHandler</span><span class="p">(</span><span class="n">event_handler</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">processor</span>
+</pre></div>
+</div>
+<dl class="class">
+<dt id="baseplate.integration.thrift.BaseplateProcessorEventHandler">
+<em class="property">class </em><tt class="descclassname">baseplate.integration.thrift.</tt><tt class="descname">BaseplateProcessorEventHandler</tt><big>(</big><em>logger</em>, <em>baseplate</em><big>)</big><a class="headerlink" href="#baseplate.integration.thrift.BaseplateProcessorEventHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Processor event handler for Baseplate.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>logger</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/logging.html#logging.Logger" title="(in Python v3.4)"><em>logging.Logger</em></a>) &#8211; The logger to use for error and debug logging.</li>
+<li><strong>baseplate</strong> (<a class="reference internal" href="../core.html#baseplate.core.Baseplate" title="baseplate.core.Baseplate"><em>baseplate.core.Baseplate</em></a>) &#8211; The baseplate instance for your
+application.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-baseplate.integration.pyramid">
+<span id="pyramid"></span><h2>Pyramid<a class="headerlink" href="#module-baseplate.integration.pyramid" title="Permalink to this headline">¶</a></h2>
+<p>Pyramid integration for Baseplate.</p>
+<p>This module provides a configuration extension for Pyramid which integrates
+Baseplate&#8217;s facilities into the Pyramid WSGI request lifecycle.</p>
+<p>An abbreviated example of it in use:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">make_app</span><span class="p">(</span><span class="n">app_config</span><span class="p">):</span>
+    <span class="n">configurator</span> <span class="o">=</span> <span class="n">Configurator</span><span class="p">()</span>
+
+    <span class="n">baseplate</span> <span class="o">=</span> <span class="n">Baseplate</span><span class="p">()</span>
+    <span class="n">baseplate_config</span> <span class="o">=</span> <span class="n">BaseplateConfigurator</span><span class="p">(</span><span class="n">baseplate</span><span class="p">)</span>
+    <span class="n">configurator</span><span class="o">.</span><span class="n">include</span><span class="p">(</span><span class="n">baseplate_config</span><span class="o">.</span><span class="n">includeme</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">configurator</span><span class="o">.</span><span class="n">make_wsgi_app</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="class">
+<dt id="baseplate.integration.pyramid.BaseplateConfigurator">
+<em class="property">class </em><tt class="descclassname">baseplate.integration.pyramid.</tt><tt class="descname">BaseplateConfigurator</tt><big>(</big><em>baseplate</em><big>)</big><a class="headerlink" href="#baseplate.integration.pyramid.BaseplateConfigurator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Config extension to integrate Baseplate into Pyramid.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>baseplate</strong> (<a class="reference internal" href="../core.html#baseplate.core.Baseplate" title="baseplate.core.Baseplate"><em>baseplate.core.Baseplate</em></a>) &#8211; The Baseplate instance for your
+application.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../../index.html">
+    <img class="logo" src="../../../_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../../index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">API Reference</a><ul>
+      <li>Previous: <a href="../diagnostics/index.html" title="previous chapter">baseplate.diagnostics</a></li>
+      <li>Next: <a href="../metrics.html" title="next chapter">baseplate.metrics</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="../../../_sources/api/baseplate/integration/index.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
