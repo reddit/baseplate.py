@@ -34,7 +34,7 @@ class EnumerateServiceMethodsTests(unittest.TestCase):
 
         methods = list(thrift._enumerate_service_methods(ExampleClient))
 
-        self.assertEqual(methods, ["some_method"])
+        self.assertEqual(set(methods), {"some_method"})
 
     def test_inherited(self):
         class Iface(object):
@@ -46,7 +46,7 @@ class EnumerateServiceMethodsTests(unittest.TestCase):
 
         methods = list(thrift._enumerate_service_methods(ExampleClient))
 
-        self.assertEqual(methods, ["is_healthy", "local_method"])
+        self.assertEqual(set(methods), {"is_healthy", "local_method"})
 
     def test_not_subclass_of_iface(self):
         class ExampleClient(object):
