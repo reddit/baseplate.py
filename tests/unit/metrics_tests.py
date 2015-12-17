@@ -48,11 +48,14 @@ class RawTransportTests(unittest.TestCase):
     def test_sent_immediately(self, mock_make_socket):
         mocket = mock_make_socket.return_value
         transport = metrics.RawTransport(EXAMPLE_ENDPOINT)
+
+        self.assertEqual(mocket.connect.call_args,
+            mock.call(("127.0.0.1", 1234)))
+
         transport.send(b"metric")
 
-        self.assertEqual(mocket.sendto.call_count, 1)
-        self.assertEqual(mocket.sendto.call_args,
-            mock.call(b"metric", ("127.0.0.1", 1234)))
+        self.assertEqual(mocket.send.call_count, 1)
+        self.assertEqual(mocket.send.call_args, mock.call(b"metric"))
 
 
 class BufferedTransportTests(unittest.TestCase):
@@ -64,12 +67,12 @@ class BufferedTransportTests(unittest.TestCase):
         transport.send(b"a")
         transport.send(b"b")
         transport.send(b"c")
-        self.assertEqual(mocket.sendto.call_count, 0)
+        self.assertEqual(mocket.send.call_count, 0)
         transport.flush()
 
-        self.assertEqual(mocket.sendto.call_count, 1)
-        self.assertEqual(mocket.sendto.call_args,
-            mock.call(b"a\nb\nc", ("127.0.0.1", 1234)))
+        self.assertEqual(mocket.send.call_count, 1)
+        self.assertEqual(mocket.send.call_args,
+            mock.call(b"a\nb\nc"))
 
 
 class BaseClientTests(unittest.TestCase):

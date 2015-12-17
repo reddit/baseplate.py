@@ -69,11 +69,11 @@ class NullTransport(object):
 class RawTransport(object):
     """A transport which sends messages on a socket."""
     def __init__(self, endpoint):
-        self.address = endpoint.address
         self.socket = socket.socket(endpoint.family, socket.SOCK_DGRAM)
+        self.socket.connect(endpoint.address)
 
     def send(self, serialized_metric):
-        self.socket.sendto(serialized_metric, self.address)
+        self.socket.send(serialized_metric)
 
 
 class BufferedTransport(object):
