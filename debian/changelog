@@ -1,3 +1,9 @@
+baseplate (0.1.1) trusty; urgency=medium
+
+  * Don't do DNS lookups for each batch of metrics.
+
+ -- Neil Williams <neil@reddit.com>  Thu, 17 Dec 2015 14:59:22 -0800
+
 baseplate (0.1.0) trusty; urgency=medium
 
   * Initial release.
