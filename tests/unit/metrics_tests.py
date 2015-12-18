@@ -54,8 +54,8 @@ class RawTransportTests(unittest.TestCase):
 
         transport.send(b"metric")
 
-        self.assertEqual(mocket.send.call_count, 1)
-        self.assertEqual(mocket.send.call_args, mock.call(b"metric"))
+        self.assertEqual(mocket.sendall.call_count, 1)
+        self.assertEqual(mocket.sendall.call_args, mock.call(b"metric"))
 
 
 class BufferedTransportTests(unittest.TestCase):
@@ -67,11 +67,11 @@ class BufferedTransportTests(unittest.TestCase):
         transport.send(b"a")
         transport.send(b"b")
         transport.send(b"c")
-        self.assertEqual(mocket.send.call_count, 0)
+        self.assertEqual(mocket.sendall.call_count, 0)
         transport.flush()
 
-        self.assertEqual(mocket.send.call_count, 1)
-        self.assertEqual(mocket.send.call_args,
+        self.assertEqual(mocket.sendall.call_count, 1)
+        self.assertEqual(mocket.sendall.call_args,
             mock.call(b"a\nb\nc"))
 
 
