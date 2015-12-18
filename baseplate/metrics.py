@@ -73,7 +73,7 @@ class RawTransport(object):
         self.socket.connect(endpoint.address)
 
     def send(self, serialized_metric):
-        self.socket.send(serialized_metric)
+        self.socket.sendall(serialized_metric)
 
 
 class BufferedTransport(object):
