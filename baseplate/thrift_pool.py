@@ -49,12 +49,15 @@ class TimeoutError(ThriftPoolError):
     * an RPC takes too long
 
     """
-    pass
+    def __init__(self):
+        super(TimeoutError, self).__init__("timed out")
 
 
 class MaxRetriesError(ThriftPoolError):
     """Raised when the maximum number of connection attempts is exceeded."""
-    pass
+    def __init__(self):
+        super(MaxRetriesError, self).__init__(
+            "giving up after multiple attempts to connect")
 
 
 class ThriftConnectionPool(object):
