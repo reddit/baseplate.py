@@ -210,8 +210,7 @@ class Timer(object):
 
         now = time.time()
         elapsed = (now - self.start_time) * 1000.
-        serialized = (self.name +
-            (":{:d}|ms".format(int(round(elapsed))).encode()))
+        serialized = self.name + (":{:g}|ms".format(elapsed).encode())
         self.transport.send(serialized)
 
         self.stopped = True
@@ -233,12 +232,12 @@ class Counter(object):
     def increment(self, delta=1, sample_rate=1.0):
         """Increment the counter.
 
-        :param int delta: The amount to increase the counter by.
+        :param float delta: The amount to increase the counter by.
         :param float sample_rate: What rate this counter is sampled at. [0-1].
 
         """
         parts = [
-            self.name + (":{:d}".format(int(round(delta))).encode()),
+            self.name + (":{:g}".format(delta).encode()),
             b"c",
         ]
 
@@ -273,10 +272,10 @@ class Gauge(object):
 
         This will change the value of the gauge relative to what it was before.
 
-        :param int delta: The amount to change the gauge by.
+        :param float delta: The amount to change the gauge by.
 
         """
-        serialized = self.name + (":{:+d}|g".format(int(delta)).encode())
+        serialized = self.name + (":{:+g}|g".format(delta).encode())
         self.transport.send(serialized)
 
     def decrement(self, delta=1):
@@ -296,11 +295,11 @@ class Gauge(object):
         .. note:: Due to the way the protocol works, it is not possible to
             replace gauge values with negative numbers.
 
-        :param int new_value: The new value to store in the gauge.
+        :param float new_value: The new value to store in the gauge.
 
         """
         assert new_value >= 0, "gauges cannot be replaced with negative numbers"
-        serialized = self.name + (":{:d}|g".format(int(new_value)).encode())
+        serialized = self.name + (":{:g}|g".format(new_value).encode())
         self.transport.send(serialized)
 
 
