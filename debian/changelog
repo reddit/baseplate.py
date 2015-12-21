@@ -1,3 +1,11 @@
+baseplate (0.2.0) trusty; urgency=medium
+
+  * Remove rounding in metrics
+  * Fix send -> sendall
+  * Improve thrift_pool error messages
+
+ -- Neil Williams <neil@reddit.com>  Mon, 21 Dec 2015 11:13:57 -0800
+
 baseplate (0.1.1) trusty; urgency=medium
 
   * Don't do DNS lookups for each batch of metrics.
