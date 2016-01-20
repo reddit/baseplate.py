@@ -3,7 +3,13 @@
 # This file is execfile()d with the current directory set to its
 # containing dir.
 
+import os
+import sys
+
 import alabaster
+
+# where to find the modules to import for autodoc
+sys.path.insert(0, os.path.abspath(".."))
 
 # -- General configuration ------------------------------------------------
 # Add any Sphinx extension module names here, as strings. They can be
