@@ -36,7 +36,7 @@ class MetricJoinTests(unittest.TestCase):
 
 
 class NullTransportTests(unittest.TestCase):
-    @mock.patch("socket.socket", autospec=True)
+    @mock.patch("socket.socket")
     def test_nothing_sent(self, mock_make_socket):
         transport = metrics.NullTransport()
         transport.send(b"metric")
@@ -44,7 +44,7 @@ class NullTransportTests(unittest.TestCase):
 
 
 class RawTransportTests(unittest.TestCase):
-    @mock.patch("socket.socket", autospec=True)
+    @mock.patch("socket.socket")
     def test_sent_immediately(self, mock_make_socket):
         mocket = mock_make_socket.return_value
         transport = metrics.RawTransport(EXAMPLE_ENDPOINT)
@@ -59,7 +59,7 @@ class RawTransportTests(unittest.TestCase):
 
 
 class BufferedTransportTests(unittest.TestCase):
-    @mock.patch("socket.socket", autospec=True)
+    @mock.patch("socket.socket")
     def test_buffered(self, mock_make_socket):
         mocket = mock_make_socket.return_value
         raw_transport = metrics.RawTransport(EXAMPLE_ENDPOINT)
