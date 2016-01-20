@@ -1,5 +1,7 @@
 # baseplate
 
+[![Build Status](https://travis-ci.org/reddit/baseplate.svg?branch=master)](https://travis-ci.org/reddit/baseplate)
+
 <img src="docs/images/baseplate.png" alt="A LEGO baseplate." width="300px" align="right">
 
 Baseplate is a library to build services on. Its goal is to provide all the
