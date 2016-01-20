@@ -56,7 +56,7 @@ class MakeListenerTests(unittest.TestCase):
             mock.call(123, socket.AF_INET, socket.SOCK_STREAM))
 
     @mock.patch.dict("os.environ", {}, clear=True)
-    @mock.patch("socket.socket", autospec=True)
+    @mock.patch("socket.socket")
     def test_manually_bound(self, mocket):
         listener = server.make_listener(EXAMPLE_ENDPOINT)
 
