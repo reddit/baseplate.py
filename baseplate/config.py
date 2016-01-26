@@ -59,6 +59,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import base64
 import collections
 import datetime
 import socket
@@ -144,6 +145,21 @@ def Endpoint(text):
         if sep != ":":
             raise ValueError("no port specified")
         return EndpointConfiguration(socket.AF_INET, (host, int(port)))
+
+
+def Base64(text):
+    """A base64 encoded block of data.
+
+    This is useful for arbitrary binary blobs.
+
+    """
+    if not text:
+        raise ValueError("expected base64 encoded data")
+
+    try:
+        return base64.b64decode(text)
+    except TypeError as exc:
+        raise ValueError(*exc.args)
 
 
 def Timespan(text):

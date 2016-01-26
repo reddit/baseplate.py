@@ -77,6 +77,19 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(result.address, "/this/is/a/path.sock")
 
 
+class Base64Tests(unittest.TestCase):
+    def test_invalid(self):
+        with self.assertRaises(ValueError):
+            config.Base64("")
+
+        with self.assertRaises(ValueError):
+            config.Base64("dGvzdAo")  # missing padding
+
+    def test_valid(self):
+        result = config.Base64("aHVudGVyMg==")
+        self.assertEqual(result, b"hunter2")
+
+
 class TimespanTests(unittest.TestCase):
     def test_timespan_invalid(self):
         with self.assertRaises(ValueError):
