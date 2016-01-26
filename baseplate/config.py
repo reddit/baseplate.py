@@ -101,6 +101,9 @@ def Boolean(text):
     return parser(text.lower())
 
 
+InternetAddress = collections.namedtuple("InternetAddress", ("host", "port"))
+
+
 EndpointConfiguration_ = collections.namedtuple(
     "EndpointConfiguration", ("family", "address"))
 
@@ -144,7 +147,8 @@ def Endpoint(text):
         host, sep, port = text.partition(":")
         if sep != ":":
             raise ValueError("no port specified")
-        return EndpointConfiguration(socket.AF_INET, (host, int(port)))
+        return EndpointConfiguration(socket.AF_INET,
+            InternetAddress(host, int(port)))
 
 
 def Base64(text):
