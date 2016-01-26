@@ -20,6 +20,7 @@ make complicated expressions.
 .. autofunction:: Boolean
 .. autofunction:: Endpoint
 .. autofunction:: Timespan
+.. autofunction:: Base64
 .. autofunction:: OneOf
 .. autofunction:: TupleOf
 .. autofunction:: Optional
