@@ -46,6 +46,12 @@ Both take two optional configurables as well:
    How long, in seconds, to wait for active connections to finish up gracefully
    when shutting down. By default, the server will shut down immediately.
 
+The WSGI server takes an additional optional parameter:
+
+``handler``
+   A full name of a class which subclasses
+   ``gevent.pywsgi.WSGIHandler`` for extra functionality.
+
 
 The Application
 ---------------
