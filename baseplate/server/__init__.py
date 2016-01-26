@@ -89,6 +89,8 @@ def make_listener(endpoint):
 def _load_factory(url, default_name):
     module_name, sep, func_name = url.partition(":")
     if not sep:
+        if not default_name:
+            raise ValueError("no name and no default specified")
         func_name = default_name
     module = importlib.import_module(module_name)
     factory = getattr(module, func_name)

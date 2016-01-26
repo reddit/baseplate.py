@@ -9,6 +9,8 @@ import gevent
 from gevent.pool import Pool
 from gevent.pywsgi import WSGIServer
 
+from . import _load_factory
+
 try:
     from gevent.pywsgi import LoggingLogAdapter
 except ImportError:
@@ -29,6 +31,7 @@ def make_server(config, listener, app):
     """Make a Gevent server for WSGI apps."""
     max_concurrency = int(config.get("max_concurrency", 0)) or None
     stop_timeout = int(config.get("stop_timeout", 0))
+    handler = config.get("handler", None)
 
     pool = Pool(size=max_concurrency)
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
@@ -36,6 +39,9 @@ def make_server(config, listener, app):
     kwargs = {}
     if gevent.version_info[:2] >= (1, 1):  # error_log is new in 1.1
         kwargs["error_log"] = LoggingLogAdapter(logger, level=logging.ERROR)
+
+    if handler:
+        kwargs["handler_class"] = _load_factory(handler, default_name=None)
 
     server = WSGIServer(
         listener,
