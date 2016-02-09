@@ -56,6 +56,8 @@
  | <a href="#R"><strong>R</strong></a>
  | <a href="#S"><strong>S</strong></a>
  | <a href="#T"><strong>T</strong></a>
+ | <a href="#U"><strong>U</strong></a>
+ | <a href="#V"><strong>V</strong></a>
  
 </div>
 <h2 id="A">A</h2>
@@ -84,6 +86,10 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="api/baseplate/config.html#baseplate.config.Base64">Base64() (in module baseplate.config)</a>
+  </dt>
+
+      
   <dt><a href="api/baseplate/core.html#baseplate.core.Baseplate">Baseplate (class in baseplate.core)</a>
   </dt>
 
@@ -104,6 +110,10 @@
   </dt>
 
       
+  <dt><a href="api/baseplate/crypto.html#module-baseplate.crypto">baseplate.crypto (module)</a>
+  </dt>
+
+      
   <dt><a href="api/baseplate/diagnostics/index.html#module-baseplate.diagnostics">baseplate.diagnostics (module)</a>
   </dt>
 
@@ -115,12 +125,12 @@
   <dt><a href="api/baseplate/integration/index.html#module-baseplate.integration.pyramid">baseplate.integration.pyramid (module)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="api/baseplate/integration/index.html#module-baseplate.integration.thrift">baseplate.integration.thrift (module)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="api/baseplate/metrics.html#module-baseplate.metrics">baseplate.metrics (module)</a>
   </dt>
@@ -179,10 +189,14 @@
   <dt><a href="api/baseplate/core.html#baseplate.core.Baseplate.configure_metrics">configure_metrics() (baseplate.core.Baseplate method)</a>
   </dt>
 
+      
+  <dt><a href="api/baseplate/thrift_pool.html#baseplate.thrift_pool.ThriftConnectionPool.connection">connection() (baseplate.thrift_pool.ThriftConnectionPool method)</a>
+  </dt>
+
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="api/baseplate/thrift_pool.html#baseplate.thrift_pool.ThriftConnectionPool.connection">connection() (baseplate.thrift_pool.ThriftConnectionPool method)</a>
+  <dt><a href="api/baseplate/crypto.html#baseplate.crypto.constant_time_compare">constant_time_compare() (in module baseplate.crypto)</a>
   </dt>
 
       
@@ -233,10 +247,14 @@
   <dt><a href="api/baseplate/config.html#baseplate.config.Endpoint">Endpoint() (in module baseplate.config)</a>
   </dt>
 
+      
+  <dt><a href="api/baseplate/config.html#baseplate.config.EndpointConfiguration">EndpointConfiguration (class in baseplate.config)</a>
+  </dt>
+
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="api/baseplate/config.html#baseplate.config.EndpointConfiguration">EndpointConfiguration (class in baseplate.config)</a>
+  <dt><a href="api/baseplate/crypto.html#baseplate.crypto.ExpiredSignatureError">ExpiredSignatureError</a>
   </dt>
 
   </dl></td>
@@ -283,6 +301,10 @@
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="api/baseplate/crypto.html#baseplate.crypto.IncorrectSignatureError">IncorrectSignatureError</a>
+  </dt>
+
       
   <dt><a href="api/baseplate/metrics.html#baseplate.metrics.Counter.increment">increment() (baseplate.metrics.Counter method)</a>
   </dt>
@@ -331,14 +353,22 @@
   <dt><a href="api/baseplate/context/index.html#baseplate.context.ContextFactory.make_object_for_context">make_object_for_context() (baseplate.context.ContextFactory method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="api/baseplate/core.html#baseplate.core.Baseplate.make_root_span">make_root_span() (baseplate.core.Baseplate method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="api/baseplate/crypto.html#baseplate.crypto.MessageSigner.make_signature">make_signature() (baseplate.crypto.MessageSigner method)</a>
+  </dt>
+
       
   <dt><a href="api/baseplate/thrift_pool.html#baseplate.thrift_pool.MaxRetriesError">MaxRetriesError</a>
+  </dt>
+
+      
+  <dt><a href="api/baseplate/crypto.html#baseplate.crypto.MessageSigner">MessageSigner (class in baseplate.crypto)</a>
   </dt>
 
       
@@ -444,6 +474,10 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="api/baseplate/crypto.html#baseplate.crypto.SignatureError">SignatureError</a>
+  </dt>
+
+      
   <dt><a href="api/baseplate/core.html#baseplate.core.Span">Span (class in baseplate.core)</a>
   </dt>
 
@@ -451,6 +485,8 @@
   <dt><a href="api/baseplate/core.html#baseplate.core.SpanObserver">SpanObserver (class in baseplate.core)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="api/baseplate/core.html#baseplate.core.RootSpan.start">start() (baseplate.core.RootSpan method)</a>
   </dt>
@@ -465,8 +501,6 @@
   </dt>
 
       </dl></dd>
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="api/baseplate/core.html#baseplate.core.RootSpan.stop">stop() (baseplate.core.RootSpan method)</a>
   </dt>
@@ -529,6 +563,26 @@
 
       
   <dt><a href="api/baseplate/config.html#baseplate.config.TupleOf">TupleOf() (in module baseplate.config)</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
+<h2 id="U">U</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="api/baseplate/crypto.html#baseplate.crypto.UnreadableSignatureError">UnreadableSignatureError</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
+<h2 id="V">V</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="api/baseplate/crypto.html#baseplate.crypto.MessageSigner.validate_signature">validate_signature() (baseplate.crypto.MessageSigner method)</a>
   </dt>
 
   </dl></td>

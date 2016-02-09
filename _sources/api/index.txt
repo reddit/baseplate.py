@@ -12,6 +12,7 @@ Baseplate. It is organized alphabetically by module name.
    baseplate/config
    baseplate/context/index
    baseplate/core
+   baseplate/crypto
    baseplate/diagnostics/index
    baseplate/integration/index
    baseplate/metrics
