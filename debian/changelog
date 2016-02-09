@@ -1,3 +1,12 @@
+baseplate (0.3.0) trusty; urgency=medium
+
+  * Add configurable for WSGI handler
+  * Add base64 config parser type
+  * Add convenience namedtuple to internet addresses
+  * Add crypto util: message signer
+
+ -- Neil Williams <neil@reddit.com>  Tue, 09 Feb 2016 13:41:46 -0800
+
 baseplate (0.2.0) trusty; urgency=medium
 
   * Remove rounding in metrics
