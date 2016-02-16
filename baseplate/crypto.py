@@ -19,7 +19,7 @@ if hasattr(hmac, "compare_digest"):
     # This was added in Python 2.7.7 and 3.3
     constant_time_compare = hmac.compare_digest
 else:
-    def constant_time_compare(val1, val2):
+    def constant_time_compare(actual, expected):
         """Return whether or not two strings match.
 
         The time taken is dependent on the number of characters provided
@@ -27,9 +27,12 @@ else:
         function resistant to timing attacks.
 
         """
-        result = len(val1) ^ len(val2)
-        for i in range(len(val1)):
-            result |= ord(val1[i]) ^ ord(val2[i % len(val2)])
+        actual_len = len(actual)
+        expected_len = len(expected)
+        result = actual_len ^ expected_len
+        if expected_len > 0:
+            for i in xrange(actual_len):
+                result |= ord(actual[i]) ^ ord(expected[i % expected_len])
         return result == 0
 
 

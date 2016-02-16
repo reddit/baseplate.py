@@ -12,11 +12,15 @@ from .. import mock
 
 
 class ConstantTimeCompareTests(unittest.TestCase):
-    def check_equal(self):
+    def test_equal(self):
         self.assertTrue(crypto.constant_time_compare("abcdefg", "abcdefg"))
 
-    def check_inequal(self):
+    def test_inequal(self):
         self.assertFalse(crypto.constant_time_compare("abcdefg", "hijklmnop"))
+
+    def test_empty(self):
+        self.assertFalse(crypto.constant_time_compare("abcdefg", ""))
+        self.assertFalse(crypto.constant_time_compare("", "hijklmnop"))
 
 
 class SignatureTests(unittest.TestCase):
