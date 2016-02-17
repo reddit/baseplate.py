@@ -1,3 +1,33 @@
+baseplate (0.4.0) trusty; urgency=medium
+
+  * Add gevent-friendly POSIX message queue helpers.
+  * Fix crash in constant_time_compare when comparing against empty strings.
+
+ -- Neil Williams <neil@reddit.com>  Wed, 17 Feb 2016 08:55:32 -0800
+
+baseplate (0.3.0) trusty; urgency=medium
+
+  * Add configurable for WSGI handler
+  * Add base64 config parser type
+  * Add convenience namedtuple to internet addresses
+  * Add crypto util: message signer
+
+ -- Neil Williams <neil@reddit.com>  Tue, 09 Feb 2016 13:41:46 -0800
+
+baseplate (0.2.0) trusty; urgency=medium
+
+  * Remove rounding in metrics
+  * Fix send -> sendall
+  * Improve thrift_pool error messages
+
+ -- Neil Williams <neil@reddit.com>  Mon, 21 Dec 2015 11:13:57 -0800
+
+baseplate (0.1.1) trusty; urgency=medium
+
+  * Don't do DNS lookups for each batch of metrics.
+
+ -- Neil Williams <neil@reddit.com>  Thu, 17 Dec 2015 14:59:22 -0800
+
 baseplate (0.1.0) trusty; urgency=medium
 
   * Initial release.
