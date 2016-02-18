@@ -78,6 +78,12 @@ by default.</dd>
 <dd>How long, in seconds, to wait for active connections to finish up gracefully
 when shutting down. By default, the server will shut down immediately.</dd>
 </dl>
+<p>The WSGI server takes an additional optional parameter:</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">handler</span></tt></dt>
+<dd>A full name of a class which subclasses
+<tt class="docutils literal"><span class="pre">gevent.pywsgi.WSGIHandler</span></tt> for extra functionality.</dd>
+</dl>
 </div>
 <div class="section" id="the-application">
 <h2>The Application<a class="headerlink" href="#the-application" title="Permalink to this headline">¶</a></h2>

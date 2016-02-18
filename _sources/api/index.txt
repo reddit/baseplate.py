@@ -15,5 +15,6 @@ Baseplate. It is organized alphabetically by module name.
    baseplate/crypto
    baseplate/diagnostics/index
    baseplate/integration/index
+   baseplate/message_queue
    baseplate/metrics
    baseplate/thrift_pool

@@ -1,0 +1,205 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>baseplate.message_queue &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="../../index.html" />
+    <link rel="up" title="API Reference" href="../index.html" />
+    <link rel="next" title="baseplate.metrics" href="metrics.html" />
+    <link rel="prev" title="baseplate.integration" href="integration/index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-baseplate.message_queue">
+<span id="baseplate-message-queue"></span><h1>baseplate.message_queue<a class="headerlink" href="#module-baseplate.message_queue" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>This implementation uses POSIX message queues and is not portable to
+all operating systems.</p>
+<p>There are also various limits on the sizes of queues:</p>
+<ul class="last simple">
+<li>The <tt class="docutils literal"><span class="pre">msgqueue</span></tt> rlimit limits the amount of space the user can use on
+message queues.</li>
+<li>The <tt class="docutils literal"><span class="pre">fs.mqueue.msg_max</span></tt> and <tt class="docutils literal"><span class="pre">fs.mqueue.msgsize_max</span></tt> sysctls limit the
+maximum number of messages and the maximum size of each message respectively
+which a queue can be configured to have.</li>
+</ul>
+</div>
+<dl class="class">
+<dt id="baseplate.message_queue.MessageQueue">
+<em class="property">class </em><tt class="descclassname">baseplate.message_queue.</tt><tt class="descname">MessageQueue</tt><big>(</big><em>name</em>, <em>max_messages</em>, <em>max_message_size</em><big>)</big><a class="headerlink" href="#baseplate.message_queue.MessageQueue" title="Permalink to this definition">¶</a></dt>
+<dd><p>A gevent-friendly (but not required) inter process message queue.</p>
+<p><tt class="docutils literal"><span class="pre">name</span></tt> should be a string of up to 255 characters consisting of an
+initial slash, followed by one or more characters, none of which are
+slashes.</p>
+<p>Note: This relies on POSIX message queues being available and
+select(2)-able like other file descriptors. Not all operating systems
+support this.</p>
+<dl class="method">
+<dt id="baseplate.message_queue.MessageQueue.get">
+<tt class="descname">get</tt><big>(</big><em>timeout=None</em><big>)</big><a class="headerlink" href="#baseplate.message_queue.MessageQueue.get" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a message from the queue.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) &#8211; If the queue is empty, the call will block up to
+<tt class="docutils literal"><span class="pre">timeout</span></tt> seconds or forever if <tt class="docutils literal"><span class="pre">None</span></tt>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#baseplate.message_queue.TimedOutError" title="baseplate.message_queue.TimedOutError"><tt class="xref py py-exc docutils literal"><span class="pre">TimedOutError</span></tt></a> The queue was empty for the allowed
+duration of the call.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.message_queue.MessageQueue.put">
+<tt class="descname">put</tt><big>(</big><em>message</em>, <em>timeout=None</em><big>)</big><a class="headerlink" href="#baseplate.message_queue.MessageQueue.put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a message to the queue.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>timeout</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) &#8211; If the queue is full, the call will block up to
+<tt class="docutils literal"><span class="pre">timeout</span></tt> seconds or forever if <tt class="docutils literal"><span class="pre">None</span></tt>.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#baseplate.message_queue.TimedOutError" title="baseplate.message_queue.TimedOutError"><tt class="xref py py-exc docutils literal"><span class="pre">TimedOutError</span></tt></a> The queue was full for the allowed
+duration of the call.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.message_queue.MessageQueue.unlink">
+<tt class="descname">unlink</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.message_queue.MessageQueue.unlink" title="Permalink to this definition">¶</a></dt>
+<dd><p>Remove the queue from the system.</p>
+<p>The queue will not leave until the last active user closes it.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.message_queue.MessageQueue.close">
+<tt class="descname">close</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.message_queue.MessageQueue.close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close the queue, freeing related resources.</p>
+<p>This must be called explicitly if queues are created/destroyed on the
+fly. It is not automatically called when the object is reclaimed by
+Python.</p>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="exceptions">
+<h2>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this headline">¶</a></h2>
+<dl class="exception">
+<dt id="baseplate.message_queue.MessageQueueError">
+<em class="property">exception </em><tt class="descclassname">baseplate.message_queue.</tt><tt class="descname">MessageQueueError</tt><a class="headerlink" href="#baseplate.message_queue.MessageQueueError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base exception for message queue related errors.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="baseplate.message_queue.TimedOutError">
+<em class="property">exception </em><tt class="descclassname">baseplate.message_queue.</tt><tt class="descname">TimedOutError</tt><a class="headerlink" href="#baseplate.message_queue.TimedOutError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised when a message queue operation times out.</p>
+</dd></dl>
+
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API Reference</a><ul>
+      <li>Previous: <a href="integration/index.html" title="previous chapter">baseplate.integration</a></li>
+      <li>Next: <a href="metrics.html" title="next chapter">baseplate.metrics</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="../../_sources/api/baseplate/message_queue.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
