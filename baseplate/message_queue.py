@@ -38,7 +38,7 @@ class _CumulativeTimeoutSelector(object):
             rfds or [], wfds or [], [], self.time_remaining)
         elapsed = time.time() - start
 
-        if self.time_remaining > 0:
+        if self.time_remaining is not None and self.time_remaining > 0:
             self.time_remaining -= elapsed
 
         return readable, writable
