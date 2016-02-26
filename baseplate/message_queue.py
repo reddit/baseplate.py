@@ -1,3 +1,21 @@
+"""A gevent-friendly POSIX message queue.
+
+These message queues store messages in the kernel, allow multiple processes to
+read and/or write, and persist even if the processes are all gone. The messages
+do not persist through reboots and are not accessible off the local machine.
+
+This module can also be run as a command-line tool to consume, log, and discard
+messages from a given queue::
+
+    python -m baseplate.message_queue --read /queue
+
+or to write arbitrary messages to the queue::
+
+    echo hello! | python -m baseplate.message_queue --write /queue
+
+See ``--help`` for more info.
+
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -122,3 +140,40 @@ class MessageQueue(object):
 
         """
         self.queue.close()
+
+
+def queue_tool():
+    import argparse
+    import sys
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--max-messages", type=int, default=10,
+        help="if creating the queue, what to set the maximum queue length to")
+    parser.add_argument("--max-message-size", type=int, default=8096,
+        help="if creating the queue, what to set the maximum message size to")
+    parser.add_argument("queue_name", help="the name of the queue to consume")
+
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--create", action="store_const", dest="mode", const="create",
+        help="create the named queue if it doesn't exist and exit")
+    group.add_argument("--read", action="store_const", dest="mode", const="read",
+        help="read, log, and discard messages from the named queue")
+    group.add_argument("--write", action="store_const", dest="mode", const="write",
+        help="read messages from stdin and write them to the named queue")
+
+    args = parser.parse_args()
+
+    queue = MessageQueue(args.queue_name, args.max_messages, args.max_message_size)
+
+    if args.mode == "read":
+        while True:
+            item = queue.get()
+            print(item)
+    elif args.mode == "write":
+        for line in sys.stdin:
+            queue.put(line.rstrip("\n"))
+
+
+if __name__ == "__main__":
+    queue_tool()
