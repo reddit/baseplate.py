@@ -20,6 +20,11 @@ from baseplate.message_queue import MessageQueue, TimedOutError
 from ... import mock
 
 
+class MockTZ(datetime.tzinfo):
+    def utcoffset(self, dt):
+        return datetime.timedelta(hours=2)
+
+
 class EventTests(unittest.TestCase):
     @mock.patch("uuid.uuid4")
     @mock.patch("time.time")
@@ -38,6 +43,11 @@ class EventTests(unittest.TestCase):
         timestamp = datetime.datetime(2016, 2, 23, 0, 3, 17)
         event = Event("topic", "type", timestamp=timestamp)
         self.assertEqual(event.timestamp, 1456185797000)
+
+    def test_timestamp_not_utc(self):
+        timestamp = datetime.datetime(2016, 2, 23, 0, 3, 17, tzinfo=MockTZ())
+        with self.assertRaises(ValueError):
+            Event("topic", "type", timestamp=timestamp)
 
     @mock.patch("uuid.uuid4")
     @mock.patch("time.time")
