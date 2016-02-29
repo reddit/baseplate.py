@@ -9,7 +9,10 @@ An abbreviated example of it in use::
         configurator = Configurator()
 
         baseplate = Baseplate()
-        baseplate_config = BaseplateConfigurator(baseplate)
+        baseplate_config = BaseplateConfigurator(
+            baseplate,
+            trust_trace_headers=True,
+        )
         configurator.include(baseplate_config.includeme)
 
         return configurator.make_wsgi_app()
@@ -21,6 +24,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import random
+
 from pyramid.events import ContextFound, NewResponse
 
 
@@ -29,11 +34,21 @@ class BaseplateConfigurator(object):
 
     :param baseplate.core.Baseplate baseplate: The Baseplate instance for your
         application.
+    :param bool trust_trace_headers: Should this app trust trace headers from
+        the client? If ``False``, trace IDs will be generated for each request.
+
+    .. warning::
+
+        Do not set ``trust_trace_headers`` to ``True`` unless you are sure your
+        application is only accessible by trusted sources (usually backend-only
+        services).
 
     """
 
-    def __init__(self, baseplate):
+    # TODO: remove the default on trust_trace_headers once apps are updated
+    def __init__(self, baseplate, trust_trace_headers=False):
         self.baseplate = baseplate
+        self.trust_trace_headers = trust_trace_headers
 
     def _on_new_request(self, event):
         request = event.request
@@ -43,9 +58,14 @@ class BaseplateConfigurator(object):
             # TODO: some metric for 404s would be good
             return
 
-        trace_id = request.headers.get("X-Trace", "no-trace")
-        parent_id = request.headers.get("X-Parent", "no-parent")
-        span_id = request.headers.get("X-Span", "no-span")
+        if self.trust_trace_headers:
+            trace_id = request.headers.get("X-Trace", "no-trace")
+            parent_id = request.headers.get("X-Parent", "no-parent")
+            span_id = request.headers.get("X-Span", "no-span")
+        else:
+            trace_id = random.getrandbits(64)
+            parent_id = None
+            span_id = trace_id
 
         request.trace = self.baseplate.make_root_span(
             request,
