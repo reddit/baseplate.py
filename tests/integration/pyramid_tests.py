@@ -33,8 +33,11 @@ class ConfiguratorTests(unittest.TestCase):
 
         self.baseplate = Baseplate()
         self.baseplate.register(self.observer)
-        baseplate_configurator = BaseplateConfigurator(self.baseplate)
-        configurator.include(baseplate_configurator.includeme)
+        self.baseplate_configurator = BaseplateConfigurator(
+            self.baseplate,
+            trust_trace_headers=True,
+        )
+        configurator.include(self.baseplate_configurator.includeme)
         app = configurator.make_wsgi_app()
         self.test_app = webtest.TestApp(app)
 
@@ -76,3 +79,18 @@ class ConfiguratorTests(unittest.TestCase):
         self.test_app.get("/nope", status=404)
 
         self.assertFalse(self.observer.on_root_span_created.called)
+
+    @mock.patch("random.getrandbits")
+    def test_distrust_headers(self, getrandbits):
+        self.baseplate_configurator.trust_trace_headers = False
+
+        self.test_app.get("/example", headers={
+            "X-Trace": "1234",
+            "X-Parent": "2345",
+            "X-Span": "3456",
+        })
+
+        context, root_span = self.observer.on_root_span_created.call_args[0]
+        self.assertEqual(root_span.trace_id, getrandbits.return_value)
+        self.assertEqual(root_span.parent_id, None)
+        self.assertEqual(root_span.id, getrandbits.return_value)
