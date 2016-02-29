@@ -84,7 +84,7 @@ class Event(object):
         return json.dumps({
             "event_topic": self.topic,
             "event_type": self.event_type,
-            "event_ts": self.timestamp,
+            "event_ts": int(self.timestamp),
             "uuid": str(self.id),
             "payload": self.payload,
         })
