@@ -48,6 +48,8 @@ class EventTests(unittest.TestCase):
         event = Event("topic", "type")
         event.set_field("normal", "value1")
         event.set_field("obfuscated", "value2", obfuscate=True)
+        event.set_field("empty", "")
+        event.set_field("null", None)
 
         serialized = event.serialize()
         deserialized = json.loads(serialized)

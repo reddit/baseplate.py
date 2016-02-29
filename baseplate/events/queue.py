@@ -67,6 +67,13 @@ class Event(object):
             be treated with care.
 
         """
+
+        # There's no need to send null/empty values, the collector will act
+        # the same whether they're sent or not. Zeros are important though,
+        # so we can't use a simple boolean truth check here.
+        if value is None or value == "":
+            return
+
         if not obfuscate:
             self.payload[key] = value
         else:
