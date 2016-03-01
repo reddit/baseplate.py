@@ -61,10 +61,10 @@ class BatcherTests(unittest.TestCase):
 
 class CompressTests(unittest.TestCase):
     def test_compress(self):
-        input = b"test"
-        compressed = publisher.gzip_compress(input)
-        uncompressed = gzip.GzipFile(fileobj=BytesIO(compressed)).read()
-        self.assertEqual(input, uncompressed)
+        raw = b"test"
+        compressed = publisher.gzip_compress(raw)
+        decompressed = gzip.GzipFile(fileobj=BytesIO(compressed)).read()
+        self.assertEqual(raw, decompressed)
 
 
 class ConsumerTests(unittest.TestCase):
