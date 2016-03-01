@@ -155,6 +155,8 @@ def queue_tool():
     parser.add_argument("queue_name", help="the name of the queue to consume")
 
     group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--create", action="store_const", dest="mode", const="create",
+        help="create the named queue if it doesn't exist and exit")
     group.add_argument("--read", action="store_const", dest="mode", const="read",
         help="read, log, and discard messages from the named queue")
     group.add_argument("--write", action="store_const", dest="mode", const="write",
@@ -168,7 +170,7 @@ def queue_tool():
         while True:
             item = queue.get()
             print(item)
-    else:
+    elif args.mode == "write":
         for line in sys.stdin:
             queue.put(line.rstrip("\n"))
 
