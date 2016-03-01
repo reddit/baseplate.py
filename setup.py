@@ -36,7 +36,7 @@ extras_require = {
 
 setup(
     name="baseplate",
-    version="0.4.0",
+    version="0.5.0",
     packages=find_packages(exclude=["tests"]),
 
     install_requires=install_requires,

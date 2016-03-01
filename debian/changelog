@@ -1,3 +1,12 @@
+baseplate (0.5.0) trusty; urgency=medium
+
+  * Events! Sent to the pipeline from a sidekick daemon.
+  * Add tool for creating and inspecting message queues.
+  * Fix crash on py3 in message queues.
+  * Allow pyramid apps to make their own trace headers.
+
+ -- Neil Williams <neil@reddit.com>  Tue, 01 Mar 2016 08:30:25 -0800
+
 baseplate (0.4.0) trusty; urgency=medium
 
   * Add gevent-friendly POSIX message queue helpers.
