@@ -53,7 +53,7 @@ class BatcherTests(unittest.TestCase):
         self.consumer.consume_batch.assert_called_once_with(["a", "b"])
 
     def test_flush_when_full(self):
-        for i in range(7):
+        for i in range(self.consumer.batch_size_limit+1):
             self.batcher.add(str(i))
         self.consumer.consume_batch.assert_called_once_with(
             ["0", "1", "2", "3", "4"])
