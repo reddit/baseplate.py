@@ -1,0 +1,241 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>baseplate.events &mdash; Baseplate</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="top" title="Baseplate" href="../../index.html" />
+    <link rel="up" title="API Reference" href="../index.html" />
+    <link rel="next" title="baseplate.integration" href="integration/index.html" />
+    <link rel="prev" title="baseplate.diagnostics" href="diagnostics/index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-baseplate.events">
+<span id="baseplate-events"></span><h1>baseplate.events<a class="headerlink" href="#module-baseplate.events" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="building-events">
+<h2>Building Events<a class="headerlink" href="#building-events" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="baseplate.events.Event">
+<em class="property">class </em><tt class="descclassname">baseplate.events.</tt><tt class="descname">Event</tt><big>(</big><em>topic</em>, <em>event_type</em>, <em>timestamp=None</em>, <em>id=None</em><big>)</big><a class="headerlink" href="#baseplate.events.Event" title="Permalink to this definition">¶</a></dt>
+<dd><p>An event.</p>
+<dl class="method">
+<dt id="baseplate.events.Event.get_field">
+<tt class="descname">get_field</tt><big>(</big><em>key</em>, <em>obfuscated=False</em><big>)</big><a class="headerlink" href="#baseplate.events.Event.get_field" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the value of a field in the event.</p>
+<p>If the field is not present, <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> is returned.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the field.</li>
+<li><strong>obfuscated</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) &#8211; Whether to look for the field in the obfuscated
+payload.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.events.Event.set_field">
+<tt class="descname">set_field</tt><big>(</big><em>key</em>, <em>value</em>, <em>obfuscate=False</em><big>)</big><a class="headerlink" href="#baseplate.events.Event.set_field" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the value for a field in the event.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the field.</li>
+<li><strong>value</strong> &#8211; The value to set the field to. Should be JSON
+serializable.</li>
+<li><strong>obfuscate</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) &#8211; Whether or not to put the field in the obfuscated
+section. This is used for sensitive info like IP addresses that must
+be treated with care.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="queing-events">
+<h2>Queing Events<a class="headerlink" href="#queing-events" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="baseplate.events.EventQueue">
+<em class="property">class </em><tt class="descclassname">baseplate.events.</tt><tt class="descname">EventQueue</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.events.EventQueue" title="Permalink to this definition">¶</a></dt>
+<dd><p>A queue to transfer events to the publisher.</p>
+<dl class="method">
+<dt id="baseplate.events.EventQueue.put">
+<tt class="descname">put</tt><big>(</big><em>event</em><big>)</big><a class="headerlink" href="#baseplate.events.EventQueue.put" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an event to the queue.</p>
+<p>The queue is local to the server this code is run on. The event
+publisher on the server will take these events and send them to the
+collector.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event</strong> (<a class="reference internal" href="#baseplate.events.Event" title="baseplate.events.Event"><em>baseplate.events.Event</em></a>) &#8211; The event to send.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#baseplate.events.EventTooLargeError" title="baseplate.events.EventTooLargeError"><tt class="xref py py-exc docutils literal"><span class="pre">EventTooLargeError</span></tt></a> The serialized event is too large.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><a class="reference internal" href="#baseplate.events.EventQueueFullError" title="baseplate.events.EventQueueFullError"><tt class="xref py py-exc docutils literal"><span class="pre">EventQueueFullError</span></tt></a> The queue is full. Events are
+not being published fast enough.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<div class="section" id="exceptions">
+<h3>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this headline">¶</a></h3>
+<dl class="exception">
+<dt id="baseplate.events.EventError">
+<em class="property">exception </em><tt class="descclassname">baseplate.events.</tt><tt class="descname">EventError</tt><a class="headerlink" href="#baseplate.events.EventError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Base class for event related exceptions.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="baseplate.events.EventTooLargeError">
+<em class="property">exception </em><tt class="descclassname">baseplate.events.</tt><tt class="descname">EventTooLargeError</tt><big>(</big><em>size</em><big>)</big><a class="headerlink" href="#baseplate.events.EventTooLargeError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised when a serialized event is too large to send.</p>
+</dd></dl>
+
+<dl class="exception">
+<dt id="baseplate.events.EventQueueFullError">
+<em class="property">exception </em><tt class="descclassname">baseplate.events.</tt><tt class="descname">EventQueueFullError</tt><a class="headerlink" href="#baseplate.events.EventQueueFullError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raised when the queue of events is full.</p>
+<p>This usually indicates that the event publisher is having trouble talking
+to the event collector.</p>
+</dd></dl>
+
+</div>
+</div>
+<div class="section" id="publishing-events">
+<h2>Publishing Events<a class="headerlink" href="#publishing-events" title="Permalink to this headline">¶</a></h2>
+<p>Events that are put onto an <a class="reference internal" href="#baseplate.events.EventQueue" title="baseplate.events.EventQueue"><tt class="xref py py-class docutils literal"><span class="pre">EventQueue</span></tt></a> are consumed by a separate
+process and published to the remote event collector service. The publisher is
+in baseplate and can be run as follows:</p>
+<div class="highlight-python"><div class="highlight"><pre>python -m baseplate.events.publisher --queue-name something config_file.ini
+</pre></div>
+</div>
+<p>The publisher will look at the specified INI file to find its configuration.
+Given a queue name of <tt class="docutils literal"><span class="pre">something</span></tt> (as in the example above), it will expect a
+section in the INI file called <tt class="docutils literal"><span class="pre">[event-publisher:something]</span></tt> with content
+like below:</p>
+<div class="highlight-python"><div class="highlight"><pre>[event-publisher:something]
+collector.hostname = some-domain.example.com
+
+key.name = NameOfASecretKey
+key.secret = Base64-encoded-blob-of-randomness
+
+metrics.namespace = a.name.to.put.metrics.under
+metrics.endpoint = the-statsd-host:1234
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<p class="logo">
+  <a href="../../index.html">
+    <img class="logo" src="../../_static/baseplate.png" alt="Logo"/>
+    
+  </a>
+</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../server.html">Serving requests: baseplate-serve</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">API Reference</a><ul>
+      <li>Previous: <a href="diagnostics/index.html" title="previous chapter">baseplate.diagnostics</a></li>
+      <li>Next: <a href="integration/index.html" title="next chapter">baseplate.integration</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+      
+      <a href="../../_sources/api/baseplate/events.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

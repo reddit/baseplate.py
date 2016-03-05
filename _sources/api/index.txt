@@ -14,6 +14,7 @@ Baseplate. It is organized alphabetically by module name.
    baseplate/core
    baseplate/crypto
    baseplate/diagnostics/index
+   baseplate/events
    baseplate/integration/index
    baseplate/message_queue
    baseplate/metrics

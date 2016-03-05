@@ -41,6 +41,20 @@
             
   <div class="section" id="module-baseplate.message_queue">
 <span id="baseplate-message-queue"></span><h1>baseplate.message_queue<a class="headerlink" href="#module-baseplate.message_queue" title="Permalink to this headline">¶</a></h1>
+<p>A gevent-friendly POSIX message queue.</p>
+<p>These message queues store messages in the kernel, allow multiple processes to
+read and/or write, and persist even if the processes are all gone. The messages
+do not persist through reboots and are not accessible off the local machine.</p>
+<p>This module can also be run as a command-line tool to consume, log, and discard
+messages from a given queue:</p>
+<div class="highlight-python"><div class="highlight"><pre>python -m baseplate.message_queue --read /queue
+</pre></div>
+</div>
+<p>or to write arbitrary messages to the queue:</p>
+<div class="highlight-python"><div class="highlight"><pre>echo hello! | python -m baseplate.message_queue --write /queue
+</pre></div>
+</div>
+<p>See <tt class="docutils literal"><span class="pre">--help</span></tt> for more info.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p>This implementation uses POSIX message queues and is not portable to
