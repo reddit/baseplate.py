@@ -10,5 +10,6 @@ common things a service needs with as few surprises as possible.
    quickstart
    diagnostics
    server
+   message_queue
    api/index
    glossary
