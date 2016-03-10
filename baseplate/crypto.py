@@ -52,8 +52,15 @@ class IncorrectSignatureError(SignatureError):
 
 
 class ExpiredSignatureError(SignatureError):
-    """Raised when the signature is valid but has expired."""
-    pass
+    """Raised when the signature is valid but has expired.
+
+    The ``expiration`` attribute is the time (as seconds since the unix epoch)
+    at which the signature expired.
+
+    """
+    def __init__(self, expiration):
+        self.expiration = expiration
+        super(ExpiredSignatureError, self).__init__()
 
 
 # A signature is a base64 encoded binary blob, comprised of a header and
@@ -149,4 +156,4 @@ class MessageSigner(object):
             raise IncorrectSignatureError
 
         if time.time() > expiration:
-            raise ExpiredSignatureError
+            raise ExpiredSignatureError(expiration)
