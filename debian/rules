@@ -15,16 +15,6 @@ override_dh_auto_build:
 override_dh_auto_test:
 	make tests
 
-.PHONY: override_dh_auto_install
-override_dh_auto_install:
-	dh_auto_install
-	mkdir -p debian/python-baseplate/usr/bin
-	sed 's@#!/usr/bin/python@#!/usr/bin/python2@' bin/baseplate-serve > debian/python-baseplate/usr/bin/baseplate-serve2
-	sed 's@#!/usr/bin/python@#!/usr/bin/python2@' bin/baseplate-healthcheck > debian/python-baseplate/usr/bin/baseplate-healthcheck2
-	mkdir -p debian/python3-baseplate/usr/bin
-	sed 's@#!/usr/bin/python@#!/usr/bin/python3@' bin/baseplate-serve > debian/python3-baseplate/usr/bin/baseplate-serve3
-	sed 's@#!/usr/bin/python@#!/usr/bin/python3@' bin/baseplate-healthcheck > debian/python3-baseplate/usr/bin/baseplate-healthcheck3
-
 .PHONY: override_dh_clean
 override_dh_clean:
 	make clean

@@ -1,5 +1,8 @@
-#!/usr/bin/python
 """Check health of a baseplate service on localhost."""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import argparse
 import sys
@@ -48,7 +51,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def run_healthchecks():
     args = parse_args()
 
     checker = CHECKERS[args.type]
@@ -57,4 +60,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_healthchecks()
