@@ -1,21 +1,4 @@
-"""A gevent-friendly POSIX message queue.
-
-These message queues store messages in the kernel, allow multiple processes to
-read and/or write, and persist even if the processes are all gone. The messages
-do not persist through reboots and are not accessible off the local machine.
-
-This module can also be run as a command-line tool to consume, log, and discard
-messages from a given queue::
-
-    python -m baseplate.message_queue --read /queue
-
-or to write arbitrary messages to the queue::
-
-    echo hello! | python -m baseplate.message_queue --write /queue
-
-See ``--help`` for more info.
-
-"""
+"""A gevent-friendly POSIX message queue."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
