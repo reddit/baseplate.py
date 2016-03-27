@@ -34,6 +34,17 @@ class SignatureTests(unittest.TestCase):
         self.signer.validate_signature(self.message, signature)
 
     @mock.patch("time.time")
+    def test_signature_info(self, time):
+        time.return_value = 0
+        signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
+
+        time.return_value = 10
+        info = self.signer.validate_signature(self.message, signature)
+
+        self.assertEqual(info.version, 1)
+        self.assertEqual(info.expiration, 30)
+
+    @mock.patch("time.time")
     def test_expired(self, time):
         time.return_value = 0
         signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
