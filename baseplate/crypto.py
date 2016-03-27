@@ -9,6 +9,7 @@ from __future__ import unicode_literals
 
 import base64
 import binascii
+import collections
 import hashlib
 import hmac
 import struct
@@ -75,6 +76,21 @@ class ExpiredSignatureError(SignatureError):
 _HEADER_FORMAT = struct.Struct("<BxxI")
 
 
+_SignatureInfo = collections.namedtuple("_SignatureInfo",
+    ["version", "expiration"])
+
+
+class SignatureInfo(_SignatureInfo):
+    """Information about a valid signature.
+
+    :ivar int version: The version of the packed signature format.
+    :ivar int expiration: The time, in seconds since the UNIX epoch, at which
+        the signature will expire.
+
+    """
+    pass
+
+
 class MessageSigner(object):
     """Helper which signs messages and validates signatures given a secret.
 
@@ -129,7 +145,8 @@ class MessageSigner(object):
     def validate_signature(self, message, signature):
         """Validate and assert a message's signature is correct.
 
-        If the signature is valid, the function will return normally.
+        If the signature is valid, the function will return normally with a
+        :py:class:`SignatureInfo` with some details about the signature.
         Otherwise, an exception will be raised.
 
         :param str message: The message payload to validate.
@@ -137,6 +154,7 @@ class MessageSigner(object):
         :raises: :py:exc:`UnreadableSignatureError` The signature is corrupt.
         :raises: :py:exc:`IncorrectSignatureError` The digest is incorrect.
         :raises: :py:exc:`ExpiredSignatureError` The signature expired.
+        :rtype: :py:class:`SignatureInfo`
 
         """
         try:
@@ -157,3 +175,5 @@ class MessageSigner(object):
 
         if time.time() > expiration:
             raise ExpiredSignatureError(expiration)
+
+        return SignatureInfo(version, expiration)
