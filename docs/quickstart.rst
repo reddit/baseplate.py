@@ -10,14 +10,6 @@ To install Baseplate, use the debian packages::
    sudo apt-get update
    sudo apt-get install python-gevent python-baseplate
 
-or clone it and install it yourself::
-
-   git clone git@github.com:reddit/baseplate
-   cd baseplate/
-   make
-   make tests
-   sudo make install
-
 Cookiecutter
 ------------
 
@@ -49,5 +41,4 @@ serving requests::
 For more info on this mysterious ``baseplate-serve2``, check out the `chapter
 about the baseplate server`_.
 
-.. _fbthrift: https://github.com/facebook/fbthrift
 .. _chapter about the baseplate server: server.html

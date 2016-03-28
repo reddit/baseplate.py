@@ -31,6 +31,12 @@ extras_require = {
     "pyramid": [
         "pyramid",
     ],
+
+    "docs": [
+        "sphinx",
+        "sphinxcontrib-spelling",
+        "alabaster",
+    ],
 }
 
 
