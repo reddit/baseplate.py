@@ -23,6 +23,7 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.png"/>
     <link rel="top" title="Baseplate" href="#" />
     <link rel="next" title="Quick Start" href="quickstart.html" />
    
@@ -39,16 +40,91 @@
             
   <div class="section" id="baseplate">
 <h1>Baseplate<a class="headerlink" href="#baseplate" title="Permalink to this headline">¶</a></h1>
-<p>Baseplate is a library to build services on. Its goal is to provide all the
-common things a service needs with as few surprises as possible.</p>
+<p>Baseplate is a framework to build services on and a library of common and
+well-tested code to share. Its goal is to provide all the common things a
+service needs with as few surprises as possible.</p>
+<div class="section" id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h2>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
-<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics: Spans and Observers</a></li>
-<li class="toctree-l1"><a class="reference internal" href="server.html">Serving requests: baseplate-serve</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a><ul class="simple">
 </ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="the-cli-toolkit">
+<h2>The CLI Toolkit<a class="headerlink" href="#the-cli-toolkit" title="Permalink to this headline">¶</a></h2>
+<p>These are helper tools for running and supporting applications in production
+and development.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli/serve.html">baseplate-serve: The application server</a><ul class="simple">
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="the-framework">
+<h2>The Framework<a class="headerlink" href="#the-framework" title="Permalink to this headline">¶</a></h2>
+<p>Baseplate provides an opinionated and integrated framework for making server
+applications.  This framework provides monitoring, logging, and tracing out of
+the box.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/core.html">baseplate.core: The guts of the diagnostics framework</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/context/index.html">baseplate.context: Integration with client libraries</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/integration/index.html">baseplate.integration: Integration with application frameworks</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/diagnostics/index.html">baseplate.diagnostics: Diagnostics observers</a><ul class="simple">
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="the-library">
+<h2>The Library<a class="headerlink" href="#the-library" title="Permalink to this headline">¶</a></h2>
+<p>These modules are relatively disconnected and provide various pieces of
+functionality that are commonly needed in production applications. They can
+be used without the framework.</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/index.html">baseplate: General purpose helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/config.html">baseplate.config: Configuration parsing</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/crypto.html">baseplate.crypto: Cryptographic Primatives</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/events.html">baseplate.events: Events for the data pipeline</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/metrics.html">baseplate.metrics: Counters and timers for statsd</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a><ul class="simple">
+</ul>
+</li>
+</ul>
+</div>
+</div>
+<div class="section" id="other">
+<h2>Other<a class="headerlink" href="#other" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><em>Index</em></a></li>
+<li><a class="reference internal" href="py-modindex.html"><em>Module Index</em></a></li>
+<li><a class="reference internal" href="glossary.html"><em>Glossary</em></a></li>
+</ul>
+<div class="toctree-wrapper compound">
+</div>
 </div>
 </div>
 
@@ -73,9 +149,26 @@ common things a service needs with as few surprises as possible.</p>
 <h3>Navigation</h3>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
-<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics: Spans and Observers</a></li>
-<li class="toctree-l1"><a class="reference internal" href="server.html">Serving requests: baseplate-serve</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli/serve.html">baseplate-serve: The application server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/core.html">baseplate.core: The guts of the diagnostics framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/context/index.html">baseplate.context: Integration with client libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/integration/index.html">baseplate.integration: Integration with application frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/diagnostics/index.html">baseplate.diagnostics: Diagnostics observers</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/index.html">baseplate: General purpose helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/config.html">baseplate.config: Configuration parsing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/crypto.html">baseplate.crypto: Cryptographic Primatives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/events.html">baseplate.events: Events for the data pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
+</ul>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
 </ul>
 

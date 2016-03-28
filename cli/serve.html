@@ -6,26 +6,27 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>Serving requests: baseplate-serve &mdash; Baseplate</title>
+    <title>baseplate-serve &mdash; Baseplate</title>
     
-    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    './',
+        URL_ROOT:    '../',
         VERSION:     '',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Baseplate" href="index.html" />
-    <link rel="next" title="API Reference" href="api/index.html" />
-    <link rel="prev" title="Diagnostics: Spans and Observers" href="diagnostics.html" />
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Baseplate" href="../index.html" />
+    <link rel="next" title="baseplate.core" href="../baseplate/core.html" />
+    <link rel="prev" title="Quick Start" href="../quickstart.html" />
    
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -38,8 +39,8 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="serving-requests-baseplate-serve">
-<h1>Serving requests: baseplate-serve<a class="headerlink" href="#serving-requests-baseplate-serve" title="Permalink to this headline">¶</a></h1>
+  <div class="section" id="baseplate-serve">
+<h1>baseplate-serve<a class="headerlink" href="#baseplate-serve" title="Permalink to this headline">¶</a></h1>
 <p>Baseplate comes with a simple Gevent-based server for both Thrift and WSGI
 applications called <tt class="docutils literal"><span class="pre">baseplate-serve2</span></tt> or <tt class="docutils literal"><span class="pre">baseplate-serve3</span></tt> depending
 on which version of Python you would like to use.</p>
@@ -101,7 +102,7 @@ before the <tt class="docutils literal"><span class="pre">:</span></tt> is a Pyt
 callable object within that module.</p>
 <p>The rest of the options in the <tt class="docutils literal"><span class="pre">app</span></tt> section of the configuration file get
 passed as a dictionary to your application callable. You can parse these
-options with <a class="reference internal" href="api/baseplate/config.html#module-baseplate.config" title="baseplate.config"><tt class="xref py py-mod docutils literal"><span class="pre">baseplate.config</span></tt></a>.</p>
+options with <a class="reference internal" href="../baseplate/config.html#module-baseplate.config" title="baseplate.config"><tt class="xref py py-mod docutils literal"><span class="pre">baseplate.config</span></tt></a>.</p>
 <p>The application factory should return an appropriate object for your server:</p>
 <dl class="docutils">
 <dt>Thrift</dt>
@@ -133,8 +134,8 @@ its command socket.</p>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
 <p class="logo">
-  <a href="index.html">
-    <img class="logo" src="_static/baseplate.png" alt="Logo"/>
+  <a href="../index.html">
+    <img class="logo" src="../_static/baseplate.png" alt="Logo"/>
     
   </a>
 </p>
@@ -145,26 +146,45 @@ its command socket.</p>
 
 
 <h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
+</ul>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="quickstart.html">Quick Start</a></li>
-<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics: Spans and Observers</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">Serving requests: baseplate-serve</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">baseplate-serve: The application server</a><ul class="simple">
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/core.html">baseplate.core: The guts of the diagnostics framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/context/index.html">baseplate.context: Integration with client libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/integration/index.html">baseplate.integration: Integration with application frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/diagnostics/index.html">baseplate.diagnostics: Diagnostics observers</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/index.html">baseplate: General purpose helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/config.html">baseplate.config: Configuration parsing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/crypto.html">baseplate.crypto: Cryptographic Primatives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/events.html">baseplate.events: Events for the data pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../baseplate/thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
-  <li><a href="index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="diagnostics.html" title="previous chapter">Diagnostics: Spans and Observers</a></li>
-      <li>Next: <a href="api/index.html" title="next chapter">API Reference</a></li>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../quickstart.html" title="previous chapter">Quick Start</a></li>
+      <li>Next: <a href="../baseplate/core.html" title="next chapter">baseplate.core</a></li>
   </ul></li>
 </ul>
 </div>
 <div id="searchbox" style="display: none">
   <h3>Quick search</h3>
-    <form class="search" action="search.html" method="get">
+    <form class="search" action="../search.html" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
@@ -183,7 +203,7 @@ its command socket.</p>
       
       
       
-      <a href="_sources/server.txt"
+      <a href="../_sources/cli/serve.txt"
           rel="nofollow">Page source</a>
     </div>
 

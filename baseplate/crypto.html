@@ -8,25 +8,25 @@
     
     <title>baseplate.crypto &mdash; Baseplate</title>
     
-    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     
     <script type="text/javascript">
       var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../../',
+        URL_ROOT:    '../',
         VERSION:     '',
         COLLAPSE_INDEX: false,
         FILE_SUFFIX: '.html',
         HAS_SOURCE:  true
       };
     </script>
-    <script type="text/javascript" src="../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <link rel="top" title="Baseplate" href="../../index.html" />
-    <link rel="up" title="API Reference" href="../index.html" />
-    <link rel="next" title="baseplate.diagnostics" href="diagnostics/index.html" />
-    <link rel="prev" title="baseplate.core" href="core.html" />
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="shortcut icon" href="../_static/favicon.png"/>
+    <link rel="top" title="Baseplate" href="../index.html" />
+    <link rel="next" title="baseplate.events" href="events.html" />
+    <link rel="prev" title="baseplate.config" href="config.html" />
    
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -91,7 +91,8 @@ the signature will be valid for.</li>
 <dt id="baseplate.crypto.MessageSigner.validate_signature">
 <tt class="descname">validate_signature</tt><big>(</big><em>message</em>, <em>signature</em><big>)</big><a class="headerlink" href="#baseplate.crypto.MessageSigner.validate_signature" title="Permalink to this definition">¶</a></dt>
 <dd><p>Validate and assert a message&#8217;s signature is correct.</p>
-<p>If the signature is valid, the function will return normally.
+<p>If the signature is valid, the function will return normally with a
+<a class="reference internal" href="#baseplate.crypto.SignatureInfo" title="baseplate.crypto.SignatureInfo"><tt class="xref py py-class docutils literal"><span class="pre">SignatureInfo</span></tt></a> with some details about the signature.
 Otherwise, an exception will be raised.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -109,13 +110,35 @@ Otherwise, an exception will be raised.</p>
 <tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><a class="reference internal" href="#baseplate.crypto.IncorrectSignatureError" title="baseplate.crypto.IncorrectSignatureError"><tt class="xref py py-exc docutils literal"><span class="pre">IncorrectSignatureError</span></tt></a> The digest is incorrect.</p>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#baseplate.crypto.ExpiredSignatureError" title="baseplate.crypto.ExpiredSignatureError"><tt class="xref py py-exc docutils literal"><span class="pre">ExpiredSignatureError</span></tt></a> The signature expired.</p>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><a class="reference internal" href="#baseplate.crypto.ExpiredSignatureError" title="baseplate.crypto.ExpiredSignatureError"><tt class="xref py py-exc docutils literal"><span class="pre">ExpiredSignatureError</span></tt></a> The signature expired.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><a class="reference internal" href="#baseplate.crypto.SignatureInfo" title="baseplate.crypto.SignatureInfo"><tt class="xref py py-class docutils literal"><span class="pre">SignatureInfo</span></tt></a></p>
 </td>
 </tr>
 </tbody>
 </table>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.crypto.SignatureInfo">
+<em class="property">class </em><tt class="descclassname">baseplate.crypto.</tt><tt class="descname">SignatureInfo</tt><a class="headerlink" href="#baseplate.crypto.SignatureInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Information about a valid signature.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Variables:</th><td class="field-body"><ul class="first last simple">
+<li><strong>version</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The version of the packed signature format.</li>
+<li><strong>expiration</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The time, in seconds since the UNIX epoch, at which
+the signature will expire.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <div class="section" id="exceptions">
@@ -140,8 +163,10 @@ Otherwise, an exception will be raised.</p>
 
 <dl class="exception">
 <dt id="baseplate.crypto.ExpiredSignatureError">
-<em class="property">exception </em><tt class="descclassname">baseplate.crypto.</tt><tt class="descname">ExpiredSignatureError</tt><a class="headerlink" href="#baseplate.crypto.ExpiredSignatureError" title="Permalink to this definition">¶</a></dt>
+<em class="property">exception </em><tt class="descclassname">baseplate.crypto.</tt><tt class="descname">ExpiredSignatureError</tt><big>(</big><em>expiration</em><big>)</big><a class="headerlink" href="#baseplate.crypto.ExpiredSignatureError" title="Permalink to this definition">¶</a></dt>
 <dd><p>Raised when the signature is valid but has expired.</p>
+<p>The <tt class="docutils literal"><span class="pre">expiration</span></tt> attribute is the time (as seconds since the unix epoch)
+at which the signature expired.</p>
 </dd></dl>
 
 </div>
@@ -167,8 +192,8 @@ function resistant to timing attacks.</p>
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
 <p class="logo">
-  <a href="../../index.html">
-    <img class="logo" src="../../_static/baseplate.png" alt="Logo"/>
+  <a href="../index.html">
+    <img class="logo" src="../_static/baseplate.png" alt="Logo"/>
     
   </a>
 </p>
@@ -179,28 +204,45 @@ function resistant to timing attacks.</p>
 
 
 <h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../cli/serve.html">baseplate-serve: The application server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="core.html">baseplate.core: The guts of the diagnostics framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="context/index.html">baseplate.context: Integration with client libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integration/index.html">baseplate.integration: Integration with application frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="diagnostics/index.html">baseplate.diagnostics: Diagnostics observers</a></li>
+</ul>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../quickstart.html">Quick Start</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../diagnostics.html">Diagnostics: Spans and Observers</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../server.html">Serving requests: baseplate-serve</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../index.html">API Reference</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">baseplate: General purpose helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="config.html">baseplate.config: Configuration parsing</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">baseplate.crypto: Cryptographic Primatives</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="events.html">baseplate.events: Events for the data pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
 </ul>
 
 <div class="relations">
 <h3>Related Topics</h3>
 <ul>
-  <li><a href="../../index.html">Documentation overview</a><ul>
-  <li><a href="../index.html">API Reference</a><ul>
-      <li>Previous: <a href="core.html" title="previous chapter">baseplate.core</a></li>
-      <li>Next: <a href="diagnostics/index.html" title="next chapter">baseplate.diagnostics</a></li>
-  </ul></li>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="config.html" title="previous chapter">baseplate.config</a></li>
+      <li>Next: <a href="events.html" title="next chapter">baseplate.events</a></li>
   </ul></li>
 </ul>
 </div>
 <div id="searchbox" style="display: none">
   <h3>Quick search</h3>
-    <form class="search" action="../../search.html" method="get">
+    <form class="search" action="../search.html" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
@@ -219,7 +261,7 @@ function resistant to timing attacks.</p>
       
       
       
-      <a href="../../_sources/api/baseplate/crypto.txt"
+      <a href="../_sources/baseplate/crypto.txt"
           rel="nofollow">Page source</a>
     </div>
 

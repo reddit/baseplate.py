@@ -9,6 +9,8 @@ Message Signing
 .. autoclass:: MessageSigner
    :members:
 
+.. autoclass:: SignatureInfo
+
 Exceptions
 ~~~~~~~~~~
 

@@ -23,8 +23,9 @@
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="shortcut icon" href="_static/favicon.png"/>
     <link rel="top" title="Baseplate" href="index.html" />
-    <link rel="next" title="Diagnostics: Spans and Observers" href="diagnostics.html" />
+    <link rel="next" title="baseplate-serve" href="cli/serve.html" />
     <link rel="prev" title="Baseplate" href="index.html" />
    
   
@@ -46,14 +47,6 @@
 <div class="highlight-python"><div class="highlight"><pre>sudo add-apt-repository ppa:reddit/ppa
 sudo apt-get update
 sudo apt-get install python-gevent python-baseplate
-</pre></div>
-</div>
-<p>or clone it and install it yourself:</p>
-<div class="highlight-python"><div class="highlight"><pre>git clone git@github.com:reddit/baseplate
-cd baseplate/
-make
-make tests
-sudo make install
 </pre></div>
 </div>
 </div>
@@ -104,10 +97,29 @@ about the baseplate server</a>.</p>
 
 <h3>Navigation</h3>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="">Quick Start</a></li>
-<li class="toctree-l1"><a class="reference internal" href="diagnostics.html">Diagnostics: Spans and Observers</a></li>
-<li class="toctree-l1"><a class="reference internal" href="server.html">Serving requests: baseplate-serve</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/index.html">API Reference</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Quick Start</a><ul class="simple">
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="cli/serve.html">baseplate-serve: The application server</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/core.html">baseplate.core: The guts of the diagnostics framework</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/context/index.html">baseplate.context: Integration with client libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/integration/index.html">baseplate.integration: Integration with application frameworks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/diagnostics/index.html">baseplate.diagnostics: Diagnostics observers</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/index.html">baseplate: General purpose helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/config.html">baseplate.config: Configuration parsing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/crypto.html">baseplate.crypto: Cryptographic Primatives</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/events.html">baseplate.events: Events for the data pipeline</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
+</ul>
+<ul>
 <li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
 </ul>
 
@@ -116,7 +128,7 @@ about the baseplate server</a>.</p>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="index.html" title="previous chapter">Baseplate</a></li>
-      <li>Next: <a href="diagnostics.html" title="next chapter">Diagnostics: Spans and Observers</a></li>
+      <li>Next: <a href="cli/serve.html" title="next chapter">baseplate-serve</a></li>
   </ul></li>
 </ul>
 </div>
