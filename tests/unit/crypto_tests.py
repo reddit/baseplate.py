@@ -38,7 +38,6 @@ class SignatureTests(unittest.TestCase):
         time.return_value = 0
         signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
 
-        time.return_value = 10
         info = self.signer.validate_signature(self.message, signature)
 
         self.assertEqual(info.version, 1)
