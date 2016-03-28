@@ -51,7 +51,7 @@ be used without the framework.
 
    baseplate: General purpose helpers <baseplate/index>
    baseplate.config: Configuration parsing <baseplate/config>
-   baseplate.crypto: Cryptographic Primatives <baseplate/crypto>
+   baseplate.crypto: Cryptographic Primitives <baseplate/crypto>
    baseplate.events: Events for the data pipeline <baseplate/events>
    baseplate.message_queue: POSIX IPC Message Queues <baseplate/message_queue>
    baseplate.metrics: Counters and timers for statsd <baseplate/metrics>
