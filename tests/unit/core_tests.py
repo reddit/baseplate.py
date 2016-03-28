@@ -59,7 +59,7 @@ class SpanTests(unittest.TestCase):
         mock_observer.on_annotate("key", "value")
 
         span.stop()
-        mock_observer.on_stop()
+        mock_observer.on_stop(error=None)
 
     def test_context(self):
         mock_observer = mock.Mock(spec=SpanObserver)
@@ -70,6 +70,22 @@ class SpanTests(unittest.TestCase):
         with span:
             self.assertEqual(mock_observer.on_start.call_count, 1)
         self.assertEqual(mock_observer.on_stop.call_count, 1)
+
+    def test_context_with_exception(self):
+        mock_observer = mock.Mock(spec=SpanObserver)
+
+        span = Span(1, 2, 3, "name")
+        span._register(mock_observer)
+
+        class TestException(Exception):
+            pass
+
+        exc = TestException()
+        with self.assertRaises(TestException):
+            with span:
+                raise exc
+        self.assertEqual(mock_observer.on_stop.call_count, 1)
+        self.assertEqual(mock_observer.on_stop.call_args, mock.call(error=exc))
 
 
 class RootSpanTests(unittest.TestCase):
