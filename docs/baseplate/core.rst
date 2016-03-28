@@ -24,10 +24,13 @@ the upstream service. When we call ``request.some_redis_client.ping()`` in the
 handler, Baseplate will create a child :py:class:`~baseplate.core.Span` object
 to represent the time taken talking to redis.
 
-Because we did ``baseplate.configure_metrics``, all that span nonsense means
-Baseplate will automatically send metrics on how long it took our application
-to ``do_something`` and how long Redis took to respond to our ``ping`` to
-statsd/Graphite without any extra code in our application.
+The creation of the root and child spans will trigger updates on all the
+:py:class:`~baseplate.core.RootSpanObserver` and
+:py:class:`~baseplate.core.SpanObserver` objects registered.  Because we called
+``baseplate.configure_metrics`` in our setup, this means we have observers that
+send statsd metrics so Baseplate will automatically send metrics on how long it
+took our application to ``do_something`` and how long Redis took to respond to
+our ``ping`` to statsd/Graphite without any extra code in our application.
 
 .. note::
 
