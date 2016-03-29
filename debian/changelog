@@ -1,3 +1,11 @@
+baseplate (0.6.0) trusty; urgency=medium
+
+  * expose expiration times from message signatures
+  * documentation overhaul
+  * allow span observers to see if an exception ended the span
+
+ -- Neil Williams <neil@reddit.com>  Tue, 29 Mar 2016 14:02:31 -0700
+
 baseplate (0.5.0) trusty; urgency=medium
 
   * Events! Sent to the pipeline from a sidekick daemon.
