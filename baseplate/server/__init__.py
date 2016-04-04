@@ -75,7 +75,7 @@ def configure_logging(debug):
 
 def make_listener(endpoint):
     try:
-        fileno = int(os.environ["EINHORN_FDS"])
+        fd_count = int(os.environ["EINHORN_FD_COUNT"])
     except KeyError:
         sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -83,7 +83,10 @@ def make_listener(endpoint):
         sock.listen(128)
         return sock
     else:
-        return socket.fromfd(fileno, socket.AF_INET, socket.SOCK_STREAM)
+        assert fd_count > 0, "Running under Einhorn  but no sockets were bound."
+        fileno = int(os.environ["EINHORN_FD_0"])
+        family = getattr(socket, os.environ.get("EINHORN_FD_FAMILY_0", "AF_INET"))
+        return socket.fromfd(fileno, family, socket.SOCK_STREAM)
 
 
 def _load_factory(url, default_name):
