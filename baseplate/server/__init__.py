@@ -74,8 +74,25 @@ def configure_logging(debug):
 
 
 def make_listener(endpoint):
+    """Inspect the environment and make an appropriate listening socket.
+
+    If the server is running under Einhorn, we'll use the bound socket it
+    provides otherwise we'll do a best effort to bind one ourselves.
+
+    Einhorn can bind multiple sockets (via multiple -b arguments) but we are
+    only going to care about one because we're not smart enough to use multiple
+    listeners. When sockets are bound, Einhorn provides several environment
+    variables to child worker processes:
+
+    - EINHORN_FD_COUNT: the number of sockets bound
+    - EINHORN_FD_#: for each socket bound, the file descriptor for that socket
+    - EINHORN_FD_FAMILY_#: for each socket bound, the protocol family of that
+        socket (this is a recent addition, so if it's not present default to
+        AF_INET)
+
+    """
     try:
-        fileno = int(os.environ["EINHORN_FDS"])
+        fd_count = int(os.environ["EINHORN_FD_COUNT"])
     except KeyError:
         sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -83,10 +100,14 @@ def make_listener(endpoint):
         sock.listen(128)
         return sock
     else:
-        return socket.fromfd(fileno, socket.AF_INET, socket.SOCK_STREAM)
+        assert fd_count > 0, "Running under Einhorn  but no sockets were bound."
+        fileno = int(os.environ["EINHORN_FD_0"])
+        family = getattr(socket, os.environ.get("EINHORN_FD_FAMILY_0", "AF_INET"))
+        return socket.fromfd(fileno, family, socket.SOCK_STREAM)
 
 
 def _load_factory(url, default_name):
+    """Helper to load a factory function from a config file."""
     module_name, sep, func_name = url.partition(":")
     if not sep:
         if not default_name:
@@ -110,6 +131,12 @@ def make_app(app_config):
 
 
 def einhorn_ack_startup():
+    """Send acknowledgement that we started up to the Einhorn master.
+
+    If running under Einhorn, this will inform the master that this worker
+    process has successfully started up.
+
+    """
     try:
         control_sock_fd = int(os.environ["EINHORN_SOCK_FD"])
     except (KeyError, ValueError):
@@ -127,6 +154,7 @@ def einhorn_ack_startup():
 
 
 def load_app_and_run_server():
+    """Parse arguments, read configuration, and start the server."""
     args = parse_args(sys.argv[1:])
     config = read_config(args.config_file, args.server_name, args.app_name)
     configure_logging(args.debug)

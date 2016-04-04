@@ -5,31 +5,42 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
+import socket
 import sys
+import urllib
 
 import requests
 
-from thrift.protocol import THeaderProtocol
-from thrift.transport import TSocket
-
+from baseplate.config import Endpoint
+from baseplate.requests import add_unix_socket_support
 from baseplate.thrift import BaseplateService
+from baseplate.thrift_pool import _make_protocol
 
 
 TIMEOUT = 30  # seconds
 
 
-def check_thrift_service(port):
-    transport = TSocket.TSocket("localhost", port)
-    transport.setTimeout(TIMEOUT * 1000)
-    transport.open()
-    protocol = THeaderProtocol.THeaderProtocol(transport)
+def check_thrift_service(endpoint):
+    protocol = _make_protocol(endpoint)
+    protocol.trans.getTransport().setTimeout(TIMEOUT * 1000.)
+    protocol.trans.open()
     client = BaseplateService.Client(protocol)
     assert client.is_healthy(), "service indicated unhealthiness"
 
 
-def check_http_service(port):
-    url = "http://localhost:{port}/health".format(port=port)
-    response = requests.get(url, timeout=TIMEOUT)
+def check_http_service(endpoint):
+    if endpoint.family == socket.AF_INET:
+        url = "http://{host}:{port}/health".format(
+            host=endpoint.address.host, port=endpoint.address.port)
+    elif endpoint.family == socket.AF_UNIX:
+        quoted_path = urllib.quote(endpoint.address, safe="")
+        url = "http+unix://{path}/health".format(path=quoted_path)
+    else:
+        raise ValueError("unrecognized socket family %r" % endpoint.family)
+
+    session = requests.Session()
+    add_unix_socket_support(session)
+    response = session.get(url, timeout=TIMEOUT)
     response.raise_for_status()
     response.json()
 
@@ -45,8 +56,8 @@ def parse_args():
 
     parser.add_argument("type", choices=CHECKERS.keys(), default="thrift",
         help="The protocol of the service to check.")
-    parser.add_argument("port", type=int, default=9090,
-        help="The port to find the service on.")
+    parser.add_argument("endpoint", type=Endpoint, default=Endpoint("localhost:9090"),
+        help="The endpoint to find the service on.")
 
     return parser.parse_args()
 
@@ -55,7 +66,7 @@ def run_healthchecks():
     args = parse_args()
 
     checker = CHECKERS[args.type]
-    checker(args.port)
+    checker(args.endpoint)
     print("OK!")
 
 

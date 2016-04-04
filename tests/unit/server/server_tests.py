@@ -46,7 +46,7 @@ class ParseArgsTests(unittest.TestCase):
 
 
 class MakeListenerTests(unittest.TestCase):
-    @mock.patch.dict("os.environ", {"EINHORN_FDS": "123"})
+    @mock.patch.dict("os.environ", {"EINHORN_FD_COUNT": "1", "EINHORN_FD_0": "123"})
     @mock.patch("socket.fromfd", autospec=True)
     def test_einhorn_managed(self, fromfd):
         listener = server.make_listener(EXAMPLE_ENDPOINT)
