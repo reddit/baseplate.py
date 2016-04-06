@@ -22,6 +22,7 @@ and development.
 .. toctree::
    :titlesonly:
 
+   baseplate-healthcheck: Is your service alive? <cli/healthcheck>
    baseplate-serve: The application server <cli/serve>
 
 The Framework
