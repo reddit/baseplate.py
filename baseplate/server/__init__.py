@@ -14,8 +14,10 @@ import importlib
 import json
 import logging
 import os
+import signal
 import socket
 import sys
+import traceback
 
 from .._compat import configparser
 from ..config import Endpoint
@@ -153,8 +155,26 @@ def einhorn_ack_startup():
     control_sock.close()
 
 
+def register_signal_handlers():
+    def _handle_debug_signal(signal_number, frame):
+        if not frame:
+            logger.warning("Received SIGUSR1, but no frame found.")
+            return
+
+        lines = traceback.format_stack(frame)
+        logger.warning("Received SIGUSR1, dumping stack trace:")
+        for line in lines:
+            logger.warning(line.rstrip("\n"))
+
+    signal.signal(signal.SIGUSR1, _handle_debug_signal)
+    signal.siginterrupt(signal.SIGUSR1, False)
+
+
 def load_app_and_run_server():
     """Parse arguments, read configuration, and start the server."""
+
+    register_signal_handlers()
+
     args = parse_args(sys.argv[1:])
     config = read_config(args.config_file, args.server_name, args.app_name)
     configure_logging(args.debug)

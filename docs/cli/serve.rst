@@ -98,3 +98,17 @@ An example command line::
       baseplate-serve2 myapp.ini
 
 .. _Stripe's Einhorn socket manager: https://github.com/stripe/einhorn
+
+Debug Signal
+------------
+
+Applications running under ``baseplate-serve`` will respond to ``SIGUSR1`` by
+printing a stack trace to the logger. This can be useful for debugging
+deadlocks and other issues.
+
+Note that Einhorn will exit if you send it a ``SIGUSR1``. You can instead open up
+``einhornsh`` and instruct the master to send the signal to all workers::
+
+   $ einhornsh
+   > signal SIGUSR1
+   Successfully sent USR1s to 4 processes: [...]
