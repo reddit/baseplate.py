@@ -15,6 +15,9 @@ import urllib
 import requests.adapters
 import urllib3.connectionpool
 
+# the adapter code below is inspired by similar code in
+# https://github.com/msabramo/requests-unixsocket/blob/master/requests_unixsocket/adapters.py
+# https://github.com/docker/docker-py/blob/master/docker/unixconn/unixconn.py
 
 class _UNIXConnection(urllib3.connectionpool.HTTPConnection):
     def __init__(self, url):
@@ -45,4 +48,5 @@ class _UNIXAdapter(requests.adapters.HTTPAdapter):
 
 
 def add_unix_socket_support(session):
+    """Add support to a Requests session for HTTP over UNIX domain sockets."""
     session.mount("http+unix://", _UNIXAdapter())
