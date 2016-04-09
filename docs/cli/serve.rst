@@ -94,7 +94,7 @@ its command socket.
 
 An example command line::
 
-   einhorn -g -m manual -n 4 --bind localhost:9190 \
+   einhorn -m manual -n 4 --bind localhost:9190 \
       baseplate-serve2 myapp.ini
 
 .. _Stripe's Einhorn socket manager: https://github.com/stripe/einhorn

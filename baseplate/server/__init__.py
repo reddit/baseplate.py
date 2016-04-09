@@ -11,12 +11,11 @@ from __future__ import unicode_literals
 import argparse
 import collections
 import importlib
-import json
 import logging
-import os
 import socket
 import sys
 
+from . import einhorn
 from .._compat import configparser
 from ..config import Endpoint
 
@@ -74,36 +73,14 @@ def configure_logging(debug):
 
 
 def make_listener(endpoint):
-    """Inspect the environment and make an appropriate listening socket.
-
-    If the server is running under Einhorn, we'll use the bound socket it
-    provides otherwise we'll do a best effort to bind one ourselves.
-
-    Einhorn can bind multiple sockets (via multiple -b arguments) but we are
-    only going to care about one because we're not smart enough to use multiple
-    listeners. When sockets are bound, Einhorn provides several environment
-    variables to child worker processes:
-
-    - EINHORN_FD_COUNT: the number of sockets bound
-    - EINHORN_FD_#: for each socket bound, the file descriptor for that socket
-    - EINHORN_FD_FAMILY_#: for each socket bound, the protocol family of that
-        socket (this is a recent addition, so if it's not present default to
-        AF_INET)
-
-    """
-    try:
-        fd_count = int(os.environ["EINHORN_FD_COUNT"])
-    except KeyError:
+    if einhorn.is_worker():
+        return einhorn.get_socket()
+    else:
         sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(endpoint.address)
         sock.listen(128)
         return sock
-    else:
-        assert fd_count > 0, "Running under Einhorn  but no sockets were bound."
-        fileno = int(os.environ["EINHORN_FD_0"])
-        family = getattr(socket, os.environ.get("EINHORN_FD_FAMILY_0", "AF_INET"))
-        return socket.fromfd(fileno, family, socket.SOCK_STREAM)
 
 
 def _load_factory(url, default_name):
@@ -130,29 +107,6 @@ def make_app(app_config):
     return factory(app_config)
 
 
-def einhorn_ack_startup():
-    """Send acknowledgement that we started up to the Einhorn master.
-
-    If running under Einhorn, this will inform the master that this worker
-    process has successfully started up.
-
-    """
-    try:
-        control_sock_fd = int(os.environ["EINHORN_SOCK_FD"])
-    except (KeyError, ValueError):
-        return
-
-    control_sock = socket.fromfd(
-        control_sock_fd, socket.AF_INET, socket.SOCK_STREAM)
-
-    control_sock.sendall((json.dumps({
-        "command": "worker:ack",
-        "pid": os.getpid(),
-    }, sort_keys=True) + "\n").encode("utf-8"))
-
-    control_sock.close()
-
-
 def load_app_and_run_server():
     """Parse arguments, read configuration, and start the server."""
     args = parse_args(sys.argv[1:])
@@ -162,7 +116,9 @@ def load_app_and_run_server():
     app = make_app(config.app)
     listener = make_listener(args.bind)
     server = make_server(config.server, listener, app)
-    einhorn_ack_startup()
+
+    if einhorn.is_worker():
+        einhorn.ack_startup()
 
     logger.info("Listening on %s", listener.getsockname())
 

@@ -46,14 +46,14 @@ class ParseArgsTests(unittest.TestCase):
 
 
 class MakeListenerTests(unittest.TestCase):
-    @mock.patch.dict("os.environ", {"EINHORN_FD_COUNT": "1", "EINHORN_FD_0": "123"})
-    @mock.patch("socket.fromfd", autospec=True)
-    def test_einhorn_managed(self, fromfd):
+    @mock.patch("baseplate.server.einhorn.get_socket")
+    @mock.patch("baseplate.server.einhorn.is_worker")
+    def test_einhorn_managed(self, is_worker, get_socket):
+        is_worker.return_value = True
+
         listener = server.make_listener(EXAMPLE_ENDPOINT)
-        self.assertEqual(listener, fromfd.return_value)
-        self.assertEqual(fromfd.call_count, 1)
-        self.assertEqual(fromfd.call_args,
-            mock.call(123, socket.AF_INET, socket.SOCK_STREAM))
+
+        self.assertEqual(listener, get_socket.return_value)
 
     @mock.patch.dict("os.environ", {}, clear=True)
     @mock.patch("socket.socket")
@@ -81,33 +81,3 @@ class LoadFactoryTests(unittest.TestCase):
 
         self.assertEqual(import_module.call_args, mock.call("package.module"))
         self.assertEqual(factory, import_module.return_value.default_name)
-
-
-class EinhornAckStartupTests(unittest.TestCase):
-    @mock.patch.dict("os.environ", {}, clear=True)
-    @mock.patch("socket.fromfd", autospec=True)
-    def test_no_sock(self, fromfd):
-        server.einhorn_ack_startup()
-        self.assertEqual(fromfd.call_count, 0)
-
-    @mock.patch.dict("os.environ", {"EINHORN_SOCK_FD": "a"}, clear=True)
-    @mock.patch("socket.fromfd", autospec=True)
-    def test_invalid_sock(self, fromfd):
-        server.einhorn_ack_startup()
-        self.assertEqual(fromfd.call_count, 0)
-
-    @mock.patch.dict("os.environ", {"EINHORN_SOCK_FD": "42"})
-    @mock.patch("socket.fromfd", autospec=True)
-    @mock.patch("os.getpid", autospec=True)
-    def test_no_sock(self, getpid, fromfd):
-        getpid.return_value = 1337
-
-        server.einhorn_ack_startup()
-
-        self.assertEqual(fromfd.call_args,
-            mock.call(42, socket.AF_INET, socket.SOCK_STREAM))
-        mocket = fromfd.return_value
-
-        self.assertEqual(mocket.sendall.call_args,
-            mock.call(b'{"command": "worker:ack", "pid": 1337}\n'))
-        self.assertEqual(mocket.close.call_count, 1)
