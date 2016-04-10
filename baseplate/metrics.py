@@ -63,7 +63,8 @@ def _metric_join(*nodes):
 class NullTransport(object):
     """A transport which doesn't send messages at all."""
     def send(self, serialized_metric):
-        pass
+        for metric_line in serialized_metric.splitlines():
+            logger.debug("Would send metric %r", metric_line)
 
 
 class RawTransport(object):
