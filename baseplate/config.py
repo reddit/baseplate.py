@@ -199,7 +199,7 @@ def Timespan(text):
 
 
 def OneOf(**options):
-    """One of several pre-decided options.
+    """One of several predecided options.
 
     For each ``option``, the name is what should be in the configuration file
     and the value is what it is mapped to.
