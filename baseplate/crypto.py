@@ -55,7 +55,7 @@ class IncorrectSignatureError(SignatureError):
 class ExpiredSignatureError(SignatureError):
     """Raised when the signature is valid but has expired.
 
-    The ``expiration`` attribute is the time (as seconds since the unix epoch)
+    The ``expiration`` attribute is the time (as seconds since the UNIX epoch)
     at which the signature expired.
 
     """

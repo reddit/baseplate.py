@@ -24,7 +24,7 @@ Results
 
 If the service is healthy, the tool will exit with a status code indicating
 success (0) and print "OK!". If the service is unhealthy, the tool will exit
-with a status code indicating failure (1) and print an error message explaing
+with a status code indicating failure (1) and print an error message explaining
 what went wrong.
 
 Usage
