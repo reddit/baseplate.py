@@ -77,6 +77,38 @@ class EventTests(unittest.TestCase):
             },
         })
 
+    def test_unset_field(self):
+        event = Event("topic", "type")
+        event.set_field("foo", "bar")
+
+        # foo should point to bar
+        self.assertEqual("bar", event.get_field("foo"))
+        # removing the field should return bar
+        self.assertEqual("bar", event.unset_field("foo"))
+        # getting the field should return None
+        self.assertIsNone(event.get_field("foo"))
+        # removing it again should return None
+        self.assertIsNone(event.unset_field("foo"))
+
+    def test_unset_fields(self):
+        event = Event("topic", "type")
+
+        fields = ["a", "b", "c"]
+        n = len(fields)
+        for i in xrange(n):
+            event.set_field(fields[i], i)
+
+        # they should exist
+        for i in xrange(n):
+            self.assertIsNotNone(event.get_field(fields[i]))
+
+        # number of removed entries should be n
+        self.assertEqual(event.unset_fields(fields), n)
+
+        # getting them should result in None
+        for i in xrange(n):
+            self.assertIsNone(event.get_field(fields[i]))
+
 
 class EventQueueTests(unittest.TestCase):
     @mock.patch("baseplate.events.queue.MessageQueue", autospec=MessageQueue)
