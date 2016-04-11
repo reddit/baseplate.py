@@ -1,3 +1,12 @@
+baseplate (0.7.0) trusty; urgency=medium
+
+  * add support for binding and healthchecking UNIX domain sockets
+  * dump stacktrace when sent SIGUSR1
+  * log metrics at debug level for development
+  * various refactorings and internal cleanups
+
+ -- Neil Williams <neil@reddit.com>  Mon, 11 Apr 2016 14:20:22 -0700
+
 baseplate (0.6.0) trusty; urgency=medium
 
   * expose expiration times from message signatures
