@@ -26,7 +26,7 @@
     <link rel="shortcut icon" href="../_static/favicon.png"/>
     <link rel="top" title="Baseplate" href="../index.html" />
     <link rel="next" title="baseplate.core" href="../baseplate/core.html" />
-    <link rel="prev" title="Quick Start" href="../quickstart.html" />
+    <link rel="prev" title="baseplate-healthcheck" href="healthcheck.html" />
    
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -120,8 +120,21 @@ restarts, and worker health checks.</p>
 loaded and ready to serve, Baseplate notifies the Einhorn master process via
 its command socket.</p>
 <p>An example command line:</p>
-<div class="highlight-ini"><div class="highlight"><pre>einhorn -g -m manual -n 4 --bind localhost:9190 \
+<div class="highlight-ini"><div class="highlight"><pre>einhorn -m manual -n 4 --bind localhost:9190 \
    baseplate-serve2 myapp.ini
+</pre></div>
+</div>
+</div>
+<div class="section" id="debug-signal">
+<h2>Debug Signal<a class="headerlink" href="#debug-signal" title="Permalink to this headline">¶</a></h2>
+<p>Applications running under <tt class="docutils literal"><span class="pre">baseplate-serve</span></tt> will respond to <tt class="docutils literal"><span class="pre">SIGUSR1</span></tt> by
+printing a stack trace to the logger. This can be useful for debugging
+deadlocks and other issues.</p>
+<p>Note that Einhorn will exit if you send it a <tt class="docutils literal"><span class="pre">SIGUSR1</span></tt>. You can instead open up
+<tt class="docutils literal"><span class="pre">einhornsh</span></tt> and instruct the master to send the signal to all workers:</p>
+<div class="highlight-ini"><div class="highlight"><pre>$ einhornsh
+&gt; signal SIGUSR1
+Successfully sent USR1s to 4 processes: [...]
 </pre></div>
 </div>
 </div>
@@ -150,6 +163,7 @@ its command socket.</p>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
 </ul>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="healthcheck.html">baseplate-healthcheck: Is your service alive?</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">baseplate-serve: The application server</a><ul class="simple">
 </ul>
 </li>
@@ -177,7 +191,7 @@ its command socket.</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="../quickstart.html" title="previous chapter">Quick Start</a></li>
+      <li>Previous: <a href="healthcheck.html" title="previous chapter">baseplate-healthcheck</a></li>
       <li>Next: <a href="../baseplate/core.html" title="next chapter">baseplate.core</a></li>
   </ul></li>
 </ul>
