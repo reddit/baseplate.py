@@ -84,7 +84,8 @@ class EventTests(unittest.TestCase):
         # foo should point to bar
         self.assertEqual("bar", event.get_field("foo", obfuscated=obfuscated))
         # removing the field should return bar
-        self.assertEqual("bar", event.unset_field("foo", obfuscated=obfuscated))
+        self.assertEqual("bar", event.unset_field("foo",
+                                                  obfuscated=obfuscated))
         # getting the field should return None
         self.assertIsNone(event.get_field("foo", obfuscated=obfuscated))
         # removing it again should return None

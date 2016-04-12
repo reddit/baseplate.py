@@ -82,12 +82,14 @@ class Event(object):
 
     def unset_field(self, key, obfuscated=False):
         """Remove the key from payload if it exists.
+
         :param str key: The name of the field
-        :param bool obfuscated: Whether to look for the field in the obfuscated
-            payload
-        :return: value of key that was removed.  None otherwise
+        :param bool obfuscated: Whether to look for the field in
+            the obfuscated payload.
+        :return: value of key that was removed.  :py:data:`None` otherise.
         """
-        payload = self.payload if not obfuscated else self.payload.get("obfuscated_data")
+        payload = self.payload if not obfuscated\
+            else self.payload.get("obfuscated_data")
         return payload.pop(key, None)
 
     def serialize(self):
