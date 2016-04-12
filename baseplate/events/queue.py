@@ -86,7 +86,7 @@ class Event(object):
         :param str key: The name of the field
         :param bool obfuscated: Whether to look for the field in
             the obfuscated payload.
-        :return: value of key that was removed.  :py:data:`None` otherise.
+        :return: value of key that was removed.  :py:data:`None` otherwise.
         """
         payload = self.payload if not obfuscated\
             else self.payload.get("obfuscated_data")
