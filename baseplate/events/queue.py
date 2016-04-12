@@ -80,6 +80,18 @@ class Event(object):
             obfuscated_payload = self.payload.setdefault("obfuscated_data", {})
             obfuscated_payload[key] = value
 
+    def unset_field(self, key, obfuscated=False):
+        """Remove the key from payload if it exists.
+
+        :param str key: The name of the field
+        :param bool obfuscated: Whether to look for the field in
+            the obfuscated payload.
+        :return: value of key that was removed.  :py:data:`None` otherwise.
+        """
+        payload = self.payload if not obfuscated\
+            else self.payload.get("obfuscated_data")
+        return payload.pop(key, None)
+
     def serialize(self):
         return json.dumps({
             "event_topic": self.topic,

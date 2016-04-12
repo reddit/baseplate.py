@@ -77,6 +77,26 @@ class EventTests(unittest.TestCase):
             },
         })
 
+    def _test_unset_field(self, obfuscated):
+        event = Event("topic", "type")
+        event.set_field("foo", "bar", obfuscate=obfuscated)
+
+        # foo should point to bar
+        self.assertEqual("bar", event.get_field("foo", obfuscated=obfuscated))
+        # removing the field should return bar
+        self.assertEqual("bar", event.unset_field("foo",
+                                                  obfuscated=obfuscated))
+        # getting the field should return None
+        self.assertIsNone(event.get_field("foo", obfuscated=obfuscated))
+        # removing it again should return None
+        self.assertIsNone(event.unset_field("foo", obfuscated=obfuscated))
+
+    def test_unset_field_obfuscated(self):
+        self._test_unset_field(True)
+
+    def test_unset_field_not_obfuscated(self):
+        self._test_unset_field(False)
+
 
 class EventQueueTests(unittest.TestCase):
     @mock.patch("baseplate.events.queue.MessageQueue", autospec=MessageQueue)
