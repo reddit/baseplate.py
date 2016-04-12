@@ -77,37 +77,24 @@ class EventTests(unittest.TestCase):
             },
         })
 
-    def test_unset_field(self):
+    def _test_unset_field(self, obfuscated):
         event = Event("topic", "type")
-        event.set_field("foo", "bar")
+        event.set_field("foo", "bar", obfuscate=obfuscated)
 
         # foo should point to bar
-        self.assertEqual("bar", event.get_field("foo"))
+        self.assertEqual("bar", event.get_field("foo", obfuscated=obfuscated))
         # removing the field should return bar
-        self.assertEqual("bar", event.unset_field("foo"))
+        self.assertEqual("bar", event.unset_field("foo", obfuscated=obfuscated))
         # getting the field should return None
-        self.assertIsNone(event.get_field("foo"))
+        self.assertIsNone(event.get_field("foo", obfuscated=obfuscated))
         # removing it again should return None
-        self.assertIsNone(event.unset_field("foo"))
+        self.assertIsNone(event.unset_field("foo", obfuscated=obfuscated))
 
-    def test_unset_fields(self):
-        event = Event("topic", "type")
+    def test_unset_field_obfuscated(self):
+        self._test_unset_field(True)
 
-        fields = ["a", "b", "c"]
-        n = len(fields)
-        for i in xrange(n):
-            event.set_field(fields[i], i)
-
-        # they should exist
-        for i in xrange(n):
-            self.assertIsNotNone(event.get_field(fields[i]))
-
-        # number of removed entries should be n
-        self.assertEqual(event.unset_fields(fields), n)
-
-        # getting them should result in None
-        for i in xrange(n):
-            self.assertIsNone(event.get_field(fields[i]))
+    def test_unset_field_not_obfuscated(self):
+        self._test_unset_field(False)
 
 
 class EventQueueTests(unittest.TestCase):
