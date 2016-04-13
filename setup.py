@@ -7,37 +7,46 @@ PY3 = (sys.version_info.major == 3)
 
 install_requires = [
     "requests",
-    "posix_ipc",
 ],
-
-tests_require = [
-    "nose",
-    "coverage",
-    "webtest",
-]
-
-if not PY3:
-    tests_require.append("mock")
 
 extras_require = {
     "gevent": [
         "gevent",
     ],
 
-    "thrift": [
-        "thrift",
-    ],
-
     "pyramid": [
         "pyramid",
     ],
 
-    "docs": [
-        "sphinx",
-        "sphinxcontrib-spelling",
-        "alabaster",
+    "cassandra": [
+        "cassandra",
+    ],
+
+    "redis": [
+        "redis",
     ],
 }
+
+# I'm kinda abusing tests_require as a general "dev requirements" list
+tests_require = [
+    "nose",
+    "coverage",
+
+    "pyramid",
+    "webtest",
+
+    "sphinx",
+    "sphinxcontrib-spelling",
+    "alabaster",
+    "pyenchant",
+
+    "thrift",
+    "posix_ipc",
+]
+
+if not PY3:
+    tests_require.append("mock")
+
 
 setup(
     name="baseplate",
@@ -47,7 +56,6 @@ setup(
     install_requires=install_requires,
     extras_require=extras_require,
 
-    test_suite="tests",
     tests_require=tests_require,
 
     scripts=[

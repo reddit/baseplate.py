@@ -7,13 +7,8 @@ export PYBUILD_NAME=baseplate
 
 .PHONY: override_dh_auto_build
 override_dh_auto_build:
-	make thrift
 	make docs
 	dh_auto_build
-
-.PHONY: override_dh_auto_test
-override_dh_auto_test:
-	make tests
 
 .PHONY: override_dh_clean
 override_dh_clean:
