@@ -42,6 +42,8 @@ nosetests: build
 
 .PHONY: doctests
 doctests: build
+	$(PYTHON) setup.py --help
+	$(PYTHON) setup.py --help-commands
 	$(PYTHON) setup.py build_sphinx -b doctest
 
 .PHONY: spelling

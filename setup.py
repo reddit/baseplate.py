@@ -2,6 +2,10 @@ import sys
 
 from setuptools import setup, find_packages
 
+import setuptools
+print("SETUPTOOLS PATH = %r" % setuptools.__file__)
+print("SETUPTOOLS VERSION = %r" % setuptools.__version__)
+
 
 PY3 = (sys.version_info.major == 3)
 
