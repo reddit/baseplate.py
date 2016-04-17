@@ -44,7 +44,7 @@ tests_require = [
     "alabaster",
     "pyenchant",
 
-    "thrift",
+    "fbthrift",
     "posix_ipc",
 ]
 
@@ -83,6 +83,10 @@ setup(
             "baseplate-healthcheck{:d} = baseplate.server.healthcheck:run_healthchecks".format(sys.version_info.major),
         ],
     },
+
+    dependency_links=[
+        "git://github.com/reddit/fbthrift.git@e8059387b968b90fd3e9eab032dfaa721bf61721#egg=fbthrift",
+    ],
 
     classifiers=[
         "Development Status :: 5 - Production/Stable",
