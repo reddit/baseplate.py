@@ -53,7 +53,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
     def test_pool_empty_timeout(self):
         self.mock_queue.get.side_effect = queue.Empty
 
-        with self.assertRaises(thrift_pool.TimeoutError):
+        with self.assertRaises(TTransport.TTransportException):
             self.pool._acquire()
 
     @mock.patch("time.time")
@@ -120,7 +120,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
 
         mock_make_protocol.side_effect = [broken_prot] * 3
 
-        with self.assertRaises(thrift_pool.MaxRetriesError):
+        with self.assertRaises(TTransport.TTransportException):
             self.pool._acquire()
 
     def test_release_open(self):
@@ -172,7 +172,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         with self.assertRaises(TException):
             with self.pool.connection() as prot:
                 mock_prot.trans.isOpen.return_value = False
-                raise TException
+                raise TTransport.TTransportException
 
         self.assertEqual(prot, mock_prot)
         self.assertEqual(mock_prot.trans.close.call_count, 1)

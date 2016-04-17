@@ -14,9 +14,11 @@ import logging
 import socket
 import time
 
-from thrift import Thrift
-from thrift.transport import TSocket, TTransport
 from thrift.protocol import THeaderProtocol
+from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import TApplicationException
+from thrift.transport import TSocket
+from thrift.transport.TTransport import TTransportException
 
 from ._compat import queue
 
@@ -34,32 +36,6 @@ def _make_protocol(endpoint):
     return THeaderProtocol.THeaderProtocol(trans)
 
 
-class ThriftPoolError(Thrift.TException):
-    """The base class for all thrift connection pool errors."""
-    pass
-
-
-class TimeoutError(ThriftPoolError):
-    """Raised when the pool times out during an operation.
-
-    This can be raised if:
-
-    * the pool spends too long waiting for an available connection
-    * a connection attempt takes too long
-    * an RPC takes too long
-
-    """
-    def __init__(self):
-        super(TimeoutError, self).__init__("timed out")
-
-
-class MaxRetriesError(ThriftPoolError):
-    """Raised when the maximum number of connection attempts is exceeded."""
-    def __init__(self):
-        super(MaxRetriesError, self).__init__(
-            "giving up after multiple attempts to connect")
-
-
 class ThriftConnectionPool(object):
     """A pool that maintains a queue of open Thrift connections.
 
@@ -73,6 +49,9 @@ class ThriftConnectionPool(object):
         RPC call can take before a TimeoutError is raised.
     :param int max_retries: The maximum number of times the pool will attempt
         to open a connection.
+
+    All exceptions raised by this class derive from
+    :py:exc:`~thrift.transport.TTransport.TTransportException`.
 
     """
     def __init__(self, endpoint, size=10, max_age=120, timeout=1, max_retries=3):
@@ -89,7 +68,10 @@ class ThriftConnectionPool(object):
         try:
             prot = self.pool.get(block=True, timeout=self.timeout)
         except queue.Empty:
-            raise TimeoutError
+            raise TTransportException(
+                type=TTransportException.NOT_OPEN,
+                message="timed out waiting for a connection slot",
+            )
 
         for i in range(self.max_retries):
             if prot:
@@ -104,7 +86,7 @@ class ThriftConnectionPool(object):
 
             try:
                 prot.trans.open()
-            except TTransport.TTransportException as exc:
+            except TTransportException as exc:
                 logger.info("Failed to connect to %r: %s",
                     self.endpoint, exc)
                 prot = None
@@ -114,7 +96,10 @@ class ThriftConnectionPool(object):
 
             return prot
         else:
-            raise MaxRetriesError
+            raise TTransportException(
+                type=TTransportException.NOT_OPEN,
+                message="giving up after multiple attempts to connect",
+            )
 
     def _release(self, prot):
         if prot.trans.isOpen():
@@ -139,14 +124,27 @@ class ThriftConnectionPool(object):
         prot = self._acquire()
         try:
             yield prot
-        except Thrift.TException:
+        except (TApplicationException, TProtocolException, TTransportException):
+            # these exceptions usually indicate something low-level went wrong,
+            # so it's safest to just close this connection because we don't
+            # know what state it's in. the only other TException-derived errors
+            # should be application level errors which should be safe for the
+            # connection.
             prot.trans.close()
             raise
         except socket.timeout:
+            # thrift doesn't re-wrap socket timeout errors appropriately so
+            # we'll do it here for a saner exception hierarchy
             prot.trans.close()
-            raise TimeoutError
+            raise TTransportException(
+                type=TTransportException.TIMED_OUT,
+                message="timed out interacting with socket",
+            )
         except socket.error as exc:
             prot.trans.close()
-            raise ThriftPoolError(str(exc))
+            raise TTransportException(
+                type=TTransportException.UNKNOWN,
+                message=str(exc),
+            )
         finally:
             self._release(prot)
