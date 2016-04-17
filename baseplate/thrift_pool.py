@@ -21,6 +21,7 @@ from thrift.transport import TSocket
 from thrift.transport.TTransport import TTransportException
 
 from ._compat import queue
+from .retry import RetryPolicy
 
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class ThriftConnectionPool(object):
     def __init__(self, endpoint, size=10, max_age=120, timeout=1, max_retries=3):
         self.endpoint = endpoint
         self.max_age = max_age
-        self.max_retries = max_retries
+        self.retry_policy = RetryPolicy.new(attempts=max_retries)
         self.timeout = timeout
 
         self.pool = queue.LifoQueue()
@@ -73,7 +74,7 @@ class ThriftConnectionPool(object):
                 message="timed out waiting for a connection slot",
             )
 
-        for i in range(self.max_retries):
+        for _ in self.retry_policy:
             if prot:
                 if time.time() - prot.baseplate_birthdate < self.max_age:
                     return prot

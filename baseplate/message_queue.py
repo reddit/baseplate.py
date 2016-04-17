@@ -5,9 +5,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import select
-import time
 
 import posix_ipc
+
+from .retry import RetryPolicy
 
 
 class MessageQueueError(Exception):
@@ -20,29 +21,6 @@ class TimedOutError(MessageQueueError):
     def __init__(self):
         super(TimedOutError, self).__init__(
             "Timed out waiting for the message queue.")
-
-
-class _CumulativeTimeoutSelector(object):
-    """Helper to track a cumulative timeout across multiple select calls."""
-    def __init__(self, timeout):
-        self.time_remaining = timeout
-
-    def select(self, rfds=None, wfds=None):
-        if self.time_remaining is not None and self.time_remaining <= 0:
-            raise TimedOutError
-
-        # we use select.select here instead of the queue's own timeout ability
-        # so that if we're in gevent, the hub can monitor the queue's readiness
-        # rather than blocking the whole process.
-        start = time.time()
-        readable, writable, _ = select.select(
-            rfds or [], wfds or [], [], self.time_remaining)
-        elapsed = time.time() - start
-
-        if self.time_remaining is not None and self.time_remaining > 0:
-            self.time_remaining -= elapsed
-
-        return readable, writable
 
 
 class MessageQueue(object):
@@ -76,16 +54,16 @@ class MessageQueue(object):
             duration of the call.
 
         """
-        selector = _CumulativeTimeoutSelector(timeout)
-
-        while True:
+        for time_remaining in RetryPolicy.new(budget=timeout):
             try:
                 message, priority = self.queue.receive()
                 return message
             except posix_ipc.SignalError:  # pragma: nocover
                 continue  # interrupted, just try again
             except posix_ipc.BusyError:
-                selector.select(rfds=[self.queue.mqd])
+                select.select([self.queue.mqd], [], [], time_remaining)
+        else:
+            raise TimedOutError
 
     def put(self, message, timeout=None):
         """Add a message to the queue.
@@ -96,15 +74,15 @@ class MessageQueue(object):
             duration of the call.
 
         """
-        selector = _CumulativeTimeoutSelector(timeout)
-
-        while True:
+        for time_remaining in RetryPolicy.new(budget=timeout):
             try:
                 return self.queue.send(message=message)
             except posix_ipc.SignalError:  # pragma: nocover
                 continue  # interrupted, just try again
             except posix_ipc.BusyError:
-                selector.select(wfds=[self.queue.mqd])
+                select.select([], [self.queue.mqd], [], time_remaining)
+        else:
+            raise TimedOutError
 
     def unlink(self):
         """Remove the queue from the system.
