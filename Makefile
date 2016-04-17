@@ -1,10 +1,13 @@
-all: thrift build
+.PHONY: all
+all: build
 
 THRIFT=thrift1
 THRIFT_OPTS=-strict -gen py:utf8strings,slots,new_style
 THRIFT_BUILDDIR=build/thrift
 THRIFT_SOURCE=baseplate/thrift/baseplate.thrift
 THRIFT_BUILDSTAMPS=$(patsubst %,$(THRIFT_BUILDDIR)/%_buildstamp,$(THRIFT_SOURCE))
+
+PYTHON=python
 
 thrift: $(THRIFT_BUILDSTAMPS)
 
@@ -17,35 +20,40 @@ $(THRIFT_BUILDDIR)/baseplate/thrift/baseplate.thrift_buildstamp: baseplate/thrif
 	cp -r $(THRIFT_BUILDDIR)/$</baseplate/thrift/ baseplate/
 	touch $@
 
-build:
-	python2 setup.py build
-	python3 setup.py build
+.PHONY: build
+build: thrift
+	$(PYTHON) setup.py build
 
+.PHONY: docs
 docs:
-	sphinx-build -M html docs/ build/
+	$(PYTHON) setup.py build_sphinx -b html
 
-spelling:
-	sphinx-build -M spelling docs/ build/
-
+.PHONY: clean
 clean:
 	-rm -rf build/
 
+.PHONY: realclean
 realclean: clean
 	-rm -rf baseplate.egg-info/
 
-tests:
-	nosetests
-	nosetests3
-	sphinx-build -M doctest docs/ build/
-	sphinx-build -M spelling docs/ build/
+.PHONY: nosetests
+nosetests: build
+	$(PYTHON) setup.py nosetests
 
-develop:
-	python2 setup.py develop
-	python3 setup.py develop
+.PHONY: doctests
+doctests: build
+	$(PYTHON) setup.py --help
+	$(PYTHON) setup.py --help-commands
+	$(PYTHON) setup.py build_sphinx -b doctest
 
-install:
-	python2 setup.py install
-	python3 setup.py install
+.PHONY: spelling
+spelling:
+	$(PYTHON) setup.py build_sphinx -b spelling
 
+.PHONY: tests
+tests: nosetests doctests spelling
 
-.PHONY: docs spelling clean realclean tests develop install build
+.PHONY: alltests
+alltests:
+	make PYTHON=python2.7 tests
+	make PYTHON=python3.4 tests

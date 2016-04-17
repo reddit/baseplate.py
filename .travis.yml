@@ -10,20 +10,13 @@ python:
     - "2.7"
     - "3.4"
 
-virtualenv:
-    system_site_packages: true
-
 before_install:
     - sudo add-apt-repository -y ppa:reddit/ppa
     - sudo apt-get update -q
-    - sudo apt-get install -y python-fbthrift python3-fbthrift fbthrift-compiler python-sphinx python-sphinxcontrib.spelling python-alabaster python-posix-ipc python3-posix-ipc
+    - sudo apt-get install -y fbthrift-compiler libenchant-dev
 
 install:
-    - pip install -e ".[gevent,pyramid]"
-    - pip install webtest coverage
+    - pip install -e .
+    - python setup.py test
 
-script:
-    - make
-    - nosetests
-    - sphinx-build -M doctest docs/ build/
-    - sphinx-build -M spelling docs/ build/
+script: make tests
