@@ -84,10 +84,6 @@ setup(
         ],
     },
 
-    dependency_links=[
-        "git+http://github.com/reddit/fbthrift.git@e8059387b968b90fd3e9eab032dfaa721bf61721#egg=thrift",
-    ],
-
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: BSD License",
