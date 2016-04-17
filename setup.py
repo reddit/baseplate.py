@@ -44,7 +44,7 @@ tests_require = [
     "alabaster",
     "pyenchant",
 
-    "fbthrift",
+    "thrift",
     "posix_ipc",
 ]
 
@@ -85,7 +85,7 @@ setup(
     },
 
     dependency_links=[
-        "git://github.com/reddit/fbthrift.git@e8059387b968b90fd3e9eab032dfaa721bf61721#egg=fbthrift",
+        "git+http://github.com/reddit/fbthrift.git@e8059387b968b90fd3e9eab032dfaa721bf61721#egg=thrift",
     ],
 
     classifiers=[
