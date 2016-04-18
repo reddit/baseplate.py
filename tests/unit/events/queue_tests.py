@@ -9,7 +9,6 @@ import unittest
 
 from baseplate.events import (
     Event,
-    EventError,
     EventQueue,
     EventQueueFullError,
     EventTooLargeError,

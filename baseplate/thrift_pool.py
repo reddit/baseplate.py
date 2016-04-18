@@ -82,7 +82,7 @@ class ThriftConnectionPool(object):
         self.timeout = timeout
 
         self.pool = queue.LifoQueue()
-        for i in range(size):
+        for _ in range(size):
             self.pool.put(None)
 
     def _acquire(self):

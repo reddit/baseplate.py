@@ -60,14 +60,19 @@ def _metric_join(*nodes):
     return b".".join(node.strip(b".") for node in nodes)
 
 
-class NullTransport(object):
+class Transport(object):
+    def send(self, serialized_metric):
+        raise NotImplementedError
+
+
+class NullTransport(Transport):
     """A transport which doesn't send messages at all."""
     def send(self, serialized_metric):
         for metric_line in serialized_metric.splitlines():
             logger.debug("Would send metric %r", metric_line)
 
 
-class RawTransport(object):
+class RawTransport(Transport):
     """A transport which sends messages on a socket."""
     def __init__(self, endpoint):
         self.socket = socket.socket(endpoint.family, socket.SOCK_DGRAM)
