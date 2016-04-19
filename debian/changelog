@@ -1,3 +1,9 @@
+baseplate (0.8.1) trusty; urgency=medium
+
+  * fix bug in event publishers where zero timeout never executed
+
+ -- Neil Williams <neil@reddit.com>  Tue, 19 Apr 2016 14:03:37 -0700
+
 baseplate (0.8.0) trusty; urgency=medium
 
   * breaking: rework thrift_pool exception hierarchy to integrate
