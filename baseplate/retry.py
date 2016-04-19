@@ -102,10 +102,10 @@ class TimeBudgetRetryPolicy(RetryPolicy):
     def yield_attempts(self):
         start_time = time.time()
 
-        for _ in self.subpolicy:
+        for i, _ in enumerate(self.subpolicy):
             elapsed = time.time() - start_time
             time_remaining = self.budget - elapsed
-            if time_remaining <= 0:
+            if i > 0 and time_remaining <= 0:
                 break
             yield time_remaining
 

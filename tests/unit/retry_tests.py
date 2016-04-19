@@ -46,6 +46,17 @@ class RetryPolicyTests(unittest.TestCase):
         with self.assertRaises(StopIteration):
             next(retries)
 
+    @mock.patch("time.time", autospec=True)
+    def test_time_budget_always_executes_at_least_once(self, time):
+        policy = TimeBudgetRetryPolicy(IndefiniteRetryPolicy(), budget=0)
+
+        time.return_value = 0
+        retries = iter(policy)
+        self.assertEqual(next(retries), 0)
+
+        with self.assertRaises(StopIteration):
+            next(retries)
+
     @mock.patch("time.sleep", autospec=True)
     def test_exponential_backoff(self, sleep):
         base_policy = mock.MagicMock()
