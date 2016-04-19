@@ -1,3 +1,12 @@
+baseplate (0.8.0) trusty; urgency=medium
+
+  * breaking: rework thrift_pool exception hierarchy to integrate
+    with thrift exceptions better
+  * add general low-level retry policy module
+  * add retry sugar to thrift context-object client
+
+ -- Neil Williams <neil@reddit.com>  Tue, 19 Apr 2016 11:33:51 -0700
+
 baseplate (0.7.0) trusty; urgency=medium
 
   * add support for binding and healthchecking UNIX domain sockets
