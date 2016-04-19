@@ -107,7 +107,7 @@ class TimeBudgetRetryPolicy(RetryPolicy):
             time_remaining = self.budget - elapsed
             if i > 0 and time_remaining <= 0:
                 break
-            yield time_remaining
+            yield max(0, time_remaining)
 
 
 class ExponentialBackoffRetryPolicy(RetryPolicy):
