@@ -42,7 +42,8 @@
 <h1 id="index">Index</h1>
 
 <div class="genindex-jumpbox">
- <a href="#A"><strong>A</strong></a>
+ <a href="#_"><strong>_</strong></a>
+ | <a href="#A"><strong>A</strong></a>
  | <a href="#B"><strong>B</strong></a>
  | <a href="#C"><strong>C</strong></a>
  | <a href="#D"><strong>D</strong></a>
@@ -52,6 +53,7 @@
  | <a href="#I"><strong>I</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
+ | <a href="#N"><strong>N</strong></a>
  | <a href="#O"><strong>O</strong></a>
  | <a href="#P"><strong>P</strong></a>
  | <a href="#R"><strong>R</strong></a>
@@ -59,8 +61,19 @@
  | <a href="#T"><strong>T</strong></a>
  | <a href="#U"><strong>U</strong></a>
  | <a href="#V"><strong>V</strong></a>
+ | <a href="#Y"><strong>Y</strong></a>
  
 </div>
+<h2 id="_">_</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/retry.html#baseplate.retry.RetryPolicy.__iter__">__iter__() (baseplate.retry.RetryPolicy method)</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
 <h2 id="A">A</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
@@ -142,6 +155,10 @@
 
       
   <dt><a href="baseplate/metrics.html#module-baseplate.metrics">baseplate.metrics (module)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/retry.html#module-baseplate.retry">baseplate.retry (module)</a>
   </dt>
 
       
@@ -398,14 +415,10 @@
   <dt><a href="baseplate/core.html#baseplate.core.Baseplate.make_root_span">make_root_span() (baseplate.core.Baseplate method)</a>
   </dt>
 
-      
-  <dt><a href="baseplate/crypto.html#baseplate.crypto.MessageSigner.make_signature">make_signature() (baseplate.crypto.MessageSigner method)</a>
-  </dt>
-
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="baseplate/thrift_pool.html#baseplate.thrift_pool.MaxRetriesError">MaxRetriesError</a>
+  <dt><a href="baseplate/crypto.html#baseplate.crypto.MessageSigner.make_signature">make_signature() (baseplate.crypto.MessageSigner method)</a>
   </dt>
 
       
@@ -422,6 +435,16 @@
 
       
   <dt><a href="baseplate/diagnostics/index.html#baseplate.diagnostics.metrics.MetricsBaseplateObserver">MetricsBaseplateObserver (class in baseplate.diagnostics.metrics)</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
+<h2 id="N">N</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/retry.html#baseplate.retry.RetryPolicy.new">new() (baseplate.retry.RetryPolicy static method)</a>
   </dt>
 
   </dl></td>
@@ -521,6 +544,10 @@
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="baseplate/retry.html#baseplate.retry.RetryPolicy">RetryPolicy (class in baseplate.retry)</a>
+  </dt>
+
+      
   <dt><a href="baseplate/core.html#baseplate.core.RootSpan">RootSpan (class in baseplate.core)</a>
   </dt>
 
@@ -603,23 +630,15 @@
   </dt>
 
       
-  <dt><a href="baseplate/thrift_pool.html#baseplate.thrift_pool.ThriftPoolError">ThriftPoolError</a>
-  </dt>
-
-      
   <dt><a href="baseplate/message_queue.html#baseplate.message_queue.TimedOutError">TimedOutError</a>
   </dt>
 
       
-  <dt><a href="baseplate/thrift_pool.html#baseplate.thrift_pool.TimeoutError">TimeoutError</a>
+  <dt><a href="baseplate/metrics.html#baseplate.metrics.Timer">Timer (class in baseplate.metrics)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
-      
-  <dt><a href="baseplate/metrics.html#baseplate.metrics.Timer">Timer (class in baseplate.metrics)</a>
-  </dt>
-
       
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Batch.timer">timer() (baseplate.metrics.Batch method)</a>
   </dt>
@@ -667,6 +686,16 @@
   </dl></td>
 </tr></table>
 
+<h2 id="Y">Y</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/retry.html#baseplate.retry.RetryPolicy.yield_attempts">yield_attempts() (baseplate.retry.RetryPolicy method)</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
 
 
           </div>
@@ -707,6 +736,7 @@
 <li class="toctree-l1"><a class="reference internal" href="baseplate/events.html">baseplate.events: Events for the data pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="baseplate/message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="baseplate/metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/retry.html">baseplate.retry: Policies for retrying operations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="baseplate/thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
 </ul>
 <ul>

@@ -56,6 +56,7 @@ be used without the framework.
    baseplate.events: Events for the data pipeline <baseplate/events>
    baseplate.message_queue: POSIX IPC Message Queues <baseplate/message_queue>
    baseplate.metrics: Counters and timers for statsd <baseplate/metrics>
+   baseplate.retry: Policies for retrying operations <baseplate/retry>
    baseplate.thrift_pool: A Thrift client connection pool <baseplate/thrift_pool>
 
 Other

@@ -85,6 +85,15 @@ e.g. <tt class="docutils literal"><span class="pre">YourService.Client</span></t
 </tr>
 </tbody>
 </table>
+<p>The proxy object has a <tt class="docutils literal"><span class="pre">retrying</span></tt> method which takes the same parameters
+as <a class="reference internal" href="../retry.html#baseplate.retry.RetryPolicy.new" title="baseplate.retry.RetryPolicy.new"><tt class="xref py py-meth docutils literal"><span class="pre">RetryPolicy.new</span></tt></a> and acts as
+a context manager. The context manager returns another proxy object where
+Thrift service method calls will be automatically retried with the
+specified retry policy when transient errors occur:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">with</span> <span class="n">context</span><span class="o">.</span><span class="n">my_service</span><span class="o">.</span><span class="n">retrying</span><span class="p">(</span><span class="n">attempts</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span> <span class="k">as</span> <span class="n">svc</span><span class="p">:</span>
+    <span class="n">svc</span><span class="o">.</span><span class="n">some_method</span><span class="p">()</span>
+</pre></div>
+</div>
 </dd></dl>
 
 </div>
@@ -200,6 +209,7 @@ object</em></a> with the name specified in <tt class="docutils literal"><span cl
 <li class="toctree-l1"><a class="reference internal" href="../events.html">baseplate.events: Events for the data pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../retry.html">baseplate.retry: Policies for retrying operations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
 </ul>
 <ul>
