@@ -172,10 +172,11 @@ def Timespan(text):
     This takes a string of the form "1 second" or "3 days" and returns a
     :py:class:`datetime.timedelta` representing that span of time.
 
-    Units supported are: seconds, minutes, hours, days.
+    Units supported are: milliseconds, seconds, minutes, hours, days.
 
     """
     scale_by_unit = {
+        "millisecond": 0.001,
         "second": 1,
         "minute": 60,
         "hour": 60 * 60,

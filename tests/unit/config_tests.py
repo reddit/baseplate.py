@@ -108,6 +108,9 @@ class TimespanTests(unittest.TestCase):
             config.Timespan("3.2 hours")
 
     def test_timespan(self):
+        result = config.Timespan("30 milliseconds")
+        self.assertAlmostEqual(result.total_seconds(), 0.03)
+
         result = config.Timespan("1 second")
         self.assertEqual(result.total_seconds(), 1)
 
