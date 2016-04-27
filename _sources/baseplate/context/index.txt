@@ -10,12 +10,20 @@ Services
 .. autoclass:: baseplate.context.thrift.ThriftContextFactory
 
 
-Data Stores
------------
+Cassandra
+---------
 
 .. autoclass:: baseplate.context.cassandra.CassandraContextFactory
 
+
+Redis
+-----
+
 .. autoclass:: baseplate.context.redis.RedisContextFactory
+   :members:
+
+.. autoclass:: baseplate.context.redis.MonitoredRedisConnection
+   :members:
 
 
 DIY: The Factory
