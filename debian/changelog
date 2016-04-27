@@ -1,3 +1,10 @@
+baseplate (0.9.0) trusty; urgency=medium
+
+  * config.Timespan: add support for milliseconds
+  * redis: add diagnostics support for pipelines
+
+ -- Neil Williams <neil@reddit.com>  Wed, 27 Apr 2016 10:24:22 -0700
+
 baseplate (0.8.1) trusty; urgency=medium
 
   * fix bug in event publishers where zero timeout never executed
