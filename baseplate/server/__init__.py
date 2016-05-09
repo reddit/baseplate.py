@@ -83,6 +83,7 @@ def make_listener(endpoint):
     else:
         sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
 
+        # configure the socket to be auto-closed if we exec() e.g. on reload
         flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFD)
         fcntl.fcntl(sock.fileno(), fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
 
