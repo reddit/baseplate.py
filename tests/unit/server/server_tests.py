@@ -56,8 +56,9 @@ class MakeListenerTests(unittest.TestCase):
         self.assertEqual(listener, get_socket.return_value)
 
     @mock.patch.dict("os.environ", {}, clear=True)
+    @mock.patch("fcntl.fcntl")
     @mock.patch("socket.socket")
-    def test_manually_bound(self, mocket):
+    def test_manually_bound(self, mocket, fcntl):
         listener = server.make_listener(EXAMPLE_ENDPOINT)
 
         self.assertEqual(mocket.call_args,

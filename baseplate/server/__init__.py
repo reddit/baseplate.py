@@ -10,6 +10,7 @@ from __future__ import unicode_literals
 
 import argparse
 import collections
+import fcntl
 import importlib
 import logging
 import signal
@@ -17,7 +18,7 @@ import socket
 import sys
 import traceback
 
-from . import einhorn
+from . import einhorn, reloader
 from .._compat import configparser
 from ..config import Endpoint
 
@@ -33,6 +34,8 @@ def parse_args(args):
 
     parser.add_argument("--debug", action="store_true", default=False,
         help="enable extra-verbose debug logging")
+    parser.add_argument("--reload", action="store_true", default=False,
+        help="restart the server when code changes (development only)")
     parser.add_argument("--app-name", default="main", metavar="NAME",
         help="name of app to load from config_file (default: main)")
     parser.add_argument("--server-name", default="main", metavar="NAME",
@@ -79,6 +82,10 @@ def make_listener(endpoint):
         return einhorn.get_socket()
     else:
         sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
+
+        flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFD)
+        fcntl.fcntl(sock.fileno(), fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(endpoint.address)
         sock.listen(128)
@@ -139,6 +146,9 @@ def load_app_and_run_server():
 
     if einhorn.is_worker():
         einhorn.ack_startup()
+
+    if args.reload:
+        reloader.start_reload_watcher(extra_files=[args.config_file.name])
 
     logger.info("Listening on %s", listener.getsockname())
 
