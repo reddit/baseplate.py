@@ -1,3 +1,9 @@
+baseplate (0.10.0) trusty; urgency=medium
+
+  * add automatic reloader to baseplate-serve for development
+
+ -- Neil Williams <neil@reddit.com>  Thu, 12 May 2016 10:15:16 -0700
+
 baseplate (0.9.0) trusty; urgency=medium
 
   * config.Timespan: add support for milliseconds
