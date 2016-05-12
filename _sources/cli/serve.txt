@@ -81,6 +81,14 @@ Thrift
 WSGI
    A WSGI callable.
 
+Automatic reload on source changes
+----------------------------------
+
+In development, it's useful for the server to restart itself when you change
+code.  You can do this by passing the ``--reload`` flag to ``baseplate-serve``.
+
+This should not be used in production environments.
+
 Einhorn
 -------
 

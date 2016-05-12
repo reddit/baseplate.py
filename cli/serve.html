@@ -111,6 +111,12 @@ options with <a class="reference internal" href="../baseplate/config.html#module
 <dd>A WSGI callable.</dd>
 </dl>
 </div>
+<div class="section" id="automatic-reload-on-source-changes">
+<h2>Automatic reload on source changes<a class="headerlink" href="#automatic-reload-on-source-changes" title="Permalink to this headline">¶</a></h2>
+<p>In development, it&#8217;s useful for the server to restart itself when you change
+code.  You can do this by passing the <tt class="docutils literal"><span class="pre">--reload</span></tt> flag to <tt class="docutils literal"><span class="pre">baseplate-serve</span></tt>.</p>
+<p>This should not be used in production environments.</p>
+</div>
 <div class="section" id="einhorn">
 <h2>Einhorn<a class="headerlink" href="#einhorn" title="Permalink to this headline">¶</a></h2>
 <p><tt class="docutils literal"><span class="pre">baseplate-serve</span></tt> can run as a worker in <a class="reference external" href="https://github.com/stripe/einhorn">Stripe&#8217;s Einhorn socket manager</a>.
