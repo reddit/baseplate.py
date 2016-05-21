@@ -47,10 +47,11 @@ class CassandraSessionAdapter(object):
         return self.execute_async(query, parameters, timeout).result()
 
     def execute_async(self, query, parameters=None, timeout=_NOT_SET):
-        trace_name = "{}.{}".format(self.context_name, "query")
+        trace_name = "{}.{}".format(self.context_name, "execute")
         span = self.root_span.make_child(trace_name)
         span.start()
         # TODO: include custom payload
+        span.annotate("statement", query)
         future = self.session.execute_async(query, parameters, timeout)
         future.add_callback(_on_execute_complete, span)
         future.add_errback(_on_execute_failed, span)
@@ -59,6 +60,5 @@ class CassandraSessionAdapter(object):
     def prepare(self, query):
         trace_name = "{}.{}".format(self.context_name, "prepare")
         with self.root_span.make_child(trace_name) as span:
-            # TODO: include custom payload
-            span.annotate("query", query)
+            span.annotate("statement", query)
             return self.session.prepare(query)
