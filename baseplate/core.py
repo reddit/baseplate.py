@@ -55,7 +55,7 @@ class RootSpanObserver(SpanObserver):
         :param baseplate.core.Span span: The new child span.
 
         """
-        raise NotImplementedError
+        pass
 
 
 class Baseplate(object):
