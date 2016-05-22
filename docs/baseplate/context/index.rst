@@ -26,6 +26,14 @@ Redis
    :members:
 
 
+SQLAlchemy
+----------
+
+.. autoclass:: baseplate.context.sqlalchemy.SQLAlchemyEngineContextFactory
+
+.. autoclass:: baseplate.context.sqlalchemy.SQLAlchemySessionContextFactory
+
+
 DIY: The Factory
 ----------------
 

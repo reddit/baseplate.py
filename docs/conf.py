@@ -28,6 +28,7 @@ intersphinx_mapping = {
     "pyramid": ("http://docs.pylonsproject.org/projects/pyramid/en/1.5-branch", "intersphinx/pyramid.inv"),
     "cassandra": ("https://datastax.github.io/python-driver/", "intersphinx/cassandra.inv"),
     "redis": ("https://redis-py.readthedocs.org/en/latest/", "intersphinx/redis.inv"),
+    "sqlalchemy": ("http://www.sqlalchemy.org/docs/05/objects.inv", "intersphinx/sqlalchemy.inv"),
 }
 
 # The suffix of source filenames.
