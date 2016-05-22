@@ -18,4 +18,3 @@ class LoggingBaseplateObserver(BaseplateObserver):
     """
     def on_root_span_created(self, context, root_span):  # pragma: nocover
         threading.current_thread().name = str(root_span.trace_id)
-        return None

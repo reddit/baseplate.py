@@ -10,7 +10,7 @@ import unittest
 import webtest
 
 from baseplate import Baseplate
-from baseplate.core import BaseplateObserver
+from baseplate.core import BaseplateObserver, RootSpanObserver
 from baseplate.integration.pyramid import BaseplateConfigurator
 from pyramid.config import Configurator
 from pyramid.request import Request
@@ -30,6 +30,10 @@ class ConfiguratorTests(unittest.TestCase):
             example_application, route_name="example", renderer="json")
 
         self.observer = mock.Mock(spec=BaseplateObserver)
+        self.root_observer = mock.Mock(spec=RootSpanObserver)
+        def _register_mock(context, root_span):
+            root_span.register(self.root_observer)
+        self.observer.on_root_span_created.side_effect = _register_mock
 
         self.baseplate = Baseplate()
         self.baseplate.register(self.observer)
@@ -52,9 +56,8 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(root_span.parent_id, "no-parent")
         self.assertEqual(root_span.id, "no-span")
 
-        mock_root_observer = self.observer.on_root_span_created.return_value
-        self.assertTrue(mock_root_observer.on_start.called)
-        self.assertTrue(mock_root_observer.on_stop.called)
+        self.assertTrue(self.root_observer.on_start.called)
+        self.assertTrue(self.root_observer.on_stop.called)
 
     def test_trace_headers(self):
         self.test_app.get("/example", headers={
@@ -71,9 +74,8 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(root_span.parent_id, "2345")
         self.assertEqual(root_span.id, "3456")
 
-        mock_root_observer = self.observer.on_root_span_created.return_value
-        self.assertTrue(mock_root_observer.on_start.called)
-        self.assertTrue(mock_root_observer.on_stop.called)
+        self.assertTrue(self.root_observer.on_start.called)
+        self.assertTrue(self.root_observer.on_stop.called)
 
     def test_not_found(self):
         self.test_app.get("/nope", status=404)

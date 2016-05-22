@@ -11,7 +11,7 @@ try:
 except ImportError:
     from cStringIO import StringIO
 
-from baseplate.core import Baseplate, BaseplateObserver
+from baseplate.core import Baseplate, BaseplateObserver, RootSpanObserver
 from baseplate.integration.thrift import BaseplateProcessorEventHandler
 from baseplate.thrift import BaseplateService
 
@@ -36,6 +36,11 @@ class ThriftTests(unittest.TestCase):
         self.oprot = THeaderProtocol(self.otrans)
 
         self.observer = mock.Mock(spec=BaseplateObserver)
+        self.root_observer = mock.Mock(spec=RootSpanObserver)
+        def _register_mock(context, root_span):
+            root_span.register(self.root_observer)
+        self.observer.on_root_span_created.side_effect = _register_mock
+
         self.logger = mock.Mock(spec=logging.Logger)
         self.server_context = TRpcConnectionContext(
             self.itrans, self.iprot, self.oprot)
@@ -68,9 +73,8 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(root_span.parent_id, "no-parent")
         self.assertEqual(root_span.id, "no-span")
 
-        mock_root_observer = self.observer.on_root_span_created.return_value
-        self.assertTrue(mock_root_observer.on_start.called)
-        self.assertTrue(mock_root_observer.on_stop.called)
+        self.assertTrue(self.root_observer.on_start.called)
+        self.assertTrue(self.root_observer.on_stop.called)
 
     def test_with_headers(self):
         client_memory_trans = TMemoryBuffer()
@@ -95,6 +99,5 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(root_span.parent_id, "2345")
         self.assertEqual(root_span.id, "3456")
 
-        mock_root_observer = self.observer.on_root_span_created.return_value
-        self.assertTrue(mock_root_observer.on_start.called)
-        self.assertTrue(mock_root_observer.on_stop.called)
+        self.assertTrue(self.root_observer.on_start.called)
+        self.assertTrue(self.root_observer.on_stop.called)

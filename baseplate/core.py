@@ -12,15 +12,11 @@ class BaseplateObserver(object):
     def on_root_span_created(self, context, root_span):  # pragma: nocover
         """Called when a root span is created.
 
-        :py:class:`Baseplate` calls this when a new request begins. If a
-        :py:class:`RootSpanObserver` instance is returned, it will receive
-        events from that root span.
+        :py:class:`Baseplate` calls this when a new request begins.
 
         :param context: The :term:`context object` for this request.
         :param baseplate.core.RootSpan root_span: The root span representing
             this request.
-        :return: A :py:class:`RootSpanObserver` for this request,
-            or :py:data:`None` if not desired.
 
         """
         raise NotImplementedError
@@ -54,12 +50,9 @@ class RootSpanObserver(SpanObserver):
         """Called when a child span is created.
 
         :py:class:`RootSpan` objects call this when a new child span is
-        created. If a :py:class:`SpanObserver` instance is returned, it will
-        receive events from that span.
+        created.
 
         :param baseplate.core.Span span: The new child span.
-        :return: A :py:class:`SpanObserver` for this request,
-            or :py:data:`None` if not desired.
 
         """
         raise NotImplementedError
@@ -127,16 +120,10 @@ class Baseplate(object):
         of the root span, and the root span will in turn be the child span of
         whatever upstream request it is part of.
 
-        Any :py:class:`BaseplateObserver` objects registered are given an
-        opportunity to make :py:class:`RootSpanObserver` objects to watch the
-        new child span.
-
         """
         root_span = RootSpan(trace_id, parent_id, span_id, name)
         for observer in self.observers:
-            root_observer = observer.on_root_span_created(context, root_span)
-            if root_observer:
-                root_span._register(root_observer)
+            observer.on_root_span_created(context, root_span)
         return root_span
 
 
@@ -150,7 +137,8 @@ class Span(object):
         self.name = name
         self.observers = []
 
-    def _register(self, observer):
+    def register(self, observer):
+        """Register an observer to receive events from this span."""
         self.observers.append(observer)
 
     def start(self):
@@ -213,17 +201,9 @@ class RootSpan(Span):
     """
 
     def make_child(self, name):
-        """Return a child span representing an outbound service call.
-
-        Any :py:class:`RootSpanObserver` objects registered with this span are
-        given an opportunity to make :py:class:`SpanObserver` objects to watch
-        this span.
-
-        """
+        """Return a child span representing an outbound service call."""
         span_id = random.getrandbits(64)
         span = Span(self.trace_id, self.id, span_id, name)
         for observer in self.observers:
-            child_observer = observer.on_child_span_created(span)
-            if child_observer:
-                span._register(child_observer)
+            observer.on_child_span_created(span)
         return span
