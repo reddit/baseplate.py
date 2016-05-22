@@ -30,8 +30,6 @@ class BaseplateTests(unittest.TestCase):
         self.assertEqual(mock_observer.on_root_span_created.call_count, 1)
         self.assertEqual(mock_observer.on_root_span_created.call_args,
             mock.call(mock_context, root_span))
-        self.assertEqual(root_span.observers,
-            [mock_observer.on_root_span_created.return_value])
 
     def test_null_root_observer(self):
         mock_context = mock.Mock()
@@ -50,7 +48,7 @@ class SpanTests(unittest.TestCase):
         mock_observer = mock.Mock(spec=SpanObserver)
 
         span = Span(1, 2, 3, "name")
-        span._register(mock_observer)
+        span.register(mock_observer)
 
         span.start()
         self.assertEqual(mock_observer.on_start.call_count, 1)
@@ -65,7 +63,7 @@ class SpanTests(unittest.TestCase):
         mock_observer = mock.Mock(spec=SpanObserver)
 
         span = Span(1, 2, 3, "name")
-        span._register(mock_observer)
+        span.register(mock_observer)
 
         with span:
             self.assertEqual(mock_observer.on_start.call_count, 1)
@@ -75,7 +73,7 @@ class SpanTests(unittest.TestCase):
         mock_observer = mock.Mock(spec=SpanObserver)
 
         span = Span(1, 2, 3, "name")
-        span._register(mock_observer)
+        span.register(mock_observer)
 
         class TestException(Exception):
             pass
@@ -93,20 +91,16 @@ class RootSpanTests(unittest.TestCase):
     def test_make_child(self, mock_getrandbits):
         mock_getrandbits.return_value = 0xCAFE
 
-        mock_child = mock.Mock(spec=Span)
-
         mock_observer = mock.Mock(spec=RootSpanObserver)
-        mock_child = mock_observer.on_child_span_created.return_value
 
         root_span = RootSpan("trace", "parent", "id", "name")
-        root_span._register(mock_observer)
+        root_span.register(mock_observer)
         child_span = root_span.make_child("child_name")
 
         self.assertEqual(child_span.name, "child_name")
         self.assertEqual(child_span.id, 0xCAFE)
         self.assertEqual(child_span.trace_id, "trace")
         self.assertEqual(child_span.parent_id, "id")
-        self.assertEqual(child_span.observers, [mock_child])
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
         self.assertEqual(mock_observer.on_child_span_created.call_args,
             mock.call(child_span))
@@ -116,7 +110,7 @@ class RootSpanTests(unittest.TestCase):
         mock_observer.on_child_span_created.return_value = None
 
         root_span = RootSpan("trace", "parent", "id", "name")
-        root_span._register(mock_observer)
+        root_span.register(mock_observer)
         child_span = root_span.make_child("child_name")
 
         self.assertEqual(child_span.observers, [])

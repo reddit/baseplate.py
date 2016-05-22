@@ -25,11 +25,11 @@ class ObserverTests(unittest.TestCase):
         mock_root_span.name = "name"
 
         observer = MetricsBaseplateObserver(mock_client)
-        root_observer = observer.on_root_span_created(mock_context, mock_root_span)
+        observer.on_root_span_created(mock_context, mock_root_span)
         self.assertEqual(mock_batch.timer.call_args, mock.call("server.name"))
 
         self.assertEqual(mock_context.metrics, mock_batch)
-        self.assertIsNotNone(root_observer)
+        self.assertEqual(mock_root_span.register.call_count, 1)
 
 
 class RootSpanObserverTests(unittest.TestCase):
