@@ -81,6 +81,20 @@ Thrift
 WSGI
    A WSGI callable.
 
+Logging
+-------
+
+The baseplate server provides a default configuration for the Python standard
+``logging`` system. The root logger will print to ``stdout`` with a format that
+includes trace information. The default log level is ``INFO`` or ``DEBUG`` if
+the ``--debug`` flag is passed to ``baseplate-serve``.
+
+If more complex logging configuration is necessary, the configuration file will
+override the default setup. The `configuration format`_ is documented in the
+standard library.
+
+.. _configuration format: https://docs.python.org/2/library/logging.config.html#logging-config-fileformat
+
 Automatic reload on source changes
 ----------------------------------
 
