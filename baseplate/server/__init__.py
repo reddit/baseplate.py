@@ -13,6 +13,7 @@ import collections
 import fcntl
 import importlib
 import logging
+import logging.config
 import signal
 import socket
 import sys
@@ -49,18 +50,28 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-Configuration = collections.namedtuple("Configuration", ["server", "app"])
+Configuration = collections.namedtuple(
+    "Configuration", ["filename", "server", "app", "has_logging_options"])
 
 
 def read_config(config_file, server_name, app_name):
     parser = configparser.SafeConfigParser()
     parser.readfp(config_file)
+
+    filename = config_file.name
     server_config = dict(parser.items("server:" + server_name))
     app_config = dict(parser.items("app:" + app_name))
-    return Configuration(server_config, app_config)
+    has_logging_config = parser.has_section("loggers")
+
+    return Configuration(
+        filename,
+        server_config,
+        app_config,
+        has_logging_config,
+    )
 
 
-def configure_logging(debug):
+def configure_logging(config, debug):
     if debug:
         logging_level = logging.DEBUG
     else:
@@ -75,6 +86,9 @@ def configure_logging(debug):
     root_logger = logging.getLogger()
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
+
+    if config.has_logging_options:
+        logging.config.fileConfig(config.filename)
 
 
 def make_listener(endpoint):
@@ -139,7 +153,7 @@ def load_app_and_run_server():
 
     args = parse_args(sys.argv[1:])
     config = read_config(args.config_file, args.server_name, args.app_name)
-    configure_logging(args.debug)
+    configure_logging(config, args.debug)
 
     app = make_app(config.app)
     listener = make_listener(args.bind)
