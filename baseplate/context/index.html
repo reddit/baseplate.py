@@ -180,6 +180,62 @@ are wrapped with a transaction and executed atomically.</li>
 </dd></dl>
 
 </div>
+<div class="section" id="sqlalchemy">
+<h2>SQLAlchemy<a class="headerlink" href="#sqlalchemy" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="baseplate.context.sqlalchemy.SQLAlchemyEngineContextFactory">
+<em class="property">class </em><tt class="descclassname">baseplate.context.sqlalchemy.</tt><tt class="descname">SQLAlchemyEngineContextFactory</tt><big>(</big><em>engine</em><big>)</big><a class="headerlink" href="#baseplate.context.sqlalchemy.SQLAlchemyEngineContextFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>SQLAlchemy core engine context factory.</p>
+<p>This factory will attach a SQLAlchemy <a class="reference external" href="http://www.sqlalchemy.org/docs/05/objects.inv/core/connections.html#sqlalchemy.engine.Engine" title="(in SQLAlchemy v1.1)"><tt class="xref py py-class docutils literal"><span class="pre">sqlalchemy.engine.Engine</span></tt></a>
+to an attribute on the <a class="reference internal" href="../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a>. All cursor (query) execution
+will automatically record diagnostic information.</p>
+<p>Additionally, the trace and span ID will be added as a comment to the text
+of the SQL statement. This is to aid correlation of queries with requests.</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last">The engine is the low-level SQLAlchemy API. If you want to use the ORM,
+consider using
+<a class="reference internal" href="#baseplate.context.sqlalchemy.SQLAlchemySessionContextFactory" title="baseplate.context.sqlalchemy.SQLAlchemySessionContextFactory"><tt class="xref py py-class docutils literal"><span class="pre">SQLAlchemySessionContextFactory</span></tt></a>
+instead.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>engine</strong> (<a class="reference external" href="http://www.sqlalchemy.org/docs/05/objects.inv/core/connections.html#sqlalchemy.engine.Engine" title="(in SQLAlchemy v1.1)"><em>sqlalchemy.engine.Engine</em></a>) &#8211; A configured SQLAlchemy engine.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.context.sqlalchemy.SQLAlchemySessionContextFactory">
+<em class="property">class </em><tt class="descclassname">baseplate.context.sqlalchemy.</tt><tt class="descname">SQLAlchemySessionContextFactory</tt><big>(</big><em>engine</em><big>)</big><a class="headerlink" href="#baseplate.context.sqlalchemy.SQLAlchemySessionContextFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>SQLAlchemy ORM session context factory.</p>
+<p>This factory will attach a new SQLAlchemy
+<a class="reference external" href="http://www.sqlalchemy.org/docs/05/objects.inv/orm/session_api.html#sqlalchemy.orm.session.Session" title="(in SQLAlchemy v1.1)"><tt class="xref py py-class docutils literal"><span class="pre">sqlalchemy.orm.session.Session</span></tt></a> to an attribute on the
+<a class="reference internal" href="../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a>. All cursor (query) execution will automatically
+record diagnostic information.</p>
+<p>The session will be automatically closed, but not committed or rolled back,
+at the end of each request.</p>
+<div class="admonition seealso">
+<p class="first admonition-title">See also</p>
+<p class="last">The session is part of the high-level SQLAlchemy ORM API. If you want
+to do raw queries, consider using
+<a class="reference internal" href="#baseplate.context.sqlalchemy.SQLAlchemyEngineContextFactory" title="baseplate.context.sqlalchemy.SQLAlchemyEngineContextFactory"><tt class="xref py py-class docutils literal"><span class="pre">SQLAlchemyEngineContextFactory</span></tt></a>
+instead.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>engine</strong> (<a class="reference external" href="http://www.sqlalchemy.org/docs/05/objects.inv/core/connections.html#sqlalchemy.engine.Engine" title="(in SQLAlchemy v1.1)"><em>sqlalchemy.engine.Engine</em></a>) &#8211; A configured SQLAlchemy engine.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
 <div class="section" id="diy-the-factory">
 <h2>DIY: The Factory<a class="headerlink" href="#diy-the-factory" title="Permalink to this headline">¶</a></h2>
 <div class="admonition note">

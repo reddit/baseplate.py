@@ -41,4 +41,4 @@ serving requests::
 For more info on this mysterious ``baseplate-serve2``, check out the `chapter
 about the baseplate server`_.
 
-.. _chapter about the baseplate server: server.html
+.. _chapter about the baseplate server: cli/serve.html

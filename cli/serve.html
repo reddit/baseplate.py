@@ -111,6 +111,16 @@ options with <a class="reference internal" href="../baseplate/config.html#module
 <dd>A WSGI callable.</dd>
 </dl>
 </div>
+<div class="section" id="logging">
+<h2>Logging<a class="headerlink" href="#logging" title="Permalink to this headline">¶</a></h2>
+<p>The baseplate server provides a default configuration for the Python standard
+<tt class="docutils literal"><span class="pre">logging</span></tt> system. The root logger will print to <tt class="docutils literal"><span class="pre">stdout</span></tt> with a format that
+includes trace information. The default log level is <tt class="docutils literal"><span class="pre">INFO</span></tt> or <tt class="docutils literal"><span class="pre">DEBUG</span></tt> if
+the <tt class="docutils literal"><span class="pre">--debug</span></tt> flag is passed to <tt class="docutils literal"><span class="pre">baseplate-serve</span></tt>.</p>
+<p>If more complex logging configuration is necessary, the configuration file will
+override the default setup. The <a class="reference external" href="https://docs.python.org/2/library/logging.config.html#logging-config-fileformat">configuration format</a> is documented in the
+standard library.</p>
+</div>
 <div class="section" id="automatic-reload-on-source-changes">
 <h2>Automatic reload on source changes<a class="headerlink" href="#automatic-reload-on-source-changes" title="Permalink to this headline">¶</a></h2>
 <p>In development, it&#8217;s useful for the server to restart itself when you change

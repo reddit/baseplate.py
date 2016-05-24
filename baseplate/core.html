@@ -159,9 +159,6 @@ purposes so it should be descriptive.</li>
 request. Any calls made to downstream services will be new child spans
 of the root span, and the root span will in turn be the child span of
 whatever upstream request it is part of.</p>
-<p>Any <a class="reference internal" href="#baseplate.core.BaseplateObserver" title="baseplate.core.BaseplateObserver"><tt class="xref py py-class docutils literal"><span class="pre">BaseplateObserver</span></tt></a> objects registered are given an
-opportunity to make <a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> objects to watch the
-new child span.</p>
 </dd></dl>
 
 </dd></dl>
@@ -192,9 +189,6 @@ the <tt class="docutils literal"><span class="pre">trace</span></tt> attribute.<
 <dt id="baseplate.core.RootSpan.make_child">
 <tt class="descname">make_child</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.make_child" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a child span representing an outbound service call.</p>
-<p>Any <a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> objects registered with this span are
-given an opportunity to make <a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> objects to watch
-this span.</p>
 </dd></dl>
 
 <dl class="method">
@@ -216,6 +210,12 @@ interpret or ignore annotations as they desire.</p>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.RootSpan.register">
+<tt class="descname">register</tt><big>(</big><em>observer</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register an observer to receive events from this span.</p>
 </dd></dl>
 
 <dl class="method">
@@ -252,6 +252,12 @@ normal exit.</td>
 <dt id="baseplate.core.Span">
 <em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">Span</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.Span" title="Permalink to this definition">¶</a></dt>
 <dd><p>A span represents a single RPC within a system.</p>
+<dl class="method">
+<dt id="baseplate.core.Span.register">
+<tt class="descname">register</tt><big>(</big><em>observer</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register an observer to receive events from this span.</p>
+</dd></dl>
+
 <dl class="method">
 <dt id="baseplate.core.Span.start">
 <tt class="descname">start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.Span.start" title="Permalink to this definition">¶</a></dt>
@@ -341,22 +347,16 @@ statsd <tt class="xref py py-meth docutils literal"><span class="pre">on_stop()<
 <dt id="baseplate.core.BaseplateObserver.on_root_span_created">
 <tt class="descname">on_root_span_created</tt><big>(</big><em>context</em>, <em>root_span</em><big>)</big><a class="headerlink" href="#baseplate.core.BaseplateObserver.on_root_span_created" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called when a root span is created.</p>
-<p><a class="reference internal" href="#baseplate.core.Baseplate" title="baseplate.core.Baseplate"><tt class="xref py py-class docutils literal"><span class="pre">Baseplate</span></tt></a> calls this when a new request begins. If a
-<a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> instance is returned, it will receive
-events from that root span.</p>
+<p><a class="reference internal" href="#baseplate.core.Baseplate" title="baseplate.core.Baseplate"><tt class="xref py py-class docutils literal"><span class="pre">Baseplate</span></tt></a> calls this when a new request begins.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>context</strong> &#8211; The <a class="reference internal" href="../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> for this request.</li>
 <li><strong>root_span</strong> (<a class="reference internal" href="#baseplate.core.RootSpan" title="baseplate.core.RootSpan"><em>baseplate.core.RootSpan</em></a>) &#8211; The root span representing
 this request.</li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A <a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> for this request,
-or <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> if not desired.</p>
 </td>
 </tr>
 </tbody>
@@ -374,16 +374,12 @@ or <a class="reference external" href="https://docs.python.org/3.4/library/const
 <tt class="descname">on_child_span_created</tt><big>(</big><em>span</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpanObserver.on_child_span_created" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called when a child span is created.</p>
 <p><a class="reference internal" href="#baseplate.core.RootSpan" title="baseplate.core.RootSpan"><tt class="xref py py-class docutils literal"><span class="pre">RootSpan</span></tt></a> objects call this when a new child span is
-created. If a <a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> instance is returned, it will
-receive events from that span.</p>
+created.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>span</strong> (<a class="reference internal" href="#baseplate.core.Span" title="baseplate.core.Span"><em>baseplate.core.Span</em></a>) &#8211; The new child span.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A <a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> for this request,
-or <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> if not desired.</td>
 </tr>
 </tbody>
 </table>
