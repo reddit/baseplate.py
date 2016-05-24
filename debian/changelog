@@ -1,3 +1,12 @@
+baseplate (0.11.0) trusty; urgency=medium
+
+  * allow logging configuration to be overridden in INI file
+  * rework diagnostics observer registration interface
+  * add sqlalchemy diagnostics support
+  * rename cassandra span annotations/names to match sqlalchemy
+
+ -- Neil Williams <neil@reddit.com>  Tue, 24 May 2016 11:29:31 -0700
+
 baseplate (0.10.0) trusty; urgency=medium
 
   * add automatic reloader to baseplate-serve for development
