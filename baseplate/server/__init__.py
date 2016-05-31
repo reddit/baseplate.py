@@ -18,6 +18,7 @@ import signal
 import socket
 import sys
 import traceback
+import warnings
 
 from . import einhorn, reloader
 from .._compat import configparser
@@ -72,8 +73,11 @@ def read_config(config_file, server_name, app_name):
 
 
 def configure_logging(config, debug):
+    logging.captureWarnings(capture=True)
+
     if debug:
         logging_level = logging.DEBUG
+        warnings.simplefilter('always')  # enable DeprecationWarning etc.
     else:
         logging_level = logging.INFO
 
