@@ -96,16 +96,19 @@ class MaximumAttemptsRetryPolicy(RetryPolicy):
 class TimeBudgetRetryPolicy(RetryPolicy):
     """Constrain attempts to an overall time budget."""
     def __init__(self, policy, budget):
+        assert budget >= 0, "The time budget must not be negative."
         self.subpolicy = policy
         self.budget = budget
 
     def yield_attempts(self):
         start_time = time.time()
 
-        for i, _ in enumerate(self.subpolicy):
+        yield self.budget
+
+        for _ in self.subpolicy:
             elapsed = time.time() - start_time
             time_remaining = self.budget - elapsed
-            if i > 0 and time_remaining <= 0:
+            if time_remaining <= 0:
                 break
             yield time_remaining
 
