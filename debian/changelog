@@ -1,3 +1,11 @@
+baseplate (0.11.1) trusty; urgency=medium
+
+  * fix bug with negative time-remaining on time budget retries
+    this caused zero-timeout puts to full message queues to raise
+    an unexpected exception
+
+ -- Neil Williams <neil@reddit.com>  Thu, 09 Jun 2016 14:33:14 -0700
+
 baseplate (0.11.0) trusty; urgency=medium
 
   * allow logging configuration to be overridden in INI file
