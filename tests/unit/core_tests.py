@@ -12,6 +12,7 @@ from baseplate.core import (
     RootSpanObserver,
     Span,
     SpanObserver,
+    TraceInfo,
 )
 
 from .. import mock
@@ -24,7 +25,7 @@ class BaseplateTests(unittest.TestCase):
 
         baseplate = Baseplate()
         baseplate.register(mock_observer)
-        root_span = baseplate.make_root_span(mock_context, 1, 2, "name", 3)
+        root_span = baseplate.make_root_span(mock_context, "name", TraceInfo(1, 2, 3))
 
         self.assertEqual(baseplate.observers, [mock_observer])
         self.assertEqual(mock_observer.on_root_span_created.call_count, 1)
@@ -38,7 +39,7 @@ class BaseplateTests(unittest.TestCase):
 
         baseplate = Baseplate()
         baseplate.register(mock_observer)
-        root_span = baseplate.make_root_span(mock_context, 1, 2, "name", 3)
+        root_span = baseplate.make_root_span(mock_context, "name", TraceInfo(1, 2, 3))
 
         self.assertEqual(root_span.observers, [])
 

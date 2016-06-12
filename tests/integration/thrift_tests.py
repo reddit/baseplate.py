@@ -54,7 +54,10 @@ class ThriftTests(unittest.TestCase):
         self.processor = BaseplateService.ContextProcessor(handler)
         self.processor.setEventHandler(event_handler)
 
-    def test_no_headers(self):
+    @mock.patch("random.getrandbits")
+    def test_no_trace_headers(self, getrandbits):
+        getrandbits.return_value = 1234
+
         client_memory_trans = TMemoryBuffer()
         client_prot = THeaderProtocol(client_memory_trans)
         client = BaseplateService.Client(client_prot)
@@ -69,9 +72,9 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(self.observer.on_root_span_created.call_count, 1)
 
         context, root_span = self.observer.on_root_span_created.call_args[0]
-        self.assertEqual(root_span.trace_id, "no-trace")
-        self.assertEqual(root_span.parent_id, "no-parent")
-        self.assertEqual(root_span.id, "no-span")
+        self.assertEqual(root_span.trace_id, 1234)
+        self.assertEqual(root_span.parent_id, None)
+        self.assertEqual(root_span.id, 1234)
 
         self.assertTrue(self.root_observer.on_start.called)
         self.assertTrue(self.root_observer.on_stop.called)
@@ -95,9 +98,9 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(self.observer.on_root_span_created.call_count, 1)
 
         context, root_span = self.observer.on_root_span_created.call_args[0]
-        self.assertEqual(root_span.trace_id, "1234")
-        self.assertEqual(root_span.parent_id, "2345")
-        self.assertEqual(root_span.id, "3456")
+        self.assertEqual(root_span.trace_id, 1234)
+        self.assertEqual(root_span.parent_id, 2345)
+        self.assertEqual(root_span.id, 3456)
 
         self.assertTrue(self.root_observer.on_start.called)
         self.assertTrue(self.root_observer.on_stop.called)

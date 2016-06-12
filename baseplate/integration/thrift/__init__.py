@@ -24,6 +24,8 @@ from __future__ import unicode_literals
 
 from thrift.Thrift import TProcessorEventHandler
 
+from ...core import TraceInfo
+
 
 class RequestContext(object):
     pass
@@ -46,18 +48,22 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
     def getHandlerContext(self, fn_name, server_context):
         context = RequestContext()
 
+        trace_info = None
         headers = server_context.iprot.trans.get_headers()
-        trace_id = headers.get(b"Trace", b"no-trace").decode()
-        parent_id = headers.get(b"Parent", b"no-parent").decode()
-        span_id = headers.get(b"Span", b"no-span").decode()
+        try:
+            trace_info = TraceInfo.from_upstream(
+                trace_id=int(headers[b"Trace"]),
+                parent_id=int(headers[b"Parent"]),
+                span_id=int(headers[b"Span"]),
+            )
+        except (KeyError, ValueError):
+            pass
 
         context.headers = headers
         context.trace = self.baseplate.make_root_span(
             context,
-            trace_id=trace_id,
-            parent_id=parent_id,
-            span_id=span_id,
             name=fn_name,
+            trace_info=trace_info,
         )
         return context
 

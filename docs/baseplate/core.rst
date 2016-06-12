@@ -19,10 +19,11 @@ incomplete example of an application built on the framework::
 
 When a request is made which routes to the ``do_something`` handler, a
 :py:class:`~baseplate.core.RootSpan` is automatically created. If the incoming
-request has trace headers, the root span will be identical to the child span in
-the upstream service. When we call ``request.some_redis_client.ping()`` in the
-handler, Baseplate will create a child :py:class:`~baseplate.core.Span` object
-to represent the time taken talking to redis.
+request has trace headers, we construct the root span to be identical to the
+child span in the upstream service. When we call
+``request.some_redis_client.ping()`` in the handler, Baseplate will create a
+child :py:class:`~baseplate.core.Span` object to represent the time taken
+talking to redis.
 
 The creation of the root and child spans will trigger updates on all the
 :py:class:`~baseplate.core.RootSpanObserver` and
@@ -52,6 +53,9 @@ integrations <integration/index>`.
 .. autoclass:: Baseplate
    :members:
 
+.. autoclass:: TraceInfo
+   :members:
+
 Spans
 -----
 
@@ -76,7 +80,7 @@ else might be helpful.
    :inherited-members:
 
 .. autoclass:: Span
-   :members:
+   :members: from_upstream
 
 Observers
 ---------
