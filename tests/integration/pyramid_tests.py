@@ -45,16 +45,18 @@ class ConfiguratorTests(unittest.TestCase):
         app = configurator.make_wsgi_app()
         self.test_app = webtest.TestApp(app)
 
-    def test_no_trace_headers(self):
+    @mock.patch("random.getrandbits")
+    def test_no_trace_headers(self, getrandbits):
+        getrandbits.return_value = 1234
         self.test_app.get("/example")
 
         self.assertEqual(self.observer.on_root_span_created.call_count, 1)
 
         context, root_span = self.observer.on_root_span_created.call_args[0]
         self.assertIsInstance(context, Request)
-        self.assertEqual(root_span.trace_id, "no-trace")
-        self.assertEqual(root_span.parent_id, "no-parent")
-        self.assertEqual(root_span.id, "no-span")
+        self.assertEqual(root_span.trace_id, 1234)
+        self.assertEqual(root_span.parent_id, None)
+        self.assertEqual(root_span.id, 1234)
 
         self.assertTrue(self.root_observer.on_start.called)
         self.assertTrue(self.root_observer.on_stop.called)
@@ -70,9 +72,9 @@ class ConfiguratorTests(unittest.TestCase):
 
         context, root_span = self.observer.on_root_span_created.call_args[0]
         self.assertIsInstance(context, Request)
-        self.assertEqual(root_span.trace_id, "1234")
-        self.assertEqual(root_span.parent_id, "2345")
-        self.assertEqual(root_span.id, "3456")
+        self.assertEqual(root_span.trace_id, 1234)
+        self.assertEqual(root_span.parent_id, 2345)
+        self.assertEqual(root_span.id, 3456)
 
         self.assertTrue(self.root_observer.on_start.called)
         self.assertTrue(self.root_observer.on_stop.called)
@@ -84,6 +86,7 @@ class ConfiguratorTests(unittest.TestCase):
 
     @mock.patch("random.getrandbits")
     def test_distrust_headers(self, getrandbits):
+        getrandbits.return_value = 1234
         self.baseplate_configurator.trust_trace_headers = False
 
         self.test_app.get("/example", headers={

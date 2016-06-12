@@ -3,7 +3,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import collections
 import random
+
+from ._utils import warn_deprecated
 
 
 class BaseplateObserver(object):
@@ -56,6 +59,51 @@ class RootSpanObserver(SpanObserver):
 
         """
         pass
+
+
+_TraceInfo = collections.namedtuple("_TraceInfo", "trace_id parent_id span_id")
+
+
+class TraceInfo(_TraceInfo):
+    """Trace context for a span.
+
+    If this request was made at the behest of an upstream service, the upstream
+    service should have passed along trace information. This class is used for
+    collecting the trace context and passing it along to the root span.
+
+    """
+    @classmethod
+    def new(cls):
+        """Generate IDs for a new initial root span.
+
+        This span has no parent and has a random ID. It cannot be correlated
+        with any upstream requests.
+
+        """
+        trace_id = random.getrandbits(64)
+        return cls(trace_id=trace_id, parent_id=None, span_id=trace_id)
+
+    @classmethod
+    def from_upstream(cls, trace_id, parent_id, span_id):
+        """Build a TraceInfo from individual headers.
+
+        :param int trace_id: The ID of the trace.
+        :param int parent_id: The ID of the parent span.
+        :param int span_id: The ID of this span within the tree.
+
+        :raises: :py:exc:`ValueError` if any of the values are inappropriate.
+
+        """
+        if trace_id is None or not 0 <= trace_id < 2**64:
+            raise ValueError("invalid trace_id")
+
+        if span_id is None or not 0 <= span_id < 2**64:
+            raise ValueError("invalid span_id")
+
+        if parent_id is None or not 0 <= parent_id < 2**64:
+            raise ValueError("invalid parent_id")
+
+        return cls(trace_id, parent_id, span_id)
 
 
 class Baseplate(object):
@@ -112,7 +160,7 @@ class Baseplate(object):
         from .context import ContextObserver
         self.register(ContextObserver(name, context_factory))
 
-    def make_root_span(self, context, trace_id, parent_id, span_id, name):
+    def make_root_span(self, context, name, trace_info=None, **kwargs):
         """Return a root span representing the current request we are handling.
 
         In a server, a root span represents the time spent on a single incoming
@@ -120,8 +168,30 @@ class Baseplate(object):
         of the root span, and the root span will in turn be the child span of
         whatever upstream request it is part of.
 
+        :param context: The :term:`context object` for this request.
+        :param str name: A name to identify the type of this request, e.g.
+            a route or RPC method name.
+        :param baseplate.core.TraceInfo trace_info: The trace context of this
+            request as passed in from upstream. If :py:data:`None`, a new trace
+            context will be generated.
+
         """
-        root_span = RootSpan(trace_id, parent_id, span_id, name)
+
+        if "trace_id" in kwargs:
+            warn_deprecated("Passing trace_id/parent_id/span_id to "
+                            "make_root_span is deprecated in favor of passing "
+                            "a single TraceInfo object as trace_info.")
+
+            trace_info = TraceInfo(
+                trace_id=kwargs["trace_id"],
+                parent_id=kwargs["parent_id"],
+                span_id=kwargs["span_id"],
+            )
+        elif trace_info is None:
+            trace_info = TraceInfo.new()
+
+        root_span = RootSpan(trace_info.trace_id, trace_info.parent_id,
+                             trace_info.span_id, name)
         for observer in self.observers:
             observer.on_root_span_created(context, root_span)
         return root_span

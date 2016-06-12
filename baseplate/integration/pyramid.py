@@ -24,9 +24,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import random
-
 from pyramid.events import ContextFound, NewResponse
+
+from ..core import TraceInfo
 
 
 class BaseplateConfigurator(object):
@@ -58,21 +58,21 @@ class BaseplateConfigurator(object):
             # TODO: some metric for 404s would be good
             return
 
+        trace_info = None
         if self.trust_trace_headers:
-            trace_id = request.headers.get("X-Trace", "no-trace")
-            parent_id = request.headers.get("X-Parent", "no-parent")
-            span_id = request.headers.get("X-Span", "no-span")
-        else:
-            trace_id = random.getrandbits(64)
-            parent_id = None
-            span_id = trace_id
+            try:
+                trace_info = TraceInfo.from_upstream(
+                    trace_id=int(request.headers["X-Trace"]),
+                    parent_id=int(request.headers["X-Parent"]),
+                    span_id=int(request.headers["X-Span"]),
+                )
+            except (KeyError, ValueError):
+                pass
 
         request.trace = self.baseplate.make_root_span(
             request,
-            trace_id=trace_id,
-            parent_id=parent_id,
-            span_id=span_id,
             name=request.matched_route.name,
+            trace_info=trace_info,
         )
         request.trace.start()
 
