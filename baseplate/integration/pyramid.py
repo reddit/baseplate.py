@@ -27,6 +27,7 @@ from __future__ import unicode_literals
 from pyramid.events import ContextFound, NewResponse
 
 from ..core import TraceInfo
+from ..server import make_app
 
 
 class BaseplateConfigurator(object):
@@ -69,9 +70,12 @@ class BaseplateConfigurator(object):
             except (KeyError, ValueError):
                 pass
 
+        request.start_root_span(request.matched_route.name, trace_info)
+
+    def _start_root_span(self, request, name, trace_info=None):
         request.trace = self.baseplate.make_root_span(
             request,
-            name=request.matched_route.name,
+            name=name,
             trace_info=trace_info,
         )
         request.trace.start()
@@ -85,3 +89,49 @@ class BaseplateConfigurator(object):
     def includeme(self, config):
         config.add_subscriber(self._on_new_request, ContextFound)
         config.add_subscriber(self._on_new_response, NewResponse)
+
+        # the pyramid "scripting context" (e.g. pshell) sets up a
+        # psuedo-request environment but does not call NewRequest. it does,
+        # however, set up request methods. so, we attach this method to the
+        # request so we can access it in both pshell_setup and _on_new_request
+        # for the different context we can be running in.
+        # see: Pylons/pyramid#520
+        #
+        # pyramid gets all cute with descriptors and will pass the request
+        # object as the first ("self") param to bound methods. wrapping
+        # the bound method in a simple function prevents that behavior
+        def start_root_span(*args, **kwargs):
+            return self._start_root_span(*args, **kwargs)
+        config.add_request_method(start_root_span, "start_root_span")
+
+
+def paste_make_app(global_config, **local_config):
+    """Make an application object, PasteDeploy style.
+
+    This is a compatibility shim to adapt the baseplate app entrypoint to
+    PasteDeploy-style so tools like Pyramid's pshell work.
+
+    To use it, add a single line to your app's section in its INI file:
+
+        [app:your_app]
+        use = egg:baseplate
+
+    """
+    return make_app(local_config)
+
+
+def pshell_setup(env):
+    """Start a root span when pshell starts up.
+
+    This simply starts a root span after the shell initializes, which
+    gives shell users access to all the :term:`context object` goodness.
+
+    To use it, add configuration to your app's INI file like so:
+
+        [pshell]
+        setup = baseplate.integration.pyramid:pshell_setup
+
+    See http://docs.pylonsproject.org/projects/pyramid/en/latest/narr/commandline.html#extending-the-shell
+
+    """
+    env["request"].start_root_span("shell")
