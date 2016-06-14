@@ -10,7 +10,9 @@ For example, an INI file like the following:
 .. include:: ../config_example.ini
    :literal:
 
-Might be parsed like this:
+Might be parsed like the following. Note: when running under the baseplate
+server, The ``config_parser.items(...)`` step is taken care of for you and
+``raw_config`` is passed as the only argument to your factory function.
 
 .. highlight:: py
 
@@ -24,9 +26,6 @@ Might be parsed like this:
 .. doctest::
 
     >>> raw_config = dict(config_parser.items("app:main"))
-    # note: when running under baseplate-serve, your factory
-    # function will receive this raw_config as its only argument.
-    # the above step is just here to make clear the expected format.
 
     >>> CARDS = config.OneOf(clubs=1, spades=2, diamonds=3, hearts=4)
     >>> cfg = config.parse_config(raw_config, {
