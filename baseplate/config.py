@@ -7,13 +7,8 @@ For example, an INI file like the following:
 
 .. highlight:: ini
 
-::
-
-    [app:main]
-    simple = true
-    cards = clubs, spades, diamonds
-    nested.once = 1
-    nested.really.deep = 3 seconds
+.. include:: ../config_example.ini
+   :literal:
 
 Might be parsed like this:
 
@@ -22,14 +17,16 @@ Might be parsed like this:
 .. testsetup::
 
     from baseplate import config
-    raw_config = {
-        "simple": "true",
-        "cards": "clubs, spades, diamonds",
-        "nested.once": "1",
-        "nested.really.deep": "3 seconds",
-    }
+    from baseplate._compat import configparser
+    config_parser = configparser.ConfigParser()
+    config_parser.readfp(open("docs/config_example.ini"))
 
 .. doctest::
+
+    >>> raw_config = dict(config_parser.items("app:main"))
+    # note: when running under baseplate-serve, your factory
+    # function will receive this raw_config as its only argument.
+    # the above step is just here to make clear the expected format.
 
     >>> CARDS = config.OneOf(clubs=1, spades=2, diamonds=3, hearts=4)
     >>> cfg = config.parse_config(raw_config, {
