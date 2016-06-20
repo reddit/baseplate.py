@@ -41,6 +41,12 @@ class FieldKind(Enum):
     be treated with care.
     """
 
+    HIGH_CARDINALITY = "interana_excluded"
+    """
+    For fields that should not be indexed due to high cardinality
+    (e.g. not used in Interana)
+    """
+
 
 class Event(object):
     """An event."""

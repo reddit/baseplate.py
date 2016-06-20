@@ -59,6 +59,8 @@ class EventTests(unittest.TestCase):
         event = Event("topic", "type")
         event.set_field("normal", "value1")
         event.set_field("obfuscated", "value2", kind=FieldKind.OBFUSCATED)
+        event.set_field("high_cardinality", "value3",
+                        kind=FieldKind.HIGH_CARDINALITY)
         event.set_field("empty", "")
         event.set_field("null", None)
 
@@ -74,6 +76,9 @@ class EventTests(unittest.TestCase):
                 "normal": "value1",
                 "obfuscated_data": {
                     "obfuscated": "value2",
+                },
+                "interana_excluded": {
+                    "high_cardinality": "value3",
                 },
             },
         })
@@ -135,6 +140,38 @@ class EventTests(unittest.TestCase):
             "foo": "bar",
         })
 
+        event.set_field("foo", "bar", kind=FieldKind.HIGH_CARDINALITY)
+        self._assert_payload(event, {
+            "interana_excluded": {
+                "foo": "bar",
+            },
+        })
+
+        event.set_field("foo", "bar")
+        self._assert_payload(event, {
+            "foo": "bar",
+        })
+
+        event.set_field("foo", "bar", kind=FieldKind.HIGH_CARDINALITY)
+        self._assert_payload(event, {
+            "interana_excluded": {
+                "foo": "bar",
+            },
+        })
+
+        event.set_field("foo", "bar", kind=FieldKind.OBFUSCATED)
+        self._assert_payload(event, {
+            "obfuscated_data": {
+                "foo": "bar",
+            },
+        })
+
+        event.set_field("foo", "bar", kind=FieldKind.HIGH_CARDINALITY)
+        self._assert_payload(event, {
+            "interana_excluded": {
+                "foo": "bar",
+            },
+        })
 
     @mock.patch("uuid.uuid4")
     @mock.patch("time.time")
@@ -145,9 +182,12 @@ class EventTests(unittest.TestCase):
         event = Event("topic", "type")
         event.set_field("normal", "value1")
         event.set_field("obfuscated", "value2", kind=FieldKind.OBFUSCATED)
+        event.set_field("high_cardinality", "value3",
+                        kind=FieldKind.HIGH_CARDINALITY)
 
         self.assertEqual(event.get_field("normal"), "value1")
         self.assertEqual(event.get_field("obfuscated"), "value2")
+        self.assertEqual(event.get_field("high_cardinality"), "value3")
 
 
 class EventQueueTests(unittest.TestCase):
