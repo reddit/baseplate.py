@@ -21,8 +21,25 @@ import json
 import time
 import uuid
 
+from enum import Enum
+
 from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
 from baseplate.message_queue import MessageQueue, TimedOutError
+from baseplate._utils import warn_deprecated
+
+
+class FieldKind(Enum):
+    """Enum of field kinds."""
+    NORMAL = None
+    """
+    For fields normal fields with no hashing/indexing requirements.
+    """
+
+    OBFUSCATED = "obfuscated_data"
+    """
+    For fields containing sensitive information like IP addresses that must
+    be treated with care.
+    """
 
 
 class Event(object):
@@ -38,33 +55,28 @@ class Event(object):
             self.timestamp = time.time() * 1000
         self.id = id or uuid.uuid4()
         self.payload = {}
+        self.payload_types = {}
 
-    def get_field(self, key, obfuscated=False):
+    def get_field(self, key):
         """Get the value of a field in the event.
 
         If the field is not present, :py:data:`None` is returned.
 
         :param str key: The name of the field.
-        :param bool obfuscated: Whether to look for the field in the obfuscated
-            payload.
 
         """
 
-        if not obfuscated:
-            payload = self.payload
-        else:
-            payload = self.payload.get("obfuscated_data", {})
-        return payload.get(key, None)
+        return self.payload.get(key, None)
 
-    def set_field(self, key, value, obfuscate=False):
+    def set_field(self, key, value, obfuscate=False, kind=FieldKind.NORMAL):
         """Set the value for a field in the event.
 
         :param str key: The name of the field.
         :param value: The value to set the field to. Should be JSON
             serializable.
-        :param bool obfuscate: Whether or not to put the field in the obfuscated
-            section. This is used for sensitive info like IP addresses that must
-            be treated with care.
+        :param baseplate.events.FieldKind kind: The kind the field is.
+            Used to determine what section of the payload the field belongs
+            in when serialized.
 
         """
 
@@ -74,19 +86,32 @@ class Event(object):
         if value is None or value == "":
             return
 
-        if not obfuscate:
-            self.payload[key] = value
-        else:
-            obfuscated_payload = self.payload.setdefault("obfuscated_data", {})
-            obfuscated_payload[key] = value
+        if obfuscate:
+            kind = FieldKind.OBFUSCATED
+            warn_deprecated("Passing obfuscate to set_field is deprecated in"
+                            " favor of passing a FieldKind value as kind.")
+
+        self.payload[key] = value
+        self.payload_types[key] = kind
 
     def serialize(self):
+        payload = {}
+
+        for key, value in self.payload.items():
+            kind = self.payload_types[key]
+
+            if kind.value is None:
+                payload[key] = value
+            else:
+                section = payload.setdefault(kind.value, {})
+                section[key] = value
+
         return json.dumps({
             "event_topic": self.topic,
             "event_type": self.event_type,
             "event_ts": int(self.timestamp),
             "uuid": str(self.id),
-            "payload": self.payload,
+            "payload": payload,
         })
 
 

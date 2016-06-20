@@ -6,6 +6,9 @@ baseplate.events
 Building Events
 ---------------
 
+.. autoclass:: FieldKind
+   :members:
+
 .. autoclass:: Event
    :members:
 

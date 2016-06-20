@@ -12,6 +12,7 @@ from .queue import (
     EventQueue,
     EventQueueFullError,
     EventTooLargeError,
+    FieldKind,
 )
 
 __all__ = [

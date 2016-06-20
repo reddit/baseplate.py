@@ -6,12 +6,14 @@ from __future__ import unicode_literals
 import datetime
 import json
 import unittest
+import warnings
 
 from baseplate.events import (
     Event,
     EventQueue,
     EventQueueFullError,
     EventTooLargeError,
+    FieldKind,
     MAX_EVENT_SIZE,
 )
 from baseplate.message_queue import MessageQueue, TimedOutError
@@ -56,7 +58,7 @@ class EventTests(unittest.TestCase):
 
         event = Event("topic", "type")
         event.set_field("normal", "value1")
-        event.set_field("obfuscated", "value2", obfuscate=True)
+        event.set_field("obfuscated", "value2", kind=FieldKind.OBFUSCATED)
         event.set_field("empty", "")
         event.set_field("null", None)
 
@@ -75,6 +77,77 @@ class EventTests(unittest.TestCase):
                 },
             },
         })
+
+    def _assert_payload(self, event, payload):
+        self.assertEqual(json.loads(event.serialize()), {
+            "event_topic": event.topic,
+            "event_type": event.event_type,
+            "event_ts": event.timestamp,
+            "uuid": event.id,
+            "payload": payload,
+        })
+
+    @mock.patch("uuid.uuid4")
+    @mock.patch("time.time")
+    def test_set_field(self, time, uuid):
+        time.return_value = 333
+        uuid.return_value = "1-2-3-4"
+
+        event = Event("topic", "type")
+
+        with warnings.catch_warnings(record=True) as w:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always")
+            event.set_field("deprecated", "value", obfuscate=True)
+
+            self.assertEqual(len(w), 1)
+            self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
+            self.assertIn("deprecated", str(w[-1].message))
+
+        self._assert_payload(event, {
+            "obfuscated_data": {
+                "deprecated": "value",
+            },
+        })
+
+    @mock.patch("uuid.uuid4")
+    @mock.patch("time.time")
+    def test_set_field_same_key_different_sections(self, time, uuid):
+        time.return_value = 333
+        uuid.return_value = "1-2-3-4"
+
+        event = Event("topic", "type")
+
+        event.set_field("foo", "bar")
+        self._assert_payload(event, {
+            "foo": "bar",
+        })
+
+        event.set_field("foo", "bar", kind=FieldKind.OBFUSCATED)
+        self._assert_payload(event, {
+            "obfuscated_data": {
+                "foo": "bar",
+            },
+        })
+
+        event.set_field("foo", "bar")
+        self._assert_payload(event, {
+            "foo": "bar",
+        })
+
+
+    @mock.patch("uuid.uuid4")
+    @mock.patch("time.time")
+    def test_get_field(self, time, uuid):
+        time.return_value = 333
+        uuid.return_value = "1-2-3-4"
+
+        event = Event("topic", "type")
+        event.set_field("normal", "value1")
+        event.set_field("obfuscated", "value2", kind=FieldKind.OBFUSCATED)
+
+        self.assertEqual(event.get_field("normal"), "value1")
+        self.assertEqual(event.get_field("obfuscated"), "value2")
 
 
 class EventQueueTests(unittest.TestCase):

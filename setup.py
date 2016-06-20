@@ -8,7 +8,7 @@ PY3 = (sys.version_info.major == 3)
 install_requires = [
     "requests",
     "posix_ipc",
-],
+]
 
 tests_require = [
     "nose",
@@ -18,6 +18,7 @@ tests_require = [
 
 if not PY3:
     tests_require.append("mock")
+    install_requires.append("enum34")
 
 extras_require = {
     "gevent": [
