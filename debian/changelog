@@ -1,3 +1,15 @@
+baseplate (0.12.0) trusty; urgency=medium
+
+  * Events: Add support for the `interana_excluded` payload section
+  * Centralize and standardize creation of trace info
+  * Add adapters and helpers for Pyramid CLI tools
+  * Add Vagrantfile for running tests in development
+  * Events: Refactor serialization and payload handling
+  * Clarify docstring for config module outside baseplate-serve
+  * Capture Python warnings in logging system
+
+ -- Neil Williams <neil@reddit.com>  Mon, 20 Jun 2016 23:11:15 -0700
+
 baseplate (0.11.1) trusty; urgency=medium
 
   * fix bug with negative time-remaining on time budget retries
