@@ -18,6 +18,7 @@ import time
 
 if hasattr(hmac, "compare_digest"):
     # This was added in Python 2.7.7 and 3.3
+    # pylint: disable=invalid-name,no-member
     constant_time_compare = hmac.compare_digest
 else:
     def constant_time_compare(actual, expected):
@@ -124,7 +125,7 @@ class MessageSigner(object):
 
     def _compute_digest(self, header, message):
         payload = header + message.encode("utf8")
-        digest = hmac.new(self.secret_key, payload, hashlib.sha256).digest()
+        digest = hmac.new(self.secret_key, payload, hashlib.sha256).digest()  # pylint: disable=no-member
         return digest
 
     def make_signature(self, message, max_age):
@@ -164,7 +165,7 @@ class MessageSigner(object):
             version, expiration = _HEADER_FORMAT.unpack(header)
             if version != 1:
                 raise ValueError
-            if len(signature_digest) != hashlib.sha256().digest_size:
+            if len(signature_digest) != hashlib.sha256().digest_size:  # pylint: disable=no-member
                 raise ValueError
         except (struct.error, KeyError, binascii.Error, TypeError, ValueError):
             raise UnreadableSignatureError

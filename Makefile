@@ -47,5 +47,9 @@ install:
 	python2 setup.py install
 	python3 setup.py install
 
+lint:
+	pep8 --repeat --ignore=E501,E128,E226 --exclude=baseplate/thrift/ baseplate/
+	pylint --errors-only baseplate/
 
-.PHONY: docs spelling clean realclean tests develop install build
+
+.PHONY: docs spelling clean realclean tests develop install build lint

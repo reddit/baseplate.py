@@ -77,8 +77,8 @@ class Batcher(object):
 
 def gzip_compress(content):
     buf = BytesIO()
-    with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=9) as f:
-        f.write(content)
+    with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=9) as gzip_file:
+        gzip_file.write(content)
     return buf.getvalue()
 
 

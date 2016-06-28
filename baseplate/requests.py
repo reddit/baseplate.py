@@ -19,7 +19,9 @@ import urllib3.connectionpool
 # https://github.com/msabramo/requests-unixsocket/blob/master/requests_unixsocket/adapters.py
 # https://github.com/docker/docker-py/blob/master/docker/unixconn/unixconn.py
 
+
 class _UNIXConnection(urllib3.connectionpool.HTTPConnection):
+    # pylint: disable=super-init-not-called
     def __init__(self, url):
         urllib3.connectionpool.HTTPConnection.__init__(self, "localhost")
         self.url = urlparse.urlparse(url)

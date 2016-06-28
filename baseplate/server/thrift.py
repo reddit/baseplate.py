@@ -14,6 +14,7 @@ from thrift.transport.TTransport import (
     TTransportException, TBufferedTransportFactory)
 
 
+# pylint: disable=too-many-public-methods
 class GeventServer(StreamServer):
     def __init__(self, processor, *args, **kwargs):
         self.processor = processor
@@ -26,7 +27,8 @@ class GeventServer(StreamServer):
         signal.signal(signal.SIGTERM, lambda sig, frame: self.stop())
         super(GeventServer, self).serve_forever(stop_timeout=stop_timeout)
 
-    def handle(self, client_socket, address):
+    # pylint: disable=method-hidden
+    def handle(self, client_socket, _):
         client = TSocket()
         client.setHandle(client_socket)
 

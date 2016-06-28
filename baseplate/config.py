@@ -1,3 +1,4 @@
+# pylint: disable=invalid-name
 """Configuration parsing and validation.
 
 This module provides ``parse_config`` which turns a dictionary of stringy keys
@@ -64,6 +65,7 @@ import socket
 class ConfigurationError(Exception):
     """Raised when the configuration violates the spec."""
     def __init__(self, key, error):
+        super(ConfigurationError, self).__init__()
         self.key = key
         self.error = error
 
@@ -143,8 +145,8 @@ def Endpoint(text):
         host, sep, port = text.partition(":")
         if sep != ":":
             raise ValueError("no port specified")
-        return EndpointConfiguration(socket.AF_INET,
-            InternetAddress(host, int(port)))
+        address = InternetAddress(host, int(port))
+        return EndpointConfiguration(socket.AF_INET, address)
 
 
 def Base64(text):
@@ -243,6 +245,7 @@ def Optional(T, default=None):
 
 class ConfigNamespace(dict):
     def __init__(self):
+        super(ConfigNamespace, self).__init__()
         self.__dict__ = self
 
 

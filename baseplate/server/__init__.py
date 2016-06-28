@@ -136,7 +136,7 @@ def make_app(app_config):
 
 
 def register_signal_handlers():
-    def _handle_debug_signal(signal_number, frame):
+    def _handle_debug_signal(_, frame):
         if not frame:
             logger.warning("Received SIGUSR1, but no frame found.")
             return

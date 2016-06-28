@@ -56,14 +56,14 @@ class MessageQueue(object):
         """
         for time_remaining in RetryPolicy.new(budget=timeout):
             try:
-                message, priority = self.queue.receive()
+                message, _ = self.queue.receive()
                 return message
             except posix_ipc.SignalError:  # pragma: nocover
                 continue  # interrupted, just try again
             except posix_ipc.BusyError:
                 select.select([self.queue.mqd], [], [], time_remaining)
-        else:
-            raise TimedOutError
+
+        raise TimedOutError
 
     def put(self, message, timeout=None):
         """Add a message to the queue.
@@ -81,8 +81,8 @@ class MessageQueue(object):
                 continue  # interrupted, just try again
             except posix_ipc.BusyError:
                 select.select([], [self.queue.mqd], [], time_remaining)
-        else:
-            raise TimedOutError
+
+        raise TimedOutError
 
     def unlink(self):
         """Remove the queue from the system.

@@ -48,11 +48,12 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         self.threadlocal.current_span = None
         return self.engine
 
+    # pylint: disable=unused-argument, too-many-arguments
     def on_before_execute(self, conn, cursor, statement, parameters, context, executemany):
         """Handle the engine's before_cursor_execute event."""
         # http://docs.sqlalchemy.org/en/latest/orm/session_basics.html#is-the-session-thread-safe
         assert self.threadlocal.current_span is None, \
-               "sqlalchemy sessions cannot be used concurrently"
+            "sqlalchemy sessions cannot be used concurrently"
 
         trace_name = "{}.{}".format(self.threadlocal.context_name, "execute")
         span = self.threadlocal.root_span.make_child(trace_name)
@@ -66,6 +67,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
             statement, span.trace_id, span.id)
         return annotated_statement, parameters
 
+    # pylint: disable=unused-argument, too-many-arguments
     def on_after_execute(self, conn, cursor, statement, parameters, context, executemany):
         """Handle the engine's after_cursor_execute event."""
         self.threadlocal.current_span.stop()

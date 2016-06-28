@@ -26,7 +26,7 @@ class CassandraContextFactory(ContextFactory):
         return CassandraSessionAdapter(name, root_span, self.session)
 
 
-def _on_execute_complete(rows, span):
+def _on_execute_complete(_, span):
     # TODO: annotate with anything from the result set?
     # TODO: annotate with any returned warnings
     span.stop()

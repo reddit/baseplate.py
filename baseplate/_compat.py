@@ -1,3 +1,4 @@
+# pylint: disable=import-error
 """Python 3 compatibility."""
 
 from __future__ import absolute_import
