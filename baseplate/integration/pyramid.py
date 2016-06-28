@@ -30,6 +30,7 @@ from ..core import TraceInfo
 from ..server import make_app
 
 
+# pylint: disable=abstract-class-not-used
 class BaseplateConfigurator(object):
     """Config extension to integrate Baseplate into Pyramid.
 
@@ -80,6 +81,7 @@ class BaseplateConfigurator(object):
         )
         request.trace.start()
 
+    # pylint: disable=no-self-use
     def _on_new_response(self, event):
         if not event.request.matched_route:
             return
@@ -105,7 +107,7 @@ class BaseplateConfigurator(object):
         config.add_request_method(start_root_span, "start_root_span")
 
 
-def paste_make_app(global_config, **local_config):
+def paste_make_app(_, **local_config):
     """Make an application object, PasteDeploy style.
 
     This is a compatibility shim to adapt the baseplate app entrypoint to
@@ -121,6 +123,7 @@ def paste_make_app(global_config, **local_config):
 
 
 def pshell_setup(env):
+    # pylint: disable=line-too-long
     """Start a root span when pshell starts up.
 
     This simply starts a root span after the shell initializes, which

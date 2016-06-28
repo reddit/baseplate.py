@@ -65,6 +65,7 @@ def _enumerate_service_methods(client):
 class PooledClientProxy(object):
     """A proxy which acts like a thrift client but uses a connection pool."""
 
+    # pylint: disable=too-many-arguments
     def __init__(self, client_cls, pool, root_span, namespace, retry_policy=None):
         self.client_cls = client_cls
         self.pool = pool
@@ -104,9 +105,9 @@ class PooledClientProxy(object):
             except TTransportException as exc:
                 last_error = exc
                 continue
-        else:
-            raise TTransportException(
-                type=TTransportException.TIMED_OUT,
-                message="retry policy exhausted while attempting operation, "
-                        "last error was: {}".format(last_error),
-            )
+
+        raise TTransportException(
+            type=TTransportException.TIMED_OUT,
+            message="retry policy exhausted while attempting operation, "
+                    "last error was: {}".format(last_error),
+        )

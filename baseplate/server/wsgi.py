@@ -12,12 +12,13 @@ from gevent.pywsgi import WSGIServer
 from . import _load_factory
 
 try:
+    # pylint: disable=no-name-in-module
     from gevent.pywsgi import LoggingLogAdapter
 except ImportError:
     # LoggingLogAdapter is from gevent 1.1+
     class LoggingLogAdapter(object):
-        def __init__(self, logger, level):
-            self._logger = logger
+        def __init__(self, logger_, level):
+            self._logger = logger_
             self._level = level
 
         def write(self, msg):
@@ -43,6 +44,7 @@ def make_server(config, listener, app):
     if handler:
         kwargs["handler_class"] = _load_factory(handler, default_name=None)
 
+    # pylint: disable=star-args
     server = WSGIServer(
         listener,
         application=app,

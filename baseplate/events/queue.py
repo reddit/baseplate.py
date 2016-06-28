@@ -28,6 +28,7 @@ from baseplate.message_queue import MessageQueue, TimedOutError
 from baseplate._utils import warn_deprecated
 
 
+# pylint: disable=pointless-string-statement,no-init
 class FieldKind(Enum):
     """Enum of field kinds."""
     NORMAL = None
@@ -50,6 +51,7 @@ class FieldKind(Enum):
 
 class Event(object):
     """An event."""
+    # pylint: disable=invalid-name,redefined-builtin
     def __init__(self, topic, event_type, timestamp=None, id=None):
         self.topic = topic
         self.event_type = event_type

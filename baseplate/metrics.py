@@ -167,6 +167,7 @@ class Batch(BaseClient):
 
     """
 
+    # pylint: disable=super-init-not-called
     def __init__(self, transport, namespace):
         self.transport = BufferedTransport(transport)
         self.namespace = namespace

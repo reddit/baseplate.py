@@ -49,7 +49,7 @@ def get_socket(index=0):
         raise NotEinhornWorker
 
     fd_count = get_socket_count()
-    if not (0 <= index < fd_count):
+    if not 0 <= index < fd_count:
         raise IndexError
 
     fileno = int(os.environ["EINHORN_FD_%d" % index])

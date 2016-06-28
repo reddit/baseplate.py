@@ -31,6 +31,7 @@ class RedisContextFactory(ContextFactory):
         return MonitoredRedisConnection(name, root_span, self.connection_pool)
 
 
+# pylint: disable=too-many-public-methods
 class MonitoredRedisConnection(redis.StrictRedis):
     """Redis connection that collects diagnostic information.
 
@@ -59,6 +60,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
             return super(MonitoredRedisConnection, self).execute_command(
                 command, *args, **kwargs)
 
+    # pylint: disable=arguments-differ
     def pipeline(self, name, transaction=True, shard_hint=None):
         """Create a pipeline.
 

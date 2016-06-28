@@ -31,6 +31,7 @@ def make_metrics_client(raw_config):
         },
     })
 
+    # pylint: disable=no-member
     return metrics.make_client(cfg.metrics.namespace, cfg.metrics.endpoint)
 
 

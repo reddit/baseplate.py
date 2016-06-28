@@ -200,6 +200,7 @@ class Baseplate(object):
 class Span(object):
     """A span represents a single RPC within a system."""
 
+    # pylint: disable=invalid-name
     def __init__(self, trace_id, parent_id, span_id, name):
         self.trace_id = trace_id
         self.parent_id = parent_id

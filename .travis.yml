@@ -27,3 +27,4 @@ script:
     - nosetests
     - sphinx-build -M doctest docs/ build/
     - sphinx-build -M spelling docs/ build/
+    - make lint
