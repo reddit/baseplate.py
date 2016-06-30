@@ -50,6 +50,7 @@
  | <a href="#E"><strong>E</strong></a>
  | <a href="#F"><strong>F</strong></a>
  | <a href="#G"><strong>G</strong></a>
+ | <a href="#H"><strong>H</strong></a>
  | <a href="#I"><strong>I</strong></a>
  | <a href="#L"><strong>L</strong></a>
  | <a href="#M"><strong>M</strong></a>
@@ -87,12 +88,6 @@
   <dt><a href="baseplate/core.html#baseplate.core.RootSpan.annotate">annotate() (baseplate.core.RootSpan method)</a>
   </dt>
 
-      <dd><dl>
-        
-  <dt><a href="baseplate/core.html#baseplate.core.Span.annotate">(baseplate.core.Span method)</a>
-  </dt>
-
-      </dl></dd>
   </dl></td>
 </tr></table>
 
@@ -314,6 +309,10 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="baseplate/events.html#baseplate.events.FieldKind">FieldKind (class in baseplate.events)</a>
+  </dt>
+
+      
   <dt><a href="baseplate/config.html#baseplate.config.Float">Float() (in module baseplate.config)</a>
   </dt>
 
@@ -321,6 +320,10 @@
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Batch.flush">flush() (baseplate.metrics.Batch method)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/core.html#baseplate.core.TraceInfo.from_upstream">from_upstream() (baseplate.core.TraceInfo class method)</a>
   </dt>
 
   </dl></td>
@@ -351,6 +354,16 @@
 
       
   <dt><a href="baseplate/events.html#baseplate.events.Event.get_field">get_field() (baseplate.events.Event method)</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
+<h2 id="H">H</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/events.html#baseplate.events.FieldKind.HIGH_CARDINALITY">HIGH_CARDINALITY (baseplate.events.FieldKind attribute)</a>
   </dt>
 
   </dl></td>
@@ -448,7 +461,19 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="baseplate/retry.html#baseplate.retry.RetryPolicy.new">new() (baseplate.retry.RetryPolicy static method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.TraceInfo.new">new() (baseplate.core.TraceInfo class method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="baseplate/retry.html#baseplate.retry.RetryPolicy.new">(baseplate.retry.RetryPolicy static method)</a>
+  </dt>
+
+      </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/events.html#baseplate.events.FieldKind.NORMAL">NORMAL (baseplate.events.FieldKind attribute)</a>
   </dt>
 
   </dl></td>
@@ -457,6 +482,10 @@
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/events.html#baseplate.events.FieldKind.OBFUSCATED">OBFUSCATED (baseplate.events.FieldKind attribute)</a>
+  </dt>
+
       
   <dt><a href="baseplate/core.html#baseplate.core.RootSpanObserver.on_annotate">on_annotate() (baseplate.core.RootSpanObserver method)</a>
   </dt>
@@ -475,6 +504,8 @@
   <dt><a href="baseplate/core.html#baseplate.core.BaseplateObserver.on_root_span_created">on_root_span_created() (baseplate.core.BaseplateObserver method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/core.html#baseplate.core.RootSpanObserver.on_start">on_start() (baseplate.core.RootSpanObserver method)</a>
   </dt>
@@ -485,8 +516,6 @@
   </dt>
 
       </dl></dd>
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/core.html#baseplate.core.RootSpanObserver.on_stop">on_stop() (baseplate.core.RootSpanObserver method)</a>
   </dt>
@@ -550,10 +579,6 @@
   <dt><a href="baseplate/core.html#baseplate.core.RootSpan.register">(baseplate.core.RootSpan method)</a>
   </dt>
 
-        
-  <dt><a href="baseplate/core.html#baseplate.core.Span.register">(baseplate.core.Span method)</a>
-  </dt>
-
       </dl></dd>
       
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Gauge.replace">replace() (baseplate.metrics.Gauge method)</a>
@@ -615,10 +640,6 @@
 
       <dd><dl>
         
-  <dt><a href="baseplate/core.html#baseplate.core.Span.start">(baseplate.core.Span method)</a>
-  </dt>
-
-        
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Timer.start">(baseplate.metrics.Timer method)</a>
   </dt>
 
@@ -628,10 +649,6 @@
   </dt>
 
       <dd><dl>
-        
-  <dt><a href="baseplate/core.html#baseplate.core.Span.stop">(baseplate.core.Span method)</a>
-  </dt>
-
         
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Timer.stop">(baseplate.metrics.Timer method)</a>
   </dt>
@@ -677,6 +694,10 @@
       </dl></dd>
       
   <dt><a href="baseplate/config.html#baseplate.config.Timespan">Timespan() (in module baseplate.config)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/core.html#baseplate.core.TraceInfo">TraceInfo (class in baseplate.core)</a>
   </dt>
 
       

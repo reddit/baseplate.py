@@ -44,24 +44,45 @@
 <div class="section" id="building-events">
 <h2>Building Events<a class="headerlink" href="#building-events" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
+<dt id="baseplate.events.FieldKind">
+<em class="property">class </em><tt class="descclassname">baseplate.events.</tt><tt class="descname">FieldKind</tt><a class="headerlink" href="#baseplate.events.FieldKind" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enum of field kinds.</p>
+<dl class="attribute">
+<dt id="baseplate.events.FieldKind.NORMAL">
+<tt class="descname">NORMAL</tt><em class="property"> = None</em><a class="headerlink" href="#baseplate.events.FieldKind.NORMAL" title="Permalink to this definition">¶</a></dt>
+<dd><p>For fields normal fields with no hashing/indexing requirements.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="baseplate.events.FieldKind.OBFUSCATED">
+<tt class="descname">OBFUSCATED</tt><em class="property"> = None</em><a class="headerlink" href="#baseplate.events.FieldKind.OBFUSCATED" title="Permalink to this definition">¶</a></dt>
+<dd><p>For fields containing sensitive information like IP addresses that must
+be treated with care.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="baseplate.events.FieldKind.HIGH_CARDINALITY">
+<tt class="descname">HIGH_CARDINALITY</tt><em class="property"> = None</em><a class="headerlink" href="#baseplate.events.FieldKind.HIGH_CARDINALITY" title="Permalink to this definition">¶</a></dt>
+<dd><p>For fields that should not be indexed due to high cardinality
+(e.g. not used in Interana)</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
 <dt id="baseplate.events.Event">
 <em class="property">class </em><tt class="descclassname">baseplate.events.</tt><tt class="descname">Event</tt><big>(</big><em>topic</em>, <em>event_type</em>, <em>timestamp=None</em>, <em>id=None</em><big>)</big><a class="headerlink" href="#baseplate.events.Event" title="Permalink to this definition">¶</a></dt>
 <dd><p>An event.</p>
 <dl class="method">
 <dt id="baseplate.events.Event.get_field">
-<tt class="descname">get_field</tt><big>(</big><em>key</em>, <em>obfuscated=False</em><big>)</big><a class="headerlink" href="#baseplate.events.Event.get_field" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">get_field</tt><big>(</big><em>key</em><big>)</big><a class="headerlink" href="#baseplate.events.Event.get_field" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the value of a field in the event.</p>
 <p>If the field is not present, <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> is returned.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the field.</li>
-<li><strong>obfuscated</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) &#8211; Whether to look for the field in the obfuscated
-payload.</li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the field.</td>
 </tr>
 </tbody>
 </table>
@@ -69,7 +90,7 @@ payload.</li>
 
 <dl class="method">
 <dt id="baseplate.events.Event.set_field">
-<tt class="descname">set_field</tt><big>(</big><em>key</em>, <em>value</em>, <em>obfuscate=False</em><big>)</big><a class="headerlink" href="#baseplate.events.Event.set_field" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">set_field</tt><big>(</big><em>key</em>, <em>value</em>, <em>obfuscate=False</em>, <em>kind=&lt;FieldKind.NORMAL: None&gt;</em><big>)</big><a class="headerlink" href="#baseplate.events.Event.set_field" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set the value for a field in the event.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -79,9 +100,9 @@ payload.</li>
 <li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the field.</li>
 <li><strong>value</strong> &#8211; The value to set the field to. Should be JSON
 serializable.</li>
-<li><strong>obfuscate</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) &#8211; Whether or not to put the field in the obfuscated
-section. This is used for sensitive info like IP addresses that must
-be treated with care.</li>
+<li><strong>kind</strong> (<a class="reference internal" href="#baseplate.events.FieldKind" title="baseplate.events.FieldKind"><em>baseplate.events.FieldKind</em></a>) &#8211; The kind the field is.
+Used to determine what section of the payload the field belongs
+in when serialized.</li>
 </ul>
 </td>
 </tr>

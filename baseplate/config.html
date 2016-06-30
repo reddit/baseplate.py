@@ -52,8 +52,12 @@ and values into a structured and typed configuration object.</p>
 <span class="na">nested.really.deep</span> <span class="o">=</span> <span class="s">3 seconds</span>
 </pre></div>
 </div>
-<p>Might be parsed like this:</p>
-<div class="highlight-py"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">CARDS</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">OneOf</span><span class="p">(</span><span class="n">clubs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">spades</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">diamonds</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">hearts</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+<p>Might be parsed like the following. Note: when running under the baseplate
+server, The <tt class="docutils literal"><span class="pre">config_parser.items(...)</span></tt> step is taken care of for you and
+<tt class="docutils literal"><span class="pre">raw_config</span></tt> is passed as the only argument to your factory function.</p>
+<div class="highlight-py"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">raw_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">config_parser</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="s">&quot;app:main&quot;</span><span class="p">))</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">CARDS</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">OneOf</span><span class="p">(</span><span class="n">clubs</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">spades</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">diamonds</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">hearts</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cfg</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">parse_config</span><span class="p">(</span><span class="n">raw_config</span><span class="p">,</span> <span class="p">{</span>
 <span class="gp">... </span>    <span class="s">&quot;simple&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">Boolean</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="s">&quot;cards&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">TupleOf</span><span class="p">(</span><span class="n">CARDS</span><span class="p">),</span>
