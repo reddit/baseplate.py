@@ -3,9 +3,42 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from cassandra.cluster import _NOT_SET
+from cassandra.cluster import Cluster, _NOT_SET
 
 from . import ContextFactory
+from .. import config
+
+
+def cluster_from_config(app_config, prefix="cassandra.", **kwargs):
+    """Make a Cluster from a configuration dictionary.
+
+    The keys useful to :py:func:`cluster_from_config` should be prefixed, e.g.
+    ``cassandra.contact_points`` etc. The ``prefix`` argument specifies the
+    prefix used to filter keys.  Each key is mapped to a corresponding keyword
+    argument on the :py:class:`~cassandra.cluster.Cluster` constructor.
+
+    Supported keys:
+
+    * ``contact_points`` (required): comma delimited list of contact points to
+      try connecting for cluster discovery
+    * ``port``: The server-side port to open connections to.
+
+    """
+    assert prefix.endswith(".")
+    config_prefix = prefix[:-1]
+    cfg = config.parse_config(app_config, {
+        config_prefix: {
+            "contact_points": config.TupleOf(config.String),
+            "port": config.Optional(config.Integer, default=None),
+        },
+    })
+
+    options = getattr(cfg, config_prefix)
+
+    if options.port:
+        kwargs.setdefault("port", options.port)
+
+    return Cluster(options.contact_points, **kwargs)
 
 
 class CassandraContextFactory(ContextFactory):

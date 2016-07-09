@@ -7,6 +7,50 @@ import redis
 import redis.client
 
 from . import ContextFactory
+from .. import config
+
+
+def pool_from_config(app_config, prefix="redis.", **kwargs):
+    """Make a ConnectionPool from a configuration dictionary.
+
+    The keys useful to :py:func:`pool_from_config` should be prefixed, e.g.
+    ``redis.url``, ``redis.max_connections``, etc. The ``prefix`` argument
+    specifies the prefix used to filter keys.  Each key is mapped to a
+    corresponding keyword argument on the :py:class:`redis.ConnectionPool`
+    constructor.
+
+    Supported keys:
+
+    * ``url`` (required): a URL like ``redis://localhost/0``.
+    * ``max_connections``: an integer maximum number of connections in the pool
+    * ``socket_connect_timeout``: a timespan of how long to wait for sockets
+        to connect. e.g. ``200 milliseconds``.
+    * ``socket_timeout``: a timespan of how long to wait for socket operations,
+        e.g. ``200 milliseconds``.
+
+    """
+
+    assert prefix.endswith(".")
+    config_prefix = prefix[:-1]
+    cfg = config.parse_config(app_config, {
+        config_prefix: {
+            "url": config.String,
+            "max_connections": config.Optional(config.Integer, default=None),
+            "socket_connect_timeout": config.Optional(config.Timespan, default=None),
+            "socket_timeout": config.Optional(config.Timespan, default=None),
+        },
+    })
+
+    options = getattr(cfg, config_prefix)
+
+    if options.max_connections is not None:
+        kwargs.setdefault("max_connections", options.max_connections)
+    if options.socket_connect_timeout is not None:
+        kwargs.setdefault("socket_connect_timeout", options.socket_connect_timeout.total_seconds())
+    if options.socket_timeout is not None:
+        kwargs.setdefault("socket_timeout", options.socket_timeout.total_seconds())
+
+    return redis.BlockingConnectionPool.from_url(options.url, **kwargs)
 
 
 class RedisContextFactory(ContextFactory):

@@ -13,11 +13,15 @@ Services
 Cassandra
 ---------
 
+.. autofunction:: baseplate.context.cassandra.cluster_from_config
+
 .. autoclass:: baseplate.context.cassandra.CassandraContextFactory
 
 
 Redis
 -----
+
+.. autofunction:: baseplate.context.redis.pool_from_config
 
 .. autoclass:: baseplate.context.redis.RedisContextFactory
    :members:
