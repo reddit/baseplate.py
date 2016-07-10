@@ -75,6 +75,8 @@ class ConfigurationError(Exception):
 
 def String(text):
     """A raw string."""
+    if not text:
+        raise ValueError("no value specified")
     return text
 
 
