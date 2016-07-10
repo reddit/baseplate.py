@@ -14,6 +14,10 @@ class StringTests(unittest.TestCase):
         result = config.String("whatever")
         self.assertEqual(result, "whatever")
 
+    def test_empty_string_not_ok(self):
+        with self.assertRaises(ValueError):
+            config.String("")
+
 
 class IntegerTests(unittest.TestCase):
     def test_parse_integer_valid(self):
@@ -189,7 +193,7 @@ class TestParseConfig(unittest.TestCase):
             },
 
             "noo": {
-                "bar": config.String,
+                "bar": config.Optional(config.String, default=""),
             },
 
             "deep": {
