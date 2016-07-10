@@ -17,7 +17,21 @@ Queing Events
 -------------
 
 .. autoclass:: EventQueue
-   :members:
+   :members: put
+
+
+The ``EventQueue`` also implements
+:py:class:`~baseplate.context.ContextFactory` so it can be used with
+:py:meth:`~baseplate.core.Baseplate.add_to_context`::
+
+   event_queue = EventQueue("production")
+   baseplate.add_to_context("events_production", event_queue)
+
+It can then be used from the :term:`context object` during requests::
+
+   def some_service_method(self, context):
+       event = Event(...)
+       context.events_production.put(event)
 
 
 Exceptions

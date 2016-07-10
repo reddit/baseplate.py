@@ -24,6 +24,7 @@ import uuid
 from enum import Enum
 
 from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
+from baseplate.context import ContextFactory
 from baseplate.message_queue import MessageQueue, TimedOutError
 from baseplate._utils import warn_deprecated
 
@@ -146,7 +147,7 @@ class EventQueueFullError(EventError):
         super(EventQueueFullError, self).__init__("The event queue is full.")
 
 
-class EventQueue(object):
+class EventQueue(ContextFactory):
     """A queue to transfer events to the publisher."""
 
     def __init__(self, name):
@@ -177,3 +178,6 @@ class EventQueue(object):
             self.queue.put(serialized, timeout=0)
         except TimedOutError:
             raise EventQueueFullError
+
+    def make_object_for_context(self, name, root_span):
+        return self
