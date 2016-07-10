@@ -54,7 +54,7 @@ integrations <integration/index>`.
    :members:
 
 .. autoclass:: TraceInfo
-   :members:
+   :members: from_upstream
 
 Spans
 -----
@@ -80,7 +80,7 @@ else might be helpful.
    :inherited-members:
 
 .. autoclass:: Span
-   :members: from_upstream
+   :members:
 
 Observers
 ---------
