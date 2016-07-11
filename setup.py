@@ -70,6 +70,7 @@ setup(
 
         "console_scripts": [
             "baseplate-healthcheck{:d} = baseplate.server.healthcheck:run_healthchecks".format(sys.version_info.major),
+            "baseplate-script{:d} = baseplate.server:load_and_run_script".format(sys.version_info.major),
         ],
 
         "paste.app_factory": [
