@@ -24,7 +24,7 @@ and development.
 
    baseplate-healthcheck: Is your service alive? <cli/healthcheck>
    baseplate-serve: The application server <cli/serve>
-   baseplate-script: Run offline jobs <cli/script>
+   baseplate-script: Run backend scripts <cli/script>
 
 The Framework
 -------------
