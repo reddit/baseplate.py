@@ -60,7 +60,8 @@ def read_config(config_file, server_name, app_name):
     parser.readfp(config_file)
 
     filename = config_file.name
-    server_config = dict(parser.items("server:" + server_name))
+    server_config = (dict(parser.items("server:" + server_name))
+                     if server_name else None)
     app_config = dict(parser.items("app:" + app_name))
     has_logging_config = parser.has_section("loggers")
 
@@ -111,7 +112,7 @@ def make_listener(endpoint):
         return sock
 
 
-def _load_factory(url, default_name):
+def _load_factory(url, default_name=None):
     """Helper to load a factory function from a config file."""
     module_name, sep, func_name = url.partition(":")
     if not sep:
@@ -172,3 +173,22 @@ def load_app_and_run_server():
     logger.info("Listening on %s", listener.getsockname())
 
     server.serve_forever()
+
+
+def load_and_run_script():
+    """Launch a script with an entrypoint similar to a server."""
+    parser = argparse.ArgumentParser(
+        description="Run a function with app configuration loaded.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument("--app-name", default="main", metavar="NAME",
+        help="name of app to load from config_file (default: main)")
+    parser.add_argument("config_file", type=argparse.FileType("r"),
+        help="path to a configuration file")
+    parser.add_argument("entrypoint", type=_load_factory,
+        help="function to call, e.g. module.path:fn_name")
+
+    args = parser.parse_args(sys.argv[1:])
+    config = read_config(args.config_file, server_name=None, app_name=args.app_name)
+    args.entrypoint(config.app)

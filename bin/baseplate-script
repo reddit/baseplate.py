@@ -1,0 +1,12 @@
+#!/usr/bin/python
+
+# this is here and not just a console_script entry point because we want the
+# gevent monkeypatching to happen before any pieces of baseplate are imported
+# at all, as would happen if we were to have this code be in the baseplate
+# package.
+
+from gevent.monkey import patch_all
+patch_all()
+
+from baseplate.server import load_and_run_script
+load_and_run_script()
