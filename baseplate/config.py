@@ -261,11 +261,7 @@ def _parse_config_section(config, spec, root):
 
         if callable(parser_or_spec):
             parser = parser_or_spec
-
-            try:
-                raw_value = config[key_path]
-            except KeyError:
-                raise ConfigurationError(key, "not found")
+            raw_value = config.get(key_path, "")
 
             try:
                 parsed[key] = parser(raw_value)
