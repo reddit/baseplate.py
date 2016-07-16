@@ -43,7 +43,6 @@ def pool_from_config(app_config, prefix="redis.", **kwargs):
 
     options = getattr(cfg, config_prefix)
 
-    kwargs = {}
     if options.max_connections is not None:
         kwargs.setdefault("max_connections", options.max_connections)
     if options.socket_connect_timeout is not None:
