@@ -227,8 +227,15 @@ def OneOf(**options):
 
 
 def TupleOf(T):
-    """A comma-delimited list of type T."""
+    """A comma-delimited list of type T.
+
+    At least one value must be provided. If you want an empty list
+    to be a valid choice, wrap with :py:func:`Optional`.
+
+    """
     def tuple_of(text):
+        if not text:
+            raise ValueError("no values provided")
         split = text.split(",")
         stripped = [item.strip() for item in split]
         return [T(item) for item in stripped if item]

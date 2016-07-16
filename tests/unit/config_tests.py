@@ -149,12 +149,15 @@ class OneOfTests(unittest.TestCase):
 class TupleTests(unittest.TestCase):
     def test_tupleof_valid(self):
         parser = config.TupleOf(config.Integer)
-        self.assertEqual(parser(""), [])
         self.assertEqual(parser("1,2,3"), [1, 2, 3])
         self.assertEqual(parser("4, 5, 6"), [4, 5, 6])
 
     def test_tupleof_invalid(self):
         parser = config.TupleOf(config.Integer)
+
+        with self.assertRaises(ValueError):
+            parser("")
+
         with self.assertRaises(ValueError):
             parser("a, b")
 
