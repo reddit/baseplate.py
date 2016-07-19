@@ -1,3 +1,13 @@
+baseplate (0.13.0) trusty; urgency=medium
+
+  * allow config.Optional options to have key missing from INI too
+  * make config.String and config.TupleOf enforce presence of values
+  * add helpers for loading Redis and Cassandra drivers from config
+  * make EventQueue a ContextFactory so it can go on the context object
+  * add baseplate-script for backend jobs
+
+ -- Neil Williams <neil@reddit.com>  Tue, 19 Jul 2016 14:01:02 -0700
+
 baseplate (0.12.0) trusty; urgency=medium
 
   * Events: Add support for the `interana_excluded` payload section
