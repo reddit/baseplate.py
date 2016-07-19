@@ -143,6 +143,19 @@ not being published fast enough.</td>
 
 </dd></dl>
 
+<p>The <tt class="docutils literal"><span class="pre">EventQueue</span></tt> also implements
+<a class="reference internal" href="context/index.html#baseplate.context.ContextFactory" title="baseplate.context.ContextFactory"><tt class="xref py py-class docutils literal"><span class="pre">ContextFactory</span></tt></a> so it can be used with
+<a class="reference internal" href="core.html#baseplate.core.Baseplate.add_to_context" title="baseplate.core.Baseplate.add_to_context"><tt class="xref py py-meth docutils literal"><span class="pre">add_to_context()</span></tt></a>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">event_queue</span> <span class="o">=</span> <span class="n">EventQueue</span><span class="p">(</span><span class="s">&quot;production&quot;</span><span class="p">)</span>
+<span class="n">baseplate</span><span class="o">.</span><span class="n">add_to_context</span><span class="p">(</span><span class="s">&quot;events_production&quot;</span><span class="p">,</span> <span class="n">event_queue</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>It can then be used from the <a class="reference internal" href="../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> during requests:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">some_service_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+    <span class="n">event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+    <span class="n">context</span><span class="o">.</span><span class="n">events_production</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">event</span><span class="p">)</span>
+</pre></div>
+</div>
 <div class="section" id="exceptions">
 <h3>Exceptions<a class="headerlink" href="#exceptions" title="Permalink to this headline">¶</a></h3>
 <dl class="exception">
@@ -217,6 +230,7 @@ metrics.endpoint = the-statsd-host:1234
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../cli/healthcheck.html">baseplate-healthcheck: Is your service alive?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../cli/serve.html">baseplate-serve: The application server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli/script.html">baseplate-script: Run backend scripts</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="core.html">baseplate.core: The guts of the diagnostics framework</a></li>

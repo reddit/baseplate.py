@@ -99,6 +99,22 @@ specified retry policy when transient errors occur:</p>
 </div>
 <div class="section" id="cassandra">
 <h2>Cassandra<a class="headerlink" href="#cassandra" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="baseplate.context.cassandra.cluster_from_config">
+<tt class="descclassname">baseplate.context.cassandra.</tt><tt class="descname">cluster_from_config</tt><big>(</big><em>app_config</em>, <em>prefix=u'cassandra.'</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#baseplate.context.cassandra.cluster_from_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a Cluster from a configuration dictionary.</p>
+<p>The keys useful to <tt class="xref py py-func docutils literal"><span class="pre">cluster_from_config()</span></tt> should be prefixed, e.g.
+<tt class="docutils literal"><span class="pre">cassandra.contact_points</span></tt> etc. The <tt class="docutils literal"><span class="pre">prefix</span></tt> argument specifies the
+prefix used to filter keys.  Each key is mapped to a corresponding keyword
+argument on the <a class="reference external" href="https://datastax.github.io/python-driver/api/cassandra/cluster.html#cassandra.cluster.Cluster" title="(in Cassandra Driver v3.0.0)"><tt class="xref py py-class docutils literal"><span class="pre">Cluster</span></tt></a> constructor.</p>
+<p>Supported keys:</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">contact_points</span></tt> (required): comma delimited list of contact points to
+try connecting for cluster discovery</li>
+<li><tt class="docutils literal"><span class="pre">port</span></tt>: The server-side port to open connections to.</li>
+</ul>
+</dd></dl>
+
 <dl class="class">
 <dt id="baseplate.context.cassandra.CassandraContextFactory">
 <em class="property">class </em><tt class="descclassname">baseplate.context.cassandra.</tt><tt class="descname">CassandraContextFactory</tt><big>(</big><em>session</em><big>)</big><a class="headerlink" href="#baseplate.context.cassandra.CassandraContextFactory" title="Permalink to this definition">¶</a></dt>
@@ -120,6 +136,36 @@ automatically record diagnostic information.</p>
 </div>
 <div class="section" id="redis">
 <h2>Redis<a class="headerlink" href="#redis" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="baseplate.context.redis.pool_from_config">
+<tt class="descclassname">baseplate.context.redis.</tt><tt class="descname">pool_from_config</tt><big>(</big><em>app_config</em>, <em>prefix=u'redis.'</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#baseplate.context.redis.pool_from_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a ConnectionPool from a configuration dictionary.</p>
+<p>The keys useful to <tt class="xref py py-func docutils literal"><span class="pre">pool_from_config()</span></tt> should be prefixed, e.g.
+<tt class="docutils literal"><span class="pre">redis.url</span></tt>, <tt class="docutils literal"><span class="pre">redis.max_connections</span></tt>, etc. The <tt class="docutils literal"><span class="pre">prefix</span></tt> argument
+specifies the prefix used to filter keys.  Each key is mapped to a
+corresponding keyword argument on the <a class="reference external" href="https://redis-py.readthedocs.org/en/latest/index.html#redis.ConnectionPool" title="(in redis-py v2.4.9)"><tt class="xref py py-class docutils literal"><span class="pre">redis.ConnectionPool</span></tt></a>
+constructor.</p>
+<p>Supported keys:</p>
+<ul>
+<li><p class="first"><tt class="docutils literal"><span class="pre">url</span></tt> (required): a URL like <tt class="docutils literal"><span class="pre">redis://localhost/0</span></tt>.</p>
+</li>
+<li><p class="first"><tt class="docutils literal"><span class="pre">max_connections</span></tt>: an integer maximum number of connections in the pool</p>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">socket_connect_timeout</span></tt>: a timespan of how long to wait for sockets</dt>
+<dd><p class="first last">to connect. e.g. <tt class="docutils literal"><span class="pre">200</span> <span class="pre">milliseconds</span></tt>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">socket_timeout</span></tt>: a timespan of how long to wait for socket operations,</dt>
+<dd><p class="first last">e.g. <tt class="docutils literal"><span class="pre">200</span> <span class="pre">milliseconds</span></tt>.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd></dl>
+
 <dl class="class">
 <dt id="baseplate.context.redis.RedisContextFactory">
 <em class="property">class </em><tt class="descclassname">baseplate.context.redis.</tt><tt class="descname">RedisContextFactory</tt><big>(</big><em>connection_pool</em><big>)</big><a class="headerlink" href="#baseplate.context.redis.RedisContextFactory" title="Permalink to this definition">¶</a></dt>
@@ -288,6 +334,7 @@ object</em></a> with the name specified in <tt class="docutils literal"><span cl
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../cli/healthcheck.html">baseplate-healthcheck: Is your service alive?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../cli/serve.html">baseplate-serve: The application server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../cli/script.html">baseplate-script: Run backend scripts</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../core.html">baseplate.core: The guts of the diagnostics framework</a></li>

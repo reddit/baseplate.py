@@ -13,22 +13,17 @@ To install Baseplate, use the debian packages::
 Cookiecutter
 ------------
 
-Baseplate has a few `Cookiecutter <https://cookiecutter.readthedocs.org>`_
-templates available to make a skeleton for your new project.
+Baseplate has a project generation tool to help you get started.
+Install it::
 
-For `Thrift`_::
+   pip install git+https://github.com/reddit/baseplate-cookiecutter
 
-   cookiecutter git@github.com:reddit/reddit-cookiecutter-thrift
+Then run the tool and follow the prompts::
 
-For `Pyramid`_::
-
-   cookiecutter git@github.com:reddit/reddit-cookiecutter-pyramid
+   baseplate-cookiecutter
 
 The templates have liberal "TODO"s for you to fill in your application. Good
 luck!
-
-.. _Thrift: https://github.com/reddit/reddit-cookiecutter-thrift
-.. _Pyramid: https://github.com/reddit/reddit-cookiecutter-pyramid
 
 Serving
 -------

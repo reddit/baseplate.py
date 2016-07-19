@@ -52,14 +52,13 @@ sudo apt-get install python-gevent python-baseplate
 </div>
 <div class="section" id="cookiecutter">
 <h2>Cookiecutter<a class="headerlink" href="#cookiecutter" title="Permalink to this headline">¶</a></h2>
-<p>Baseplate has a few <a class="reference external" href="https://cookiecutter.readthedocs.org">Cookiecutter</a>
-templates available to make a skeleton for your new project.</p>
-<p>For <a class="reference external" href="https://github.com/reddit/reddit-cookiecutter-thrift">Thrift</a>:</p>
-<div class="highlight-python"><div class="highlight"><pre>cookiecutter git@github.com:reddit/reddit-cookiecutter-thrift
+<p>Baseplate has a project generation tool to help you get started.
+Install it:</p>
+<div class="highlight-python"><div class="highlight"><pre>pip install git+https://github.com/reddit/baseplate-cookiecutter
 </pre></div>
 </div>
-<p>For <a class="reference external" href="https://github.com/reddit/reddit-cookiecutter-pyramid">Pyramid</a>:</p>
-<div class="highlight-python"><div class="highlight"><pre>cookiecutter git@github.com:reddit/reddit-cookiecutter-pyramid
+<p>Then run the tool and follow the prompts:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">baseplate</span><span class="o">-</span><span class="n">cookiecutter</span>
 </pre></div>
 </div>
 <p>The templates have liberal &#8220;TODO&#8221;s for you to fill in your application. Good
@@ -104,6 +103,7 @@ about the baseplate server</a>.</p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="cli/healthcheck.html">baseplate-healthcheck: Is your service alive?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="cli/serve.html">baseplate-serve: The application server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="cli/script.html">baseplate-script: Run backend scripts</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="baseplate/core.html">baseplate.core: The guts of the diagnostics framework</a></li>

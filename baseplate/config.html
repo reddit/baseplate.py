@@ -190,6 +190,8 @@ and the value is what it is mapped to.</p>
 <dt id="baseplate.config.TupleOf">
 <tt class="descclassname">baseplate.config.</tt><tt class="descname">TupleOf</tt><big>(</big><em>T</em><big>)</big><a class="headerlink" href="#baseplate.config.TupleOf" title="Permalink to this definition">¶</a></dt>
 <dd><p>A comma-delimited list of type T.</p>
+<p>At least one value must be provided. If you want an empty list
+to be a valid choice, wrap with <a class="reference internal" href="#baseplate.config.Optional" title="baseplate.config.Optional"><tt class="xref py py-func docutils literal"><span class="pre">Optional()</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="function">
@@ -258,6 +260,7 @@ callable which takes a string and returns the parsed value or raises
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../cli/healthcheck.html">baseplate-healthcheck: Is your service alive?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../cli/serve.html">baseplate-serve: The application server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli/script.html">baseplate-script: Run backend scripts</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="core.html">baseplate.core: The guts of the diagnostics framework</a></li>

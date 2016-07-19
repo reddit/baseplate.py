@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>baseplate-healthcheck &mdash; Baseplate</title>
+    <title>baseplate-script &mdash; Baseplate</title>
     
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -25,8 +25,8 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../_static/favicon.png"/>
     <link rel="top" title="Baseplate" href="../index.html" />
-    <link rel="next" title="baseplate-serve" href="serve.html" />
-    <link rel="prev" title="Quick Start" href="../quickstart.html" />
+    <link rel="next" title="baseplate.core" href="../baseplate/core.html" />
+    <link rel="prev" title="baseplate-serve" href="serve.html" />
    
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -39,35 +39,46 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="baseplate-healthcheck">
-<h1>baseplate-healthcheck<a class="headerlink" href="#baseplate-healthcheck" title="Permalink to this headline">¶</a></h1>
-<p>Baseplate services have well-defined healthcheck endpoints. The
-<tt class="docutils literal"><span class="pre">baseplate-healthcheck</span></tt> tool connects to a given service and checks these
-endpoints to see if they&#8217;re alive.</p>
+  <div class="section" id="baseplate-script">
+<h1>baseplate-script<a class="headerlink" href="#baseplate-script" title="Permalink to this headline">¶</a></h1>
+<p>This command allows you to run a piece of Python code with the application
+config loaded similarly to <a class="reference external" href="serve.html">baseplate-serve</a>. The command is
+<tt class="docutils literal"><span class="pre">baseplate-script2</span></tt> or <tt class="docutils literal"><span class="pre">baseplate-script3</span></tt> depending on which version of
+Python you would like to use.</p>
 <div class="section" id="command-line">
 <h2>Command Line<a class="headerlink" href="#command-line" title="Permalink to this headline">¶</a></h2>
-<p>There are two required arguments on the command line: the protocol of the
-service to check (<tt class="docutils literal"><span class="pre">thrift</span></tt> or <tt class="docutils literal"><span class="pre">wsgi</span></tt>) and the endpoint to connect to.</p>
-<p>For example, to check a Thrift-based service listening on port 9090:</p>
-<div class="highlight-python"><div class="highlight"><pre>baseplate-healthcheck2 thrift 127.0.0.1:9090
+<p>There are two required arguments on the command line: the path to an INI-format
+configuration file, and the fully qualified name of a Python function to run.</p>
+<p>The function should be specified as a module path, a colon, and a function
+name. For example, <tt class="docutils literal"><span class="pre">my_service.models:create_schema</span></tt>. The function should
+take a single argument which will be the application&#8217;s configuration as a
+dictionary. This is the same as the application factory used by the server.</p>
+<p>Just like with <tt class="docutils literal"><span class="pre">baseplate-serve</span></tt>, the <tt class="docutils literal"><span class="pre">app:main</span></tt> section will be loaded by
+default. This can be overridden with the <tt class="docutils literal"><span class="pre">--app-name</span></tt> option.</p>
+</div>
+<div class="section" id="example">
+<h2>Example<a class="headerlink" href="#example" title="Permalink to this headline">¶</a></h2>
+<p>Given a configuration file, <tt class="docutils literal"><span class="pre">printer.ini</span></tt>:</p>
+<div class="highlight-ini"><div class="highlight"><pre><span class="k">[app:main]</span>
+<span class="na">message</span> <span class="o">=</span> <span class="s">Hello!</span>
+
+<span class="k">[app:bizarro]</span>
+<span class="na">message</span> <span class="o">=</span> <span class="s">!olleH</span>
 </pre></div>
 </div>
-<p>or a WSGI (HTTP) service listening on a UNIX domain socket:</p>
-<div class="highlight-python"><div class="highlight"><pre>baseplate-healthcheck2 wsgi /run/myservice.sock
+<p>and a small script, <tt class="docutils literal"><span class="pre">printer.py</span></tt>:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="k">def</span> <span class="nf">run</span><span class="p">(</span><span class="n">app_config</span><span class="p">):</span>
+    <span class="k">print</span><span class="p">(</span><span class="n">app_config</span><span class="p">[</span><span class="s">&quot;message&quot;</span><span class="p">])</span>
 </pre></div>
 </div>
+<p>You can run the script with various configurations:</p>
+<div class="highlight-text"><div class="highlight"><pre>$ baseplate-script2 printer.ini printer:run
+Hello!
+
+$ baseplate-script2 printer.ini --app-name=bizarro printer:run
+!olleH
+</pre></div>
 </div>
-<div class="section" id="results">
-<h2>Results<a class="headerlink" href="#results" title="Permalink to this headline">¶</a></h2>
-<p>If the service is healthy, the tool will exit with a status code indicating
-success (0) and print &#8220;OK!&#8221;. If the service is unhealthy, the tool will exit
-with a status code indicating failure (1) and print an error message explaining
-what went wrong.</p>
-</div>
-<div class="section" id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
-<p>This script can be used as part of a process to validate a server after
-creation, or to revalidate a service for use in a service discovery system.</p>
 </div>
 </div>
 
@@ -94,11 +105,11 @@ creation, or to revalidate a service for use in a service discovery system.</p>
 <li class="toctree-l1"><a class="reference internal" href="../quickstart.html">Quick Start</a></li>
 </ul>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="">baseplate-healthcheck: Is your service alive?</a><ul class="simple">
+<li class="toctree-l1"><a class="reference internal" href="healthcheck.html">baseplate-healthcheck: Is your service alive?</a></li>
+<li class="toctree-l1"><a class="reference internal" href="serve.html">baseplate-serve: The application server</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">baseplate-script: Run backend scripts</a><ul class="simple">
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="serve.html">baseplate-serve: The application server</a></li>
-<li class="toctree-l1"><a class="reference internal" href="script.html">baseplate-script: Run backend scripts</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../baseplate/core.html">baseplate.core: The guts of the diagnostics framework</a></li>
@@ -124,8 +135,8 @@ creation, or to revalidate a service for use in a service discovery system.</p>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="../quickstart.html" title="previous chapter">Quick Start</a></li>
-      <li>Next: <a href="serve.html" title="next chapter">baseplate-serve</a></li>
+      <li>Previous: <a href="serve.html" title="previous chapter">baseplate-serve</a></li>
+      <li>Next: <a href="../baseplate/core.html" title="next chapter">baseplate.core</a></li>
   </ul></li>
 </ul>
 </div>
@@ -150,7 +161,7 @@ creation, or to revalidate a service for use in a service discovery system.</p>
       
       
       
-      <a href="../_sources/cli/healthcheck.txt"
+      <a href="../_sources/cli/script.txt"
           rel="nofollow">Page source</a>
     </div>
 

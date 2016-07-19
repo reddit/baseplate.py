@@ -26,7 +26,7 @@
     <link rel="shortcut icon" href="../_static/favicon.png"/>
     <link rel="top" title="Baseplate" href="../index.html" />
     <link rel="next" title="baseplate.context" href="context/index.html" />
-    <link rel="prev" title="baseplate-serve" href="../cli/serve.html" />
+    <link rel="prev" title="baseplate-script" href="../cli/script.html" />
    
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -188,14 +188,6 @@ context will be generated.</li>
 service should have passed along trace information. This class is used for
 collecting the trace context and passing it along to the root span.</p>
 <dl class="classmethod">
-<dt id="baseplate.core.TraceInfo.new">
-<em class="property">classmethod </em><tt class="descname">new</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.TraceInfo.new" title="Permalink to this definition">¶</a></dt>
-<dd><p>Generate IDs for a new initial root span.</p>
-<p>This span has no parent and has a random ID. It cannot be correlated
-with any upstream requests.</p>
-</dd></dl>
-
-<dl class="classmethod">
 <dt id="baseplate.core.TraceInfo.from_upstream">
 <em class="property">classmethod </em><tt class="descname">from_upstream</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em><big>)</big><a class="headerlink" href="#baseplate.core.TraceInfo.from_upstream" title="Permalink to this definition">¶</a></dt>
 <dd><p>Build a TraceInfo from individual headers.</p>
@@ -308,6 +300,61 @@ normal exit.</td>
 <dt id="baseplate.core.Span">
 <em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">Span</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.Span" title="Permalink to this definition">¶</a></dt>
 <dd><p>A span represents a single RPC within a system.</p>
+<dl class="method">
+<dt id="baseplate.core.Span.register">
+<tt class="descname">register</tt><big>(</big><em>observer</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.register" title="Permalink to this definition">¶</a></dt>
+<dd><p>Register an observer to receive events from this span.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Span.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.Span.start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the start of the span.</p>
+<p>This notifies any observers that the span has started, which indicates
+that timers etc. should start ticking.</p>
+<p>Spans also support the <a class="reference external" href="https://docs.python.org/3/reference/datamodel.html#context-managers">context manager protocol</a>, for use with
+Python&#8217;s <tt class="docutils literal"><span class="pre">with</span></tt> statement. When the context is entered, the span
+calls <a class="reference internal" href="#baseplate.core.Span.start" title="baseplate.core.Span.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> and when the context is exited it automatically
+calls <a class="reference internal" href="#baseplate.core.Span.stop" title="baseplate.core.Span.stop"><tt class="xref py py-meth docutils literal"><span class="pre">stop()</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Span.annotate">
+<tt class="descname">annotate</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.annotate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an annotation to the span.</p>
+<p>Annotations are arbitrary key/value pairs that add context and meaning
+to the span, such as a hostname or query string. Observers may
+interpret or ignore annotations as they desire.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the annotation.</li>
+<li><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The value of the annotation.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Span.stop">
+<tt class="descname">stop</tt><big>(</big><em>error=None</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.stop" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the end of the span.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>error</strong> &#8211; If the span ended because of an exception, this should
+be that exception. The default is <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> which indicates
+normal exit.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -492,6 +539,7 @@ be registered with <a class="reference internal" href="#baseplate.core.Baseplate
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../cli/healthcheck.html">baseplate-healthcheck: Is your service alive?</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../cli/serve.html">baseplate-serve: The application server</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../cli/script.html">baseplate-script: Run backend scripts</a></li>
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="">baseplate.core: The guts of the diagnostics framework</a><ul class="simple">
@@ -519,7 +567,7 @@ be registered with <a class="reference internal" href="#baseplate.core.Baseplate
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="../cli/serve.html" title="previous chapter">baseplate-serve</a></li>
+      <li>Previous: <a href="../cli/script.html" title="previous chapter">baseplate-script</a></li>
       <li>Next: <a href="context/index.html" title="next chapter">baseplate.context</a></li>
   </ul></li>
 </ul>
