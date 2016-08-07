@@ -42,7 +42,14 @@ extras_require = {
 
 setup(
     name="baseplate",
+    description="A library to build services on",
+    long_description=open("README.rst").read(),
+    author="Neil Williams",
+    author_email="neil@reddit.com",
+    license="BSD",
+    url="https://reddit.github.io/baseplate/",
     version="0.13.0",
+
     packages=find_packages(exclude=["tests"]),
 
     install_requires=install_requires,

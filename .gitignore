@@ -6,4 +6,5 @@ __pycache__
 
 baseplate.egg-info
 build/
+dist/
 baseplate/thrift
