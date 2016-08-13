@@ -3,6 +3,16 @@
 .. note:: See :py:class:`baseplate.context.thrift.ThriftContextFactory` for
     a convenient way to integrate the pool with your application.
 
+The pool lazily creates connections and maintains them in a pool. Individual
+connections have a maximum lifetime, after which they will be recycled.
+
+A basic example of usage::
+
+    pool = ThriftConnectionPool(endpoint)
+    with pool.connection() as protocol:
+        client = ExampleService.Client(protocol)
+        client.do_example_thing()
+
 """
 from __future__ import absolute_import
 from __future__ import division
