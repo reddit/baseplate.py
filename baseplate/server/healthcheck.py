@@ -14,18 +14,17 @@ import requests
 from baseplate.config import Endpoint
 from baseplate.requests import add_unix_socket_support
 from baseplate.thrift import BaseplateService
-from baseplate.thrift_pool import _make_protocol
+from baseplate.thrift_pool import ThriftConnectionPool
 
 
 TIMEOUT = 30  # seconds
 
 
 def check_thrift_service(endpoint):
-    protocol = _make_protocol(endpoint)
-    protocol.trans.getTransport().setTimeout(TIMEOUT * 1000.)
-    protocol.trans.open()
-    client = BaseplateService.Client(protocol)
-    assert client.is_healthy(), "service indicated unhealthiness"
+    pool = ThriftConnectionPool(endpoint, size=1, timeout=TIMEOUT)
+    with pool.connection() as protocol:
+        client = BaseplateService.Client(protocol)
+        assert client.is_healthy(), "service indicated unhealthiness"
 
 
 def check_http_service(endpoint):
