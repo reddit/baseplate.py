@@ -10,6 +10,7 @@ from gevent.server import StreamServer
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
 from thrift.server.TServer import TRpcConnectionContext
 from thrift.transport.TSocket import TSocket
+from thrift.transport.THeaderTransport import THeaderTransport
 from thrift.transport.TTransport import (
     TTransportException, TBufferedTransportFactory)
 
@@ -19,7 +20,14 @@ class GeventServer(StreamServer):
     def __init__(self, processor, *args, **kwargs):
         self.processor = processor
         self.transport_factory = TBufferedTransportFactory()
-        self.protocol_factory = THeaderProtocolFactory()
+        self.protocol_factory = THeaderProtocolFactory(
+            # allow non-headerprotocol clients to talk with us
+            client_types=[
+                THeaderTransport.HEADERS_CLIENT_TYPE,
+                THeaderTransport.FRAMED_DEPRECATED,
+                THeaderTransport.UNFRAMED_DEPRECATED,
+            ],
+        )
         super(GeventServer, self).__init__(*args, **kwargs)
 
     def serve_forever(self, stop_timeout=None):
