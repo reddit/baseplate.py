@@ -42,7 +42,7 @@ class MetricsSpanObserver(SpanObserver):
     def on_annotate(self, key, value):  # pragma: nocover
         pass
 
-    def on_stop(self, error):
+    def on_stop(self, exc_info):
         self.timer.stop()
 
 
@@ -51,6 +51,6 @@ class MetricsRootSpanObserver(MetricsSpanObserver):
         observer = MetricsSpanObserver(self.batch, "clients." + span.name)
         span.register(observer)
 
-    def on_stop(self, error):
-        super(MetricsRootSpanObserver, self).on_stop(error)
+    def on_stop(self, exc_info):
+        super(MetricsRootSpanObserver, self).on_stop(exc_info)
         self.batch.flush()

@@ -36,11 +36,11 @@ class SpanObserver(object):  # pragma: nocover
         """Called when an annotation is added to the observed span."""
         pass
 
-    def on_stop(self, error):
+    def on_stop(self, exc_info):
         """Called when the observed span is stopped.
 
-        :param error: If the span ended because of an exception, the instance
-            raised. Otherwise, :py:data:`None`.
+        :param exc_info: If the span ended because of an exception, the
+            exception info. Otherwise, :py:data:`None`.
 
         """
         pass
@@ -244,23 +244,26 @@ class Span(object):
         for observer in self.observers:
             observer.on_annotate(key, value)
 
-    def stop(self, error=None):
+    def stop(self, exc_info=None):
         """Record the end of the span.
 
-        :param error: If the span ended because of an exception, this should
-            be that exception. The default is :py:data:`None` which indicates
-            normal exit.
+        :param exc_info: If the span ended because of an exception, this is
+            the exception information. The default is :py:data:`None` which
+            indicates normal exit.
 
         """
         for observer in self.observers:
-            observer.on_stop(error=error)
+            observer.on_stop(exc_info)
 
     def __enter__(self):
         self.start()
         return self
 
     def __exit__(self, exc_type, value, traceback):
-        self.stop(error=value)
+        if exc_type is not None:
+            self.stop(exc_info=(exc_type, value, traceback))
+        else:
+            self.stop()
 
 
 class RootSpan(Span):
