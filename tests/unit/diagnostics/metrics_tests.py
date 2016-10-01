@@ -42,7 +42,7 @@ class RootSpanObserverTests(unittest.TestCase):
         observer.on_start()
         self.assertEqual(mock_timer.start.call_count, 1)
 
-        observer.on_stop(error=None)
+        observer.on_stop(exc_info=None)
         self.assertEqual(mock_timer.stop.call_count, 1)
         self.assertEqual(mock_batch.flush.call_count, 1)
 
@@ -59,5 +59,5 @@ class SpanObserverTests(unittest.TestCase):
         observer.on_start()
         self.assertEqual(mock_timer.start.call_count, 1)
 
-        observer.on_stop(error=None)
+        observer.on_stop(exc_info=None)
         self.assertEqual(mock_timer.stop.call_count, 1)

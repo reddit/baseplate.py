@@ -108,5 +108,5 @@ class SQLAlchemySessionRootSpanObserver(RootSpanObserver):
     def __init__(self, session):
         self.session = session
 
-    def on_stop(self, error):
+    def on_stop(self, exc_info):
         self.session.close()
