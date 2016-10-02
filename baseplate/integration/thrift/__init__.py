@@ -59,12 +59,23 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
         except (KeyError, ValueError):
             pass
 
-        context.headers = headers
-        context.trace = self.baseplate.make_server_span(
+        trace = self.baseplate.make_server_span(
             context,
             name=fn_name,
             trace_info=trace_info,
         )
+
+        try:
+            peer_address, peer_port = server_context.getPeerName()
+        except AttributeError:
+            # the client transport is not a socket
+            pass
+        else:
+            trace.set_tag("peer.ipv4", peer_address)
+            trace.set_tag("peer.port", peer_port)
+
+        context.headers = headers
+        context.trace = trace
         return context
 
     def postRead(self, handler_context, fn_name, args):

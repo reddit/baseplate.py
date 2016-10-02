@@ -72,6 +72,9 @@ class BaseplateConfigurator(object):
                 pass
 
         request.start_server_span(request.matched_route.name, trace_info)
+        request.trace.set_tag("http.url", request.url)
+        request.trace.set_tag("http.method", request.method)
+        request.trace.set_tag("peer.ipv4", request.remote_addr)
 
     def _start_server_span(self, request, name, trace_info=None):
         request.trace = self.baseplate.make_server_span(
@@ -83,10 +86,12 @@ class BaseplateConfigurator(object):
 
     # pylint: disable=no-self-use
     def _on_new_response(self, event):
-        if not event.request.matched_route:
+        request = event.request
+        if not request.matched_route:
             return
 
-        event.request.trace.finish()
+        request.trace.set_tag("http.status_code", request.response.status_code)
+        request.trace.finish()
 
     def includeme(self, config):
         config.add_subscriber(self._on_new_request, ContextFound)
