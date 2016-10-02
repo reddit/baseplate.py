@@ -31,6 +31,7 @@ intersphinx_mapping = {
     #"pymemcache": ("https://pymemcache.readthedocs.io/en/latest/", None),
     "redis": ("https://redis-py.readthedocs.org/en/latest/", "intersphinx/redis.inv"),
     "sqlalchemy": ("http://www.sqlalchemy.org/docs/05/objects.inv", "intersphinx/sqlalchemy.inv"),
+    "raven": ("https://docs.sentry.io/", "intersphinx/sentry.inv"),
 }
 
 # The suffix of source filenames.

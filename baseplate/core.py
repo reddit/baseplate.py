@@ -190,6 +190,19 @@ class Baseplate(object):
 
         self.register(TraceBaseplateObserver(tracing_client))
 
+    def configure_error_reporting(self, client):  # pragma: nocover
+        """Send reports for unexpected exceptions to the given client.
+
+        This also adds a :py:class:`raven.Client` object to the ``sentry``
+        attribute on the :term:`context object` where you can send your own
+        application-specific events.
+
+        :param raven.Client client: A configured raven client.
+
+        """
+        from .diagnostics.sentry import SentryBaseplateObserver
+        self.register(SentryBaseplateObserver(client))
+
     def add_to_context(self, name, context_factory):  # pragma: nocover
         """Add an attribute to each request's context object.
 
