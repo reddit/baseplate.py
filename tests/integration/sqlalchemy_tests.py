@@ -12,7 +12,7 @@ except ImportError:
     raise unittest.SkipTest("sqlalchemy is not installed")
 
 from baseplate.context.sqlalchemy import SQLAlchemySessionContextFactory
-from baseplate.core import RootSpan, Span
+from baseplate.core import ServerSpan, Span
 
 from .. import mock
 
@@ -34,16 +34,16 @@ class SQLAlchemyTests(unittest.TestCase):
         self.factory = SQLAlchemySessionContextFactory(self.engine)
 
     def test_session(self):
-        root_span = mock.Mock(autospec=RootSpan)
+        server_span = mock.Mock(autospec=ServerSpan)
         span = mock.Mock(autospec=Span)
         span.id = 1234
         span.trace_id = 2345
-        root_span.make_child.return_value = span
-        session = self.factory.make_object_for_context("db", root_span)
+        server_span.make_child.return_value = span
+        session = self.factory.make_object_for_context("db", server_span)
 
         new_object = TestObject(name="cool")
         session.add(new_object)
         session.commit()
 
-        self.assertEqual(root_span.make_child.call_args,
+        self.assertEqual(server_span.make_child.call_args,
                          mock.call("db.execute"))

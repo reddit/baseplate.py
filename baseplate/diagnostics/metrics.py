@@ -25,10 +25,10 @@ class MetricsBaseplateObserver(BaseplateObserver):
     def __init__(self, client):
         self.client = client
 
-    def on_root_span_created(self, context, root_span):
+    def on_server_span_created(self, context, server_span):
         context.metrics = self.client.batch()
-        observer = MetricsRootSpanObserver(context.metrics, "server." + root_span.name)
-        root_span.register(observer)
+        observer = MetricsServerSpanObserver(context.metrics, "server." + server_span.name)
+        server_span.register(observer)
 
 
 class MetricsSpanObserver(SpanObserver):
@@ -39,18 +39,15 @@ class MetricsSpanObserver(SpanObserver):
     def on_start(self):
         self.timer.start()
 
-    def on_annotate(self, key, value):  # pragma: nocover
-        pass
-
-    def on_stop(self, exc_info):
+    def on_finish(self, exc_info):
         self.timer.stop()
 
 
-class MetricsRootSpanObserver(MetricsSpanObserver):
+class MetricsServerSpanObserver(MetricsSpanObserver):
     def on_child_span_created(self, span):  # pragma: nocover
         observer = MetricsSpanObserver(self.batch, "clients." + span.name)
         span.register(observer)
 
-    def on_stop(self, exc_info):
-        super(MetricsRootSpanObserver, self).on_stop(exc_info)
+    def on_finish(self, exc_info):
+        super(MetricsServerSpanObserver, self).on_finish(exc_info)
         self.batch.flush()

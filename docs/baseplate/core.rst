@@ -18,15 +18,15 @@ incomplete example of an application built on the framework::
        ... snip ...
 
 When a request is made which routes to the ``do_something`` handler, a
-:py:class:`~baseplate.core.RootSpan` is automatically created. If the incoming
-request has trace headers, we construct the root span to be identical to the
+:py:class:`~baseplate.core.ServerSpan` is automatically created. If the incoming
+request has trace headers, we construct the server span to be identical to the
 child span in the upstream service. When we call
 ``request.some_redis_client.ping()`` in the handler, Baseplate will create a
 child :py:class:`~baseplate.core.Span` object to represent the time taken
 talking to redis.
 
-The creation of the root and child spans will trigger updates on all the
-:py:class:`~baseplate.core.RootSpanObserver` and
+The creation of the server and child spans will trigger updates on all the
+:py:class:`~baseplate.core.ServerSpanObserver` and
 :py:class:`~baseplate.core.SpanObserver` objects registered.  Because we called
 ``baseplate.configure_metrics`` in our setup, this means we have observers that
 send statsd metrics so Baseplate will automatically send metrics on how long it
@@ -60,7 +60,7 @@ Spans
 -----
 
 Each time a new request comes in to be served, the time taken to handle the
-request is represented by a new :py:class:`~baseplate.core.RootSpan` instance.
+request is represented by a new :py:class:`~baseplate.core.ServerSpan` instance.
 During the course of handling that request, our application might make calls to
 remote services or do expensive calculations, the time spent can be represented
 by child :py:class:`~baseplate.core.Span` instances.
@@ -68,14 +68,14 @@ by child :py:class:`~baseplate.core.Span` instances.
 Spans have names and IDs and track their parent relationships. When calls are
 made to remote services, the information that identifies the local child span
 representing that service call is passed along to the remote service and
-becomes the root span in the remote service. This allows requests to be traced
+becomes the server span in the remote service. This allows requests to be traced
 across the infrastructure.
 
 Small bits of data, called annotations, can be attached to spans as well. This
 could be the URL fetched, or how many items were sent in a batch, or whatever
 else might be helpful.
 
-.. autoclass:: RootSpan
+.. autoclass:: ServerSpan
    :members:
    :inherited-members:
 
@@ -92,35 +92,36 @@ via calls to various methods.
 The base type of observer is :py:class:`~baseplate.core.BaseplateObserver`
 which can be registered with the root :py:class:`~baseplate.core.Baseplate`
 instance using the :py:meth:`~baseplate.core.Baseplate.register` method.
-Whenever a new root span is created in your application (i.e. a new request
+Whenever a new server span is created in your application (i.e. a new request
 comes in to be served) the observer has its
-:py:meth:`~baseplate.core.BaseplateObserver.on_root_span_created` method called
-with the relevant details. If this method returns an instance of
-:py:class:`~baseplate.core.RootSpanObserver`, the returned observer will be
-registered to receive events from the new root span.
+:py:meth:`~baseplate.core.BaseplateObserver.on_server_span_created` method
+called with the relevant details. This method can register
+:py:class:`~baseplate.core.ServerSpanObserver` instances with the new server
+span to receive events as they happen.
 
-Spans, and root spans, can be notified of three common events:
+Spans can be notified of four common events:
 :py:meth:`~baseplate.core.SpanObserver.on_start`,
-:py:meth:`~baseplate.core.SpanObserver.on_annotate`, and
-:py:meth:`~baseplate.core.SpanObserver.on_stop`. These represent the span
-starting, having a custom annotation added, and ending, respectively.
+:py:meth:`~baseplate.core.SpanObserver.on_set_tag`, and
+:py:meth:`~baseplate.core.SpanObserver.on_log`, and
+:py:meth:`~baseplate.core.SpanObserver.on_finish`. These represent the span
+starting, having tags set, logs entered, and ending, respectively.
 
-Additionally, :py:class:`~baseplate.core.RootSpanObserver` has one extra event,
-:py:meth:`~baseplate.core.RootSpanObserver.on_child_span_created`. This method
-is called when a new child span is created in the application for e.g. a call
-to a remote service or an expensive computation. If this method returns an
-instance of :py:class:`~baseplate.core.SpanObserver`, the returned observer
-will be registered to receive events from the new child span.
+Additionally, :py:class:`~baseplate.core.ServerSpanObserver` has one extra
+event, :py:meth:`~baseplate.core.ServerSpanObserver.on_child_span_created`.
+This method is called when a new child span is created in the application for
+e.g. a call to a remote service or an expensive computation. This method can
+register :py:class:`~baseplate.core.SpanObserver` instances with the new child
+span to receive events as they happen.
 
 It's up to the observers to attach meaning to these events. For example, the
 metrics observer would start a timer
 :py:meth:`~!baseplate.core.SpanObserver.on_start` and record the elapsed time to
-statsd :py:meth:`~!baseplate.core.SpanObserver.on_stop`.
+statsd :py:meth:`~!baseplate.core.SpanObserver.on_finish`.
 
 .. autoclass:: BaseplateObserver
    :members:
 
-.. autoclass:: RootSpanObserver
+.. autoclass:: ServerSpanObserver
    :members:
    :inherited-members:
 

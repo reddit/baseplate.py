@@ -179,5 +179,5 @@ class EventQueue(ContextFactory):
         except TimedOutError:
             raise EventQueueFullError
 
-    def make_object_for_context(self, name, root_span):
+    def make_object_for_context(self, name, server_span):
         return self

@@ -40,7 +40,7 @@ class ContextFactory(object):
 
     """
 
-    def make_object_for_context(self, name, root_span):  # pragma: nocover
+    def make_object_for_context(self, name, server_span):  # pragma: nocover
         """Return an object that can be added to the context object."""
         raise NotImplementedError
 
@@ -50,6 +50,6 @@ class ContextObserver(BaseplateObserver):
         self.name = name
         self.context_factory = context_factory
 
-    def on_root_span_created(self, context, root_span):
-        context_attr = self.context_factory.make_object_for_context(self.name, root_span)
+    def on_server_span_created(self, context, server_span):
+        context_attr = self.context_factory.make_object_for_context(self.name, server_span)
         setattr(context, self.name, context_attr)

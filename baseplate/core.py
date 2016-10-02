@@ -6,19 +6,17 @@ from __future__ import unicode_literals
 import collections
 import random
 
-from ._utils import warn_deprecated
-
 
 class BaseplateObserver(object):
     """Interface for an observer that watches Baseplate."""
 
-    def on_root_span_created(self, context, root_span):  # pragma: nocover
-        """Called when a root span is created.
+    def on_server_span_created(self, context, server_span):  # pragma: nocover
+        """Called when a server span is created.
 
         :py:class:`Baseplate` calls this when a new request begins.
 
         :param context: The :term:`context object` for this request.
-        :param baseplate.core.RootSpan root_span: The root span representing
+        :param baseplate.core.ServerSpan server_span: The span representing
             this request.
 
         """
@@ -32,12 +30,16 @@ class SpanObserver(object):  # pragma: nocover
         """Called when the observed span is started."""
         pass
 
-    def on_annotate(self, key, value):
-        """Called when an annotation is added to the observed span."""
+    def on_set_tag(self, key, value):
+        """Called when a tag is set on the observed span."""
         pass
 
-    def on_stop(self, exc_info):
-        """Called when the observed span is stopped.
+    def on_log(self, name, payload):
+        """Called when a log entry is added to the span."""
+        pass
+
+    def on_finish(self, exc_info):
+        """Called when the observed span is finished.
 
         :param exc_info: If the span ended because of an exception, the
             exception info. Otherwise, :py:data:`None`.
@@ -46,13 +48,13 @@ class SpanObserver(object):  # pragma: nocover
         pass
 
 
-class RootSpanObserver(SpanObserver):
-    """Interface for an observer that watches the root span."""
+class ServerSpanObserver(SpanObserver):
+    """Interface for an observer that watches the server span."""
 
     def on_child_span_created(self, span):  # pragma: nocover
         """Called when a child span is created.
 
-        :py:class:`RootSpan` objects call this when a new child span is
+        :py:class:`ServerSpan` objects call this when a new child span is
         created.
 
         :param baseplate.core.Span span: The new child span.
@@ -69,12 +71,12 @@ class TraceInfo(_TraceInfo):
 
     If this request was made at the behest of an upstream service, the upstream
     service should have passed along trace information. This class is used for
-    collecting the trace context and passing it along to the root span.
+    collecting the trace context and passing it along to the server span.
 
     """
     @classmethod
     def new(cls):
-        """Generate IDs for a new initial root span.
+        """Generate IDs for a new initial server span.
 
         This span has no parent and has a random ID. It cannot be correlated
         with any upstream requests.
@@ -160,13 +162,13 @@ class Baseplate(object):
         from .context import ContextObserver
         self.register(ContextObserver(name, context_factory))
 
-    def make_root_span(self, context, name, trace_info=None, **kwargs):
-        """Return a root span representing the current request we are handling.
+    def make_server_span(self, context, name, trace_info=None):
+        """Return a server span representing the request we are handling.
 
-        In a server, a root span represents the time spent on a single incoming
-        request. Any calls made to downstream services will be new child spans
-        of the root span, and the root span will in turn be the child span of
-        whatever upstream request it is part of.
+        In a server, a server span represents the time spent on a single
+        incoming request. Any calls made to downstream services will be new
+        child spans of the server span, and the server span will in turn be the
+        child span of whatever upstream request it is part of, if any.
 
         :param context: The :term:`context object` for this request.
         :param str name: A name to identify the type of this request, e.g.
@@ -177,24 +179,14 @@ class Baseplate(object):
 
         """
 
-        if "trace_id" in kwargs:
-            warn_deprecated("Passing trace_id/parent_id/span_id to "
-                            "make_root_span is deprecated in favor of passing "
-                            "a single TraceInfo object as trace_info.")
-
-            trace_info = TraceInfo(
-                trace_id=kwargs["trace_id"],
-                parent_id=kwargs["parent_id"],
-                span_id=kwargs["span_id"],
-            )
-        elif trace_info is None:
+        if trace_info is None:
             trace_info = TraceInfo.new()
 
-        root_span = RootSpan(trace_info.trace_id, trace_info.parent_id,
-                             trace_info.span_id, name)
+        server_span = ServerSpan(trace_info.trace_id, trace_info.parent_id,
+                                 trace_info.span_id, name)
         for observer in self.observers:
-            observer.on_root_span_created(context, root_span)
-        return root_span
+            observer.on_server_span_created(context, server_span)
+        return server_span
 
 
 class Span(object):
@@ -221,7 +213,7 @@ class Span(object):
         Spans also support the `context manager protocol`_, for use with
         Python's ``with`` statement. When the context is entered, the span
         calls :py:meth:`start` and when the context is exited it automatically
-        calls :py:meth:`stop`.
+        calls :py:meth:`finish`.
 
         .. _context manager protocol:
             https://docs.python.org/3/reference/datamodel.html#context-managers
@@ -230,21 +222,35 @@ class Span(object):
         for observer in self.observers:
             observer.on_start()
 
-    def annotate(self, key, value):
-        """Add an annotation to the span.
+    def set_tag(self, key, value):
+        """Set a tag on the span.
 
-        Annotations are arbitrary key/value pairs that add context and meaning
-        to the span, such as a hostname or query string. Observers may
-        interpret or ignore annotations as they desire.
+        Tags are arbitrary key/value pairs that add context and meaning to the
+        span, such as a hostname or query string. Observers may interpret or
+        ignore tags as they desire.
 
-        :param str key: The name of the annotation.
-        :param str value: The value of the annotation.
+        :param str key: The name of the tag.
+        :param value: The value of the tag, must be a string/boolean/number.
 
         """
         for observer in self.observers:
-            observer.on_annotate(key, value)
+            observer.on_set_tag(key, value)
 
-    def stop(self, exc_info=None):
+    def log(self, name, payload=None):
+        """Add a log entry to the span.
+
+        Log entries are timestamped events recording notable moments in the
+        lifetime of a span.
+
+        :param str name: The name of the log entry. This should be a stable
+            identifier that can apply to multiple span instances.
+        :param payload: Optional log entry payload. This can be arbitrary data.
+
+        """
+        for observer in self.observers:
+            observer.on_log(name, payload)
+
+    def finish(self, exc_info=None):
         """Record the end of the span.
 
         :param exc_info: If the span ended because of an exception, this is
@@ -253,7 +259,7 @@ class Span(object):
 
         """
         for observer in self.observers:
-            observer.on_stop(exc_info)
+            observer.on_finish(exc_info)
 
     def __enter__(self):
         self.start()
@@ -261,16 +267,16 @@ class Span(object):
 
     def __exit__(self, exc_type, value, traceback):
         if exc_type is not None:
-            self.stop(exc_info=(exc_type, value, traceback))
+            self.finish(exc_info=(exc_type, value, traceback))
         else:
-            self.stop()
+            self.finish()
 
 
-class RootSpan(Span):
-    """A root span represents a request this server is handling.
+class ServerSpan(Span):
+    """A server span represents a request this server is handling.
 
-    The root span is available on the :term:`context object` during requests as
-    the ``trace`` attribute.
+    The server span is available on the :term:`context object` during requests
+    as the ``trace`` attribute.
 
     """
 

@@ -71,10 +71,10 @@ class BaseplateConfigurator(object):
             except (KeyError, ValueError):
                 pass
 
-        request.start_root_span(request.matched_route.name, trace_info)
+        request.start_server_span(request.matched_route.name, trace_info)
 
-    def _start_root_span(self, request, name, trace_info=None):
-        request.trace = self.baseplate.make_root_span(
+    def _start_server_span(self, request, name, trace_info=None):
+        request.trace = self.baseplate.make_server_span(
             request,
             name=name,
             trace_info=trace_info,
@@ -86,7 +86,7 @@ class BaseplateConfigurator(object):
         if not event.request.matched_route:
             return
 
-        event.request.trace.stop()
+        event.request.trace.finish()
 
     def includeme(self, config):
         config.add_subscriber(self._on_new_request, ContextFound)
@@ -102,9 +102,9 @@ class BaseplateConfigurator(object):
         # pyramid gets all cute with descriptors and will pass the request
         # object as the first ("self") param to bound methods. wrapping
         # the bound method in a simple function prevents that behavior
-        def start_root_span(*args, **kwargs):
-            return self._start_root_span(*args, **kwargs)
-        config.add_request_method(start_root_span, "start_root_span")
+        def start_server_span(*args, **kwargs):
+            return self._start_server_span(*args, **kwargs)
+        config.add_request_method(start_server_span, "start_server_span")
 
 
 def paste_make_app(_, **local_config):
@@ -124,9 +124,9 @@ def paste_make_app(_, **local_config):
 
 def pshell_setup(env):
     # pylint: disable=line-too-long
-    """Start a root span when pshell starts up.
+    """Start a server span when pshell starts up.
 
-    This simply starts a root span after the shell initializes, which
+    This simply starts a server span after the shell initializes, which
     gives shell users access to all the :term:`context object` goodness.
 
     To use it, add configuration to your app's INI file like so:
@@ -137,4 +137,4 @@ def pshell_setup(env):
     See http://docs.pylonsproject.org/projects/pyramid/en/latest/narr/commandline.html#extending-the-shell
 
     """
-    env["request"].start_root_span("shell")
+    env["request"].start_server_span("shell")

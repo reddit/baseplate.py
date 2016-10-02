@@ -60,7 +60,7 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
             pass
 
         context.headers = headers
-        context.trace = self.baseplate.make_root_span(
+        context.trace = self.baseplate.make_server_span(
             context,
             name=fn_name,
             trace_info=trace_info,
@@ -72,7 +72,7 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
         handler_context.trace.start()
 
     def handlerDone(self, handler_context, fn_name, result):
-        handler_context.trace.stop()
+        handler_context.trace.finish()
 
     def handlerError(self, handler_context, fn_name, exception):
         self.logger.exception("Unexpected exception in %r.", fn_name)

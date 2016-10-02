@@ -61,14 +61,14 @@ class PooledClientProxyTests(unittest.TestCase):
         self.mock_pool = mock.MagicMock(spec=thrift_pool.ThriftConnectionPool)
         self.mock_client_cls = mock.Mock(spec=BaseplateService.Client)
         self.mock_client = self.mock_client_cls.return_value
-        self.mock_root_span = mock.MagicMock(spec=core.RootSpan)
+        self.mock_server_span = mock.MagicMock(spec=core.ServerSpan)
 
     @mock.patch("baseplate.context.thrift._enumerate_service_methods")
     def test_proxy_methods_attached(self, mock_enumerate):
         mock_enumerate.return_value = ["one", "two"]
 
         proxy = thrift.PooledClientProxy(
-            self.mock_client_cls, self.mock_pool, self.mock_root_span, "namespace")
+            self.mock_client_cls, self.mock_pool, self.mock_server_span, "namespace")
 
         self.assertTrue(callable(proxy.one))
         self.assertTrue(callable(proxy.two))
@@ -78,9 +78,9 @@ class PooledClientProxyTests(unittest.TestCase):
         mock_enumerate.return_value = ["one", "two"]
 
         proxy = thrift.PooledClientProxy(
-            self.mock_client_cls, self.mock_pool, self.mock_root_span, "namespace")
+            self.mock_client_cls, self.mock_pool, self.mock_server_span, "namespace")
         result = proxy.one(mock.sentinel.first, mock.sentinel.second)
 
         self.assertEqual(self.mock_client.one.call_count, 1)
         self.assertEqual(result, self.mock_client.one.return_value)
-        self.assertEqual(self.mock_root_span.make_child.call_args, mock.call("namespace.one"))
+        self.assertEqual(self.mock_server_span.make_child.call_args, mock.call("namespace.one"))
