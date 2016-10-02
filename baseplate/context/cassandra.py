@@ -55,25 +55,25 @@ class CassandraContextFactory(ContextFactory):
     def __init__(self, session):
         self.session = session
 
-    def make_object_for_context(self, name, root_span):
-        return CassandraSessionAdapter(name, root_span, self.session)
+    def make_object_for_context(self, name, server_span):
+        return CassandraSessionAdapter(name, server_span, self.session)
 
 
 def _on_execute_complete(_, span):
     # TODO: annotate with anything from the result set?
     # TODO: annotate with any returned warnings
-    span.stop()
+    span.finish()
 
 
 def _on_execute_failed(exc, span):
     span.annotate("error", str(exc))
-    span.stop()
+    span.finish()
 
 
 class CassandraSessionAdapter(object):
-    def __init__(self, context_name, root_span, session):
+    def __init__(self, context_name, server_span, session):
         self.context_name = context_name
-        self.root_span = root_span
+        self.server_span = server_span
         self.session = session
 
     def execute(self, query, parameters=None, timeout=_NOT_SET):
@@ -81,7 +81,7 @@ class CassandraSessionAdapter(object):
 
     def execute_async(self, query, parameters=None, timeout=_NOT_SET):
         trace_name = "{}.{}".format(self.context_name, "execute")
-        span = self.root_span.make_child(trace_name)
+        span = self.server_span.make_child(trace_name)
         span.start()
         # TODO: include custom payload
         span.annotate("statement", query)
@@ -92,6 +92,6 @@ class CassandraSessionAdapter(object):
 
     def prepare(self, query):
         trace_name = "{}.{}".format(self.context_name, "prepare")
-        with self.root_span.make_child(trace_name) as span:
+        with self.server_span.make_child(trace_name) as span:
             span.annotate("statement", query)
             return self.session.prepare(query)

@@ -9,7 +9,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from ..context import ContextFactory
-from ..core import RootSpanObserver
+from ..core import ServerSpanObserver
 
 
 class SQLAlchemyEngineContextFactory(ContextFactory):
@@ -42,9 +42,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         event.listen(engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(engine, "after_cursor_execute", self.on_after_execute)
 
-    def make_object_for_context(self, name, root_span):
+    def make_object_for_context(self, name, server_span):
         self.threadlocal.context_name = name
-        self.threadlocal.root_span = root_span
+        self.threadlocal.server_span = server_span
         self.threadlocal.current_span = None
         return self.engine
 
@@ -56,8 +56,8 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
             "sqlalchemy sessions cannot be used concurrently"
 
         trace_name = "{}.{}".format(self.threadlocal.context_name, "execute")
-        span = self.threadlocal.root_span.make_child(trace_name)
-        span.annotate("statement", statement)
+        span = self.threadlocal.server_span.make_child(trace_name)
+        span.set_tag("statement", statement)
         span.start()
         self.threadlocal.current_span = span
 
@@ -70,7 +70,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     # pylint: disable=unused-argument, too-many-arguments
     def on_after_execute(self, conn, cursor, statement, parameters, context, executemany):
         """Handle the engine's after_cursor_execute event."""
-        self.threadlocal.current_span.stop()
+        self.threadlocal.current_span.finish()
         self.threadlocal.current_span = None
 
 
@@ -95,18 +95,18 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
     :param sqlalchemy.engine.Engine engine: A configured SQLAlchemy engine.
 
     """
-    def make_object_for_context(self, name, root_span):
+    def make_object_for_context(self, name, server_span):
         engine = super(SQLAlchemySessionContextFactory,
-            self).make_object_for_context(name, root_span)
+            self).make_object_for_context(name, server_span)
         session = Session(bind=engine)
-        root_span.register(SQLAlchemySessionRootSpanObserver(session))
+        server_span.register(SQLAlchemySessionServerSpanObserver(session))
         return session
 
 
-class SQLAlchemySessionRootSpanObserver(RootSpanObserver):
+class SQLAlchemySessionServerSpanObserver(ServerSpanObserver):
     """Automatically close the session at the end of each request."""
     def __init__(self, session):
         self.session = session
 
-    def on_stop(self, exc_info):
+    def on_finish(self, exc_info):
         self.session.close()

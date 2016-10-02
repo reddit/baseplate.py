@@ -71,8 +71,8 @@ class RedisContextFactory(ContextFactory):
     def __init__(self, connection_pool):
         self.connection_pool = connection_pool
 
-    def make_object_for_context(self, name, root_span):
-        return MonitoredRedisConnection(name, root_span, self.connection_pool)
+    def make_object_for_context(self, name, server_span):
+        return MonitoredRedisConnection(name, server_span, self.connection_pool)
 
 
 # pylint: disable=too-many-public-methods
@@ -90,9 +90,9 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     """
 
-    def __init__(self, context_name, root_span, connection_pool):
+    def __init__(self, context_name, server_span, connection_pool):
         self.context_name = context_name
-        self.root_span = root_span
+        self.server_span = server_span
 
         super(MonitoredRedisConnection, self).__init__(
             connection_pool=connection_pool)
@@ -100,7 +100,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
     def execute_command(self, command, *args, **kwargs):
         trace_name = "{}.{}".format(self.context_name, command)
 
-        with self.root_span.make_child(trace_name):
+        with self.server_span.make_child(trace_name):
             return super(MonitoredRedisConnection, self).execute_command(
                 command, *args, **kwargs)
 
@@ -119,7 +119,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         """
         return MonitoredRedisPipeline(
             "{}.pipeline_{}".format(self.context_name, name),
-            self.root_span,
+            self.server_span,
             self.connection_pool,
             self.response_callbacks,
             transaction=transaction,
@@ -138,13 +138,13 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
 
 class MonitoredRedisPipeline(redis.client.StrictPipeline):
-    def __init__(self, trace_name, root_span, connection_pool,
+    def __init__(self, trace_name, server_span, connection_pool,
                  response_callbacks, **kwargs):
         self.trace_name = trace_name
-        self.root_span = root_span
+        self.server_span = server_span
         super(MonitoredRedisPipeline, self).__init__(
             connection_pool, response_callbacks, **kwargs)
 
     def execute(self, **kwargs):
-        with self.root_span.make_child(self.trace_name):
+        with self.server_span.make_child(self.trace_name):
             return super(MonitoredRedisPipeline, self).execute(**kwargs)

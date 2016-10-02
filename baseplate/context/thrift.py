@@ -40,8 +40,8 @@ class ThriftContextFactory(ContextFactory):
         self.pool = pool
         self.client_cls = client_cls
 
-    def make_object_for_context(self, name, root_span):
-        return PooledClientProxy(self.client_cls, self.pool, root_span, name)
+    def make_object_for_context(self, name, server_span):
+        return PooledClientProxy(self.client_cls, self.pool, server_span, name)
 
 
 def _enumerate_service_methods(client):
@@ -66,10 +66,10 @@ class PooledClientProxy(object):
     """A proxy which acts like a thrift client but uses a connection pool."""
 
     # pylint: disable=too-many-arguments
-    def __init__(self, client_cls, pool, root_span, namespace, retry_policy=None):
+    def __init__(self, client_cls, pool, server_span, namespace, retry_policy=None):
         self.client_cls = client_cls
         self.pool = pool
-        self.root_span = root_span
+        self.server_span = server_span
         self.namespace = namespace
         self.retry_policy = retry_policy or RetryPolicy.new(attempts=1)
 
@@ -82,7 +82,7 @@ class PooledClientProxy(object):
         yield PooledClientProxy(
             self.client_cls,
             self.pool,
-            self.root_span,
+            self.server_span,
             self.namespace,
             retry_policy=RetryPolicy.new(**policy),
         )
@@ -93,7 +93,7 @@ class PooledClientProxy(object):
 
         for _ in self.retry_policy:
             try:
-                with self.root_span.make_child(trace_name) as span:
+                with self.server_span.make_child(trace_name) as span:
                     with self.pool.connection() as prot:
                         prot.trans.set_header("Trace", str(span.trace_id))
                         prot.trans.set_header("Parent", str(span.parent_id))
