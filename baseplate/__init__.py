@@ -3,6 +3,9 @@ from __future__ import division
 from __future__ import print_function
 #from __future__ import unicode_literals This breaks __all__ on PY2
 
+import os
+import sys
+
 from . import config, metrics
 from .core import Baseplate
 from .diagnostics import tracing
@@ -93,8 +96,90 @@ def make_tracing_client(raw_config, log_if_unconfigured=True):
     )
 
 
+def crash_reporter_from_config(raw_config, module_name):
+    """Configure and return a crash reporter.
+
+    This expects one configuration option and can take many optional ones:
+
+    ``sentry.dsn``
+        The DSN provided by Sentry.
+    ``sentry.site`` (optional)
+        An arbitrary string to identify this client installation.
+    ``sentry.environment`` (optional)
+        The environment your application is running in.
+    ``sentry.exclude_paths`` (optional)
+        Comma-delimited list of module prefixes to ignore when discovering
+        where an error came from.
+    ``sentry.include_paths`` (optional)
+        Comma-delimited list of paths to include for consideration when
+        drilling down to an exception.
+    ``sentry.ignore_exceptions`` (optional)
+        Comma-delimited list of fully qualified names of exception classes
+        (potentially with * globs) to not report.
+    ``sentry.sample_rate`` (optional)
+        Percentage of crashes to report. (e.g. 37%)
+    ``sentry.processors`` (optional)
+        Comma-delimited list of fully qualified names of processor classes
+        to apply to events before sending to Sentry.
+
+    Example usage::
+
+        crash_reporter_from_config(app_config, __name__)
+
+    :param dict raw_config: The app configuration which should have settings
+        for the tracing client.
+    :param str module_name: ``__name__`` of the root module of the application.
+    :rtype: :py:class:`raven.Client`
+
+    """
+    import raven
+
+    cfg = config.parse_config(raw_config, {
+        "sentry": {
+            "dsn": config.String,
+            "site": config.Optional(config.String, default=None),
+            "environment": config.Optional(config.String, default=None),
+            "include_paths": config.Optional(config.String, default=None),
+            "exclude_paths": config.Optional(config.String, default=None),
+            "ignore_exceptions": config.Optional(
+                config.TupleOf(config.String), default=[]),
+            "sample_rate": config.Optional(config.Percent, default=1),
+            "processors": config.Optional(
+                config.TupleOf(config.String), default=[
+                    "raven.processors.SanitizePasswordsProcessor",
+                ],
+            ),
+        },
+    })
+
+    application_module = sys.modules[module_name]
+    directory = os.path.dirname(application_module.__file__)
+    release = None
+    while directory != "/":
+        try:
+            release = raven.fetch_git_sha(directory)
+        except raven.exceptions.InvalidGitRepository:
+            directory = os.path.dirname(directory)
+        else:
+            break
+
+    # pylint: disable=no-member
+    return raven.Client(
+        dsn=cfg.sentry.dsn,
+        site=cfg.sentry.site,
+        release=release,
+        environment=cfg.sentry.environment,
+        include_paths=cfg.sentry.include_paths,
+        exclude_paths=cfg.sentry.exclude_paths,
+        ignore_exceptions=cfg.sentry.ignore_exceptions,
+        sample_rate=cfg.sentry.sample_rate,
+        processors=cfg.sentry.processors,
+    )
+
+
 __all__ = [
     "make_metrics_client",
     "make_tracing_client",
+    "crash_reporter_from_config",
     "Baseplate",
 ]
