@@ -11,9 +11,13 @@ import webtest
 
 from baseplate import Baseplate
 from baseplate.core import BaseplateObserver, ServerSpanObserver
-from baseplate.integration.pyramid import BaseplateConfigurator
-from pyramid.config import Configurator
-from pyramid.request import Request
+
+try:
+    from baseplate.integration.pyramid import BaseplateConfigurator
+    from pyramid.config import Configurator
+    from pyramid.request import Request
+except ImportError:
+    raise unittest.SkipTest("pyramid is not installed")
 
 from .. import mock
 
