@@ -24,10 +24,30 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from pyramid.events import ContextFound, NewResponse
+import sys
+
+import pyramid.events
+import pyramid.tweens
 
 from ..core import TraceInfo
 from ..server import make_app
+
+
+def _make_baseplate_tween(handler, registry):
+    def baseplate_tween(request):
+        try:
+            response = handler(request)
+        except:
+            if hasattr(request, "trace"):
+                request.trace.set_tag("error", True)
+                request.trace.finish(exc_info=sys.exc_info())
+            raise
+        else:
+            if hasattr(request, "trace"):
+                request.trace.set_tag("http.status_code", response.status_code)
+                request.trace.finish()
+        return response
+    return baseplate_tween
 
 
 # pylint: disable=abstract-class-not-used
@@ -84,18 +104,10 @@ class BaseplateConfigurator(object):
         )
         request.trace.start()
 
-    # pylint: disable=no-self-use
-    def _on_new_response(self, event):
-        request = event.request
-        if not request.matched_route:
-            return
-
-        request.trace.set_tag("http.status_code", request.response.status_code)
-        request.trace.finish()
-
     def includeme(self, config):
-        config.add_subscriber(self._on_new_request, ContextFound)
-        config.add_subscriber(self._on_new_response, NewResponse)
+        config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
+        config.add_tween("baseplate.integration.pyramid._make_baseplate_tween",
+                         under=pyramid.tweens.EXCVIEW)
 
         # the pyramid "scripting context" (e.g. pshell) sets up a
         # psuedo-request environment but does not call NewRequest. it does,

@@ -22,7 +22,13 @@ except ImportError:
 from .. import mock
 
 
+class TestException(Exception):
+    pass
+
+
 def example_application(request):
+    if "error" in request.params:
+        raise TestException("this is a test")
     return {"test": "success"}
 
 
@@ -87,6 +93,15 @@ class ConfiguratorTests(unittest.TestCase):
         self.test_app.get("/nope", status=404)
 
         self.assertFalse(self.observer.on_server_span_created.called)
+
+    def test_exception_caught(self):
+        with self.assertRaises(TestException):
+            self.test_app.get("/example?error")
+
+        self.assertTrue(self.server_observer.on_start.called)
+        self.assertTrue(self.server_observer.on_finish.called)
+        _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
+        self.assertIsInstance(captured_exc, TestException)
 
     @mock.patch("random.getrandbits")
     def test_distrust_headers(self, getrandbits):
