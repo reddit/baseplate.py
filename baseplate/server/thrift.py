@@ -40,22 +40,18 @@ class GeventServer(StreamServer):
         client = TSocket()
         client.setHandle(client_socket)
 
-        itrans = self.transport_factory.getTransport(client)
-        iprot = self.protocol_factory.getProtocol(itrans)
+        trans = self.transport_factory.getTransport(client)
+        prot = self.protocol_factory.getProtocol(trans)
 
-        otrans = self.transport_factory.getTransport(client)
-        oprot = self.protocol_factory.getProtocol(otrans)
-
-        server_context = TRpcConnectionContext(client, iprot, oprot)
+        server_context = TRpcConnectionContext(client, prot, prot)
 
         try:
             while self.started:
-                self.processor.process(iprot, oprot, server_context)
+                self.processor.process(prot, prot, server_context)
         except TTransportException:
             pass
         finally:
-            itrans.close()
-            otrans.close()
+            trans.close()
 
 
 def make_server(config, listener, app):
