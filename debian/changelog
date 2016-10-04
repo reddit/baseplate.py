@@ -1,3 +1,14 @@
+baseplate (0.14.0) trusty; urgency=medium
+
+  * baseplate-script: respect logging configuration
+  * add support for headerless TBinaryProtocol clients
+  * capture full exc_info in span errors
+  * rename/refactor diagnostics APIs for OpenTracing aligment
+  * fix pyramid capture of exceptions in server spans
+  * add various standard OpenTracing tags to server spans
+
+ -- Neil Williams <neil@reddit.com>  Tue, 04 Oct 2016 08:31:16 -0700
+
 baseplate (0.13.0) trusty; urgency=medium
 
   * allow config.Optional options to have key missing from INI too
