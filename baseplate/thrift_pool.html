@@ -47,6 +47,15 @@
 <p class="last">See <a class="reference internal" href="context/index.html#baseplate.context.thrift.ThriftContextFactory" title="baseplate.context.thrift.ThriftContextFactory"><tt class="xref py py-class docutils literal"><span class="pre">baseplate.context.thrift.ThriftContextFactory</span></tt></a> for
 a convenient way to integrate the pool with your application.</p>
 </div>
+<p>The pool lazily creates connections and maintains them in a pool. Individual
+connections have a maximum lifetime, after which they will be recycled.</p>
+<p>A basic example of usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">pool</span> <span class="o">=</span> <span class="n">ThriftConnectionPool</span><span class="p">(</span><span class="n">endpoint</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">pool</span><span class="o">.</span><span class="n">connection</span><span class="p">()</span> <span class="k">as</span> <span class="n">protocol</span><span class="p">:</span>
+    <span class="n">client</span> <span class="o">=</span> <span class="n">ExampleService</span><span class="o">.</span><span class="n">Client</span><span class="p">(</span><span class="n">protocol</span><span class="p">)</span>
+    <span class="n">client</span><span class="o">.</span><span class="n">do_example_thing</span><span class="p">()</span>
+</pre></div>
+</div>
 <dl class="class">
 <dt id="baseplate.thrift_pool.ThriftConnectionPool">
 <em class="property">class </em><tt class="descclassname">baseplate.thrift_pool.</tt><tt class="descname">ThriftConnectionPool</tt><a class="headerlink" href="#baseplate.thrift_pool.ThriftConnectionPool" title="Permalink to this definition">¶</a></dt>

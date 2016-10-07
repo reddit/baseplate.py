@@ -106,7 +106,11 @@ specified retry policy when transient errors occur:</p>
 <p>The keys useful to <tt class="xref py py-func docutils literal"><span class="pre">cluster_from_config()</span></tt> should be prefixed, e.g.
 <tt class="docutils literal"><span class="pre">cassandra.contact_points</span></tt> etc. The <tt class="docutils literal"><span class="pre">prefix</span></tt> argument specifies the
 prefix used to filter keys.  Each key is mapped to a corresponding keyword
-argument on the <a class="reference external" href="https://datastax.github.io/python-driver/api/cassandra/cluster.html#cassandra.cluster.Cluster" title="(in Cassandra Driver v3.0.0)"><tt class="xref py py-class docutils literal"><span class="pre">Cluster</span></tt></a> constructor.</p>
+argument on the <a class="reference external" href="https://datastax.github.io/python-driver/api/cassandra/cluster.html#cassandra.cluster.Cluster" title="(in Cassandra Driver v3.0.0)"><tt class="xref py py-class docutils literal"><span class="pre">Cluster</span></tt></a> constructor.  Any
+kwargs given to this function will be passed through to the
+<a class="reference external" href="https://datastax.github.io/python-driver/api/cassandra/cluster.html#cassandra.cluster.Cluster" title="(in Cassandra Driver v3.0.0)"><tt class="xref py py-class docutils literal"><span class="pre">Cluster</span></tt></a> constructor.  If you pass a kwarg
+that is duplicated by <tt class="docutils literal"><span class="pre">app_config</span></tt> then the value in <tt class="docutils literal"><span class="pre">app_config</span></tt>
+will be passed rather than the one in kwargs.</p>
 <p>Supported keys:</p>
 <ul class="simple">
 <li><tt class="docutils literal"><span class="pre">contact_points</span></tt> (required): comma delimited list of contact points to
@@ -190,7 +194,7 @@ information.</p>
 
 <dl class="class">
 <dt id="baseplate.context.redis.MonitoredRedisConnection">
-<em class="property">class </em><tt class="descclassname">baseplate.context.redis.</tt><tt class="descname">MonitoredRedisConnection</tt><big>(</big><em>context_name</em>, <em>root_span</em>, <em>connection_pool</em><big>)</big><a class="headerlink" href="#baseplate.context.redis.MonitoredRedisConnection" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">baseplate.context.redis.</tt><tt class="descname">MonitoredRedisConnection</tt><big>(</big><em>context_name</em>, <em>server_span</em>, <em>connection_pool</em><big>)</big><a class="headerlink" href="#baseplate.context.redis.MonitoredRedisConnection" title="Permalink to this definition">¶</a></dt>
 <dd><p>Redis connection that collects diagnostic information.</p>
 <p>This connection acts like <a class="reference external" href="https://redis-py.readthedocs.org/en/latest/index.html#redis.StrictRedis" title="(in redis-py v2.4.9)"><tt class="xref py py-class docutils literal"><span class="pre">redis.StrictRedis</span></tt></a> except that all
 operations are automatically wrapped with diagnostic collection.</p>
@@ -300,7 +304,7 @@ you covered!</p>
 object</em></a> with the name specified in <tt class="docutils literal"><span class="pre">add_to_context</span></tt>.</p>
 <dl class="method">
 <dt id="baseplate.context.ContextFactory.make_object_for_context">
-<tt class="descname">make_object_for_context</tt><big>(</big><em>name</em>, <em>root_span</em><big>)</big><a class="headerlink" href="#baseplate.context.ContextFactory.make_object_for_context" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">make_object_for_context</tt><big>(</big><em>name</em>, <em>server_span</em><big>)</big><a class="headerlink" href="#baseplate.context.ContextFactory.make_object_for_context" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return an object that can be added to the context object.</p>
 </dd></dl>
 

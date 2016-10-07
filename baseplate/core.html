@@ -58,14 +58,14 @@ incomplete example of an application built on the framework:</p>
 </pre></div>
 </div>
 <p>When a request is made which routes to the <tt class="docutils literal"><span class="pre">do_something</span></tt> handler, a
-<a class="reference internal" href="#baseplate.core.RootSpan" title="baseplate.core.RootSpan"><tt class="xref py py-class docutils literal"><span class="pre">RootSpan</span></tt></a> is automatically created. If the incoming
-request has trace headers, we construct the root span to be identical to the
+<a class="reference internal" href="#baseplate.core.ServerSpan" title="baseplate.core.ServerSpan"><tt class="xref py py-class docutils literal"><span class="pre">ServerSpan</span></tt></a> is automatically created. If the incoming
+request has trace headers, we construct the server span to be identical to the
 child span in the upstream service. When we call
 <tt class="docutils literal"><span class="pre">request.some_redis_client.ping()</span></tt> in the handler, Baseplate will create a
 child <a class="reference internal" href="#baseplate.core.Span" title="baseplate.core.Span"><tt class="xref py py-class docutils literal"><span class="pre">Span</span></tt></a> object to represent the time taken
 talking to redis.</p>
-<p>The creation of the root and child spans will trigger updates on all the
-<a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> and
+<p>The creation of the server and child spans will trigger updates on all the
+<a class="reference internal" href="#baseplate.core.ServerSpanObserver" title="baseplate.core.ServerSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">ServerSpanObserver</span></tt></a> and
 <a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> objects registered.  Because we called
 <tt class="docutils literal"><span class="pre">baseplate.configure_metrics</span></tt> in our setup, this means we have observers that
 send statsd metrics so Baseplate will automatically send metrics on how long it
@@ -153,13 +153,13 @@ purposes so it should be descriptive.</li>
 </dd></dl>
 
 <dl class="method">
-<dt id="baseplate.core.Baseplate.make_root_span">
-<tt class="descname">make_root_span</tt><big>(</big><em>context</em>, <em>name</em>, <em>trace_info=None</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#baseplate.core.Baseplate.make_root_span" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a root span representing the current request we are handling.</p>
-<p>In a server, a root span represents the time spent on a single incoming
-request. Any calls made to downstream services will be new child spans
-of the root span, and the root span will in turn be the child span of
-whatever upstream request it is part of.</p>
+<dt id="baseplate.core.Baseplate.make_server_span">
+<tt class="descname">make_server_span</tt><big>(</big><em>context</em>, <em>name</em>, <em>trace_info=None</em><big>)</big><a class="headerlink" href="#baseplate.core.Baseplate.make_server_span" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a server span representing the request we are handling.</p>
+<p>In a server, a server span represents the time spent on a single
+incoming request. Any calls made to downstream services will be new
+child spans of the server span, and the server span will in turn be the
+child span of whatever upstream request it is part of, if any.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -186,7 +186,7 @@ context will be generated.</li>
 <dd><p>Trace context for a span.</p>
 <p>If this request was made at the behest of an upstream service, the upstream
 service should have passed along trace information. This class is used for
-collecting the trace context and passing it along to the root span.</p>
+collecting the trace context and passing it along to the server span.</p>
 <dl class="classmethod">
 <dt id="baseplate.core.TraceInfo.from_upstream">
 <em class="property">classmethod </em><tt class="descname">from_upstream</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em><big>)</big><a class="headerlink" href="#baseplate.core.TraceInfo.from_upstream" title="Permalink to this definition">¶</a></dt>
@@ -215,44 +215,60 @@ collecting the trace context and passing it along to the root span.</p>
 <div class="section" id="spans">
 <h2>Spans<a class="headerlink" href="#spans" title="Permalink to this headline">¶</a></h2>
 <p>Each time a new request comes in to be served, the time taken to handle the
-request is represented by a new <a class="reference internal" href="#baseplate.core.RootSpan" title="baseplate.core.RootSpan"><tt class="xref py py-class docutils literal"><span class="pre">RootSpan</span></tt></a> instance.
+request is represented by a new <a class="reference internal" href="#baseplate.core.ServerSpan" title="baseplate.core.ServerSpan"><tt class="xref py py-class docutils literal"><span class="pre">ServerSpan</span></tt></a> instance.
 During the course of handling that request, our application might make calls to
 remote services or do expensive calculations, the time spent can be represented
 by child <a class="reference internal" href="#baseplate.core.Span" title="baseplate.core.Span"><tt class="xref py py-class docutils literal"><span class="pre">Span</span></tt></a> instances.</p>
 <p>Spans have names and IDs and track their parent relationships. When calls are
 made to remote services, the information that identifies the local child span
 representing that service call is passed along to the remote service and
-becomes the root span in the remote service. This allows requests to be traced
+becomes the server span in the remote service. This allows requests to be traced
 across the infrastructure.</p>
 <p>Small bits of data, called annotations, can be attached to spans as well. This
 could be the URL fetched, or how many items were sent in a batch, or whatever
 else might be helpful.</p>
 <dl class="class">
-<dt id="baseplate.core.RootSpan">
-<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">RootSpan</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan" title="Permalink to this definition">¶</a></dt>
-<dd><p>A root span represents a request this server is handling.</p>
-<p>The root span is available on the <a class="reference internal" href="../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> during requests as
-the <tt class="docutils literal"><span class="pre">trace</span></tt> attribute.</p>
+<dt id="baseplate.core.ServerSpan">
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">ServerSpan</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan" title="Permalink to this definition">¶</a></dt>
+<dd><p>A server span represents a request this server is handling.</p>
+<p>The server span is available on the <a class="reference internal" href="../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> during requests
+as the <tt class="docutils literal"><span class="pre">trace</span></tt> attribute.</p>
 <dl class="method">
-<dt id="baseplate.core.RootSpan.make_child">
-<tt class="descname">make_child</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.make_child" title="Permalink to this definition">¶</a></dt>
+<dt id="baseplate.core.ServerSpan.make_child">
+<tt class="descname">make_child</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan.make_child" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a child span representing an outbound service call.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="baseplate.core.RootSpan.annotate">
-<tt class="descname">annotate</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.annotate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add an annotation to the span.</p>
-<p>Annotations are arbitrary key/value pairs that add context and meaning
-to the span, such as a hostname or query string. Observers may
-interpret or ignore annotations as they desire.</p>
+<dt id="baseplate.core.ServerSpan.finish">
+<tt class="descname">finish</tt><big>(</big><em>exc_info=None</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan.finish" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record the end of the span.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exc_info</strong> &#8211; If the span ended because of an exception, this is
+the exception information. The default is <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> which
+indicates normal exit.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.ServerSpan.log">
+<tt class="descname">log</tt><big>(</big><em>name</em>, <em>payload=None</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan.log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a log entry to the span.</p>
+<p>Log entries are timestamped events recording notable moments in the
+lifetime of a span.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the annotation.</li>
-<li><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The value of the annotation.</li>
+<li><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the log entry. This should be a stable
+identifier that can apply to multiple span instances.</li>
+<li><strong>payload</strong> &#8211; Optional log entry payload. This can be arbitrary data.</li>
 </ul>
 </td>
 </tr>
@@ -261,37 +277,42 @@ interpret or ignore annotations as they desire.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="baseplate.core.RootSpan.register">
-<tt class="descname">register</tt><big>(</big><em>observer</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.register" title="Permalink to this definition">¶</a></dt>
+<dt id="baseplate.core.ServerSpan.register">
+<tt class="descname">register</tt><big>(</big><em>observer</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan.register" title="Permalink to this definition">¶</a></dt>
 <dd><p>Register an observer to receive events from this span.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="baseplate.core.RootSpan.start">
-<tt class="descname">start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.start" title="Permalink to this definition">¶</a></dt>
+<dt id="baseplate.core.ServerSpan.set_tag">
+<tt class="descname">set_tag</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan.set_tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a tag on the span.</p>
+<p>Tags are arbitrary key/value pairs that add context and meaning to the
+span, such as a hostname or query string. Observers may interpret or
+ignore tags as they desire.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the tag.</li>
+<li><strong>value</strong> &#8211; The value of the tag, must be a string/boolean/number.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.ServerSpan.start">
+<tt class="descname">start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan.start" title="Permalink to this definition">¶</a></dt>
 <dd><p>Record the start of the span.</p>
 <p>This notifies any observers that the span has started, which indicates
 that timers etc. should start ticking.</p>
 <p>Spans also support the <a class="reference external" href="https://docs.python.org/3/reference/datamodel.html#context-managers">context manager protocol</a>, for use with
 Python&#8217;s <tt class="docutils literal"><span class="pre">with</span></tt> statement. When the context is entered, the span
-calls <a class="reference internal" href="#baseplate.core.RootSpan.start" title="baseplate.core.RootSpan.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> and when the context is exited it automatically
-calls <a class="reference internal" href="#baseplate.core.RootSpan.stop" title="baseplate.core.RootSpan.stop"><tt class="xref py py-meth docutils literal"><span class="pre">stop()</span></tt></a>.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="baseplate.core.RootSpan.stop">
-<tt class="descname">stop</tt><big>(</big><em>error=None</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpan.stop" title="Permalink to this definition">¶</a></dt>
-<dd><p>Record the end of the span.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>error</strong> &#8211; If the span ended because of an exception, this should
-be that exception. The default is <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> which indicates
-normal exit.</td>
-</tr>
-</tbody>
-</table>
+calls <a class="reference internal" href="#baseplate.core.ServerSpan.start" title="baseplate.core.ServerSpan.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> and when the context is exited it automatically
+calls <a class="reference internal" href="#baseplate.core.ServerSpan.finish" title="baseplate.core.ServerSpan.finish"><tt class="xref py py-meth docutils literal"><span class="pre">finish()</span></tt></a>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -315,23 +336,23 @@ that timers etc. should start ticking.</p>
 <p>Spans also support the <a class="reference external" href="https://docs.python.org/3/reference/datamodel.html#context-managers">context manager protocol</a>, for use with
 Python&#8217;s <tt class="docutils literal"><span class="pre">with</span></tt> statement. When the context is entered, the span
 calls <a class="reference internal" href="#baseplate.core.Span.start" title="baseplate.core.Span.start"><tt class="xref py py-meth docutils literal"><span class="pre">start()</span></tt></a> and when the context is exited it automatically
-calls <a class="reference internal" href="#baseplate.core.Span.stop" title="baseplate.core.Span.stop"><tt class="xref py py-meth docutils literal"><span class="pre">stop()</span></tt></a>.</p>
+calls <a class="reference internal" href="#baseplate.core.Span.finish" title="baseplate.core.Span.finish"><tt class="xref py py-meth docutils literal"><span class="pre">finish()</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="baseplate.core.Span.annotate">
-<tt class="descname">annotate</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.annotate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add an annotation to the span.</p>
-<p>Annotations are arbitrary key/value pairs that add context and meaning
-to the span, such as a hostname or query string. Observers may
-interpret or ignore annotations as they desire.</p>
+<dt id="baseplate.core.Span.set_tag">
+<tt class="descname">set_tag</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.set_tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a tag on the span.</p>
+<p>Tags are arbitrary key/value pairs that add context and meaning to the
+span, such as a hostname or query string. Observers may interpret or
+ignore tags as they desire.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the annotation.</li>
-<li><strong>value</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The value of the annotation.</li>
+<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the tag.</li>
+<li><strong>value</strong> &#8211; The value of the tag, must be a string/boolean/number.</li>
 </ul>
 </td>
 </tr>
@@ -340,16 +361,37 @@ interpret or ignore annotations as they desire.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="baseplate.core.Span.stop">
-<tt class="descname">stop</tt><big>(</big><em>error=None</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.stop" title="Permalink to this definition">¶</a></dt>
+<dt id="baseplate.core.Span.log">
+<tt class="descname">log</tt><big>(</big><em>name</em>, <em>payload=None</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a log entry to the span.</p>
+<p>Log entries are timestamped events recording notable moments in the
+lifetime of a span.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the log entry. This should be a stable
+identifier that can apply to multiple span instances.</li>
+<li><strong>payload</strong> &#8211; Optional log entry payload. This can be arbitrary data.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.Span.finish">
+<tt class="descname">finish</tt><big>(</big><em>exc_info=None</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.finish" title="Permalink to this definition">¶</a></dt>
 <dd><p>Record the end of the span.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>error</strong> &#8211; If the span ended because of an exception, this should
-be that exception. The default is <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> which indicates
-normal exit.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exc_info</strong> &#8211; If the span ended because of an exception, this is
+the exception information. The default is <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a> which
+indicates normal exit.</td>
 </tr>
 </tbody>
 </table>
@@ -366,35 +408,36 @@ via calls to various methods.</p>
 <p>The base type of observer is <a class="reference internal" href="#baseplate.core.BaseplateObserver" title="baseplate.core.BaseplateObserver"><tt class="xref py py-class docutils literal"><span class="pre">BaseplateObserver</span></tt></a>
 which can be registered with the root <a class="reference internal" href="#baseplate.core.Baseplate" title="baseplate.core.Baseplate"><tt class="xref py py-class docutils literal"><span class="pre">Baseplate</span></tt></a>
 instance using the <a class="reference internal" href="#baseplate.core.Baseplate.register" title="baseplate.core.Baseplate.register"><tt class="xref py py-meth docutils literal"><span class="pre">register()</span></tt></a> method.
-Whenever a new root span is created in your application (i.e. a new request
+Whenever a new server span is created in your application (i.e. a new request
 comes in to be served) the observer has its
-<a class="reference internal" href="#baseplate.core.BaseplateObserver.on_root_span_created" title="baseplate.core.BaseplateObserver.on_root_span_created"><tt class="xref py py-meth docutils literal"><span class="pre">on_root_span_created()</span></tt></a> method called
-with the relevant details. If this method returns an instance of
-<a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a>, the returned observer will be
-registered to receive events from the new root span.</p>
-<p>Spans, and root spans, can be notified of three common events:
+<a class="reference internal" href="#baseplate.core.BaseplateObserver.on_server_span_created" title="baseplate.core.BaseplateObserver.on_server_span_created"><tt class="xref py py-meth docutils literal"><span class="pre">on_server_span_created()</span></tt></a> method
+called with the relevant details. This method can register
+<a class="reference internal" href="#baseplate.core.ServerSpanObserver" title="baseplate.core.ServerSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">ServerSpanObserver</span></tt></a> instances with the new server
+span to receive events as they happen.</p>
+<p>Spans can be notified of four common events:
 <a class="reference internal" href="#baseplate.core.SpanObserver.on_start" title="baseplate.core.SpanObserver.on_start"><tt class="xref py py-meth docutils literal"><span class="pre">on_start()</span></tt></a>,
-<a class="reference internal" href="#baseplate.core.SpanObserver.on_annotate" title="baseplate.core.SpanObserver.on_annotate"><tt class="xref py py-meth docutils literal"><span class="pre">on_annotate()</span></tt></a>, and
-<a class="reference internal" href="#baseplate.core.SpanObserver.on_stop" title="baseplate.core.SpanObserver.on_stop"><tt class="xref py py-meth docutils literal"><span class="pre">on_stop()</span></tt></a>. These represent the span
-starting, having a custom annotation added, and ending, respectively.</p>
-<p>Additionally, <a class="reference internal" href="#baseplate.core.RootSpanObserver" title="baseplate.core.RootSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">RootSpanObserver</span></tt></a> has one extra event,
-<a class="reference internal" href="#baseplate.core.RootSpanObserver.on_child_span_created" title="baseplate.core.RootSpanObserver.on_child_span_created"><tt class="xref py py-meth docutils literal"><span class="pre">on_child_span_created()</span></tt></a>. This method
-is called when a new child span is created in the application for e.g. a call
-to a remote service or an expensive computation. If this method returns an
-instance of <a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a>, the returned observer
-will be registered to receive events from the new child span.</p>
+<a class="reference internal" href="#baseplate.core.SpanObserver.on_set_tag" title="baseplate.core.SpanObserver.on_set_tag"><tt class="xref py py-meth docutils literal"><span class="pre">on_set_tag()</span></tt></a>, and
+<a class="reference internal" href="#baseplate.core.SpanObserver.on_log" title="baseplate.core.SpanObserver.on_log"><tt class="xref py py-meth docutils literal"><span class="pre">on_log()</span></tt></a>, and
+<a class="reference internal" href="#baseplate.core.SpanObserver.on_finish" title="baseplate.core.SpanObserver.on_finish"><tt class="xref py py-meth docutils literal"><span class="pre">on_finish()</span></tt></a>. These represent the span
+starting, having tags set, logs entered, and ending, respectively.</p>
+<p>Additionally, <a class="reference internal" href="#baseplate.core.ServerSpanObserver" title="baseplate.core.ServerSpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">ServerSpanObserver</span></tt></a> has one extra
+event, <a class="reference internal" href="#baseplate.core.ServerSpanObserver.on_child_span_created" title="baseplate.core.ServerSpanObserver.on_child_span_created"><tt class="xref py py-meth docutils literal"><span class="pre">on_child_span_created()</span></tt></a>.
+This method is called when a new child span is created in the application for
+e.g. a call to a remote service or an expensive computation. This method can
+register <a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> instances with the new child
+span to receive events as they happen.</p>
 <p>It&#8217;s up to the observers to attach meaning to these events. For example, the
 metrics observer would start a timer
 <tt class="xref py py-meth docutils literal"><span class="pre">on_start()</span></tt> and record the elapsed time to
-statsd <tt class="xref py py-meth docutils literal"><span class="pre">on_stop()</span></tt>.</p>
+statsd <tt class="xref py py-meth docutils literal"><span class="pre">on_finish()</span></tt>.</p>
 <dl class="class">
 <dt id="baseplate.core.BaseplateObserver">
 <em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">BaseplateObserver</tt><a class="headerlink" href="#baseplate.core.BaseplateObserver" title="Permalink to this definition">¶</a></dt>
 <dd><p>Interface for an observer that watches Baseplate.</p>
 <dl class="method">
-<dt id="baseplate.core.BaseplateObserver.on_root_span_created">
-<tt class="descname">on_root_span_created</tt><big>(</big><em>context</em>, <em>root_span</em><big>)</big><a class="headerlink" href="#baseplate.core.BaseplateObserver.on_root_span_created" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called when a root span is created.</p>
+<dt id="baseplate.core.BaseplateObserver.on_server_span_created">
+<tt class="descname">on_server_span_created</tt><big>(</big><em>context</em>, <em>server_span</em><big>)</big><a class="headerlink" href="#baseplate.core.BaseplateObserver.on_server_span_created" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when a server span is created.</p>
 <p><a class="reference internal" href="#baseplate.core.Baseplate" title="baseplate.core.Baseplate"><tt class="xref py py-class docutils literal"><span class="pre">Baseplate</span></tt></a> calls this when a new request begins.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -402,7 +445,7 @@ statsd <tt class="xref py py-meth docutils literal"><span class="pre">on_stop()<
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>context</strong> &#8211; The <a class="reference internal" href="../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> for this request.</li>
-<li><strong>root_span</strong> (<a class="reference internal" href="#baseplate.core.RootSpan" title="baseplate.core.RootSpan"><em>baseplate.core.RootSpan</em></a>) &#8211; The root span representing
+<li><strong>server_span</strong> (<a class="reference internal" href="#baseplate.core.ServerSpan" title="baseplate.core.ServerSpan"><em>baseplate.core.ServerSpan</em></a>) &#8211; The span representing
 this request.</li>
 </ul>
 </td>
@@ -414,14 +457,14 @@ this request.</li>
 </dd></dl>
 
 <dl class="class">
-<dt id="baseplate.core.RootSpanObserver">
-<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">RootSpanObserver</tt><a class="headerlink" href="#baseplate.core.RootSpanObserver" title="Permalink to this definition">¶</a></dt>
-<dd><p>Interface for an observer that watches the root span.</p>
+<dt id="baseplate.core.ServerSpanObserver">
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">ServerSpanObserver</tt><a class="headerlink" href="#baseplate.core.ServerSpanObserver" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interface for an observer that watches the server span.</p>
 <dl class="method">
-<dt id="baseplate.core.RootSpanObserver.on_child_span_created">
-<tt class="descname">on_child_span_created</tt><big>(</big><em>span</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpanObserver.on_child_span_created" title="Permalink to this definition">¶</a></dt>
+<dt id="baseplate.core.ServerSpanObserver.on_child_span_created">
+<tt class="descname">on_child_span_created</tt><big>(</big><em>span</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpanObserver.on_child_span_created" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called when a child span is created.</p>
-<p><a class="reference internal" href="#baseplate.core.RootSpan" title="baseplate.core.RootSpan"><tt class="xref py py-class docutils literal"><span class="pre">RootSpan</span></tt></a> objects call this when a new child span is
+<p><a class="reference internal" href="#baseplate.core.ServerSpan" title="baseplate.core.ServerSpan"><tt class="xref py py-class docutils literal"><span class="pre">ServerSpan</span></tt></a> objects call this when a new child span is
 created.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -434,30 +477,36 @@ created.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="baseplate.core.RootSpanObserver.on_annotate">
-<tt class="descname">on_annotate</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpanObserver.on_annotate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called when an annotation is added to the observed span.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="baseplate.core.RootSpanObserver.on_start">
-<tt class="descname">on_start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.RootSpanObserver.on_start" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called when the observed span is started.</p>
-</dd></dl>
-
-<dl class="method">
-<dt id="baseplate.core.RootSpanObserver.on_stop">
-<tt class="descname">on_stop</tt><big>(</big><em>error</em><big>)</big><a class="headerlink" href="#baseplate.core.RootSpanObserver.on_stop" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called when the observed span is stopped.</p>
+<dt id="baseplate.core.ServerSpanObserver.on_finish">
+<tt class="descname">on_finish</tt><big>(</big><em>exc_info</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpanObserver.on_finish" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when the observed span is finished.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>error</strong> &#8211; If the span ended because of an exception, the instance
-raised. Otherwise, <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a>.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exc_info</strong> &#8211; If the span ended because of an exception, the
+exception info. Otherwise, <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a>.</td>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.ServerSpanObserver.on_log">
+<tt class="descname">on_log</tt><big>(</big><em>name</em>, <em>payload</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpanObserver.on_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when a log entry is added to the span.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.ServerSpanObserver.on_set_tag">
+<tt class="descname">on_set_tag</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpanObserver.on_set_tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when a tag is set on the observed span.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.ServerSpanObserver.on_start">
+<tt class="descname">on_start</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpanObserver.on_start" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when the observed span is started.</p>
 </dd></dl>
 
 </dd></dl>
@@ -473,21 +522,27 @@ raised. Otherwise, <a class="reference external" href="https://docs.python.org/3
 </dd></dl>
 
 <dl class="method">
-<dt id="baseplate.core.SpanObserver.on_annotate">
-<tt class="descname">on_annotate</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.SpanObserver.on_annotate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called when an annotation is added to the observed span.</p>
+<dt id="baseplate.core.SpanObserver.on_set_tag">
+<tt class="descname">on_set_tag</tt><big>(</big><em>key</em>, <em>value</em><big>)</big><a class="headerlink" href="#baseplate.core.SpanObserver.on_set_tag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when a tag is set on the observed span.</p>
 </dd></dl>
 
 <dl class="method">
-<dt id="baseplate.core.SpanObserver.on_stop">
-<tt class="descname">on_stop</tt><big>(</big><em>error</em><big>)</big><a class="headerlink" href="#baseplate.core.SpanObserver.on_stop" title="Permalink to this definition">¶</a></dt>
-<dd><p>Called when the observed span is stopped.</p>
+<dt id="baseplate.core.SpanObserver.on_log">
+<tt class="descname">on_log</tt><big>(</big><em>name</em>, <em>payload</em><big>)</big><a class="headerlink" href="#baseplate.core.SpanObserver.on_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when a log entry is added to the span.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.SpanObserver.on_finish">
+<tt class="descname">on_finish</tt><big>(</big><em>exc_info</em><big>)</big><a class="headerlink" href="#baseplate.core.SpanObserver.on_finish" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when the observed span is finished.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>error</strong> &#8211; If the span ended because of an exception, the instance
-raised. Otherwise, <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a>.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exc_info</strong> &#8211; If the span ended because of an exception, the
+exception info. Otherwise, <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a>.</td>
 </tr>
 </tbody>
 </table>

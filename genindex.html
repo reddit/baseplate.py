@@ -83,18 +83,6 @@
   </dt>
 
   </dl></td>
-  <td style="width: 33%" valign="top"><dl>
-      
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpan.annotate">annotate() (baseplate.core.RootSpan method)</a>
-  </dt>
-
-      <dd><dl>
-        
-  <dt><a href="baseplate/core.html#baseplate.core.Span.annotate">(baseplate.core.Span method)</a>
-  </dt>
-
-      </dl></dd>
-  </dl></td>
 </tr></table>
 
 <h2 id="B">B</h2>
@@ -323,6 +311,16 @@
   </dt>
 
       
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpan.finish">finish() (baseplate.core.ServerSpan method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="baseplate/core.html#baseplate.core.Span.finish">(baseplate.core.Span method)</a>
+  </dt>
+
+      </dl></dd>
+      
   <dt><a href="baseplate/config.html#baseplate.config.Float">Float() (in module baseplate.config)</a>
   </dt>
 
@@ -409,6 +407,18 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpan.log">log() (baseplate.core.ServerSpan method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="baseplate/core.html#baseplate.core.Span.log">(baseplate.core.Span method)</a>
+  </dt>
+
+      </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
   <dt><a href="baseplate/diagnostics/index.html#baseplate.diagnostics.logging.LoggingBaseplateObserver">LoggingBaseplateObserver (class in baseplate.diagnostics.logging)</a>
   </dt>
 
@@ -419,7 +429,7 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpan.make_child">make_child() (baseplate.core.RootSpan method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpan.make_child">make_child() (baseplate.core.ServerSpan method)</a>
   </dt>
 
       
@@ -435,7 +445,7 @@
   </dt>
 
       
-  <dt><a href="baseplate/core.html#baseplate.core.Baseplate.make_root_span">make_root_span() (baseplate.core.Baseplate method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.Baseplate.make_server_span">make_server_span() (baseplate.core.Baseplate method)</a>
   </dt>
 
       
@@ -491,42 +501,52 @@
   </dt>
 
       
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpanObserver.on_annotate">on_annotate() (baseplate.core.RootSpanObserver method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpanObserver.on_child_span_created">on_child_span_created() (baseplate.core.ServerSpanObserver method)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpanObserver.on_finish">on_finish() (baseplate.core.ServerSpanObserver method)</a>
   </dt>
 
       <dd><dl>
         
-  <dt><a href="baseplate/core.html#baseplate.core.SpanObserver.on_annotate">(baseplate.core.SpanObserver method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.SpanObserver.on_finish">(baseplate.core.SpanObserver method)</a>
   </dt>
 
       </dl></dd>
       
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpanObserver.on_child_span_created">on_child_span_created() (baseplate.core.RootSpanObserver method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpanObserver.on_log">on_log() (baseplate.core.ServerSpanObserver method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="baseplate/core.html#baseplate.core.SpanObserver.on_log">(baseplate.core.SpanObserver method)</a>
+  </dt>
+
+      </dl></dd>
       
-  <dt><a href="baseplate/core.html#baseplate.core.BaseplateObserver.on_root_span_created">on_root_span_created() (baseplate.core.BaseplateObserver method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.BaseplateObserver.on_server_span_created">on_server_span_created() (baseplate.core.BaseplateObserver method)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpanObserver.on_start">on_start() (baseplate.core.RootSpanObserver method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpanObserver.on_set_tag">on_set_tag() (baseplate.core.ServerSpanObserver method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="baseplate/core.html#baseplate.core.SpanObserver.on_set_tag">(baseplate.core.SpanObserver method)</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpanObserver.on_start">on_start() (baseplate.core.ServerSpanObserver method)</a>
   </dt>
 
       <dd><dl>
         
   <dt><a href="baseplate/core.html#baseplate.core.SpanObserver.on_start">(baseplate.core.SpanObserver method)</a>
-  </dt>
-
-      </dl></dd>
-      
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpanObserver.on_stop">on_stop() (baseplate.core.RootSpanObserver method)</a>
-  </dt>
-
-      <dd><dl>
-        
-  <dt><a href="baseplate/core.html#baseplate.core.SpanObserver.on_stop">(baseplate.core.SpanObserver method)</a>
   </dt>
 
       </dl></dd>
@@ -584,7 +604,7 @@
 
       <dd><dl>
         
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpan.register">(baseplate.core.RootSpan method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpan.register">(baseplate.core.ServerSpan method)</a>
   </dt>
 
         
@@ -592,22 +612,14 @@
   </dt>
 
       </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Gauge.replace">replace() (baseplate.metrics.Gauge method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/retry.html#baseplate.retry.RetryPolicy">RetryPolicy (class in baseplate.retry)</a>
-  </dt>
-
-      
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpan">RootSpan (class in baseplate.core)</a>
-  </dt>
-
-      
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpanObserver">RootSpanObserver (class in baseplate.core)</a>
   </dt>
 
   </dl></td>
@@ -617,9 +629,27 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpan">ServerSpan (class in baseplate.core)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpanObserver">ServerSpanObserver (class in baseplate.core)</a>
+  </dt>
+
+      
   <dt><a href="baseplate/events.html#baseplate.events.Event.set_field">set_field() (baseplate.events.Event method)</a>
   </dt>
 
+      
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpan.set_tag">set_tag() (baseplate.core.ServerSpan method)</a>
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="baseplate/core.html#baseplate.core.Span.set_tag">(baseplate.core.Span method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="baseplate/crypto.html#baseplate.crypto.SignatureError">SignatureError</a>
   </dt>
@@ -632,12 +662,12 @@
   <dt><a href="baseplate/core.html#baseplate.core.Span">Span (class in baseplate.core)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/core.html#baseplate.core.SpanObserver">SpanObserver (class in baseplate.core)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/context/index.html#baseplate.context.sqlalchemy.SQLAlchemyEngineContextFactory">SQLAlchemyEngineContextFactory (class in baseplate.context.sqlalchemy)</a>
   </dt>
@@ -647,7 +677,7 @@
   </dt>
 
       
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpan.start">start() (baseplate.core.RootSpan method)</a>
+  <dt><a href="baseplate/core.html#baseplate.core.ServerSpan.start">start() (baseplate.core.ServerSpan method)</a>
   </dt>
 
       <dd><dl>
@@ -661,19 +691,9 @@
 
       </dl></dd>
       
-  <dt><a href="baseplate/core.html#baseplate.core.RootSpan.stop">stop() (baseplate.core.RootSpan method)</a>
+  <dt><a href="baseplate/metrics.html#baseplate.metrics.Timer.stop">stop() (baseplate.metrics.Timer method)</a>
   </dt>
 
-      <dd><dl>
-        
-  <dt><a href="baseplate/core.html#baseplate.core.Span.stop">(baseplate.core.Span method)</a>
-  </dt>
-
-        
-  <dt><a href="baseplate/metrics.html#baseplate.metrics.Timer.stop">(baseplate.metrics.Timer method)</a>
-  </dt>
-
-      </dl></dd>
       
   <dt><a href="baseplate/config.html#baseplate.config.String">String() (in module baseplate.config)</a>
   </dt>
