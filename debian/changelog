@@ -1,3 +1,9 @@
+baseplate (0.14.1) trusty; urgency=medium
+
+  * fix missed annotate->tag renames in cassandra integration
+
+ -- Neil Williams <neil@reddit.com>  Thu, 13 Oct 2016 14:21:07 -0700
+
 baseplate (0.14.0) trusty; urgency=medium
 
   * baseplate-script: respect logging configuration
