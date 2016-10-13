@@ -64,13 +64,13 @@ class CassandraContextFactory(ContextFactory):
 
 
 def _on_execute_complete(_, span):
-    # TODO: annotate with anything from the result set?
-    # TODO: annotate with any returned warnings
+    # TODO: tag with anything from the result set?
+    # TODO: tag with any returned warnings
     span.finish()
 
 
 def _on_execute_failed(exc, span):
-    span.annotate("error", str(exc))
+    span.tag("error", str(exc))
     span.finish()
 
 
@@ -88,7 +88,7 @@ class CassandraSessionAdapter(object):
         span = self.server_span.make_child(trace_name)
         span.start()
         # TODO: include custom payload
-        span.annotate("statement", query)
+        span.tag("statement", query)
         future = self.session.execute_async(query, parameters, timeout)
         future.add_callback(_on_execute_complete, span)
         future.add_errback(_on_execute_failed, span)
@@ -97,5 +97,5 @@ class CassandraSessionAdapter(object):
     def prepare(self, query):
         trace_name = "{}.{}".format(self.context_name, "prepare")
         with self.server_span.make_child(trace_name) as span:
-            span.annotate("statement", query)
+            span.tag("statement", query)
             return self.session.prepare(query)
