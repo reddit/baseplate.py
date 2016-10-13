@@ -70,7 +70,7 @@ def _on_execute_complete(_, span):
 
 
 def _on_execute_failed(exc, span):
-    span.tag("error", str(exc))
+    span.set_tag("error", str(exc))
     span.finish()
 
 
@@ -88,7 +88,7 @@ class CassandraSessionAdapter(object):
         span = self.server_span.make_child(trace_name)
         span.start()
         # TODO: include custom payload
-        span.tag("statement", query)
+        span.set_tag("statement", query)
         future = self.session.execute_async(query, parameters, timeout)
         future.add_callback(_on_execute_complete, span)
         future.add_errback(_on_execute_failed, span)
@@ -97,5 +97,5 @@ class CassandraSessionAdapter(object):
     def prepare(self, query):
         trace_name = "{}.{}".format(self.context_name, "prepare")
         with self.server_span.make_child(trace_name) as span:
-            span.tag("statement", query)
+            span.set_tag("statement", query)
             return self.session.prepare(query)
