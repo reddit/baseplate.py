@@ -1,3 +1,9 @@
+baseplate (0.14.2) trusty; urgency=medium
+
+  * fix incorrect span.tag() calls that should be span.set_tag()
+
+ -- Neil Williams <neil@reddit.com>  Thu, 13 Oct 2016 14:57:41 -0700
+
 baseplate (0.14.1) trusty; urgency=medium
 
   * fix missed annotate->tag renames in cassandra integration
