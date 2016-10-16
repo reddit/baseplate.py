@@ -50,7 +50,7 @@ setup(
     url="https://reddit.github.io/baseplate/",
     version="0.14.2",
 
-    packages=find_packages(exclude=["tests"]),
+    packages=find_packages(exclude=["tests", "tests.*"]),
 
     install_requires=install_requires,
     extras_require=extras_require,
