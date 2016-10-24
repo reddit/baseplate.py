@@ -184,7 +184,7 @@ def load_and_run_script():
 
     parser.add_argument("--debug", action="store_true", default=False,
         help="enable extra-verbose debug logging")
-    parser.add_argument("--dry-run", default=True,
+    parser.add_argument("--dry-run", default=True, type=bool,
         help="Run script in dry-run or live mode.  In dry-run mode, the "
         "script should not apply any changes, only report what would be "
         "changed.")
