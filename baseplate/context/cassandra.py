@@ -89,7 +89,11 @@ class CassandraSessionAdapter(object):
         span.start()
         # TODO: include custom payload
         span.set_tag("statement", query)
-        future = self.session.execute_async(query, parameters, timeout)
+        future = self.session.execute_async(
+            query,
+            parameters=parameters,
+            timeout=timeout,
+        )
         future.add_callback(_on_execute_complete, span)
         future.add_errback(_on_execute_failed, span)
         return future
