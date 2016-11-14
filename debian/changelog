@@ -1,3 +1,10 @@
+baseplate (0.14.3) trusty; urgency=medium
+
+  * fix issue where we were always setting 'trace' to True in the 
+    CassandraSessionAdapter
+
+ -- Andrew Boyle <andrew.boyle@reddit.com>  Mon, 14 Nov 2016 22:12:45 +0000
+
 baseplate (0.14.2) trusty; urgency=medium
 
   * fix incorrect span.tag() calls that should be span.set_tag()

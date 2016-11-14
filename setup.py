@@ -48,7 +48,7 @@ setup(
     author_email="neil@reddit.com",
     license="BSD",
     url="https://reddit.github.io/baseplate/",
-    version="0.14.2",
+    version="0.14.3",
 
     packages=find_packages(exclude=["tests", "tests.*"]),
 
