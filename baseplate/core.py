@@ -147,6 +147,11 @@ class Baseplate(object):
         from .diagnostics.metrics import MetricsBaseplateObserver
         self.register(MetricsBaseplateObserver(metrics_client))
 
+    def configure_tracing(self, service_name, tracing_endpoint):
+        """Collect and send span information for request tracing."""
+        from .diagnostics.tracing import TraceBaseplateObserver
+        self.register(TraceBaseplateObserver(service_name, tracing_endpoint))
+
     def add_to_context(self, name, context_factory):  # pragma: nocover
         """Add an attribute to each request's context object.
 
