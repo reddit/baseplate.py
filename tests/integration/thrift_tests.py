@@ -94,7 +94,6 @@ class ThriftTests(unittest.TestCase):
         self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
         self.processor.process(self.iprot, self.oprot, self.server_context)
-
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]

@@ -31,6 +31,7 @@ class RequestContext(object):
     pass
 
 
+
 # TODO: exceptions in the event handler cause the connection to be abruptly
 # closed with no diagnostics sent to the client. that should be more obvious.
 class BaseplateProcessorEventHandler(TProcessorEventHandler):

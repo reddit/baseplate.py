@@ -115,30 +115,42 @@ class TraceSpanObserver(SpanObserver):
         self.elapsed = self.end - self.start
         self.record()
 
+    def on_set_tag(self, key, value):
+        self.binary_annotations.append(
+            self._create_binary_annotation(key, value),
+        )
+
+    def _endpoint_info(self):
+        return {
+            'serviceName': self.service_name,
+            'ipv4': self.hostname,
+        }
+
     def _create_time_annotation(self, annotation_type, timestamp):
         """Create Zipkin-compatible Annotation for a span.
 
         This should be used for generating span annotations with a time component,
         e.g. the core "cs", "sr", "ss", and "sr" Zipkin Annotations
         """
-        endpoint_info = {
-            'serviceName': self.service_name,
-            'ipv4': self.hostname,
-        }
         return {
-            'endpoint': endpoint_info,
+            'endpoint': self._endpoint_info(),
             'timestamp': timestamp,
             'value': annotation_type,
         }
 
-    def _create_binary_annotation(self, ):
+    def _create_binary_annotation(self, annotation_type, annotation_value):
         """Create Zipkin-compatible BinaryAnnotation for a span.
 
         This should be used for generating span annotations that
         do not have a time component, e.g. URI, arbitrary request tags
         """
-        # TODO: Implement.
-        raise NotImplementedError
+        endpoint_info = self._endpoint_info()
+
+        return {
+            'key': annotation_type,
+            'value': annotation_value,
+            'endpoint': endpoint_info,
+        }
 
     def _to_span_obj(self, annotations, binary_annotations):
         span = {

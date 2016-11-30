@@ -81,6 +81,10 @@ class TraceSpanObserverTests(unittest.TestCase):
                 cr_in_annotation = True
         self.assertTrue(cr_in_annotation)
 
+    def test_serialize_adds_binary_annotations(self):
+        serialized_span = self.test_span_observer._serialize()
+        self.assertFalse(serialized_span['binary_annotations'])
+
     def test_on_start_sets_start_timestamp(self):
         # on-start should set start time
         self.assertIsNone(self.test_span_observer.start)
@@ -98,6 +102,20 @@ class TraceSpanObserverTests(unittest.TestCase):
         self.test_span_observer.on_start()
         self.test_span_observer.on_finish(None)
         self.assertIsNotNone(self.test_span_observer.end)
+
+    def test_create_binary_annotation(self):
+        annotation = self.test_span_observer._create_binary_annotation('test-key', 'test-value')
+        self.assertEquals(annotation['key'], 'test-key')
+        self.assertEquals(annotation['value'], 'test-value')
+        self.assertTrue(annotation['endpoint'])
+
+    def test_on_set_tag_adds_binary_annotation(self):
+        self.assertFalse(self.test_span_observer.binary_annotations)
+        self.test_span_observer.on_set_tag('test-key', 'test-value')
+        self.assertTrue(self.test_span_observer.binary_annotations)
+        annotation = self.test_span_observer.binary_annotations[0]
+        self.assertEquals(annotation['key'], 'test-key')
+        self.assertEquals(annotation['value'], 'test-value')
 
     def test_to_span_obj_sets_parent_id(self):
         span_obj = self.test_span_observer._to_span_obj([], [])
