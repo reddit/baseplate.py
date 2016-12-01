@@ -38,7 +38,9 @@ def example_application(request):
 class TracingTests(unittest.TestCase):
 
     def _register_mock(self, context, server_span):
-        server_span_observer = TraceServerSpanObserver('test-service', server_span,
+        server_span_observer = TraceServerSpanObserver('test-service',
+                                                       'test-hostname',
+                                                       server_span,
                                                        NullRecorder())
         server_span.register(server_span_observer)
         self.server_span_observer = server_span_observer

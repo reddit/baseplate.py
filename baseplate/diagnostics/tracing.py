@@ -49,23 +49,41 @@ class TraceBaseplateObserver(BaseplateObserver):
 
     :param str service_name: The name for the service this observer
         is registered to.
-    :param str tracing_endpoint: A 'hostname:port' destination to record
-        span data.
-    :param int max_conns: pool size for remote recorder connections.
+    :param baseplate.config.EndpointConfiguration tracing_endpoint: destination
+        to record span data.
+    :param int num_conns: pool size for remote recorder connection pool.
+    :param int max_span_queue_size: span processing queue limit.
+    :param int num_span_workers: number of worker threads for span processing.
+    :param float span_batch_interval: wait time for span processing in seconds.
     """
-    def __init__(self, service_name, tracing_endpoint=None,
-                 max_conns=100, max_span_queue=10000):
+    def __init__(self, service_name,
+                 tracing_endpoint=None,
+                 max_span_queue_size=50000,
+                 num_span_workers=5,
+                 span_batch_interval=0.5,
+                 num_conns=100):
         self.service_name = service_name
-
+        self.hostname = socket.gethostbyname(socket.gethostname())
         if tracing_endpoint:
-            self.recorder = RemoteRecorder(tracing_endpoint,
-                                           max_conns=max_conns,
-                                           max_span_queue=max_span_queue)
+            remote_addr = '%s:%s' % tracing_endpoint.address
+            logger.info("Recording spans to %s", remote_addr)
+            self.recorder = RemoteRecorder(
+                remote_addr,
+                num_conns=num_conns,
+                max_queue_size=max_span_queue_size,
+                num_workers=num_span_workers,
+                batch_wait_interval=span_batch_interval,
+            )
         else:
-            self.recorder = NullRecorder()
+            self.recorder = NullRecorder(
+                max_queue_size=max_span_queue_size,
+                num_workers=num_span_workers,
+                batch_wait_interval=span_batch_interval,
+            )
 
     def on_server_span_created(self, context, server_span):
         observer = TraceServerSpanObserver(self.service_name,
+                                           self.hostname,
                                            server_span,
                                            self.recorder)
         server_span.register(observer)
@@ -77,8 +95,9 @@ class TraceSpanObserver(SpanObserver):
     This observer implements the client-side span portion of a
     Zipkin request trace.
     """
-    def __init__(self, service_name, span, recorder):
+    def __init__(self, service_name, hostname, span, recorder):
         self.service_name = service_name
+        self.hostname = hostname
         self.recorder = recorder
         self.span = span
         self.start = None
@@ -104,7 +123,7 @@ class TraceSpanObserver(SpanObserver):
         """
         endpoint_info = {
             'serviceName': self.service_name,
-            'ipv4': socket.gethostbyname(socket.gethostname()),
+            'ipv4': self.hostname,
         }
         return {
             'endpoint': endpoint_info,
@@ -157,8 +176,7 @@ class TraceSpanObserver(SpanObserver):
 
     def record(self):
         """Record serialized span."""
-        serialized = self._serialize()
-        self.recorder.send(serialized)
+        self.recorder.send(self)
 
 
 class TraceServerSpanObserver(TraceSpanObserver):
@@ -168,11 +186,12 @@ class TraceServerSpanObserver(TraceSpanObserver):
     Zipkin request trace
     """
 
-    def __init__(self, service_name, span, recorder):
+    def __init__(self, service_name, hostname, span, recorder):
         self.service_name = service_name
         self.span = span
         self.recorder = recorder
         super(TraceServerSpanObserver, self).__init__(service_name,
+                                                      hostname,
                                                       span,
                                                       recorder)
 
@@ -180,8 +199,11 @@ class TraceServerSpanObserver(TraceSpanObserver):
         self.start = current_epoch_microseconds()
 
     def on_child_span_created(self, child_span):
-        child_span_observer = TraceSpanObserver(self.recorder)
-        child_span.register(TraceSpanObserver(self.recorder))
+        child_span_observer = TraceSpanObserver(self.service_name,
+                                                self.hostname,
+                                                child_span,
+                                                self.recorder)
+        child_span.register(child_span_observer)
 
     def on_finish(self, exc_info):
         self.end = current_epoch_microseconds()
@@ -207,45 +229,27 @@ class TraceServerSpanObserver(TraceSpanObserver):
 
         return self._to_span_obj(annotations, [])
 
-
-class NullRecorder(object):
-    def __init__(self):
-        self.logger = logging.getLogger(self.__class__.__name__)
-
-    def send(self, span):
-        """Write a set of spans to debug log."""
-        self.logger.debug("Span recording for trace_id=%s: %s",
-                          span['traceId'],
-                          span)
-
-
-class RemoteRecorder(object):
-    """Interface for recording spans to a remote collector.
-
-    The RemoteRecorder adds spans to an in-memory Queue for a background
-    thread worker to process. It currently does not shut down gracefully -
-    in the event of parent process exit, any remaining spans will be discarded.
-    """
-    def __init__(self, endpoint, max_conns, max_queue_size=10000):
-        self.logger = logging.getLogger(self.__class__.__name__)
-
-        adapter = requests.adapters.HTTPAdapter(pool_connections=max_conns,
-                                                pool_maxsize=max_conns)
-        self.session = requests.Session()
-        self.session.mount('http://', adapter)
-        self.endpoint = "http://%s/api/v1/spans" % endpoint
-
+class BaseBatchRecorder(object):
+    def __init__(self, max_queue_size,
+                 num_workers,
+                 max_span_batch,
+                 batch_wait_interval):
         self.span_queue = queue.Queue(maxsize=max_queue_size)
-        self.flush_worker = None
-        self.flush_worker = threading.Thread(target=self._flush_spans)
-        self.flush_worker.name = "span remote recorder"
-        self.flush_worker.daemon = True
-        self.flush_worker.start()
+        self.batch_wait_interval = batch_wait_interval
+        self.max_span_batch = max_span_batch
+        self.logger = logging.getLogger(self.__class__.__name__)
+        for i in range(num_workers):
+            self.flush_worker = threading.Thread(target=self._flush_spans)
+            self.flush_worker.name = "span recorder"
+            self.flush_worker.daemon = True
+            self.flush_worker.start()
+
+    def flush_func(self, spans):
+        raise NotImplementedError
 
     def _flush_spans(self):
-        """Send a set of spans to remote collector.
-
-        This reads a batch of at most 10 spans off the recorder queue
+        """
+        This reads a batch of at most max_span_batch spans off the recorder queue
         and sends them to a remote recording endpoint. If the queue
         empties while being processed before reaching 10 spans, we flush
         immediately.
@@ -253,24 +257,71 @@ class RemoteRecorder(object):
         while True:
             spans = []
             try:
-                while len(spans) < 10:
-                    spans.append(self.span_queue.get_nowait())
+                while len(spans) < self.max_span_batch:
+                    spans.append(self.span_queue.get_nowait()._serialize())
             except queue.Empty:
                 pass
             finally:
                 if spans:
-                    recording_req = requests.Request(
-                        'POST', self.endpoint,
-                        json=spans,
-                        headers={
-                            'Content-Type': 'application/json',
-                        }).prepare()
-                    self.session.send(recording_req, timeout=2)
+                    self.flush_func(spans)
                 else:
-                    time.sleep(0.1)
+                    time.sleep(self.batch_wait_interval)
 
     def send(self, span):
         try:
             self.span_queue.put_nowait(span)
         except Exception as e:
             self.logger.error("Failed adding span to recording queue: %s", e)
+
+class NullRecorder(BaseBatchRecorder):
+    def __init__(self, max_queue_size=50000,
+                 num_workers=5,
+                 max_span_batch=100,
+                 batch_wait_interval=0.5):
+        super(NullRecorder, self).__init__(
+            max_queue_size,
+            num_workers,
+            max_span_batch,
+            batch_wait_interval,
+        )
+
+    def flush_func(self, spans):
+        """Write a set of spans to debug log."""
+        for span in spans:
+            self.logger.debug("Span recording: %s", span)
+
+
+class RemoteRecorder(BaseBatchRecorder):
+    """Interface for recording spans to a remote collector.
+    The RemoteRecorder adds spans to an in-memory Queue for a background
+    thread worker to process. It currently does not shut down gracefully -
+    in the event of parent process exit, any remaining spans will be discarded.
+    """
+    def __init__(self, endpoint, num_conns,
+                 num_workers=5,
+                 max_queue_size=50000,
+                 max_span_batch=20,
+                 batch_wait_interval=0.5):
+
+        super(RemoteRecorder, self).__init__(
+            max_queue_size,
+            num_workers,
+            max_span_batch,
+            batch_wait_interval,
+        )
+        adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns,
+                                                pool_maxsize=num_conns)
+        self.session = requests.Session()
+        self.session.mount('http://', adapter)
+        self.endpoint = "http://%s/api/v1/spans" % endpoint
+
+    def flush_func(self, spans):
+        """Send a set of spans to remote collector."""
+        self.session.post(
+            self.endpoint,
+            data=json.dumps(spans),
+            headers={
+                'Content-Type': 'application/json',
+            },
+            timeout=1,
+        )

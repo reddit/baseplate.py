@@ -3,8 +3,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
 import unittest
 
+from baseplate.config import Endpoint
 from baseplate.core import Span, ServerSpan
 from baseplate.diagnostics.tracing import (
     TraceBaseplateObserver,
@@ -25,6 +27,17 @@ class TraceObserverTests(unittest.TestCase):
         baseplate_observer = TraceBaseplateObserver('test-service')
         self.assertEqual(type(baseplate_observer.recorder), NullRecorder)
 
+    def test_sets_hostname(self):
+        baseplate_observer = TraceBaseplateObserver('test-service')
+        self.assertIsNotNone(baseplate_observer.hostname)
+
+    def test_remote_recorder_setup(self):
+        baseplate_observer = TraceBaseplateObserver(
+            'test-service',
+            tracing_endpoint=Endpoint("test:1111"),
+        )
+        self.assertTrue(isinstance(baseplate_observer.recorder, RemoteRecorder))
+
     def test_register_server_span_observer(self):
         baseplate_observer = TraceBaseplateObserver('test-service')
         context_mock = mock.Mock()
@@ -42,6 +55,7 @@ class TraceSpanObserverTests(unittest.TestCase):
                          'test-span-id',
                          'test')
         self.test_span_observer = TraceSpanObserver('test-service',
+                                                    'test-hostname',
                                                     self.span,
                                                     self.recorder)
 
@@ -102,9 +116,12 @@ class TraceServerSpanObserverTests(unittest.TestCase):
                                'test-parent-id',
                                'test-span-id',
                                'test')
-        self.test_server_span_observer = TraceServerSpanObserver('test-service',
-                                                                 self.span,
-                                                                 self.recorder)
+        self.test_server_span_observer = TraceServerSpanObserver(
+            'test-service',
+            'test-hostname',
+            self.span,
+            self.recorder,
+        )
 
     def test_server_span_observer_inherits_span_observer(self):
         # in case of future refactoring
@@ -134,3 +151,61 @@ class TraceServerSpanObserverTests(unittest.TestCase):
             if annotation['value'] == 'sr':
                 sr_in_annotation = True
         self.assertTrue(sr_in_annotation)
+
+    def test_on_child_span_created(self):
+        child_span = Span(
+            'child-id',
+            'test-parent-id',
+            'test-span-id',
+            'test-child',
+        )
+        self.test_server_span_observer.on_child_span_created(child_span)
+        # Make sure new trace observer is added in the child span
+        #  and the trace observer's span is that child span
+        self.assertEqual(len(child_span.observers), 1)
+        self.assertEqual(child_span.observers[0].span, child_span)
+
+class NullRecorderTests(unittest.TestCase):
+    def setUp(self):
+        self.recorder = NullRecorder()
+
+    def test_null_recorder_flush(self):
+        span = Span('test-id',
+                    'test-parent-id',
+                    'test-span-id',
+                    'test')
+        self.recorder.flush_func([span])
+
+class RemoteRecorderTests(unittest.TestCase):
+    def setUp(self):
+        self.endpoint = "test:1111"
+
+    def test_init(self):
+        recorder = RemoteRecorder(self.endpoint, 5)
+        self.assertEqual(recorder.endpoint, "http://test:1111/api/v1/spans")
+
+    def test_remote_recorder_flush(self):
+        recorder = RemoteRecorder(self.endpoint, 5)
+        serialized_span = {
+            "traceId": "test-id",
+            "name": "test-span",
+            "id": "span-id",
+            "timestamp": 0,
+            "duration": 0,
+            "annotations": [],
+            "binary_annotations": [],
+        }
+        func_mock = mock.Mock()
+        with mock.patch.object(recorder.session,
+                               "post",
+                               func_mock):
+            recorder.flush_func([serialized_span])
+            func_mock.assert_called_with(
+                recorder.endpoint,
+                data=json.dumps([serialized_span]),
+                headers={
+                    'Content-Type': 'application/json',
+                },
+                timeout=1,
+            )
+
