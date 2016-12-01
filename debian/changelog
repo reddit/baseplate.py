@@ -1,6 +1,12 @@
+baseplate (0.15.0) trusty; urgency=medium
+
+  * add zipkin-compatible request tracing to spans
+
+ -- Courtney Wang <courtney.wang@reddit.com>  Thu, 1 Dec 2016 09:45:45 -0700
+
 baseplate (0.14.3) trusty; urgency=medium
 
-  * fix issue where we were always setting 'trace' to True in the 
+  * fix issue where we were always setting 'trace' to True in the
     CassandraSessionAdapter
 
  -- Andrew Boyle <andrew.boyle@reddit.com>  Mon, 14 Nov 2016 22:12:45 +0000
