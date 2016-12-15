@@ -25,7 +25,7 @@ class BaseplateTests(unittest.TestCase):
 
         baseplate = Baseplate()
         baseplate.register(mock_observer)
-        server_span = baseplate.make_server_span(mock_context, "name", TraceInfo(1, 2, 3))
+        server_span = baseplate.make_server_span(mock_context, "name", TraceInfo(1, 2, 3, None, 0))
 
         self.assertEqual(baseplate.observers, [mock_observer])
         self.assertEqual(mock_observer.on_server_span_created.call_count, 1)
@@ -39,7 +39,7 @@ class BaseplateTests(unittest.TestCase):
 
         baseplate = Baseplate()
         baseplate.register(mock_observer)
-        server_span = baseplate.make_server_span(mock_context, "name", TraceInfo(1, 2, 3))
+        server_span = baseplate.make_server_span(mock_context, "name", TraceInfo(1, 2, 3, None, 0))
 
         self.assertEqual(server_span.observers, [])
 
@@ -48,7 +48,7 @@ class SpanTests(unittest.TestCase):
     def test_events(self):
         mock_observer = mock.Mock(spec=SpanObserver)
 
-        span = Span(1, 2, 3, "name")
+        span = Span(1, 2, 3, None, 0, "name")
         span.register(mock_observer)
 
         span.start()
@@ -66,7 +66,7 @@ class SpanTests(unittest.TestCase):
     def test_context(self):
         mock_observer = mock.Mock(spec=SpanObserver)
 
-        span = Span(1, 2, 3, "name")
+        span = Span(1, 2, 3, None, 0, "name")
         span.register(mock_observer)
 
         with span:
@@ -76,7 +76,7 @@ class SpanTests(unittest.TestCase):
     def test_context_with_exception(self):
         mock_observer = mock.Mock(spec=SpanObserver)
 
-        span = Span(1, 2, 3, "name")
+        span = Span(1, 2, 3, None, 0, "name")
         span.register(mock_observer)
 
         class TestException(Exception):
@@ -98,7 +98,7 @@ class ServerSpanTests(unittest.TestCase):
 
         mock_observer = mock.Mock(spec=ServerSpanObserver)
 
-        server_span = ServerSpan("trace", "parent", "id", "name")
+        server_span = ServerSpan("trace", "parent", "id", None, 0, "name")
         server_span.register(mock_observer)
         child_span = server_span.make_child("child_name")
 
@@ -114,8 +114,37 @@ class ServerSpanTests(unittest.TestCase):
         mock_observer = mock.Mock(spec=ServerSpanObserver)
         mock_observer.on_child_span_created.return_value = None
 
-        server_span = ServerSpan("trace", "parent", "id", "name")
+        server_span = ServerSpan("trace", "parent", "id", None, 0, "name")
         server_span.register(mock_observer)
         child_span = server_span.make_child("child_name")
 
         self.assertEqual(child_span.observers, [])
+
+class TraceInfoTests(unittest.TestCase):
+
+    def test_new_does_not_have_parent_id(self):
+        new_trace_info = TraceInfo.new()
+        self.assertIsNone(new_trace_info.parent_id)
+
+    def test_new_does_not_set_flags(self):
+        new_trace_info = TraceInfo.new()
+        self.assertIsNone(new_trace_info.flags)
+
+    def test_new_does_not_set_sampled(self):
+        new_trace_info = TraceInfo.new()
+        self.assertIsNone(new_trace_info.sampled)
+
+    def test_from_upstream_fails_on_invalid_sampled(self):
+        with self.assertRaises(ValueError) as e:
+            TraceInfo.from_upstream(1, 2, 3, 'True', None)
+        self.assertEqual(str(e.exception), "invalid sampled value")
+
+    def test_from_upstream_fails_on_invalid_flags(self):
+        with self.assertRaises(ValueError) as e:
+            TraceInfo.from_upstream(1, 2, 3, True, -1)
+        self.assertEqual(str(e.exception), "invalid flags value")
+
+    def test_from_upstream_handles_no_sampled_or_flags(self):
+        span = TraceInfo.from_upstream(1, 2, 3, None, None)
+        self.assertIsNone(span.sampled)
+        self.assertIsNone(span.flags)

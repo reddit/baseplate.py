@@ -8,12 +8,16 @@ configurables
 Cookiecutter
 crypto
 Einhorn
+Enum
 gevent
 Gevent
 healthcheck
 hostname
 INI
+Interana
 iterable
+kwarg
+kwargs
 lifecycle
 namespace
 predecided
@@ -27,7 +31,6 @@ serializable
 statsd
 subclassing
 sysctls
+unsampled
 walkthrough
-Interana
-Enum
 Zipkin

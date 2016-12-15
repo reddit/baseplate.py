@@ -63,7 +63,8 @@ class ServerSpanObserver(SpanObserver):
         pass
 
 
-_TraceInfo = collections.namedtuple("_TraceInfo", "trace_id parent_id span_id")
+_TraceInfo = collections.namedtuple("_TraceInfo",
+                                    "trace_id parent_id span_id sampled flags")
 
 
 class TraceInfo(_TraceInfo):
@@ -83,15 +84,18 @@ class TraceInfo(_TraceInfo):
 
         """
         trace_id = random.getrandbits(64)
-        return cls(trace_id=trace_id, parent_id=None, span_id=trace_id)
+        return cls(trace_id=trace_id, parent_id=None,
+                   span_id=trace_id, sampled=None, flags=None)
 
     @classmethod
-    def from_upstream(cls, trace_id, parent_id, span_id):
+    def from_upstream(cls, trace_id, parent_id, span_id, sampled, flags):
         """Build a TraceInfo from individual headers.
 
         :param int trace_id: The ID of the trace.
         :param int parent_id: The ID of the parent span.
         :param int span_id: The ID of this span within the tree.
+        :param bool sampled: Boolean flag to determine request sampling.
+        :param int flags: Bit flags for communicating feature flags downstream
 
         :raises: :py:exc:`ValueError` if any of the values are inappropriate.
 
@@ -105,7 +109,14 @@ class TraceInfo(_TraceInfo):
         if parent_id is None or not 0 <= parent_id < 2**64:
             raise ValueError("invalid parent_id")
 
-        return cls(trace_id, parent_id, span_id)
+        if sampled is not None and not isinstance(sampled, bool):
+            raise ValueError("invalid sampled value")
+
+        if flags is not None:
+            if not 0 <= flags < 2**64:
+                raise ValueError("invalid flags value")
+
+        return cls(trace_id, parent_id, span_id, sampled, flags)
 
 
 class Baseplate(object):
@@ -188,7 +199,8 @@ class Baseplate(object):
             trace_info = TraceInfo.new()
 
         server_span = ServerSpan(trace_info.trace_id, trace_info.parent_id,
-                                 trace_info.span_id, name)
+                                 trace_info.span_id, trace_info.sampled,
+                                 trace_info.flags, name)
         for observer in self.observers:
             observer.on_server_span_created(context, server_span)
         return server_span
@@ -198,10 +210,12 @@ class Span(object):
     """A span represents a single RPC within a system."""
 
     # pylint: disable=invalid-name
-    def __init__(self, trace_id, parent_id, span_id, name):
+    def __init__(self, trace_id, parent_id, span_id, sampled, flags, name):
         self.trace_id = trace_id
         self.parent_id = parent_id
         self.id = span_id
+        self.sampled = sampled
+        self.flags = flags
         self.name = name
         self.observers = []
 
@@ -288,7 +302,7 @@ class ServerSpan(Span):
     def make_child(self, name):
         """Return a child span representing an outbound service call."""
         span_id = random.getrandbits(64)
-        span = Span(self.trace_id, self.id, span_id, name)
+        span = Span(self.trace_id, self.id, span_id, self.sampled, self.flags, name)
         for observer in self.observers:
             observer.on_child_span_created(span)
         return span

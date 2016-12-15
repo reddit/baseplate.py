@@ -8,6 +8,7 @@ import calendar
 
 import json
 import logging
+import random
 import socket
 import threading
 import time
@@ -28,6 +29,12 @@ ANNOTATIONS = {
     'CLIENT_RECEIVE': 'cr',
     'SERVER_SEND': 'ss',
     'SERVER_RECEIVE': 'sr',
+}
+
+# Feature flags
+FLAGS = {
+    # Ensures the trace passes ALL samplers
+    'DEBUG': 1,
 }
 
 
@@ -55,15 +62,18 @@ class TraceBaseplateObserver(BaseplateObserver):
     :param int max_span_queue_size: span processing queue limit.
     :param int num_span_workers: number of worker threads for span processing.
     :param float span_batch_interval: wait time for span processing in seconds.
+    :param float sample_rate: percentage of unsampled requests to record traces for.
     """
     def __init__(self, service_name,
                  tracing_endpoint=None,
                  max_span_queue_size=50000,
                  num_span_workers=5,
                  span_batch_interval=0.5,
-                 num_conns=100):
+                 num_conns=100,
+                 sample_rate=0.1):
         self.service_name = service_name
         self.hostname = socket.gethostbyname(socket.gethostname())
+        self.sample_rate = sample_rate
         if tracing_endpoint:
             remote_addr = '%s:%s' % tracing_endpoint.address
             logger.info("Recording spans to %s", remote_addr)
@@ -81,12 +91,28 @@ class TraceBaseplateObserver(BaseplateObserver):
                 batch_wait_interval=span_batch_interval,
             )
 
+    @classmethod
+    def force_sampling(cls, span):
+        return span.flags and (span.flags & FLAGS['DEBUG'])
+
+    def should_sample(self, span):
+        should_sample = False
+        if span.sampled is None:
+            should_sample = random.random() < self.sample_rate
+        else:
+            should_sample = span.sampled
+        return should_sample or self.force_sampling(span)
+
     def on_server_span_created(self, context, server_span):
-        observer = TraceServerSpanObserver(self.service_name,
-                                           self.hostname,
-                                           server_span,
-                                           self.recorder)
-        server_span.register(observer)
+        if self.should_sample(server_span):
+            server_span.sampled = True
+            observer = TraceServerSpanObserver(self.service_name,
+                                               self.hostname,
+                                               server_span,
+                                               self.recorder)
+            server_span.register(observer)
+        else:
+            server_span.sampled = False
 
 
 class TraceSpanObserver(SpanObserver):
@@ -241,6 +267,7 @@ class TraceServerSpanObserver(TraceSpanObserver):
 
         return self._to_span_obj(annotations, [])
 
+
 class BaseBatchRecorder(object):
     def __init__(self, max_queue_size,
                  num_workers,
@@ -284,6 +311,7 @@ class BaseBatchRecorder(object):
             self.span_queue.put_nowait(span)
         except Exception as e:
             self.logger.error("Failed adding span to recording queue: %s", e)
+
 
 class NullRecorder(BaseBatchRecorder):
     def __init__(self, max_queue_size=50000,

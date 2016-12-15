@@ -31,7 +31,6 @@ class RequestContext(object):
     pass
 
 
-
 # TODO: exceptions in the event handler cause the connection to be abruptly
 # closed with no diagnostics sent to the client. that should be more obvious.
 class BaseplateProcessorEventHandler(TProcessorEventHandler):
@@ -52,10 +51,19 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
         trace_info = None
         headers = server_context.iprot.trans.get_headers()
         try:
+            sampled = headers.get(b"Sampled", None)
+            if sampled is not None:
+                sampled = True if sampled.decode('utf-8') == "1" else False
+            flags = headers.get(b"Flags", None)
+            if flags is not None:
+                flags = int(flags)
+
             trace_info = TraceInfo.from_upstream(
                 trace_id=int(headers[b"Trace"]),
                 parent_id=int(headers[b"Parent"]),
                 span_id=int(headers[b"Span"]),
+                sampled=sampled,
+                flags=flags,
             )
         except (KeyError, ValueError):
             pass

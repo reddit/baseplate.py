@@ -83,10 +83,18 @@ class BaseplateConfigurator(object):
         trace_info = None
         if self.trust_trace_headers:
             try:
+                sampled = request.headers.get("X-Sampled", None)
+                if sampled is not None:
+                    sampled = True if sampled == "1" else False
+                flags = request.headers.get("X-Flags", None)
+                if flags is not None:
+                    flags = int(flags)
                 trace_info = TraceInfo.from_upstream(
                     trace_id=int(request.headers["X-Trace"]),
                     parent_id=int(request.headers["X-Parent"]),
                     span_id=int(request.headers["X-Span"]),
+                    sampled=sampled,
+                    flags=flags,
                 )
             except (KeyError, ValueError):
                 pass

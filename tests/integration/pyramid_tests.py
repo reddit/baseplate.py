@@ -76,6 +76,8 @@ class ConfiguratorTests(unittest.TestCase):
             "X-Trace": "1234",
             "X-Parent": "2345",
             "X-Span": "3456",
+            "X-Sampled": "1",
+            "X-Flags": "1",
         })
 
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
@@ -85,6 +87,8 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(server_span.trace_id, 1234)
         self.assertEqual(server_span.parent_id, 2345)
         self.assertEqual(server_span.id, 3456)
+        self.assertEqual(server_span.sampled, True)
+        self.assertEqual(server_span.flags, 1)
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)

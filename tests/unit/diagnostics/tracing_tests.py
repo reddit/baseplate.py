@@ -36,15 +36,96 @@ class TraceObserverTests(unittest.TestCase):
             'test-service',
             tracing_endpoint=Endpoint("test:1111"),
         )
-        self.assertTrue(isinstance(baseplate_observer.recorder, RemoteRecorder))
+        self.assertTrue(
+            isinstance(baseplate_observer.recorder,
+                       RemoteRecorder)
+        )
 
     def test_register_server_span_observer(self):
         baseplate_observer = TraceBaseplateObserver('test-service')
         context_mock = mock.Mock()
-        span = ServerSpan('test-id', 'test-parent-id', 'test-span-id', 'test')
+        span = ServerSpan('test-id', 'test-parent-id', 'test-span-id',
+                          True, 0, 'test')
         baseplate_observer.on_server_span_created(context_mock, span)
-        self.assertTrue(len(span.observers), 1)
+        self.assertEqual(len(span.observers), 1)
         self.assertEqual(type(span.observers[0]), TraceServerSpanObserver)
+
+    def test_force_sampling(self):
+        span_with_debug_flag = Span('test-id',
+                                    'test-parent',
+                                    'test-span-id',
+                                    True,
+                                    1,
+                                    "test")
+        span_without_debug_flag = Span('test-id',
+                                       'test-parent',
+                                       'test-span-id',
+                                       True,
+                                       0,
+                                       "test")
+        self.assertTrue(
+            TraceBaseplateObserver.force_sampling(span_with_debug_flag)
+        )
+        self.assertFalse(
+            TraceBaseplateObserver.force_sampling(span_without_debug_flag)
+        )
+
+    def test_should_sample_utilizes_sampled_setting(self):
+        baseplate_observer = TraceBaseplateObserver('test-service',
+                                                    sample_rate=0)
+        span_with_sampled_flag = Span('test-id',
+                                      'test-parent',
+                                      'test-span-id',
+                                      True,
+                                      0,
+                                      "test")
+        self.assertTrue(
+            baseplate_observer.should_sample(span_with_sampled_flag)
+        )
+
+    def test_should_sample_utilizes_force_sampling(self):
+        baseplate_observer = TraceBaseplateObserver('test-service',
+                                                    sample_rate=0)
+        span_with_forced = Span('test-id',
+                                'test-parent',
+                                'test-span-id',
+                                False,
+                                1,
+                                "test")
+        span_without_forced = Span('test-id',
+                                   'test-parent',
+                                   'test-span-id',
+                                   False,
+                                   0,
+                                   "test")
+        self.assertTrue(
+            baseplate_observer.should_sample(span_with_forced)
+        )
+        self.assertFalse(
+            baseplate_observer.should_sample(span_without_forced)
+        )
+
+    def test_should_sample_utilizes_sample_rate(self):
+        baseplate_observer = TraceBaseplateObserver('test-service',
+                                                    sample_rate=1)
+        span = Span('test-id',
+                    'test-parent',
+                    'test-span-id',
+                    None,
+                    0,
+                    "test")
+        self.assertTrue(baseplate_observer.should_sample(span))
+        baseplate_observer.sample_rate = 0
+        self.assertFalse(baseplate_observer.should_sample(span))
+
+    def test_no_tracing_without_sampling(self):
+        baseplate_observer = TraceBaseplateObserver('test-service',
+                                                    sample_rate=0)
+        context_mock = mock.Mock()
+        span = ServerSpan('test-id', 'test-parent-id', 'test-span-id',
+                          False, 0, 'test')
+        baseplate_observer.on_server_span_created(context_mock, span)
+        self.assertEqual(len(span.observers), 0)
 
 
 class TraceSpanObserverTests(unittest.TestCase):
@@ -53,6 +134,8 @@ class TraceSpanObserverTests(unittest.TestCase):
         self.span = Span('test-id',
                          'test-parent-id',
                          'test-span-id',
+                         None,
+                         0,
                          'test')
         self.test_span_observer = TraceSpanObserver('test-service',
                                                     'test-hostname',
@@ -104,7 +187,9 @@ class TraceSpanObserverTests(unittest.TestCase):
         self.assertIsNotNone(self.test_span_observer.end)
 
     def test_create_binary_annotation(self):
-        annotation = self.test_span_observer._create_binary_annotation('test-key', 'test-value')
+        annotation = self.test_span_observer._create_binary_annotation(
+            'test-key', 'test-value'
+        )
         self.assertEquals(annotation['key'], 'test-key')
         self.assertEquals(annotation['value'], 'test-value')
         self.assertTrue(annotation['endpoint'])
@@ -133,6 +218,8 @@ class TraceServerSpanObserverTests(unittest.TestCase):
         self.span = ServerSpan('test-id',
                                'test-parent-id',
                                'test-span-id',
+                               None,
+                               0,
                                'test')
         self.test_server_span_observer = TraceServerSpanObserver(
             'test-service',
@@ -175,6 +262,8 @@ class TraceServerSpanObserverTests(unittest.TestCase):
             'child-id',
             'test-parent-id',
             'test-span-id',
+            None,
+            0,
             'test-child',
         )
         self.test_server_span_observer.on_child_span_created(child_span)
@@ -182,6 +271,7 @@ class TraceServerSpanObserverTests(unittest.TestCase):
         #  and the trace observer's span is that child span
         self.assertEqual(len(child_span.observers), 1)
         self.assertEqual(child_span.observers[0].span, child_span)
+
 
 class NullRecorderTests(unittest.TestCase):
     def setUp(self):
@@ -191,8 +281,11 @@ class NullRecorderTests(unittest.TestCase):
         span = Span('test-id',
                     'test-parent-id',
                     'test-span-id',
+                    None,
+                    0,
                     'test')
         self.recorder.flush_func([span])
+
 
 class RemoteRecorderTests(unittest.TestCase):
     def setUp(self):
@@ -226,4 +319,3 @@ class RemoteRecorderTests(unittest.TestCase):
                 },
                 timeout=1,
             )
-

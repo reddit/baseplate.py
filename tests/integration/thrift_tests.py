@@ -37,8 +37,10 @@ class ThriftTests(unittest.TestCase):
 
         self.observer = mock.Mock(spec=BaseplateObserver)
         self.server_observer = mock.Mock(spec=ServerSpanObserver)
+
         def _register_mock(context, server_span):
             server_span.register(self.server_observer)
+
         self.observer.on_server_span_created.side_effect = _register_mock
 
         self.logger = mock.Mock(spec=logging.Logger)
@@ -86,6 +88,8 @@ class ThriftTests(unittest.TestCase):
         client_header_trans.set_header("Trace", "1234")
         client_header_trans.set_header("Parent", "2345")
         client_header_trans.set_header("Span", "3456")
+        client_header_trans.set_header("Sampled", "1")
+        client_header_trans.set_header("Flags", "1")
         client = BaseplateService.Client(client_prot)
         try:
             client.is_healthy()
@@ -100,6 +104,8 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(server_span.trace_id, 1234)
         self.assertEqual(server_span.parent_id, 2345)
         self.assertEqual(server_span.id, 3456)
+        self.assertTrue(server_span.sampled)
+        self.assertEqual(server_span.flags, 1)
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)

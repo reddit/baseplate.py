@@ -98,7 +98,11 @@ class PooledClientProxy(object):
                         prot.trans.set_header("Trace", str(span.trace_id))
                         prot.trans.set_header("Parent", str(span.parent_id))
                         prot.trans.set_header("Span", str(span.id))
-
+                        if span.sampled is not None:
+                            sampled = "1" if span.sampled else "0"
+                            prot.trans.set_header("Sampled", sampled)
+                        if span.flags:
+                            prot.trans.set_header("Flags", str(span.flags))
                         client = self.client_cls(prot)
                         method = getattr(client, name)
                         return method(*args, **kwargs)
