@@ -39,6 +39,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     ...             "deep": config.Timespan,
     ...         },
     ...     },
+    ...     "optional": config.Optional(config.Integer, default=9001),
     ... })
 
     >>> print(cfg.simple)
