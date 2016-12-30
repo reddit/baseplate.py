@@ -4,8 +4,6 @@ from __future__ import print_function
 
 import unittest
 
-import webtest
-
 from baseplate import Baseplate
 from baseplate.diagnostics.tracing import (
     TraceBaseplateObserver,
@@ -16,11 +14,13 @@ from baseplate.diagnostics.tracing import (
 )
 
 try:
-    from baseplate.integration.pyramid import BaseplateConfigurator
+    import webtest
+
     from pyramid.config import Configurator
-    from pyramid.request import Request
+
+    from baseplate.integration.pyramid import BaseplateConfigurator
 except ImportError:
-    raise unittest.SkipTest("pyramid is not installed")
+    raise unittest.SkipTest("pyramid/webtest is not installed")
 
 from .. import mock
 
