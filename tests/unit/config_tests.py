@@ -4,6 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import socket
+import tempfile
 import unittest
 
 from baseplate import config
@@ -92,6 +93,35 @@ class Base64Tests(unittest.TestCase):
     def test_valid(self):
         result = config.Base64("aHVudGVyMg==")
         self.assertEqual(result, b"hunter2")
+
+
+class FileTests(unittest.TestCase):
+    def setUp(self):
+        self.tempfile = tempfile.NamedTemporaryFile()
+        self.tempfile.write(b"test")
+        self.tempfile.flush()
+
+    def tearDown(self):
+        self.tempfile.close()
+
+    def test_no_file(self):
+        file_opener = config.File()
+        with self.assertRaises(ValueError):
+            file_opener("/tmp/does_not_exist")
+
+    def test_read_file(self):
+        file_opener = config.File()
+        the_file = file_opener(self.tempfile.name)
+        self.assertEqual(the_file.read(), "test")
+
+    def test_write_file(self):
+        file_opener = config.File(mode="w")
+        the_file = file_opener(self.tempfile.name)
+        the_file.write("cool")
+        the_file.close()
+
+        with open(self.tempfile.name) as f:
+            self.assertEqual(f.read(), "cool")
 
 
 class TimespanTests(unittest.TestCase):

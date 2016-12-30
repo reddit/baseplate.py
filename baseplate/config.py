@@ -21,8 +21,14 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
     from baseplate import config
     from baseplate._compat import configparser
+    from tempfile import NamedTemporaryFile
     config_parser = configparser.ConfigParser()
     config_parser.readfp(open("docs/config_example.ini"))
+
+    tempfile = NamedTemporaryFile()
+    tempfile.write("cool")
+    tempfile.flush()
+    config_parser.set("app:main", "some_file", tempfile.name)
 
 .. doctest::
 
@@ -39,6 +45,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     ...             "deep": config.Timespan,
     ...         },
     ...     },
+    ...     "some_file": config.File(mode="r"),
     ...     "optional": config.Optional(config.Integer, default=9001),
     ... })
 
@@ -50,6 +57,14 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
     >>> print(cfg.nested.really.deep)
     0:00:03
+
+    >>> cfg.some_file.read()
+    'cool'
+    >>> cfg.some_file.close()
+
+.. testcleanup::
+
+    tempfile.close()
 
 """
 from __future__ import absolute_import
@@ -165,6 +180,26 @@ def Base64(text):
         return base64.b64decode(text)
     except TypeError as exc:
         raise ValueError(*exc.args)
+
+
+def File(mode="r"):
+    """A path to a file.
+
+    This takes a path to a file and returns an open file object, like
+    returned by :py:func:`open`.
+
+    :param str mode: an optional string that specifies the mode in
+        which the file is opened.
+
+
+
+    """
+    def open_file(text):
+        try:
+            return open(text, mode=mode)
+        except IOError:
+            raise ValueError("could not open file: %s" % text)
+    return open_file
 
 
 def Timespan(text):

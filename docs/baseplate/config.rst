@@ -21,6 +21,7 @@ make complicated expressions.
 .. autofunction:: Endpoint
 .. autofunction:: Timespan
 .. autofunction:: Base64
+.. autofunction:: File
 .. autofunction:: OneOf
 .. autofunction:: TupleOf
 .. autofunction:: Optional
