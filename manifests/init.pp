@@ -15,7 +15,6 @@ class baseplate {
   $packages = [
     'fbthrift-compiler',
     'make',
-    'pep8',
     'pylint',
     'python',
     'python3-cassandra',
@@ -34,6 +33,7 @@ class baseplate {
     'python-dev',
     'python-enum34',
     'python-fbthrift',
+    'python-flake8',
     'python-gevent',
     'python-mock',
     'python-nose',

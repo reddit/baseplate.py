@@ -48,7 +48,7 @@ install:
 	python3 setup.py install
 
 lint:
-	pep8 --repeat --ignore=E501,E128,E226 --exclude=baseplate/thrift/ baseplate/
+	flake8 baseplate/
 	pylint --errors-only baseplate/
 
 
