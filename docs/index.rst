@@ -60,6 +60,7 @@ be used without the framework.
    baseplate.random: Extensions to the standard library's random module <baseplate/random>
    baseplate.retry: Policies for retrying operations <baseplate/retry>
    baseplate.thrift_pool: A Thrift client connection pool <baseplate/thrift_pool>
+   baseplate.service_discovery: Integration with Synapse service discovery <baseplate/service_discovery>
 
 Other
 -----
