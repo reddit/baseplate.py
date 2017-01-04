@@ -48,7 +48,7 @@ class WeightedLottery(object):
         # Build a running list of current total weight.  This allows us to do a
         # binary search for a random weight to get a choice quickly.
         accumulated_weight = 0
-        for i, item in enumerate(self.items):
+        for item in self.items:
             weight = weight_key(item)
             if weight < 0:
                 raise ValueError("weight for %r must be non-negative" % item)
