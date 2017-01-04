@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import bisect
 import random
 
 
@@ -39,26 +40,28 @@ class WeightedLottery(object):
     """
 
     def __init__(self, items, weight_key):
-        self.tickets = 0
-        self.items_with_weights = []
+        self.weights = []
+        self.items = list(items)
+        if len(self.items) == 0:
+            raise ValueError("items must not be empty")
 
-        for item in items:
+        # Build a running list of current total weight.  This allows us to do a
+        # binary search for a random weight to get a choice quickly.
+        for i, item in enumerate(self.items):
+            try:
+                prev_weight = self.weights[i - 1]
+            except IndexError:
+                prev_weight = 0
             weight = weight_key(item)
             if weight < 0:
                 raise ValueError("weight for %r must be non-negative" % item)
-            self.tickets += weight
-            self.items_with_weights.append((item, weight))
+            self.weights.append(prev_weight + weight)
 
-        if self.tickets == 0:
+        if self.weights[-1] < 0:
             raise ValueError("at least one item must have weight")
 
     def pick(self):
         """Pick a random element from the lottery."""
-        winning_ticket = random.random() * self.tickets
-        current_ticket = 0
-        for item, weight in self.items_with_weights:
-            current_ticket += weight
-            if current_ticket > winning_ticket:
-                return item
-        else:  # pragma: nocover
-            raise RuntimeError("weighted_choice failed unexpectedly")
+        winning_ticket = random.random() * self.weights[-1]
+        winning_idx = bisect.bisect(self.weights, winning_ticket)
+        return self.items[winning_idx]
