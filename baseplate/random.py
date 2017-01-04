@@ -42,7 +42,7 @@ class WeightedLottery(object):
     def __init__(self, items, weight_key):
         self.weights = []
         self.items = list(items)
-        if len(self.items) == 0:
+        if not self.items:
             raise ValueError("items must not be empty")
 
         # Build a running list of current total weight.  This allows us to do a
