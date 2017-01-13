@@ -19,6 +19,10 @@ iterable
 kwarg
 kwargs
 lifecycle
+memcache
+Memcache
+memcached
+Memcached
 namespace
 predecided
 pubsub

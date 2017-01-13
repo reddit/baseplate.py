@@ -30,6 +30,18 @@ Redis
    :members:
 
 
+Memcache
+--------
+
+.. autofunction:: baseplate.context.memcache.pool_from_config
+
+.. autoclass:: baseplate.context.memcache.MemcacheContextFactory
+   :members:
+
+.. autoclass:: baseplate.context.memcache.MonitoredMemcacheConnection
+   :members:
+
+
 SQLAlchemy
 ----------
 
