@@ -21,4 +21,5 @@ __all__ = [
     "EventQueue",
     "EventQueueFullError",
     "EventTooLargeError",
+    "FieldKind",
 ]

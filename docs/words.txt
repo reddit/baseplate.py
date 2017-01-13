@@ -1,6 +1,7 @@
 aggregator
 app
 backend
+backends
 backoff
 config
 Config
@@ -19,6 +20,7 @@ iterable
 kwarg
 kwargs
 lifecycle
+localhost
 memcache
 Memcache
 memcached

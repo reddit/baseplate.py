@@ -10,7 +10,7 @@ from baseplate import config, thrift_pool
 from baseplate._compat import queue
 from thrift.Thrift import TException
 from thrift.transport import TTransport, THeaderTransport
-from thrift.protocol import THeaderProtocol
+from thrift.protocol import THeaderProtocol, TBinaryProtocol
 
 from .. import mock
 
@@ -19,21 +19,19 @@ EXAMPLE_ENDPOINT = config.EndpointConfiguration(
     socket.AF_INET, ("127.0.0.1", 1234))
 
 
-class MakeProtocolTests(unittest.TestCase):
+class MakeTransportTests(unittest.TestCase):
     def test_inet(self):
         endpoint = config.EndpointConfiguration(
             socket.AF_INET, ("localhost", 1234))
-        protocol = thrift_pool._make_protocol(endpoint)
+        socket_transport = thrift_pool._make_transport(endpoint)
 
-        socket_transport = protocol.trans.getTransport()
         self.assertFalse(socket_transport._unix_socket)
 
     def test_unix(self):
         endpoint = config.EndpointConfiguration(
             socket.AF_UNIX, "/tmp/socket")
-        protocol = thrift_pool._make_protocol(endpoint)
+        socket_transport = thrift_pool._make_transport(endpoint)
 
-        socket_transport = protocol.trans.getTransport()
         self.assertTrue(socket_transport._unix_socket)
 
     def test_unknown(self):
@@ -41,7 +39,7 @@ class MakeProtocolTests(unittest.TestCase):
             socket.AF_UNSPEC, None)
 
         with self.assertRaises(Exception):
-            thrift_pool._make_protocol(endpoint)
+            thrift_pool._make_transport(endpoint)
 
 
 class ThriftConnectionPoolTests(unittest.TestCase):
@@ -56,6 +54,19 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         with self.assertRaises(TTransport.TTransportException):
             self.pool._acquire()
 
+    def test_pool_with_framed_protocol_factory(self):
+
+        def framed_protocol_factory(trans):
+            trans = TTransport.TFramedTransport(trans)
+            return TBinaryProtocol.TBinaryProtocol(trans)
+
+        framed_pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT, protocol_factory=framed_protocol_factory)
+        trans = thrift_pool._make_transport(EXAMPLE_ENDPOINT)
+        prot = framed_pool.protocol_factory(trans)
+
+        self.assertTrue(isinstance(prot, TBinaryProtocol.TBinaryProtocol))
+        self.assertTrue(isinstance(prot.trans, TTransport.TFramedTransport))
+
     @mock.patch("time.time")
     def test_pool_has_valid_connection(self, mock_time):
         mock_time.return_value = 123
@@ -67,58 +78,56 @@ class ThriftConnectionPoolTests(unittest.TestCase):
 
         self.assertEqual(prot, mock_prot)
 
-    @mock.patch("baseplate.thrift_pool._make_protocol")
+    @mock.patch("baseplate.thrift_pool._make_transport")
     @mock.patch("time.time")
-    def test_pool_closes_stale_connection(self, mock_time, mock_make_protocol):
+    def test_pool_closes_stale_connection(self, mock_time, mock_make_transport):
         stale_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
         stale_prot.trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
-        fresh_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
-        fresh_prot.trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
 
         stale_prot.baseplate_birthdate = 10
         mock_time.return_value = 200
         self.mock_queue.get.return_value = stale_prot
-        mock_make_protocol.return_value = fresh_prot
+
+        fresh_trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
+        fresh_trans.get_protocol_id.return_value = THeaderProtocol.THeaderProtocol.T_BINARY_PROTOCOL
+        mock_make_transport.return_value = fresh_trans
 
         prot = self.pool._acquire()
 
         self.assertTrue(stale_prot.trans.close.called)
-        self.assertEqual(prot, fresh_prot)
+        self.assertEqual(prot.trans, fresh_trans)
 
-    @mock.patch("baseplate.thrift_pool._make_protocol")
+    @mock.patch("baseplate.thrift_pool._make_transport")
     @mock.patch("time.time")
-    def test_retry_on_failed_connect(self, mock_time, mock_make_protocol):
+    def test_retry_on_failed_connect(self, mock_time, mock_make_transport):
         self.mock_queue.get.return_value = None
         mock_time.return_value = 200
 
-        broken_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
-        broken_prot.baseplate_birthdate = 200
-        broken_prot.trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
-        broken_prot.trans.open.side_effect = TTransport.TTransportException
+        broken_trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
+        broken_trans.get_protocol_id.return_value = THeaderProtocol.THeaderProtocol.T_BINARY_PROTOCOL
+        broken_trans.open.side_effect = TTransport.TTransportException
 
-        ok_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
-        ok_prot.baseplate_birthdate = 200
-        ok_prot.trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
+        ok_trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
+        ok_trans.get_protocol_id.return_value = THeaderProtocol.THeaderProtocol.T_BINARY_PROTOCOL
 
-        mock_make_protocol.side_effect = [broken_prot, ok_prot]
+        mock_make_transport.side_effect = [broken_trans, ok_trans]
 
         prot = self.pool._acquire()
 
-        self.assertEqual(prot, ok_prot)
-        self.assertEqual(ok_prot.trans.open.call_count, 1)
+        self.assertEqual(prot.trans, ok_trans)
+        self.assertEqual(ok_trans.open.call_count, 1)
 
-    @mock.patch("baseplate.thrift_pool._make_protocol")
+    @mock.patch("baseplate.thrift_pool._make_transport")
     @mock.patch("time.time")
-    def test_max_retry_on_connect(self, mock_time, mock_make_protocol):
+    def test_max_retry_on_connect(self, mock_time, mock_make_transport):
         self.mock_queue.get.return_value = None
         mock_time.return_value = 200
 
-        broken_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
-        broken_prot.baseplate_birthdate = 200
-        broken_prot.trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
-        broken_prot.trans.open.side_effect = TTransport.TTransportException
+        broken_trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
+        broken_trans.get_protocol_id.return_value = THeaderProtocol.THeaderProtocol.T_BINARY_PROTOCOL
+        broken_trans.open.side_effect = TTransport.TTransportException
 
-        mock_make_protocol.side_effect = [broken_prot] * 3
+        mock_make_transport.side_effect = [broken_trans] * 3
 
         with self.assertRaises(TTransport.TTransportException):
             self.pool._acquire()

@@ -37,14 +37,15 @@ from .retry import RetryPolicy
 logger = logging.getLogger(__name__)
 
 
-def _make_protocol(endpoint):
+def _make_transport(endpoint):
     if endpoint.family == socket.AF_INET:
         trans = TSocket.TSocket(*endpoint.address)
     elif endpoint.family == socket.AF_UNIX:
         trans = TSocket.TSocket(unix_socket=endpoint.address)
     else:
         raise Exception("unsupported endpoint family %r" % endpoint.family)
-    return THeaderProtocol.THeaderProtocol(trans)
+
+    return trans
 
 
 class ThriftConnectionPool(object):
@@ -60,17 +61,20 @@ class ThriftConnectionPool(object):
         RPC call can take before a TimeoutError is raised.
     :param int max_retries: The maximum number of times the pool will attempt
         to open a connection.
+    :param thrift.transport.TTransport.TTransportFactoryBase transport_wrapper:
+        Factory class that wraps the thrift connection in a framed/buffered transport if necessary.
 
     All exceptions raised by this class derive from
     :py:exc:`~thrift.transport.TTransport.TTransportException`.
 
     """
     # pylint: disable=too-many-arguments
-    def __init__(self, endpoint, size=10, max_age=120, timeout=1, max_retries=3):
+    def __init__(self, endpoint, size=10, max_age=120, timeout=1, max_retries=3, protocol_factory=THeaderProtocol.THeaderProtocol):
         self.endpoint = endpoint
         self.max_age = max_age
         self.retry_policy = RetryPolicy.new(attempts=max_retries)
         self.timeout = timeout
+        self.protocol_factory = protocol_factory
 
         self.pool = queue.LifoQueue()
         for _ in range(size):
@@ -93,7 +97,8 @@ class ThriftConnectionPool(object):
                     prot.trans.close()
                     prot = None
 
-            prot = _make_protocol(self.endpoint)
+            trans = _make_transport(self.endpoint)
+            prot = self.protocol_factory(trans)
             prot.trans.getTransport().setTimeout(self.timeout * 1000.)
 
             try:

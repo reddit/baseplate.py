@@ -4,8 +4,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import calendar
-
 import json
 import logging
 import random
@@ -17,7 +15,7 @@ from datetime import datetime
 import requests
 
 from .._compat import queue
-from ..core import BaseplateObserver, SpanObserver, TraceInfo
+from ..core import BaseplateObserver, SpanObserver
 
 
 logger = logging.getLogger(__name__)
