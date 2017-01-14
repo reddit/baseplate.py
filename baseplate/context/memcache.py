@@ -81,15 +81,6 @@ class MemcacheContextFactory(ContextFactory):
         return MonitoredMemcacheConnection(name, server_span, self.pooled_client)
 
 
-def monitored(fn_name):
-    def fn(self, *a, **kw):
-        trace_name = "{}.{}".format(self.context_name, fn_name)
-        with self.server_span.make_child(trace_name):
-            method = getattr(self.pooled_client, fn_name)
-            return method(*a, **kw)
-    return fn
-
-
 class MonitoredMemcacheConnection(PooledClient):
     """Memcache connection that collects diagnostic information.
 
@@ -105,6 +96,15 @@ class MonitoredMemcacheConnection(PooledClient):
         self.context_name = context_name
         self.server_span = server_span
         self.pooled_client = pooled_client
+
+    #pylint: disable=no-self-argument
+    def monitored(fn_name):
+        def fn(self, *a, **kw):
+            trace_name = "{}.{}".format(self.context_name, fn_name)
+            with self.server_span.make_child(trace_name):
+                method = getattr(self.pooled_client, fn_name)
+                return method(*a, **kw)
+        return fn
 
     close = monitored('close')
     set = monitored('set')
