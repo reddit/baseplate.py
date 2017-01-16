@@ -70,3 +70,36 @@ class WeightedChoiceTests(unittest.TestCase):
         self.assertLess(abs(2000 - choices["b"]), 150)
         self.assertLess(abs(3000 - choices["c"]), 150)
         self.assertLess(abs(4000 - choices["d"]), 150)
+
+    def test_sample_errors(self):
+        weight_fn = lambda i: 3 if i == "c" else 1
+        items = [
+            "a", # 1
+            "b", # 1
+            "c", # 3
+            "d", # 1
+        ]
+        lottery = random.WeightedLottery(items, weight_fn)
+
+        with self.assertRaises(ValueError):
+            lottery.sample(-1)
+
+        with self.assertRaises(ValueError):
+            lottery.sample(5)
+
+    def test_sample(self):
+        weight_fn = lambda i: 3 if i == "c" else 1
+        items = [
+            "a", # 1
+            "b", # 1
+            "c", # 3
+            "d", # 1
+        ]
+        lottery = random.WeightedLottery(items, weight_fn)
+
+        for k in range(len(items)):
+            samples = lottery.sample(k)
+            # we got the right number
+            self.assertEqual(len(samples), k)
+            # there are no duplicates
+            self.assertEqual(len(samples), len(set(samples)))

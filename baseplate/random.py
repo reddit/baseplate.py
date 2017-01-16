@@ -7,6 +7,8 @@ from __future__ import unicode_literals
 import bisect
 import random
 
+from . import _compat
+
 
 class WeightedLottery(object):
     """A lottery where items can have different chances of selection.
@@ -36,6 +38,8 @@ class WeightedLottery(object):
         >>> lottery = WeightedLottery(words, weight_key=len)
         >>> lottery.pick()
         'banana'
+        >>> lottery.sample(2)
+        ['apple', 'cantelope']
 
     """
 
@@ -58,8 +62,33 @@ class WeightedLottery(object):
         if accumulated_weight <= 0:
             raise ValueError("at least one item must have weight")
 
+    def _pick_index(self):
+        winning_ticket = random.random() * self.weights[-1]
+        return bisect.bisect(self.weights, winning_ticket)
+
     def pick(self):
         """Pick a random element from the lottery."""
-        winning_ticket = random.random() * self.weights[-1]
-        winning_idx = bisect.bisect(self.weights, winning_ticket)
+        winning_idx = self._pick_index()
         return self.items[winning_idx]
+
+    def sample(self, sample_size):
+        """Sample elements from the lottery without replacement.
+
+        :param int sample_size: The number of items to sample from the lottery.
+
+        """
+        if not 0 <= sample_size < len(self.items):
+            raise ValueError("sample size is negative or larger than the population")
+
+        already_picked = set()
+        results = [None] * sample_size
+
+        # we use indexes in the set so we don't add a hashability requirement
+        # to the items in the population.
+        for i in _compat.range(sample_size):
+            picked_index = self._pick_index()
+            while picked_index in already_picked:
+                picked_index = self._pick_index()
+            results[i] = self.items[picked_index]
+            already_picked.add(picked_index)
+        return results
