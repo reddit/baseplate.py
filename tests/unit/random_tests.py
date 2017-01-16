@@ -20,6 +20,10 @@ class WeightedChoiceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             random.WeightedLottery(["a"], lambda i: -1)
 
+    def test_no_weight(self):
+        with self.assertRaises(ValueError):
+            random.WeightedLottery(["a"], lambda i: 0)
+
     @mock.patch("random.random")
     def test_iterator(self, mock_random):
         iterator = (n for n in range(10))

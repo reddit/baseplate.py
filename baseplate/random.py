@@ -55,7 +55,7 @@ class WeightedLottery(object):
             accumulated_weight += weight
             self.weights.append(accumulated_weight)
 
-        if accumulated_weight < 0:
+        if accumulated_weight <= 0:
             raise ValueError("at least one item must have weight")
 
     def pick(self):
