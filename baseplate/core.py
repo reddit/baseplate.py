@@ -158,10 +158,32 @@ class Baseplate(object):
         from .diagnostics.metrics import MetricsBaseplateObserver
         self.register(MetricsBaseplateObserver(metrics_client))
 
-    def configure_tracing(self, service_name, tracing_endpoint):
-        """Collect and send span information for request tracing."""
+    def configure_tracing(self, service_name,
+                          tracing_endpoint,
+                          max_span_queue_size=50000,
+                          num_span_workers=5,
+                          span_batch_interval=0.5,
+                          num_conns=100,
+                          sample_rate=0.1):
+        """Collect and send span information for request tracing.
+
+        :param str service_name: The name for the service this observer
+            is registered to.
+        :param baseplate.config.EndpointConfiguration tracing_endpoint: destination
+            to record span data.
+        :param int num_conns: pool size for remote recorder connection pool.
+        :param int max_span_queue_size: span processing queue limit.
+        :param int num_span_workers: number of worker threads for span processing.
+        :param float span_batch_interval: wait time for span processing in seconds.
+        :param float sample_rate: percentage of unsampled requests to record traces for.
+        """
         from .diagnostics.tracing import TraceBaseplateObserver
-        self.register(TraceBaseplateObserver(service_name, tracing_endpoint))
+        self.register(TraceBaseplateObserver(service_name,
+                                             tracing_endpoint,
+                                             max_span_queue_size,
+                                             span_batch_interval,
+                                             num_conns,
+                                             sample_rate))
 
     def add_to_context(self, name, context_factory):  # pragma: nocover
         """Add an attribute to each request's context object.
