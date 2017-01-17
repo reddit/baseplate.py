@@ -23,8 +23,7 @@ class PoolFromConfigTests(unittest.TestCase):
 
     def test_basic_url(self):
         pool = pool_from_config({
-            "memcache.host": "localhost",
-            "memcache.port": 1234,
+            "memcache.endpoint": "localhost:1234",
         })
 
         self.assertEqual(pool.server[0], "localhost")
@@ -32,8 +31,7 @@ class PoolFromConfigTests(unittest.TestCase):
 
     def test_timeouts(self):
         pool = pool_from_config({
-            "memcache.host": "localhost",
-            "memcache.port": 1234,
+            "memcache.endpoint": "localhost:1234",
             "memcache.timeout": 1.23,
             "memcache.connect_timeout": 4.56,
         })
@@ -43,8 +41,7 @@ class PoolFromConfigTests(unittest.TestCase):
 
     def test_max_connections(self):
         pool = pool_from_config({
-            "memcache.host": "localhost",
-            "memcache.port": 1234,
+            "memcache.endpoint": "localhost:1234",
             "memcache.max_pool_size": 300,
         })
 
@@ -52,6 +49,5 @@ class PoolFromConfigTests(unittest.TestCase):
 
     def test_alternate_prefix(self):
         pool_from_config({
-            "noodle.host": "localhost",
-            "noodle.port": 1234,
+            "noodle.endpoint": "localhost:1234",
         }, prefix="noodle.")

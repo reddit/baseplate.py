@@ -13,7 +13,7 @@ def pool_from_config(app_config, prefix="memcache.", **kwargs):
     """Make a PooledClient from a configuration dictionary.
 
     The keys useful to :py:func:`pool_from_config` should be prefixed, e.g.
-    ``memcache.host``, ``memcache.max_pool_size``, etc. The ``prefix`` argument
+    ``memcache.endpoint``, ``memcache.max_pool_size``, etc. The ``prefix`` argument
     specifies the prefix used to filter keys. Each key is mapped to a
     corresponding keyword argument on the
     `PooledClient <https://pymemcache.readthedocs.io/en/latest/apidoc/pymemcache.client.base.html#pymemcache.client.base.PooledClient>`_
@@ -21,10 +21,8 @@ def pool_from_config(app_config, prefix="memcache.", **kwargs):
 
     Supported keys:
 
-    * ``host`` (required): a string representing an IP or domain to connect
-        to memcached, e.g. ``127.0.0.1`` or ``localhost``.
-    * ``port`` (required): an integer representing the port to connect to memcached
-        for the given host, e.g. ``11211``.
+    * ``endpoint`` (required): a string representing a host and port to connect
+        to memcached service, e.g. ``localhost:11211`` or ``127.0.0.1:11211``.
     * ``max_pool_size``: an integer for the maximum pool size to use, by default
         this is ``2147483648``.
     * ``connect_timeout``: a float representing seconds to wait for a connection to
@@ -39,8 +37,7 @@ def pool_from_config(app_config, prefix="memcache.", **kwargs):
     config_prefix = prefix[:-1]
     cfg = config.parse_config(app_config, {
         config_prefix: {
-            "host": config.String,
-            "port": config.Integer,
+            "endpoint": config.Endpoint,
             "max_pool_size": config.Optional(config.Integer, default=None),
             "connect_timeout": config.Optional(config.Float, default=None),
             "timeout": config.Optional(config.Float, default=None),
@@ -56,7 +53,7 @@ def pool_from_config(app_config, prefix="memcache.", **kwargs):
     if options.timeout is not None:
         kwargs.setdefault("timeout", options.timeout)
 
-    return PooledClient((options.host, options.port), **kwargs)
+    return PooledClient(options.endpoint.address, **kwargs)
 
 
 class MemcacheContextFactory(ContextFactory):
