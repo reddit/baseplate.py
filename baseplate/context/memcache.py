@@ -95,30 +95,30 @@ class MonitoredMemcacheConnection(PooledClient):
         self.pooled_client = pooled_client
 
     #pylint: disable=no-self-argument
-    def proxy_with_instrumentation(fn_name):
-        def fn(self, *a, **kw):
+    def monitored(fn_name):
+        def proxy_with_instrumentation(self, *a, **kw):
             trace_name = "{}.{}".format(self.context_name, fn_name)
             with self.server_span.make_child(trace_name):
                 method = getattr(self.pooled_client, fn_name)
                 return method(*a, **kw)
-        return fn
+        return proxy_with_instrumentation
 
-    close = proxy_with_instrumentation('close')
-    set = proxy_with_instrumentation('set')
-    set_many = proxy_with_instrumentation('set_many')
-    replace = proxy_with_instrumentation('replace')
-    append = proxy_with_instrumentation('append')
-    prepend = proxy_with_instrumentation('prepend')
-    cas = proxy_with_instrumentation('cas')
-    get = proxy_with_instrumentation('get')
-    get_many = proxy_with_instrumentation('get_many')
-    gets_many = proxy_with_instrumentation('gets_many')
-    delete = proxy_with_instrumentation('delete')
-    delete_many = proxy_with_instrumentation('delete_many')
-    add = proxy_with_instrumentation('add')
-    incr = proxy_with_instrumentation('incr')
-    decr = proxy_with_instrumentation('decr')
-    touch = proxy_with_instrumentation('touch')
-    stats = proxy_with_instrumentation('stats')
-    flush_all = proxy_with_instrumentation('flush_all')
-    quit = proxy_with_instrumentation('quit')
+    close = monitored('close')
+    set = monitored('set')
+    set_many = monitored('set_many')
+    replace = monitored('replace')
+    append = monitored('append')
+    prepend = monitored('prepend')
+    cas = monitored('cas')
+    get = monitored('get')
+    get_many = monitored('get_many')
+    gets_many = monitored('gets_many')
+    delete = monitored('delete')
+    delete_many = monitored('delete_many')
+    add = monitored('add')
+    incr = monitored('incr')
+    decr = monitored('decr')
+    touch = monitored('touch')
+    stats = monitored('stats')
+    flush_all = monitored('flush_all')
+    quit = monitored('quit')
