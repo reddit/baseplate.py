@@ -154,7 +154,7 @@ class TraceSpanObserver(SpanObserver):
         """Create Zipkin-compatible Annotation for a span.
 
         This should be used for generating span annotations with a time component,
-        e.g. the core "cs", "sr", "ss", and "sr" Zipkin Annotations
+        e.g. the core "cs", "cr", "ss", and "sr" Zipkin Annotations
         """
         return {
             'endpoint': self._endpoint_info(),
@@ -196,14 +196,14 @@ class TraceSpanObserver(SpanObserver):
 
         annotations.append(
             self._create_time_annotation(
-                ANNOTATIONS['CLIENT_RECEIVE'],
+                ANNOTATIONS['CLIENT_SEND'],
                 self.start,
             )
         )
 
         annotations.append(
             self._create_time_annotation(
-                ANNOTATIONS['CLIENT_SEND'],
+                ANNOTATIONS['CLIENT_RECEIVE'],
                 self.end,
             )
         )
@@ -263,7 +263,7 @@ class TraceServerSpanObserver(TraceSpanObserver):
             )
         )
 
-        return self._to_span_obj(annotations, [])
+        return self._to_span_obj(annotations, self.binary_annotations)
 
 
 class BaseBatchRecorder(object):
