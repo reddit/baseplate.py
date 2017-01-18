@@ -1,3 +1,15 @@
+baseplate (0.16.0) trusty; urgency=medium
+
+  * add weighted lottery implementation
+  * add service discovery helpers
+  * add filename -> file config parser
+  * parameterize ThriftPool's transport factory
+  * add more configurables to Baseplate.configure_tracing
+  * fix client annotations in tracing
+  * add instrumentation for pymemcached
+
+ -- Neil Williams <neil@reddit.com>  Tue, 17 Jan 2017 22:41:07 -0800
+
 baseplate (0.15.0) trusty; urgency=medium
 
   * add zipkin-compatible request tracing to spans
