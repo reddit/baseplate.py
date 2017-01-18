@@ -137,6 +137,7 @@ your application's :py:class:`~baseplate.core.Baseplate` object.
 
 - Logging: :py:meth:`~baseplate.core.Baseplate.configure_logging`
 - Metrics (statsd): :py:meth:`~baseplate.core.Baseplate.configure_metrics`
+- Tracing (Zipkin): :py:meth:`~baseplate.core.Baseplate.configure_tracing`
 
 Additionally, Baseplate provides helpers which can be attached to the
 :term:`context object` in requests. These helpers make the passing of trace

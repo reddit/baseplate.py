@@ -18,6 +18,18 @@ Cassandra
 .. autoclass:: baseplate.context.cassandra.CassandraContextFactory
 
 
+Memcache
+--------
+
+.. autofunction:: baseplate.context.memcache.pool_from_config
+
+.. autoclass:: baseplate.context.memcache.MemcacheContextFactory
+   :members:
+
+.. autoclass:: baseplate.context.memcache.MonitoredMemcacheConnection
+   :members:
+
+
 Redis
 -----
 

@@ -15,3 +15,5 @@ the request. Under the hood, the context factories
 .. autoclass:: baseplate.diagnostics.logging.LoggingBaseplateObserver
 
 .. autoclass:: baseplate.diagnostics.metrics.MetricsBaseplateObserver
+
+.. autoclass:: baseplate.diagnostics.tracing.TraceBaseplateObserver

@@ -138,6 +138,82 @@ automatically record diagnostic information.</p>
 </dd></dl>
 
 </div>
+<div class="section" id="memcache">
+<h2>Memcache<a class="headerlink" href="#memcache" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="baseplate.context.memcache.pool_from_config">
+<tt class="descclassname">baseplate.context.memcache.</tt><tt class="descname">pool_from_config</tt><big>(</big><em>app_config</em>, <em>prefix=u'memcache.'</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#baseplate.context.memcache.pool_from_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make a PooledClient from a configuration dictionary.</p>
+<p>The keys useful to <tt class="xref py py-func docutils literal"><span class="pre">pool_from_config()</span></tt> should be prefixed, e.g.
+<tt class="docutils literal"><span class="pre">memcache.endpoint</span></tt>, <tt class="docutils literal"><span class="pre">memcache.max_pool_size</span></tt>, etc. The <tt class="docutils literal"><span class="pre">prefix</span></tt> argument
+specifies the prefix used to filter keys. Each key is mapped to a
+corresponding keyword argument on the
+<a class="reference external" href="https://pymemcache.readthedocs.io/en/latest/apidoc/pymemcache.client.base.html#pymemcache.client.base.PooledClient">PooledClient</a>
+constructor.</p>
+<p>Supported keys:</p>
+<ul>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">endpoint</span></tt> (required): a string representing a host and port to connect</dt>
+<dd><p class="first last">to memcached service, e.g. <tt class="docutils literal"><span class="pre">localhost:11211</span></tt> or <tt class="docutils literal"><span class="pre">127.0.0.1:11211</span></tt>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">max_pool_size</span></tt>: an integer for the maximum pool size to use, by default</dt>
+<dd><p class="first last">this is <tt class="docutils literal"><span class="pre">2147483648</span></tt>.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">connect_timeout</span></tt>: a float representing seconds to wait for a connection to</dt>
+<dd><p class="first last">memcached server. Defaults to the underlying socket default timeout.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt><tt class="docutils literal"><span class="pre">timeout</span></tt>: a float representing seconds to wait for calls on the</dt>
+<dd><p class="first last">socket connected to memcache. Defaults to the underlying socket default
+timeout.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.context.memcache.MemcacheContextFactory">
+<em class="property">class </em><tt class="descclassname">baseplate.context.memcache.</tt><tt class="descname">MemcacheContextFactory</tt><big>(</big><em>pooled_client</em><big>)</big><a class="headerlink" href="#baseplate.context.memcache.MemcacheContextFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Memcache client context factory.</p>
+<p>This factory will attach a
+<a class="reference internal" href="#baseplate.context.memcache.MonitoredMemcacheConnection" title="baseplate.context.memcache.MonitoredMemcacheConnection"><tt class="xref py py-class docutils literal"><span class="pre">MonitoredMemcacheConnection</span></tt></a> to an
+attribute on the <a class="reference internal" href="../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a>. When memcache commands are executed
+via this connection object, they will use connections from the provided
+<a class="reference external" href="https://pymemcache.readthedocs.io/en/latest/apidoc/pymemcache.client.base.html#pymemcache.client.base.PooledClient">PooledClient</a>
+and automatically record diagnostic information.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>pooled_client</strong> (<em>pymemcache.client.base.PooledClient</em>) &#8211; A pooled client.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><a class="reference internal" href="#baseplate.context.memcache.MonitoredMemcacheConnection" title="baseplate.context.memcache.MonitoredMemcacheConnection"><tt class="xref py py-class docutils literal"><span class="pre">MonitoredMemcacheConnection</span></tt></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="class">
+<dt id="baseplate.context.memcache.MonitoredMemcacheConnection">
+<em class="property">class </em><tt class="descclassname">baseplate.context.memcache.</tt><tt class="descname">MonitoredMemcacheConnection</tt><big>(</big><em>context_name</em>, <em>server_span</em>, <em>pooled_client</em><big>)</big><a class="headerlink" href="#baseplate.context.memcache.MonitoredMemcacheConnection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Memcache connection that collects diagnostic information.</p>
+<p>This connection acts like a
+<a class="reference external" href="https://pymemcache.readthedocs.io/en/latest/apidoc/pymemcache.client.base.html#pymemcache.client.base.PooledClient">PooledClient</a>
+except that operations are wrapped with diagnostic collection. Some methods
+may not yet be wrapped with monitoring, please request assistance if any
+needed methods are not being monitored.</p>
+</dd></dl>
+
+</div>
 <div class="section" id="redis">
 <h2>Redis<a class="headerlink" href="#redis" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
@@ -355,8 +431,10 @@ object</em></a> with the name specified in <tt class="docutils literal"><span cl
 <li class="toctree-l1"><a class="reference internal" href="../events.html">baseplate.events: Events for the data pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../random.html">baseplate.random: Extensions to the standard library&#8217;s random module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../retry.html">baseplate.retry: Policies for retrying operations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../service_discovery.html">baseplate.service_discovery: Integration with Synapse service discovery</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>

@@ -6,7 +6,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>baseplate &mdash; Baseplate</title>
+    <title>baseplate.random &mdash; Baseplate</title>
     
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
@@ -25,8 +25,8 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../_static/favicon.png"/>
     <link rel="top" title="Baseplate" href="../index.html" />
-    <link rel="next" title="baseplate.config" href="config.html" />
-    <link rel="prev" title="baseplate.diagnostics" href="diagnostics/index.html" />
+    <link rel="next" title="baseplate.retry" href="retry.html" />
+    <link rel="prev" title="baseplate.metrics" href="metrics.html" />
    
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
@@ -39,33 +39,63 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="module-baseplate">
-<span id="baseplate"></span><h1>baseplate<a class="headerlink" href="#module-baseplate" title="Permalink to this headline">¶</a></h1>
-<dl class="function">
-<dt id="baseplate.make_metrics_client">
-<tt class="descclassname">baseplate.</tt><tt class="descname">make_metrics_client</tt><big>(</big><em>raw_config</em><big>)</big><a class="headerlink" href="#baseplate.make_metrics_client" title="Permalink to this definition">¶</a></dt>
-<dd><p>Configure and return a metrics client.</p>
-<p>This expects two configuration options:</p>
-<dl class="docutils">
-<dt><tt class="docutils literal"><span class="pre">metrics.namespace</span></tt></dt>
-<dd>The root key to namespace all metrics in this application under.</dd>
-<dt><tt class="docutils literal"><span class="pre">metrics.endpoint</span></tt></dt>
-<dd>A <tt class="docutils literal"><span class="pre">host:port</span></tt> pair, e.g. <tt class="docutils literal"><span class="pre">localhost:2014</span></tt>. If an empty string, a
-client that discards all metrics will be returned.</dd>
-</dl>
+  <div class="section" id="module-baseplate.random">
+<span id="baseplate-random"></span><h1>baseplate.random<a class="headerlink" href="#module-baseplate.random" title="Permalink to this headline">¶</a></h1>
+<p>Extensions to the standard library <cite>random</cite> module.</p>
+<dl class="class">
+<dt id="baseplate.random.WeightedLottery">
+<em class="property">class </em><tt class="descclassname">baseplate.random.</tt><tt class="descname">WeightedLottery</tt><big>(</big><em>items</em>, <em>weight_key</em><big>)</big><a class="headerlink" href="#baseplate.random.WeightedLottery" title="Permalink to this definition">¶</a></dt>
+<dd><p>A lottery where items can have different chances of selection.</p>
+<p>Items will be picked with chance proportional to their weight relative to
+the sum of all weights, so the higher the weight, the higher the chance of
+being picked.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>raw_config</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#dict" title="(in Python v3.4)"><em>dict</em></a>) &#8211; The app configuration which should have settings
-for the metrics client.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>items</strong> &#8211; A sequence of items to choose from.</li>
+<li><strong>weight_key</strong> &#8211; A function that takes an
+item in <tt class="docutils literal"><span class="pre">items</span></tt> and returns a non-negative integer
+weight for that item.</li>
+</ul>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A configured client.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference internal" href="metrics.html#baseplate.metrics.Client" title="baseplate.metrics.Client"><tt class="xref py py-class docutils literal"><span class="pre">baseplate.metrics.Client</span></tt></a></td>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><a class="reference external" href="https://docs.python.org/3.4/library/exceptions.html#ValueError" title="(in Python v3.4)"><tt class="xref py py-exc docutils literal"><span class="pre">ValueError</span></tt></a> if any weights are negative or there are no
+items.</p>
+</td>
 </tr>
 </tbody>
 </table>
+<p>An example of usage:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">words</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;apple&quot;</span><span class="p">,</span> <span class="s">&quot;banana&quot;</span><span class="p">,</span> <span class="s">&quot;cantelope&quot;</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lottery</span> <span class="o">=</span> <span class="n">WeightedLottery</span><span class="p">(</span><span class="n">words</span><span class="p">,</span> <span class="n">weight_key</span><span class="o">=</span><span class="nb">len</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lottery</span><span class="o">.</span><span class="n">pick</span><span class="p">()</span>
+<span class="go">&#39;banana&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">lottery</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+<span class="go">[&#39;apple&#39;, &#39;cantelope&#39;]</span>
+</pre></div>
+</div>
+<dl class="method">
+<dt id="baseplate.random.WeightedLottery.pick">
+<tt class="descname">pick</tt><big>(</big><big>)</big><a class="headerlink" href="#baseplate.random.WeightedLottery.pick" title="Permalink to this definition">¶</a></dt>
+<dd><p>Pick a random element from the lottery.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.random.WeightedLottery.sample">
+<tt class="descname">sample</tt><big>(</big><em>sample_size</em><big>)</big><a class="headerlink" href="#baseplate.random.WeightedLottery.sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sample elements from the lottery without replacement.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>sample_size</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The number of items to sample from the lottery.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -104,13 +134,13 @@ for the metrics client.</td>
 <li class="toctree-l1"><a class="reference internal" href="diagnostics/index.html">baseplate.diagnostics: Diagnostics observers</a></li>
 </ul>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="">baseplate: General purpose helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">baseplate: General purpose helpers</a></li>
 <li class="toctree-l1"><a class="reference internal" href="config.html">baseplate.config: Configuration parsing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="crypto.html">baseplate.crypto: Cryptographic Primitives</a></li>
 <li class="toctree-l1"><a class="reference internal" href="events.html">baseplate.events: Events for the data pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="random.html">baseplate.random: Extensions to the standard library&#8217;s random module</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">baseplate.random: Extensions to the standard library&#8217;s random module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="retry.html">baseplate.retry: Policies for retrying operations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
 <li class="toctree-l1"><a class="reference internal" href="service_discovery.html">baseplate.service_discovery: Integration with Synapse service discovery</a></li>
@@ -123,8 +153,8 @@ for the metrics client.</td>
 <h3>Related Topics</h3>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="diagnostics/index.html" title="previous chapter">baseplate.diagnostics</a></li>
-      <li>Next: <a href="config.html" title="next chapter">baseplate.config</a></li>
+      <li>Previous: <a href="metrics.html" title="previous chapter">baseplate.metrics</a></li>
+      <li>Next: <a href="retry.html" title="next chapter">baseplate.retry</a></li>
   </ul></li>
 </ul>
 </div>
@@ -149,7 +179,7 @@ for the metrics client.</td>
       
       
       
-      <a href="../_sources/baseplate/index.txt"
+      <a href="../_sources/baseplate/random.txt"
           rel="nofollow">Page source</a>
     </div>
 

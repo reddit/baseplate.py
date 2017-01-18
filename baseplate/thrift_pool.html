@@ -25,7 +25,7 @@
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <link rel="shortcut icon" href="../_static/favicon.png"/>
     <link rel="top" title="Baseplate" href="../index.html" />
-    <link rel="next" title="Glossary" href="../glossary.html" />
+    <link rel="next" title="baseplate.service_discovery" href="service_discovery.html" />
     <link rel="prev" title="baseplate.retry" href="retry.html" />
    
   
@@ -75,6 +75,7 @@ kept alive. Connections older than this will be reaped.</li>
 RPC call can take before a TimeoutError is raised.</li>
 <li><strong>max_retries</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The maximum number of times the pool will attempt
 to open a connection.</li>
+<li><strong>transport_wrapper</strong> (<em>thrift.transport.TTransport.TTransportFactoryBase</em>) &#8211; Factory class that wraps the thrift connection in a framed/buffered transport if necessary.</li>
 </ul>
 </td>
 </tr>
@@ -139,8 +140,10 @@ unknown.</p>
 <li class="toctree-l1"><a class="reference internal" href="events.html">baseplate.events: Events for the data pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="random.html">baseplate.random: Extensions to the standard library&#8217;s random module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="retry.html">baseplate.retry: Policies for retrying operations</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">baseplate.thrift_pool: A Thrift client connection pool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="service_discovery.html">baseplate.service_discovery: Integration with Synapse service discovery</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
@@ -151,7 +154,7 @@ unknown.</p>
 <ul>
   <li><a href="../index.html">Documentation overview</a><ul>
       <li>Previous: <a href="retry.html" title="previous chapter">baseplate.retry</a></li>
-      <li>Next: <a href="../glossary.html" title="next chapter">Glossary</a></li>
+      <li>Next: <a href="service_discovery.html" title="next chapter">baseplate.service_discovery</a></li>
   </ul></li>
 </ul>
 </div>

@@ -50,6 +50,7 @@ and values into a structured and typed configuration object.</p>
 <span class="na">cards</span> <span class="o">=</span> <span class="s">clubs, spades, diamonds</span>
 <span class="na">nested.once</span> <span class="o">=</span> <span class="s">1</span>
 <span class="na">nested.really.deep</span> <span class="o">=</span> <span class="s">3 seconds</span>
+<span class="na">some_file</span> <span class="o">=</span> <span class="s">/var/lib/whatever.txt</span>
 </pre></div>
 </div>
 <p>Might be parsed like the following. Note: when running under the baseplate
@@ -68,6 +69,8 @@ server, The <tt class="docutils literal"><span class="pre">config_parser.items(.
 <span class="gp">... </span>            <span class="s">&quot;deep&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">Timespan</span><span class="p">,</span>
 <span class="gp">... </span>        <span class="p">},</span>
 <span class="gp">... </span>    <span class="p">},</span>
+<span class="gp">... </span>    <span class="s">&quot;some_file&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s">&quot;r&quot;</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s">&quot;optional&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">Optional</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">9001</span><span class="p">),</span>
 <span class="gp">... </span><span class="p">})</span>
 
 <span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">simple</span><span class="p">)</span>
@@ -78,6 +81,10 @@ server, The <tt class="docutils literal"><span class="pre">config_parser.items(.
 
 <span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">nested</span><span class="o">.</span><span class="n">really</span><span class="o">.</span><span class="n">deep</span><span class="p">)</span>
 <span class="go">0:00:03</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cfg</span><span class="o">.</span><span class="n">some_file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+<span class="go">&#39;cool&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cfg</span><span class="o">.</span><span class="n">some_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
 <div class="section" id="parser">
@@ -164,6 +171,23 @@ and <tt class="docutils literal"><span class="pre">address</span></tt> will be t
 <tt class="descclassname">baseplate.config.</tt><tt class="descname">Base64</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#baseplate.config.Base64" title="Permalink to this definition">¶</a></dt>
 <dd><p>A base64 encoded block of data.</p>
 <p>This is useful for arbitrary binary blobs.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.File">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">File</tt><big>(</big><em>mode=u'r'</em><big>)</big><a class="headerlink" href="#baseplate.config.File" title="Permalink to this definition">¶</a></dt>
+<dd><p>A path to a file.</p>
+<p>This takes a path to a file and returns an open file object, like
+returned by <a class="reference external" href="https://docs.python.org/3.4/library/functions.html#open" title="(in Python v3.4)"><tt class="xref py py-func docutils literal"><span class="pre">open()</span></tt></a>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>mode</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; an optional string that specifies the mode in
+which the file is opened.</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="function">
@@ -277,8 +301,10 @@ callable which takes a string and returns the parsed value or raises
 <li class="toctree-l1"><a class="reference internal" href="events.html">baseplate.events: Events for the data pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="random.html">baseplate.random: Extensions to the standard library&#8217;s random module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="retry.html">baseplate.retry: Policies for retrying operations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="service_discovery.html">baseplate.service_discovery: Integration with Synapse service discovery</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>

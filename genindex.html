@@ -62,6 +62,7 @@
  | <a href="#T"><strong>T</strong></a>
  | <a href="#U"><strong>U</strong></a>
  | <a href="#V"><strong>V</strong></a>
+ | <a href="#W"><strong>W</strong></a>
  | <a href="#Y"><strong>Y</strong></a>
  
 </div>
@@ -88,6 +89,10 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/service_discovery.html#baseplate.service_discovery.Backend">Backend (class in baseplate.service_discovery)</a>
+  </dt>
+
       
   <dt><a href="baseplate/config.html#baseplate.config.Base64">Base64() (in module baseplate.config)</a>
   </dt>
@@ -132,12 +137,12 @@
   <dt><a href="baseplate/integration/index.html#module-baseplate.integration.pyramid">baseplate.integration.pyramid (module)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/integration/index.html#module-baseplate.integration.thrift">baseplate.integration.thrift (module)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/message_queue.html#module-baseplate.message_queue">baseplate.message_queue (module)</a>
   </dt>
@@ -147,7 +152,15 @@
   </dt>
 
       
+  <dt><a href="baseplate/random.html#module-baseplate.random">baseplate.random (module)</a>
+  </dt>
+
+      
   <dt><a href="baseplate/retry.html#module-baseplate.retry">baseplate.retry (module)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/service_discovery.html#module-baseplate.service_discovery">baseplate.service_discovery (module)</a>
   </dt>
 
       
@@ -214,6 +227,10 @@
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/core.html#baseplate.core.Baseplate.configure_tracing">configure_tracing() (baseplate.core.Baseplate method)</a>
+  </dt>
+
       
   <dt><a href="baseplate/thrift_pool.html#baseplate.thrift_pool.ThriftConnectionPool.connection">connection() (baseplate.thrift_pool.ThriftConnectionPool method)</a>
   </dt>
@@ -311,6 +328,10 @@
   </dt>
 
       
+  <dt><a href="baseplate/config.html#baseplate.config.File">File() (in module baseplate.config)</a>
+  </dt>
+
+      
   <dt><a href="baseplate/core.html#baseplate.core.ServerSpan.finish">finish() (baseplate.core.ServerSpan method)</a>
   </dt>
 
@@ -320,12 +341,12 @@
   </dt>
 
       </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/config.html#baseplate.config.Float">Float() (in module baseplate.config)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Batch.flush">flush() (baseplate.metrics.Batch method)</a>
   </dt>
@@ -354,10 +375,18 @@
   </dt>
 
       </dl></dd>
+      
+  <dt><a href="baseplate/message_queue.html#baseplate.message_queue.MessageQueue.get">get() (baseplate.message_queue.MessageQueue method)</a>
+  </dt>
+
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="baseplate/message_queue.html#baseplate.message_queue.MessageQueue.get">get() (baseplate.message_queue.MessageQueue method)</a>
+  <dt><a href="baseplate/service_discovery.html#baseplate.service_discovery.ServiceInventory.get_backend">get_backend() (baseplate.service_discovery.ServiceInventory method)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/service_discovery.html#baseplate.service_discovery.ServiceInventory.get_backends">get_backends() (baseplate.service_discovery.ServiceInventory method)</a>
   </dt>
 
       
@@ -452,6 +481,10 @@
   <dt><a href="baseplate/crypto.html#baseplate.crypto.MessageSigner.make_signature">make_signature() (baseplate.crypto.MessageSigner method)</a>
   </dt>
 
+      
+  <dt><a href="baseplate/context/index.html#baseplate.context.memcache.MemcacheContextFactory">MemcacheContextFactory (class in baseplate.context.memcache)</a>
+  </dt>
+
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
@@ -471,6 +504,10 @@
   </dt>
 
       
+  <dt><a href="baseplate/context/index.html#baseplate.context.memcache.MonitoredMemcacheConnection">MonitoredMemcacheConnection (class in baseplate.context.memcache)</a>
+  </dt>
+
+      
   <dt><a href="baseplate/context/index.html#baseplate.context.redis.MonitoredRedisConnection">MonitoredRedisConnection (class in baseplate.context.redis)</a>
   </dt>
 
@@ -482,6 +519,10 @@
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/retry.html#baseplate.retry.RetryPolicy.new">new() (baseplate.retry.RetryPolicy static method)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/service_discovery.html#baseplate.service_discovery.NoBackendsAvailableError">NoBackendsAvailableError</a>
   </dt>
 
   </dl></td>
@@ -569,15 +610,25 @@
   </dt>
 
       
+  <dt><a href="baseplate/random.html#baseplate.random.WeightedLottery.pick">pick() (baseplate.random.WeightedLottery method)</a>
+  </dt>
+
+      
   <dt><a href="baseplate/context/index.html#baseplate.context.redis.MonitoredRedisConnection.pipeline">pipeline() (baseplate.context.redis.MonitoredRedisConnection method)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
-  <dt><a href="baseplate/context/index.html#baseplate.context.redis.pool_from_config">pool_from_config() (in module baseplate.context.redis)</a>
+  <dt><a href="baseplate/context/index.html#baseplate.context.memcache.pool_from_config">pool_from_config() (in module baseplate.context.memcache)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="baseplate/context/index.html#baseplate.context.redis.pool_from_config">(in module baseplate.context.redis)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="baseplate/events.html#baseplate.events.EventQueue.put">put() (baseplate.events.EventQueue method)</a>
   </dt>
@@ -629,11 +680,19 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
       
+  <dt><a href="baseplate/random.html#baseplate.random.WeightedLottery.sample">sample() (baseplate.random.WeightedLottery method)</a>
+  </dt>
+
+      
   <dt><a href="baseplate/core.html#baseplate.core.ServerSpan">ServerSpan (class in baseplate.core)</a>
   </dt>
 
       
   <dt><a href="baseplate/core.html#baseplate.core.ServerSpanObserver">ServerSpanObserver (class in baseplate.core)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/service_discovery.html#baseplate.service_discovery.ServiceInventory">ServiceInventory (class in baseplate.service_discovery)</a>
   </dt>
 
       
@@ -658,12 +717,12 @@
   <dt><a href="baseplate/crypto.html#baseplate.crypto.SignatureInfo">SignatureInfo (class in baseplate.crypto)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/core.html#baseplate.core.Span">Span (class in baseplate.core)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/core.html#baseplate.core.SpanObserver">SpanObserver (class in baseplate.core)</a>
   </dt>
@@ -720,8 +779,6 @@
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Timer">Timer (class in baseplate.metrics)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Batch.timer">timer() (baseplate.metrics.Batch method)</a>
   </dt>
@@ -732,8 +789,14 @@
   </dt>
 
       </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/config.html#baseplate.config.Timespan">Timespan() (in module baseplate.config)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/diagnostics/index.html#baseplate.diagnostics.tracing.TraceBaseplateObserver">TraceBaseplateObserver (class in baseplate.diagnostics.tracing)</a>
   </dt>
 
       
@@ -768,6 +831,16 @@
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/crypto.html#baseplate.crypto.MessageSigner.validate_signature">validate_signature() (baseplate.crypto.MessageSigner method)</a>
+  </dt>
+
+  </dl></td>
+</tr></table>
+
+<h2 id="W">W</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/random.html#baseplate.random.WeightedLottery">WeightedLottery (class in baseplate.random)</a>
   </dt>
 
   </dl></td>
@@ -824,8 +897,10 @@
 <li class="toctree-l1"><a class="reference internal" href="baseplate/events.html">baseplate.events: Events for the data pipeline</a></li>
 <li class="toctree-l1"><a class="reference internal" href="baseplate/message_queue.html">baseplate.message_queue: POSIX IPC Message Queues</a></li>
 <li class="toctree-l1"><a class="reference internal" href="baseplate/metrics.html">baseplate.metrics: Counters and timers for statsd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/random.html">baseplate.random: Extensions to the standard library&#8217;s random module</a></li>
 <li class="toctree-l1"><a class="reference internal" href="baseplate/retry.html">baseplate.retry: Policies for retrying operations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="baseplate/thrift_pool.html">baseplate.thrift_pool: A Thrift client connection pool</a></li>
+<li class="toctree-l1"><a class="reference internal" href="baseplate/service_discovery.html">baseplate.service_discovery: Integration with Synapse service discovery</a></li>
 </ul>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
