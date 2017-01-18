@@ -160,10 +160,10 @@ class Baseplate(object):
 
     def configure_tracing(self, service_name,
                           tracing_endpoint,
+                          num_conns=100,
                           max_span_queue_size=50000,
                           num_span_workers=5,
                           span_batch_interval=0.5,
-                          num_conns=100,
                           sample_rate=0.1):
         """Collect and send span information for request tracing.
 
@@ -178,12 +178,17 @@ class Baseplate(object):
         :param float sample_rate: percentage of unsampled requests to record traces for.
         """
         from .diagnostics.tracing import TraceBaseplateObserver
-        self.register(TraceBaseplateObserver(service_name,
-                                             tracing_endpoint,
-                                             max_span_queue_size,
-                                             span_batch_interval,
-                                             num_conns,
-                                             sample_rate))
+        self.register(
+            TraceBaseplateObserver(
+                service_name,
+                num_conns=num_conns,
+                tracing_endpoint=tracing_endpoint,
+                max_span_queue_size=max_span_queue_size,
+                num_span_workers=num_span_workers,
+                span_batch_interval=span_batch_interval,
+                sample_rate=sample_rate,
+            )
+        )
 
     def add_to_context(self, name, context_factory):  # pragma: nocover
         """Add an attribute to each request's context object.
