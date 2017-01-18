@@ -335,7 +335,8 @@ class RemoteRecorder(BaseBatchRecorder):
     thread worker to process. It currently does not shut down gracefully -
     in the event of parent process exit, any remaining spans will be discarded.
     """
-    def __init__(self, endpoint, num_conns,
+    def __init__(self, endpoint,
+                 num_conns=5,
                  num_workers=5,
                  max_queue_size=50000,
                  max_span_batch=20,

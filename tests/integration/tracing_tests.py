@@ -73,3 +73,26 @@ class TracingTests(unittest.TestCase):
             self.assertEqual(span['name'], 'example')
             self.assertEqual(len(span['annotations']), 2)
             self.assertEqual(span['parentId'], 0)
+
+    def test_configure_tracing_with_defaults(self):
+        baseplate = Baseplate()
+        self.assertEqual(0, len(baseplate.observers))
+        baseplate.configure_tracing('test',
+                                    None)
+        self.assertEqual(1, len(baseplate.observers))
+        tracing_observer = baseplate.observers[0]
+        self.assertEqual('test',tracing_observer.service_name)
+
+    def test_configure_tracing_with_args(self):
+        baseplate = Baseplate()
+        self.assertEqual(0, len(baseplate.observers))
+        baseplate.configure_tracing('test',
+                                    None,
+                                    max_span_queue_size=500,
+                                    num_span_workers=5,
+                                    span_batch_interval=0.5,
+                                    num_conns=100,
+                                    sample_rate=0.1)
+        self.assertEqual(1, len(baseplate.observers))
+        tracing_observer = baseplate.observers[0]
+        self.assertEqual('test', tracing_observer.service_name)
