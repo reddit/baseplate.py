@@ -21,6 +21,10 @@ kwarg
 kwargs
 lifecycle
 localhost
+memcache
+Memcache
+memcached
+Memcached
 namespace
 predecided
 pubsub

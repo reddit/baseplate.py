@@ -27,6 +27,8 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3.4", "intersphinx/python.inv"),
     "pyramid": ("http://docs.pylonsproject.org/projects/pyramid/en/1.5-branch", "intersphinx/pyramid.inv"),
     "cassandra": ("https://datastax.github.io/python-driver/", "intersphinx/cassandra.inv"),
+    # pymemcache's objects.inv doesn't seem to work correctly, don't use until it's fixed
+    #"pymemcache": ("https://pymemcache.readthedocs.io/en/latest/", None),
     "redis": ("https://redis-py.readthedocs.org/en/latest/", "intersphinx/redis.inv"),
     "sqlalchemy": ("http://www.sqlalchemy.org/docs/05/objects.inv", "intersphinx/sqlalchemy.inv"),
 }
