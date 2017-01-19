@@ -184,7 +184,7 @@ class TraceSpanObserver(SpanObserver):
             "timestamp": self.start,
             "duration": self.elapsed,
             "annotations": annotations,
-            "binary_annotations": binary_annotations,
+            "binaryAnnotations": binary_annotations,
         }
 
         span['parentId'] = self.span.parent_id or 0
