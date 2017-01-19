@@ -165,8 +165,12 @@ class TraceSpanObserverTests(unittest.TestCase):
         self.assertTrue(cr_in_annotation)
 
     def test_serialize_adds_binary_annotations(self):
+        self.test_span_observer.on_set_tag('test-key', 'test-value')
         serialized_span = self.test_span_observer._serialize()
-        self.assertFalse(serialized_span['binary_annotations'])
+        self.assertEqual(len(serialized_span['binaryAnnotations']), 1)
+        annotation = serialized_span['binaryAnnotations'][0]
+        self.assertEqual(annotation['key'], 'test-key')
+        self.assertEqual(annotation['value'], 'test-value')
 
     def test_on_start_sets_start_timestamp(self):
         # on-start should set start time
@@ -304,7 +308,7 @@ class RemoteRecorderTests(unittest.TestCase):
             "timestamp": 0,
             "duration": 0,
             "annotations": [],
-            "binary_annotations": [],
+            "binaryAnnotations": [],
         }
         func_mock = mock.Mock()
         with mock.patch.object(recorder.session,
