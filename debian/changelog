@@ -1,3 +1,9 @@
+baseplate (0.16.1) trusty; urgency=medium
+
+  * fix binary annotation passing in tracing rpc
+
+ -- Courtney Wang <courtney.wang@reddit.com>  Thu, 19 Jan 2017 14:16:23 -0800
+
 baseplate (0.16.0) trusty; urgency=medium
 
   * add weighted lottery implementation
