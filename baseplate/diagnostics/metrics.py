@@ -3,7 +3,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from ..core import BaseplateObserver, SpanObserver
+from ..core import (
+    BaseplateObserver,
+    LocalSpan,
+    SpanObserver,
+)
 
 
 class MetricsBaseplateObserver(BaseplateObserver):
@@ -45,7 +49,10 @@ class MetricsSpanObserver(SpanObserver):
 
 class MetricsServerSpanObserver(MetricsSpanObserver):
     def on_child_span_created(self, span):  # pragma: nocover
-        observer = MetricsSpanObserver(self.batch, "clients." + span.name)
+        if isinstance(span, LocalSpan):
+            observer = MetricsSpanObserver(self.batch, "clients." + span.name)
+        else:
+            observer = MetricsSpanObserver(self.batch, span.component_name + "." + span.name)
         span.register(observer)
 
     def on_finish(self, exc_info):

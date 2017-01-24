@@ -9,7 +9,10 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from ..context import ContextFactory
-from ..core import ServerSpanObserver
+from ..core import (
+    ServerSpan,
+    SpanObserver,
+)
 
 
 class SQLAlchemyEngineContextFactory(ContextFactory):
@@ -95,18 +98,29 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
     :param sqlalchemy.engine.Engine engine: A configured SQLAlchemy engine.
 
     """
-    def make_object_for_context(self, name, server_span):
-        engine = super(SQLAlchemySessionContextFactory,
-            self).make_object_for_context(name, server_span)
-        session = Session(bind=engine)
-        server_span.register(SQLAlchemySessionServerSpanObserver(session))
+    def make_object_for_context(self, name, span):
+        if isinstance(span, ServerSpan):
+            engine = super(SQLAlchemySessionContextFactory,
+                           self).make_object_for_context(name, span)
+            session = Session(bind=engine)
+        else:
+            # Reuse session in the existing context
+            #  There should always be one passed down from the
+            #  root ServerSpan
+            session = getattr(span.context, name)
+        span.register(SQLAlchemySessionSpanObserver(session, span))
         return session
 
 
-class SQLAlchemySessionServerSpanObserver(ServerSpanObserver):
+class SQLAlchemySessionSpanObserver(SpanObserver):
     """Automatically close the session at the end of each request."""
-    def __init__(self, session):
+    def __init__(self, session, span):
         self.session = session
+        self.span = span
 
     def on_finish(self, exc_info):
-        self.session.close()
+        # A session is passed down to child local spans
+        #   in a request pipeline so only close the session
+        #  if the parent ServerSpan is closing.
+        if isinstance(self.span, ServerSpan):
+            self.session.close()

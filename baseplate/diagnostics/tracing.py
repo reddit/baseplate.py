@@ -15,7 +15,11 @@ from datetime import datetime
 import requests
 
 from .._compat import queue
-from ..core import BaseplateObserver, SpanObserver
+from ..core import (
+    BaseplateObserver,
+    LocalSpan,
+    SpanObserver,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -27,6 +31,7 @@ ANNOTATIONS = {
     'CLIENT_RECEIVE': 'cr',
     'SERVER_SEND': 'ss',
     'SERVER_RECEIVE': 'sr',
+    'LOCAL_COMPONENT': 'lc',
 }
 
 # Feature flags
@@ -223,6 +228,43 @@ class TraceSpanObserver(SpanObserver):
         self.recorder.send(self)
 
 
+class TraceLocalSpanObserver(TraceSpanObserver):
+    """Span recording observer for local spans.
+
+    :param str service_name: The name for the service this observer
+        is registered to.
+    :param str component_name: The name for the local component the span
+        for this observer is recording in.
+    :param str hostname: Name identifying the host of the service.
+    :param baseplate.core.Span span: Local span for this observer.
+    :param baseplate.diagnostics.tracing.Recorder: Recorder for span trace.
+    """
+    def __init__(self,
+                 service_name,
+                 component_name,
+                 hostname,
+                 span,
+                 recorder):
+        self.component_name = component_name
+        super(TraceLocalSpanObserver, self).__init__(service_name,
+                                                     hostname,
+                                                     span,
+                                                     recorder)
+        self.binary_annotations.append(
+            self._create_binary_annotation(
+                ANNOTATIONS['LOCAL_COMPONENT'],
+                self.component_name,
+            )
+        )
+
+    def on_start(self):
+        self.start = current_epoch_microseconds()
+
+    def _serialize(self):
+        annotations = []
+        return self._to_span_obj(annotations, self.binary_annotations)
+
+
 class TraceServerSpanObserver(TraceSpanObserver):
     """Span recording observer for incoming request spans.
 
@@ -243,11 +285,20 @@ class TraceServerSpanObserver(TraceSpanObserver):
         self.start = current_epoch_microseconds()
 
     def on_child_span_created(self, child_span):
-        child_span_observer = TraceSpanObserver(self.service_name,
-                                                self.hostname,
-                                                child_span,
-                                                self.recorder)
-        child_span.register(child_span_observer)
+
+        if isinstance(child_span, LocalSpan):
+            trace_observer = TraceLocalSpanObserver(self.service_name,
+                                                    child_span.component_name,
+                                                    self.hostname,
+                                                    child_span,
+                                                    self.recorder)
+
+        else:
+            trace_observer = TraceSpanObserver(self.service_name,
+                                               self.hostname,
+                                               child_span,
+                                               self.recorder)
+        child_span.register(trace_observer)
 
     def on_finish(self, exc_info):
         self.end = current_epoch_microseconds()

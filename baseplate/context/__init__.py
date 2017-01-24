@@ -27,7 +27,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from ..core import BaseplateObserver
+from ..core import (
+    BaseplateObserver,
+    LocalSpan,
+)
 
 
 class ContextFactory(object):
@@ -53,3 +56,8 @@ class ContextObserver(BaseplateObserver):
     def on_server_span_created(self, context, server_span):
         context_attr = self.context_factory.make_object_for_context(self.name, server_span)
         setattr(context, self.name, context_attr)
+
+    def on_child_span_created(self, child_span):
+        if isinstance(child_span, LocalSpan):
+            context_attr = self.context_factory.make_object_for_context(self.name, child_span)
+            setattr(child_span.context, self.name, context_attr)

@@ -9,6 +9,7 @@ import unittest
 
 from baseplate import Baseplate
 from baseplate.core import BaseplateObserver, ServerSpanObserver
+from baseplate.integration import WrappedRequestContext
 
 try:
     import webtest
@@ -31,13 +32,24 @@ def example_application(request):
         raise TestException("this is a test")
     return {"test": "success"}
 
+def local_tracing_app(request):
+    local_span = request.trace.make_child('local-req', local=True,
+                                          component_name='local-op')
+    local_span.start()
+    local_span.finish()
+    return {'trace': 'success'}
 
 class ConfiguratorTests(unittest.TestCase):
     def setUp(self):
         configurator = Configurator()
         configurator.add_route("example", "/example", request_method="GET")
+        configurator.add_route("trace", "/trace", request_method="GET")
+
         configurator.add_view(
             example_application, route_name="example", renderer="json")
+
+        configurator.add_view(
+            local_tracing_app, route_name="trace", renderer="json")
 
         self.observer = mock.Mock(spec=BaseplateObserver)
         self.server_observer = mock.Mock(spec=ServerSpanObserver)
@@ -63,7 +75,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertIsInstance(context, Request)
+        self.assertIsInstance(context, WrappedRequestContext)
         self.assertEqual(server_span.trace_id, 1234)
         self.assertEqual(server_span.parent_id, None)
         self.assertEqual(server_span.id, 1234)
@@ -83,7 +95,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertIsInstance(context, Request)
+        self.assertIsInstance(context, WrappedRequestContext)
         self.assertEqual(server_span.trace_id, 1234)
         self.assertEqual(server_span.parent_id, 2345)
         self.assertEqual(server_span.id, 3456)
@@ -122,3 +134,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(server_span.trace_id, getrandbits.return_value)
         self.assertEqual(server_span.parent_id, None)
         self.assertEqual(server_span.id, getrandbits.return_value)
+
+    def test_local_trace(self):
+        self.test_app.get('/trace')
+        self.assertEqual(self.server_observer.on_child_span_created.call_count, 1)

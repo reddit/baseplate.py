@@ -14,8 +14,21 @@ from baseplate.core import (
     SpanObserver,
     TraceInfo,
 )
+from baseplate.integration import WrappedRequestContext
 
 from .. import mock
+
+
+def make_test_server_span(context=None):
+    if not context:
+        context = mock.Mock()
+    return ServerSpan(1, 2, 3, None, 0, "name", context)
+
+
+def make_test_span(context=None):
+    if not context:
+        context = mock.Mock()
+    return Span(1, 2, 3, None, 0, "name", context)
 
 
 class BaseplateTests(unittest.TestCase):
@@ -30,7 +43,7 @@ class BaseplateTests(unittest.TestCase):
         self.assertEqual(baseplate.observers, [mock_observer])
         self.assertEqual(mock_observer.on_server_span_created.call_count, 1)
         self.assertEqual(mock_observer.on_server_span_created.call_args,
-            mock.call(mock_context, server_span))
+            mock.call(server_span.context, server_span))
 
     def test_null_server_observer(self):
         mock_context = mock.Mock()
@@ -48,7 +61,7 @@ class SpanTests(unittest.TestCase):
     def test_events(self):
         mock_observer = mock.Mock(spec=SpanObserver)
 
-        span = Span(1, 2, 3, None, 0, "name")
+        span = make_test_span()
         span.register(mock_observer)
 
         span.start()
@@ -66,7 +79,7 @@ class SpanTests(unittest.TestCase):
     def test_context(self):
         mock_observer = mock.Mock(spec=SpanObserver)
 
-        span = Span(1, 2, 3, None, 0, "name")
+        span = make_test_span()
         span.register(mock_observer)
 
         with span:
@@ -76,7 +89,8 @@ class SpanTests(unittest.TestCase):
     def test_context_with_exception(self):
         mock_observer = mock.Mock(spec=SpanObserver)
 
-        span = Span(1, 2, 3, None, 0, "name")
+        #span = Span(1, 2, 3, None, 0, "name")
+        span = make_test_span()
         span.register(mock_observer)
 
         class TestException(Exception):
@@ -97,8 +111,9 @@ class ServerSpanTests(unittest.TestCase):
         mock_getrandbits.return_value = 0xCAFE
 
         mock_observer = mock.Mock(spec=ServerSpanObserver)
+        mock_context = mock.Mock()
 
-        server_span = ServerSpan("trace", "parent", "id", None, 0, "name")
+        server_span = ServerSpan("trace", "parent", "id", None, 0, "name", mock_context)
         server_span.register(mock_observer)
         child_span = server_span.make_child("child_name")
 
@@ -114,11 +129,47 @@ class ServerSpanTests(unittest.TestCase):
         mock_observer = mock.Mock(spec=ServerSpanObserver)
         mock_observer.on_child_span_created.return_value = None
 
-        server_span = ServerSpan("trace", "parent", "id", None, 0, "name")
+        server_span = make_test_server_span()
+        #server_span = ServerSpan("trace", "parent", "id", None, 0, "name")
         server_span.register(mock_observer)
         child_span = server_span.make_child("child_name")
 
         self.assertEqual(child_span.observers, [])
+
+    @mock.patch("random.getrandbits", autospec=True)
+    def test_make_local_span(self, mock_getrandbits):
+        mock_getrandbits.return_value = 0xCAFE
+        mock_observer = mock.Mock(spec=ServerSpanObserver)
+        mock_context = mock.Mock()
+        mock_cloned_context = mock.Mock(spec=WrappedRequestContext)
+        mock_context.clone.return_value = mock_cloned_context
+
+        server_span = ServerSpan("trace", "parent", "id", None, 0, "name", mock_context)
+        server_span.register(mock_observer)
+        local_span = server_span.make_child("test_op", local=True,
+                                            component_name="test_component")
+
+        self.assertEqual(local_span.name, "test_op")
+        self.assertEqual(local_span.id, 0xCAFE)
+        self.assertEqual(local_span.trace_id, "trace")
+        self.assertEqual(local_span.parent_id, "id")
+        self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
+        self.assertEqual(mock_observer.on_child_span_created.call_args,
+                         mock.call(local_span))
+
+    @mock.patch("random.getrandbits", autospec=True)
+    def test_make_local_span_copies_context(self, mock_getrandbits):
+        mock_getrandbits.return_value = 0xCAFE
+        mock_observer = mock.Mock(spec=ServerSpanObserver)
+        mock_context = mock.Mock()
+        mock_cloned_context = mock.Mock(spec=WrappedRequestContext)
+        mock_context.clone.return_value = mock_cloned_context
+
+        server_span = ServerSpan("trace", "parent", "id", None, 0, "name", mock_context)
+        server_span.register(mock_observer)
+        local_span = server_span.make_child("test_op", local=True,
+                                                           component_name="test_component")
+        self.assertNotEqual(local_span.context, mock_context)
 
 class TraceInfoTests(unittest.TestCase):
 

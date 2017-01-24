@@ -6,6 +6,8 @@ from __future__ import unicode_literals
 import collections
 import random
 
+from .integration.wrapped_context import WrappedRequestContext
+
 
 class BaseplateObserver(object):
     """Interface for an observer that watches Baseplate."""
@@ -225,9 +227,10 @@ class Baseplate(object):
         if trace_info is None:
             trace_info = TraceInfo.new()
 
+        context = WrappedRequestContext(context)
         server_span = ServerSpan(trace_info.trace_id, trace_info.parent_id,
                                  trace_info.span_id, trace_info.sampled,
-                                 trace_info.flags, name)
+                                 trace_info.flags, name, context)
         for observer in self.observers:
             observer.on_server_span_created(context, server_span)
         return server_span
@@ -236,8 +239,7 @@ class Baseplate(object):
 class Span(object):
     """A span represents a single RPC within a system."""
 
-    # pylint: disable=invalid-name
-    def __init__(self, trace_id, parent_id, span_id, sampled, flags, name):
+    def __init__(self, trace_id, parent_id, span_id, sampled, flags, name, context):
         self.trace_id = trace_id
         self.parent_id = parent_id
         self.id = span_id
@@ -317,19 +319,65 @@ class Span(object):
         else:
             self.finish()
 
+    def make_child(self, name, local=False, component_name=None):
+        """Return a child Span whose parent is this Span."""
+        raise NotImplementedError
 
-class ServerSpan(Span):
+
+class LocalSpan(Span):
+    def __init__(self,
+                 trace_id,
+                 parent_id,
+                 span_id,
+                 sampled,
+                 flags,
+                 name,
+                 context):
+        super(LocalSpan, self).__init__(trace_id, parent_id, span_id, sampled,
+                                        flags, name, context)
+        self.context = context
+
+    def make_child(self, name, local=False, component_name=None):
+        """Return a child Span whose parent is this Span.
+
+        The child span can either be a local span representing an in-request
+        operation or a span representing an outbound service call.
+
+        In a server, a local span represents the time spent within a
+        local component performing an operation or set of operations.
+        The local component is some grouping of business logic,
+        which is then split up into operations which could each be wrapped
+        in local spans.
+
+        :param str name: Name to identify the operation this span
+            is recording.
+        :param bool local: Make this span a LocalSpan if True, otherwise
+            make this span a base Span.
+        :param str component_name: Name to identify local component
+            this span is recording in if it is a local span.
+        """
+        span_id = random.getrandbits(64)
+
+        if local:
+            context_copy = self.context.clone()
+            span = LocalSpan(self.trace_id, self.id, span_id, self.sampled,
+                             self.flags, name, context_copy)
+            if component_name is None:
+                raise ValueError("Cannot create local span without component name.")
+            span.component_name = component_name
+            context_copy.trace = span
+        else:
+            span = Span(self.trace_id, self.id, span_id, self.sampled, self.flags, name, self.context)
+        for observer in self.observers:
+            observer.on_child_span_created(span)
+        return span
+
+
+class ServerSpan(LocalSpan):
     """A server span represents a request this server is handling.
 
     The server span is available on the :term:`context object` during requests
     as the ``trace`` attribute.
 
     """
-
-    def make_child(self, name):
-        """Return a child span representing an outbound service call."""
-        span_id = random.getrandbits(64)
-        span = Span(self.trace_id, self.id, span_id, self.sampled, self.flags, name)
-        for observer in self.observers:
-            observer.on_child_span_created(span)
-        return span
+    pass

@@ -34,8 +34,8 @@ class SQLAlchemyTests(unittest.TestCase):
         self.factory = SQLAlchemySessionContextFactory(self.engine)
 
     def test_session(self):
-        server_span = mock.Mock(autospec=ServerSpan)
-        span = mock.Mock(autospec=Span)
+        server_span = mock.Mock(spec=ServerSpan)
+        span = mock.Mock(spec=Span)
         span.id = 1234
         span.trace_id = 2345
         server_span.make_child.return_value = span
