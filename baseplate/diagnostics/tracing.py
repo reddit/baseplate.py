@@ -140,6 +140,10 @@ class TraceSpanObserver(SpanObserver):
         self.record()
 
     def on_set_tag(self, key, value):
+        """Translate set tags to tracing binary annotations.
+
+        Number-type values are coerced to strings.
+        """
         self.binary_annotations.append(
             self._create_binary_annotation(key, value),
         )
@@ -169,6 +173,10 @@ class TraceSpanObserver(SpanObserver):
         do not have a time component, e.g. URI, arbitrary request tags
         """
         endpoint_info = self._endpoint_info()
+
+        # Annotation values must be bool or str type.
+        if type(annotation_value) not in (bool, str):
+            annotation_value = str(annotation_value)
 
         return {
             'key': annotation_type,

@@ -198,6 +198,14 @@ class TraceSpanObserverTests(unittest.TestCase):
         self.assertEquals(annotation['value'], 'test-value')
         self.assertTrue(annotation['endpoint'])
 
+    def test_create_binary_annotation_coerces_string(self):
+        annotation = self.test_span_observer._create_binary_annotation(
+            'test-key', 1
+        )
+        self.assertEquals(annotation['key'], 'test-key')
+        self.assertEquals(annotation['value'], '1')
+        self.assertTrue(annotation['endpoint'])
+
     def test_on_set_tag_adds_binary_annotation(self):
         self.assertFalse(self.test_span_observer.binary_annotations)
         self.test_span_observer.on_set_tag('test-key', 'test-value')
