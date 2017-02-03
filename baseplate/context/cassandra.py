@@ -4,9 +4,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from cassandra.cluster import Cluster, _NOT_SET
+from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
 
 from . import ContextFactory
 from .. import config
+from .._compat import string_types
 
 
 def cluster_from_config(app_config, prefix="cassandra.", **kwargs):
@@ -88,7 +90,12 @@ class CassandraSessionAdapter(object):
         span = self.server_span.make_child(trace_name)
         span.start()
         # TODO: include custom payload
-        span.set_tag("statement", query)
+        if isinstance(query, string_types):
+            span.set_tag("statement", query)
+        elif isinstance(query, (SimpleStatement, PreparedStatement)):
+            span.set_tag("statement", query.query_string)
+        elif isinstance(query, BoundStatement):
+            span.set_tag("statement", query.prepared_statement.query_string)
         future = self.session.execute_async(
             query,
             parameters=parameters,
