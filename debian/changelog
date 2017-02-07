@@ -1,3 +1,10 @@
+baseplate (0.16.2) trusty; urgency=medium
+
+  * Handle cassandra statements when setting statement span tag
+  * Add `string_types` to baseplate._compat
+
+ -- Andrew Boyle <vagrant@baseplate.vm>  Tue, 07 Feb 2017 19:12:22 +0000
+
 baseplate (0.16.1) trusty; urgency=medium
 
   * fix binary annotation passing in tracing rpc
