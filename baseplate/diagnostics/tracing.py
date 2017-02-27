@@ -68,7 +68,8 @@ class TraceBaseplateObserver(BaseplateObserver):
                  num_span_workers=5,
                  span_batch_interval=0.5,
                  num_conns=100,
-                 sample_rate=0.1):
+                 sample_rate=0.1,
+                 log_if_unconfigured=True):
         self.service_name = service_name
         self.hostname = socket.gethostbyname(socket.gethostname())
         self.sample_rate = sample_rate
@@ -78,6 +79,12 @@ class TraceBaseplateObserver(BaseplateObserver):
             self.recorder = RemoteRecorder(
                 remote_addr,
                 num_conns=num_conns,
+                max_queue_size=max_span_queue_size,
+                num_workers=num_span_workers,
+                batch_wait_interval=span_batch_interval,
+            )
+        elif log_if_unconfigured:
+            self.recorder = LoggingRecorder(
                 max_queue_size=max_span_queue_size,
                 num_workers=num_span_workers,
                 batch_wait_interval=span_batch_interval,
@@ -319,6 +326,24 @@ class BaseBatchRecorder(object):
             self.logger.error("Failed adding span to recording queue: %s", e)
 
 
+class LoggingRecorder(BaseBatchRecorder):
+    def __init__(self, max_queue_size=50000,
+                 num_workers=5,
+                 max_span_batch=100,
+                 batch_wait_interval=0.5):
+        super(LoggingRecorder, self).__init__(
+            max_queue_size,
+            num_workers,
+            max_span_batch,
+            batch_wait_interval,
+        )
+
+    def flush_func(self, spans):
+        """Write a set of spans to debug log."""
+        for span in spans:
+            self.logger.debug("Span recording: %s", span)
+
+
 class NullRecorder(BaseBatchRecorder):
     def __init__(self, max_queue_size=50000,
                  num_workers=5,
@@ -332,9 +357,7 @@ class NullRecorder(BaseBatchRecorder):
         )
 
     def flush_func(self, spans):
-        """Write a set of spans to debug log."""
-        for span in spans:
-            self.logger.debug("Span recording: %s", span)
+        return
 
 
 class RemoteRecorder(BaseBatchRecorder):

@@ -164,7 +164,8 @@ class Baseplate(object):
                           max_span_queue_size=50000,
                           num_span_workers=5,
                           span_batch_interval=0.5,
-                          sample_rate=0.1):
+                          sample_rate=0.1,
+                          log_if_unconfigured=True):
         """Collect and send span information for request tracing.
 
         :param str service_name: The name for the service this observer
@@ -187,6 +188,7 @@ class Baseplate(object):
                 num_span_workers=num_span_workers,
                 span_batch_interval=span_batch_interval,
                 sample_rate=sample_rate,
+                log_if_unconfigured=log_if_unconfigured,
             )
         )
 
