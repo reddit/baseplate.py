@@ -327,6 +327,7 @@ class BaseBatchRecorder(object):
 
 
 class LoggingRecorder(BaseBatchRecorder):
+    """Interface for recording spans to the debug log."""
     def __init__(self, max_queue_size=50000,
                  num_workers=5,
                  max_span_batch=100,
@@ -345,6 +346,7 @@ class LoggingRecorder(BaseBatchRecorder):
 
 
 class NullRecorder(BaseBatchRecorder):
+    """Noop recorder."""
     def __init__(self, max_queue_size=50000,
                  num_workers=5,
                  max_span_batch=100,
