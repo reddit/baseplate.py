@@ -14,6 +14,7 @@ from baseplate.diagnostics.tracing import (
     TraceSpanObserver,
     RemoteRecorder,
     NullRecorder,
+    LoggingRecorder,
 )
 
 from ... import mock
@@ -24,8 +25,15 @@ class TraceObserverTests(unittest.TestCase):
         pass
 
     def test_null_recorder_setup(self):
-        baseplate_observer = TraceBaseplateObserver('test-service')
+        baseplate_observer = TraceBaseplateObserver(
+            'test-service',
+            log_if_unconfigured=False,
+        )
         self.assertEqual(type(baseplate_observer.recorder), NullRecorder)
+
+    def test_logging_recorder_setup(self):
+        baseplate_observer = TraceBaseplateObserver('test-service')
+        self.assertEqual(type(baseplate_observer.recorder), LoggingRecorder)
 
     def test_sets_hostname(self):
         baseplate_observer = TraceBaseplateObserver('test-service')
