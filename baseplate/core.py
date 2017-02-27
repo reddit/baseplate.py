@@ -177,6 +177,8 @@ class Baseplate(object):
         :param int num_span_workers: number of worker threads for span processing.
         :param float span_batch_interval: wait time for span processing in seconds.
         :param float sample_rate: percentage of unsampled requests to record traces for.
+        :param bool log_if_unconfigured: flag to write traces to logger if no
+            tracing_endpoint is specified.
         """
         from .diagnostics.tracing import TraceBaseplateObserver
         self.register(
