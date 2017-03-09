@@ -61,8 +61,9 @@ class ThriftConnectionPool(object):
         RPC call can take before a TimeoutError is raised.
     :param int max_retries: The maximum number of times the pool will attempt
         to open a connection.
-    :param thrift.transport.TTransport.TTransportFactoryBase transport_wrapper:
-        Factory class that wraps the thrift connection in a framed/buffered transport if necessary.
+    :param thrift.protocol.TProtocol.TProtocolBase protocol_factory: The
+        factory to use for creating protocols from transports. This is useful
+        for talking to services that don't support THeaderProtocol.
 
     All exceptions raised by this class derive from
     :py:exc:`~thrift.transport.TTransport.TTransportException`.
