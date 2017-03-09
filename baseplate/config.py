@@ -47,6 +47,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     ...     },
     ...     "some_file": config.File(mode="r"),
     ...     "optional": config.Optional(config.Integer, default=9001),
+    ...     "sample_rate": config.Percent,
     ... })
 
     >>> print(cfg.simple)
@@ -61,6 +62,9 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     >>> cfg.some_file.read()
     'cool'
     >>> cfg.some_file.close()
+
+    >>> cfg.sample_rate
+    0.371
 
 .. testcleanup::
 
@@ -233,6 +237,25 @@ def Timespan(text):
         raise ValueError("unknown unit")
 
     return datetime.timedelta(seconds=count * scale)
+
+
+def Percent(text):
+    """A percentage.
+
+    This takes a string of the form "37.2%" or "44%" and
+    returns a float in the range [0.0, 1.0].
+
+    """
+
+    if not text.endswith("%"):
+        raise ValueError("the value is not a percentage")
+
+    percentage = float(text[:-1]) / 100.
+
+    if not 0 <= percentage <= 1:
+        raise ValueError("percentage is out of valid range")
+
+    return percentage
 
 
 def OneOf(**options):

@@ -22,6 +22,7 @@ make complicated expressions.
 .. autofunction:: Timespan
 .. autofunction:: Base64
 .. autofunction:: File
+.. autofunction:: Percent
 .. autofunction:: OneOf
 .. autofunction:: TupleOf
 .. autofunction:: Optional
