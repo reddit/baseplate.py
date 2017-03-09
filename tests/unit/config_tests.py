@@ -161,6 +161,25 @@ class TimespanTests(unittest.TestCase):
         self.assertEqual(result.total_seconds(), 86400)
 
 
+class PercentTests(unittest.TestCase):
+    def test_percentage(self):
+        self.assertAlmostEqual(config.Percent("37.2%"), .372)
+        self.assertAlmostEqual(config.Percent("100%"), 1.0)
+
+    def test_invalid_percentage(self):
+        with self.assertRaises(ValueError):
+            config.Percent("9")
+
+        with self.assertRaises(ValueError):
+            config.Percent("-10%")
+
+        with self.assertRaises(ValueError):
+            config.Percent("120%")
+
+        with self.assertRaises(ValueError):
+            config.Percent("30%%%%")
+
+
 class OneOfTests(unittest.TestCase):
     def test_oneof_valid(self):
         parser = config.OneOf(ONE=1, TWO=2, THREE=3)
