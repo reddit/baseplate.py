@@ -1,3 +1,11 @@
+baseplate (0.17.0) trusty; urgency=medium
+
+  * Fix string coercion for binary annotations in tracing
+  * Add Percent helper in config module
+  * Add local span support for tracing
+
+ -- Courtney Wang <courtney.wang@reddit.com>  Mon, 27 Mar 2017 19:14:07 +0000
+
 baseplate (0.16.2) trusty; urgency=medium
 
   * Handle cassandra statements when setting statement span tag
