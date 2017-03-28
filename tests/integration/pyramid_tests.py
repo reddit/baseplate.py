@@ -9,7 +9,6 @@ import unittest
 
 from baseplate import Baseplate
 from baseplate.core import BaseplateObserver, ServerSpanObserver
-from baseplate.integration import WrappedRequestContext
 
 try:
     import webtest
@@ -75,7 +74,6 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertIsInstance(context, WrappedRequestContext)
         self.assertEqual(server_span.trace_id, 1234)
         self.assertEqual(server_span.parent_id, None)
         self.assertEqual(server_span.id, 1234)
@@ -95,7 +93,6 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertIsInstance(context, WrappedRequestContext)
         self.assertEqual(server_span.trace_id, 1234)
         self.assertEqual(server_span.parent_id, 2345)
         self.assertEqual(server_span.id, 3456)

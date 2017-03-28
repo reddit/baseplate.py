@@ -43,7 +43,7 @@ class BaseplateTests(unittest.TestCase):
         self.assertEqual(baseplate.observers, [mock_observer])
         self.assertEqual(mock_observer.on_server_span_created.call_count, 1)
         self.assertEqual(mock_observer.on_server_span_created.call_args,
-            mock.call(server_span.context, server_span))
+            mock.call(mock_context, server_span))
 
     def test_null_server_observer(self):
         mock_context = mock.Mock()

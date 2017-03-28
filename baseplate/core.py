@@ -227,10 +227,10 @@ class Baseplate(object):
         if trace_info is None:
             trace_info = TraceInfo.new()
 
-        context = WrappedRequestContext(context)
         server_span = ServerSpan(trace_info.trace_id, trace_info.parent_id,
                                  trace_info.span_id, trace_info.sampled,
-                                 trace_info.flags, name, context)
+                                 trace_info.flags, name, WrappedRequestContext(context))
+
         for observer in self.observers:
             observer.on_server_span_created(context, server_span)
         return server_span

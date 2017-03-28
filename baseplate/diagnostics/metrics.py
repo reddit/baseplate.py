@@ -50,9 +50,9 @@ class MetricsSpanObserver(SpanObserver):
 class MetricsServerSpanObserver(MetricsSpanObserver):
     def on_child_span_created(self, span):  # pragma: nocover
         if isinstance(span, LocalSpan):
-            observer = MetricsSpanObserver(self.batch, "clients." + span.name)
-        else:
             observer = MetricsSpanObserver(self.batch, span.component_name + "." + span.name)
+        else:
+            observer = MetricsSpanObserver(self.batch, "clients." + span.name)
         span.register(observer)
 
     def on_finish(self, exc_info):
