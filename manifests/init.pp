@@ -31,6 +31,7 @@ class baseplate {
     'python-alabaster',
     'python-cassandra',
     'python-coverage',
+    'python-cqlmapper',
     'python-dev',
     'python-enum34',
     'python-fbthrift',
