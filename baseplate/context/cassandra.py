@@ -82,6 +82,26 @@ class CassandraSessionAdapter(object):
         self.server_span = server_span
         self.session = session
 
+    @property
+    def cluster(self):
+        return self.session.cluster
+
+    @property
+    def encoder(self):
+        return self.session.encoder
+
+    @property
+    def keyspace(self):
+        return self.session.keyspace
+
+    @property
+    def row_factory(self):
+        return self.session.row_factory
+
+    @row_factory.setter
+    def row_factory(self, new_row_factory):
+        self.session.row_factory = new_row_factory
+
     def execute(self, query, parameters=None, timeout=_NOT_SET):
         return self.execute_async(query, parameters, timeout).result()
 
