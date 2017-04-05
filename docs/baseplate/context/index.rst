@@ -17,6 +17,8 @@ Cassandra
 
 .. autoclass:: baseplate.context.cassandra.CassandraContextFactory
 
+.. autoclass:: baseplate.context.cassandra.CQLMapperContextFactory
+
 
 Memcache
 --------

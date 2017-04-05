@@ -65,6 +65,30 @@ class CassandraContextFactory(ContextFactory):
         return CassandraSessionAdapter(name, server_span, self.session)
 
 
+class CQLMapperContextFactory(CassandraContextFactory):
+    """CQLMapper ORM connection context factory
+
+    This factory will attach a new CQLMapper
+    :py:class:`cqlmapper.connection.Connection` to an attribute on the
+    :term:`context object`. This Connection object will use the same proxy
+    object that CassandraContextFactory attaches to a context to run queries
+    so the `execute` command will automatically record diagnostic information.
+
+    :param cassandra.cluster.Session session: A configured session object.
+
+    """
+
+    def make_object_for_context(self, name, server_span):
+        # Import inline so you can still use the regular Cassandra integration
+        # without installing cqlmapper
+        import cqlmapper.connection
+        session_adapter = super(
+            CQLMapperContextFactory,
+            self,
+        ).make_object_for_context(name, server_span)
+        return cqlmapper.connection.Connection(session_adapter)
+
+
 def _on_execute_complete(_, span):
     # TODO: tag with anything from the result set?
     # TODO: tag with any returned warnings
