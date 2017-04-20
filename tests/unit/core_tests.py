@@ -8,6 +8,7 @@ import unittest
 from baseplate.core import (
     Baseplate,
     BaseplateObserver,
+    LocalSpan,
     ServerSpan,
     ServerSpanObserver,
     Span,
@@ -25,10 +26,13 @@ def make_test_server_span(context=None):
     return ServerSpan(1, 2, 3, None, 0, "name", context)
 
 
-def make_test_span(context=None):
+def make_test_span(context=None, local=False):
     if not context:
         context = mock.Mock()
-    return Span(1, 2, 3, None, 0, "name", context)
+    span = Span(1, 2, 3, None, 0, "name", context)
+    if local:
+        span = LocalSpan(1, 2, 3, None, 0, "name", context)
+    return span
 
 
 class BaseplateTests(unittest.TestCase):
@@ -170,6 +174,29 @@ class ServerSpanTests(unittest.TestCase):
         local_span = server_span.make_child("test_op", local=True,
                                                            component_name="test_component")
         self.assertNotEqual(local_span.context, mock_context)
+
+
+class LocalSpanTests(unittest.TestCase):
+    def test_events(self):
+        mock_observer = mock.Mock(spec=SpanObserver)
+
+        span = make_test_span(local=True)
+        span.register(mock_observer)
+
+        span.start()
+        self.assertEqual(mock_observer.on_start.call_count, 1)
+
+        span.set_tag("key", "value")
+        mock_observer.on_set_tag("key", "value")
+
+        span.log("name", "payload")
+        mock_observer.on_log("name", "payload")
+
+        span.make_child('local_child')
+        self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
+        span.finish()
+        mock_observer.on_finish(exc_info=None)
+
 
 class TraceInfoTests(unittest.TestCase):
 

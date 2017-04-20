@@ -49,20 +49,21 @@ class SpanObserver(object):  # pragma: nocover
         """
         pass
 
-
-class ServerSpanObserver(SpanObserver):
-    """Interface for an observer that watches the server span."""
-
     def on_child_span_created(self, span):  # pragma: nocover
         """Called when a child span is created.
 
-        :py:class:`ServerSpan` objects call this when a new child span is
+        :py:class:`SpanObserver` objects call this when a new child span is
         created.
 
         :param baseplate.core.Span span: The new child span.
 
         """
         pass
+
+
+class ServerSpanObserver(SpanObserver):
+    """Interface for an observer that watches the server span."""
+    pass
 
 
 _TraceInfo = collections.namedtuple("_TraceInfo",
