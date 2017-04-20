@@ -1,3 +1,10 @@
+baseplate (0.17.1) trusty; urgency=medium
+
+  * Add configuration trace debug logging
+  * Move child span event listening to base SpanObserver
+
+ -- Courtney Wang <courtney.wang@reddit.com>  Thu, 20 Apr 2017 14:20:42 -0700
+
 baseplate (0.17.0) trusty; urgency=medium
 
   * Fix string coercion for binary annotations in tracing
