@@ -86,11 +86,11 @@ class BaseSerdeTests(unittest.TestCase):
         self.assertEqual(flags, expected_flags)
 
     def test_serialize_other(self):
-        string_io_instance = mock.Mock()
-        string_io_patch = mock.patch.object(memcache_lib, "StringIO",
-            return_value=string_io_instance)
-        string_io = string_io_patch.start()
-        self.addCleanup(string_io_patch.stop)
+        bytes_io_instance = mock.Mock()
+        bytes_io_patch = mock.patch.object(memcache_lib, "BytesIO",
+            return_value=bytes_io_instance)
+        bytes_io = bytes_io_patch.start()
+        self.addCleanup(bytes_io_patch.stop)
 
         pickler_patch = mock.patch.object(memcache_lib.pickle, "Pickler")
         pickler = pickler_patch.start()
@@ -99,7 +99,7 @@ class BaseSerdeTests(unittest.TestCase):
         value, flags = memcache_lib.python_memcache_serializer(
             key="key", value=("stuff", 1, False))
 
-        pickler.assertCalledWith(string_io_instance, protocol=2)
+        pickler.assertCalledWith(bytes_io_instance, protocol=2)
         pickler.dump.assertCalledWith(("stuff", 1, False))
         self.assertEqual(flags, memcache_lib.FLAG_PICKLE)
 
@@ -127,11 +127,11 @@ class BaseSerdeTests(unittest.TestCase):
         self.assertTrue(isinstance(value, expected_class))
 
     def test_deserialize_other(self):
-        string_io_instance = mock.Mock()
-        string_io_patch = mock.patch.object(memcache_lib, "StringIO",
-            return_value=string_io_instance)
-        string_io = string_io_patch.start()
-        self.addCleanup(string_io_patch.stop)
+        bytes_io_instance = mock.Mock()
+        bytes_io_patch = mock.patch.object(memcache_lib, "BytesIO",
+            return_value=bytes_io_instance)
+        bytes_io = bytes_io_patch.start()
+        self.addCleanup(bytes_io_patch.stop)
 
         unpickler_instance = mock.Mock()
         unpickler_patch = mock.patch.object(memcache_lib.pickle, "Unpickler",
@@ -145,8 +145,8 @@ class BaseSerdeTests(unittest.TestCase):
         value = memcache_lib.python_memcache_deserializer(
             key="key", value="garbage", flags=memcache_lib.FLAG_PICKLE)
 
-        string_io.assertCalledWith("garbage")
-        unpickler.assertCalledWith(string_io_instance)
+        bytes_io.assertCalledWith("garbage")
+        unpickler.assertCalledWith(bytes_io_instance)
         unpickler_instance.load.assertCalledOnce()
         self.assertEqual(value, expected_value)
 

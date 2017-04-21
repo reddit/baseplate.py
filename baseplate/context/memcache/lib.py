@@ -1,38 +1,20 @@
-from six import string_types
 import logging
 import zlib
 
+from ..._compat import (
+    BytesIO,
+    long,
+    pickle,
+    string_types,
+)
 
-try:
-    import cPickle as pickle
-except ImportError:
-    # python3
-    import pickle
 
-try:
-    from cStringIO import StringIO
-except ImportError:
-    try:
-        from StringIO import StringIO
-    except ImportError:
-        # python3
-        from io import StringIO
+"""Memcache serde helper methods"""
 
 
 FLAG_PICKLE = 1 << 0
 FLAG_INTEGER = 1 << 1
 FLAG_LONG = 1 << 2
-
-
-# python3 doesn't have a long integer class
-try:
-    long
-except NameError:
-    # python3
-    long = int
-    # don't override FLAG_LONG because we want to be able to deserialize values
-    # set by python2 processes. If a python3 process writes a large value as
-    # an integer a python3 process will still be able to deserialize it.
 
 
 def python_memcache_serializer(key, value):
@@ -48,7 +30,7 @@ def python_memcache_serializer(key, value):
         value = "%d" % value
     else:
         flags |= FLAG_PICKLE
-        output = StringIO()
+        output = BytesIO()
 
         # use protocol 2 which is the highest value supported by python2
         pickler = pickle.Pickler(output, protocol=2)
@@ -70,7 +52,7 @@ def python_memcache_deserializer(key, value, flags):
 
     if flags & FLAG_PICKLE:
         try:
-            buf = StringIO(value)
+            buf = BytesIO(value)
             unpickler = pickle.Unpickler(buf)
             return unpickler.load()
         except Exception:
