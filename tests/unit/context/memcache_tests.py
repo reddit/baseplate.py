@@ -99,7 +99,7 @@ class BaseSerdeTests(unittest.TestCase):
         value, flags = memcache_lib.python_memcache_serializer(
             key="key", value=("stuff", 1, False))
 
-        pickler.assertCalledWith(string_io_instance, protocol=-1)
+        pickler.assertCalledWith(string_io_instance, protocol=2)
         pickler.dump.assertCalledWith(("stuff", 1, False))
         self.assertEqual(flags, memcache_lib.FLAG_PICKLE)
 

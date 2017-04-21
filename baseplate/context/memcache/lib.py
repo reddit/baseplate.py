@@ -50,8 +50,8 @@ def python_memcache_serializer(key, value):
         flags |= FLAG_PICKLE
         output = StringIO()
 
-        # override pickler protocol
-        pickler = pickle.Pickler(output, protocol=-1)
+        # use protocol 2 which is the highest value supported by python2
+        pickler = pickle.Pickler(output, protocol=2)
         pickler.dump(value)
         value = output.getvalue()
 
