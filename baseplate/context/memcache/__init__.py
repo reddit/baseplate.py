@@ -6,8 +6,8 @@ from __future__ import unicode_literals
 from pymemcache.client.base import PooledClient
 
 from .lib import make_memcache_serializer, memcache_deserializer
-from baseplate.context import ContextFactory
-from baseplate import config
+from ...context import ContextFactory
+from ... import config
 
 
 def pool_from_config(app_config, prefix="memcache."):
