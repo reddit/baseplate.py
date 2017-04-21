@@ -10,7 +10,8 @@ from ...context import ContextFactory
 from ... import config
 
 
-def pool_from_config(app_config, prefix="memcache."):
+def pool_from_config(app_config, prefix="memcache.", serializer=None,
+                     deserializer=None):
     """Make a PooledClient from a configuration dictionary.
 
     The keys useful to :py:func:`pool_from_config` should be prefixed, e.g.
@@ -32,6 +33,17 @@ def pool_from_config(app_config, prefix="memcache."):
         socket connected to memcache. Defaults to the underlying socket default
         timeout.
 
+    :param dict app_config: the config dictionary
+    :param str prefix: prefix for config keys
+    :param func serializer: function to serialize values to strings suitable
+        for being stored in memcached. An example is
+        ``baseplate.context.memcache.lib.make_memcache_serializer``
+    :param func deserializer: function to convert strings returned from
+        memcached to arbitrary objects, must be compatible with ``serializer``.
+        An example is `baseplate.context.memcache.lib.memcache_deserializer``.
+
+    :returns: :py:class:`pymemcache.client.base.PooledClient`
+
     """
 
     assert prefix.endswith(".")
@@ -42,8 +54,6 @@ def pool_from_config(app_config, prefix="memcache."):
             "max_pool_size": config.Optional(config.Integer, default=None),
             "connect_timeout": config.Optional(config.Float, default=None),
             "timeout": config.Optional(config.Float, default=None),
-            "min_compress_length": config.Optional(config.Integer, default=0),
-            "compress_level": config.Optional(config.Integer, default=0),
             # TODO: bug in Optional prevents this from being unset
             #"no_delay": config.Optional(config.Boolean, default=True),
         },
@@ -51,18 +61,12 @@ def pool_from_config(app_config, prefix="memcache."):
 
     options = getattr(cfg, config_prefix)
 
-    assert options.min_compress_length >= 0
-    assert options.compress_level >= 0
-
-    memcache_serializer = make_memcache_serializer(
-        options.min_compress_length, options.compress_level)
-
     return PooledClient(
         server=options.endpoint.address,
         connect_timeout=options.connect_timeout,
         timeout=options.timeout,
-        serializer=memcache_serializer,
-        deserializer=memcache_deserializer,
+        serializer=serializer,
+        deserializer=deserializer,
         no_delay=True,
         max_pool_size=options.max_pool_size,
     )

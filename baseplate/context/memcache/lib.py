@@ -80,21 +80,53 @@ def python_memcache_deserializer(key, value, flags):
     return value
 
 
-# These serde methods are compatible with pylibmc's implementation.
-
-# extra bit flag from pylibmc, just grabbing the one we need which pymemcache's
-# serde.py doesn't have (currently on 1.3.2, but later versions do have this)
 FLAG_ZLIB = 1 << 3
 
 
 def memcache_deserializer(key, value, flags):
+    """Deserialization method compatible with make_memcache_serializer.
+
+    :param str key: the memcached key.
+    :param str value: the serialized object returned from memcached.
+    :param int flags: value stored and returned from memcached for the client
+        to use to indicate how the value was serialized.
+    :returns str value: the deserialized value. 
+
+    """
+
     if flags & FLAG_ZLIB:
         value = zlib.decompress(value)
     return python_memcache_deserializer(key, value, flags)
 
 
 def make_memcache_serializer(min_compress_length=0, compress_level=1):
+    """Create a serialization method compatible with memcache_deserializer().
+
+    The resulting method is a chain of python_memcache_serializer (to convert
+    arbitrary python objects to str) and zlib compression.
+
+    This serializer is compatible with pylibmc.
+
+    :param int min_compress_length: the minimum serialized string length to
+        enable zlib compression. 0 disables compression.
+    :param int compress_level: zlib compression level. 0 disables compression
+        and 9 is the maximum value.
+    :returns func memcache_serializer: the serializer method.
+
+    """
+
+    assert min_compress_length >= 0
+    assert 0 <= compress_level <= 9
+
     def memcache_serializer(key, value):
+        """Serialization method compatible with memcache_deserializer.
+
+        :param str key: the memcached key.
+        :param value: python object to be serialized and set to memcached.
+        :returns: value serialized as str, flags int.
+
+        """
+
         serialized, flags = python_memcache_serializer(key, value)
 
         if (compress_level and
