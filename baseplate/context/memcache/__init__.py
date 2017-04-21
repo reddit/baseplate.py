@@ -5,11 +5,12 @@ from __future__ import unicode_literals
 
 from pymemcache.client.base import PooledClient
 
-from . import ContextFactory
-from .. import config
+from .lib import make_memcache_serializer, memcache_deserializer
+from baseplate.context import ContextFactory
+from baseplate import config
 
 
-def pool_from_config(app_config, prefix="memcache.", **kwargs):
+def pool_from_config(app_config, prefix="memcache."):
     """Make a PooledClient from a configuration dictionary.
 
     The keys useful to :py:func:`pool_from_config` should be prefixed, e.g.
@@ -41,19 +42,30 @@ def pool_from_config(app_config, prefix="memcache.", **kwargs):
             "max_pool_size": config.Optional(config.Integer, default=None),
             "connect_timeout": config.Optional(config.Float, default=None),
             "timeout": config.Optional(config.Float, default=None),
+            "min_compress_length": config.Optional(config.Integer, default=0),
+            "compress_level": config.Optional(config.Integer, default=0),
+            # TODO: bug in Optional prevents this from being unset
+            #"no_delay": config.Optional(config.Boolean, default=True),
         },
     })
 
     options = getattr(cfg, config_prefix)
 
-    if options.max_pool_size is not None:
-        kwargs.setdefault("max_pool_size", options.max_pool_size)
-    if options.connect_timeout is not None:
-        kwargs.setdefault("connect_timeout", options.connect_timeout)
-    if options.timeout is not None:
-        kwargs.setdefault("timeout", options.timeout)
+    assert options.min_compress_length >= 0
+    assert options.compress_level >= 0
 
-    return PooledClient(options.endpoint.address, **kwargs)
+    memcache_serializer = make_memcache_serializer(
+        options.min_compress_length, options.compress_level)
+
+    return PooledClient(
+        server=options.endpoint.address,
+        connect_timeout=options.connect_timeout,
+        timeout=options.timeout,
+        serializer=memcache_serializer,
+        deserializer=memcache_deserializer,
+        no_delay=True,
+        max_pool_size=options.max_pool_size,
+    )
 
 
 class MemcacheContextFactory(ContextFactory):
