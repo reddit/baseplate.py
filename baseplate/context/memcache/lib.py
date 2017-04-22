@@ -2,7 +2,6 @@ import logging
 import zlib
 
 from ..._compat import (
-    BytesIO,
     long,
     pickle,
     string_types,
@@ -50,9 +49,7 @@ def decompress_and_unpickle(key, serialized, flags):
 
     if flags & FLAG_PICKLE:
         try:
-            buf = BytesIO(serialized)
-            unpickler = pickle.Unpickler(buf)
-            return unpickler.load()
+            return pickle.loads(serialized)
         except Exception:
             logging.info('Pickle error', exc_info=True)
             return None
@@ -99,12 +96,9 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
             serialized = "%d" % value
         else:
             flags |= FLAG_PICKLE
-            output = BytesIO()
 
             # use protocol 2 which is the highest value supported by python2
-            pickler = pickle.Pickler(output, protocol=2)
-            pickler.dump(value)
-            serialized = output.getvalue()
+            serialized = pickle.dumps(value, protocol=2)
 
         if (compress_level and
                 min_compress_length and

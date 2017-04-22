@@ -86,21 +86,14 @@ class BaseSerdeTests(unittest.TestCase):
         self.assertEqual(flags, expected_flags)
 
     def test_serialize_other(self):
-        bytes_io_instance = mock.Mock()
-        bytes_io_patch = mock.patch.object(memcache_lib, "BytesIO",
-            return_value=bytes_io_instance)
-        bytes_io = bytes_io_patch.start()
-        self.addCleanup(bytes_io_patch.stop)
-
-        pickler_patch = mock.patch.object(memcache_lib.pickle, "Pickler")
-        pickler = pickler_patch.start()
-        self.addCleanup(pickler_patch.stop)
+        pickle_patch = mock.patch.object(memcache_lib, "pickle")
+        pickle = pickle_patch.start()
+        self.addCleanup(pickle_patch.stop)
 
         pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
         value, flags = pickle_no_compress(key="key", value=("stuff", 1, False))
 
-        pickler.assertCalledWith(bytes_io_instance, protocol=2)
-        pickler.dump.assertCalledWith(("stuff", 1, False))
+        pickle.dumps.assertCalledWith(("stuff", 1, False), protocol=2)
         self.assertEqual(flags, memcache_lib.FLAG_PICKLE)
 
     def test_deserialize_str(self):
@@ -128,27 +121,17 @@ class BaseSerdeTests(unittest.TestCase):
         self.assertTrue(isinstance(value, expected_class))
 
     def test_deserialize_other(self):
-        bytes_io_instance = mock.Mock()
-        bytes_io_patch = mock.patch.object(memcache_lib, "BytesIO",
-            return_value=bytes_io_instance)
-        bytes_io = bytes_io_patch.start()
-        self.addCleanup(bytes_io_patch.stop)
-
-        unpickler_instance = mock.Mock()
-        unpickler_patch = mock.patch.object(memcache_lib.pickle, "Unpickler",
-            return_value=unpickler_instance)
-        unpickler = unpickler_patch.start()
-        self.addCleanup(unpickler_patch.stop)
+        pickle_patch = mock.patch.object(memcache_lib, "pickle")
+        pickle = pickle_patch.start()
+        self.addCleanup(pickle_patch.stop)
 
         expected_value = object()
-        unpickler_instance.load.return_value = expected_value
+        pickle.loads.return_value = expected_value
 
         value = memcache_lib.decompress_and_unpickle(
             key="key", serialized="garbage", flags=memcache_lib.FLAG_PICKLE)
 
-        bytes_io.assertCalledWith("garbage")
-        unpickler.assertCalledWith(bytes_io_instance)
-        unpickler_instance.load.assertCalledOnce()
+        pickle.loads.assertCalledWith("garbage")
         self.assertEqual(value, expected_value)
 
 
