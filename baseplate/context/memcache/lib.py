@@ -9,83 +9,61 @@ from ..._compat import (
 )
 
 
-"""Memcache serde helper methods"""
+"""Memcache serialization/deserialization (and compression) helper methods.
+
+Memcached can only store strings, so to store arbitrary objects we need to
+serialize them to strings and be able to deserialize them back to their
+original form. General purpose serialization and deserialization can be
+achieved with pickle_and_compress() and decompress_and_unpickle().
+
+"""
 
 
 FLAG_PICKLE = 1 << 0
 FLAG_INTEGER = 1 << 1
 FLAG_LONG = 1 << 2
+FLAG_ZLIB = 1 << 3
 
 
-def python_memcache_serializer(key, value):
-    flags = 0
+def decompress_and_unpickle(key, serialized, flags):
+    """Deserialization method compatible with pickle_and_compress().
 
-    if isinstance(value, string_types):
-        pass
-    elif isinstance(value, int):
-        flags |= FLAG_INTEGER
-        value = "%d" % value
-    elif isinstance(value, long):
-        flags |= FLAG_LONG
-        value = "%d" % value
-    else:
-        flags |= FLAG_PICKLE
-        output = BytesIO()
+    :param str key: the memcached key.
+    :param str serialized: the serialized object returned from memcached.
+    :param int flags: value stored and returned from memcached for the client
+        to use to indicate how the value was serialized.
+    :returns str value: the deserialized value.
 
-        # use protocol 2 which is the highest value supported by python2
-        pickler = pickle.Pickler(output, protocol=2)
-        pickler.dump(value)
-        value = output.getvalue()
+    """
 
-    return value, flags
+    if flags & FLAG_ZLIB:
+        serialized = zlib.decompress(serialized)
 
-
-def python_memcache_deserializer(key, value, flags):
     if flags == 0:
-        return value
+        return serialized
 
     if flags & FLAG_INTEGER:
-        return int(value)
+        return int(serialized)
 
     if flags & FLAG_LONG:
-        return long(value)
+        return long(serialized)
 
     if flags & FLAG_PICKLE:
         try:
-            buf = BytesIO(value)
+            buf = BytesIO(serialized)
             unpickler = pickle.Unpickler(buf)
             return unpickler.load()
         except Exception:
             logging.info('Pickle error', exc_info=True)
             return None
 
-    return value
+    return serialized
 
 
-FLAG_ZLIB = 1 << 3
+def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
+    """Create a serialization method compatible with decompress_and_unpickle().
 
-
-def memcache_deserializer(key, value, flags):
-    """Deserialization method compatible with make_memcache_serializer.
-
-    :param str key: the memcached key.
-    :param str value: the serialized object returned from memcached.
-    :param int flags: value stored and returned from memcached for the client
-        to use to indicate how the value was serialized.
-    :returns str value: the deserialized value. 
-
-    """
-
-    if flags & FLAG_ZLIB:
-        value = zlib.decompress(value)
-    return python_memcache_deserializer(key, value, flags)
-
-
-def make_memcache_serializer(min_compress_length=0, compress_level=1):
-    """Create a serialization method compatible with memcache_deserializer().
-
-    The resulting method is a chain of python_memcache_serializer (to convert
-    arbitrary python objects to str) and zlib compression.
+    The resulting method is a chain of pickling and zlib compression.
 
     This serializer is compatible with pylibmc.
 
@@ -100,7 +78,7 @@ def make_memcache_serializer(min_compress_length=0, compress_level=1):
     assert min_compress_length >= 0
     assert 0 <= compress_level <= 9
 
-    def memcache_serializer(key, value):
+    def pickle_and_compress(key, value):
         """Serialization method compatible with memcache_deserializer.
 
         :param str key: the memcached key.
@@ -109,7 +87,24 @@ def make_memcache_serializer(min_compress_length=0, compress_level=1):
 
         """
 
-        serialized, flags = python_memcache_serializer(key, value)
+        flags = 0
+
+        if isinstance(value, string_types):
+            serialized = value
+        elif isinstance(value, int):
+            flags |= FLAG_INTEGER
+            serialized = "%d" % value
+        elif isinstance(value, long):
+            flags |= FLAG_LONG
+            serialized = "%d" % value
+        else:
+            flags |= FLAG_PICKLE
+            output = BytesIO()
+
+            # use protocol 2 which is the highest value supported by python2
+            pickler = pickle.Pickler(output, protocol=2)
+            pickler.dump(value)
+            serialized = output.getvalue()
 
         if (compress_level and
                 min_compress_length and
@@ -119,4 +114,5 @@ def make_memcache_serializer(min_compress_length=0, compress_level=1):
             return compressed, flags
         else:
             return serialized, flags
-    return memcache_serializer
+
+    return pickle_and_compress

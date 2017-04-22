@@ -58,14 +58,14 @@ class PoolFromConfigTests(unittest.TestCase):
 
 class BaseSerdeTests(unittest.TestCase):
     def test_serialize_str(self):
-        value, flags = memcache_lib.python_memcache_serializer(
-            key="key", value="val")
+        pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
+        value, flags = pickle_no_compress(key="key", value="val")
         self.assertEqual(value, "val")
         self.assertEqual(flags, 0)
 
     def test_serialize_int(self):
-        value, flags = memcache_lib.python_memcache_serializer(
-            key="key", value=100)
+        pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
+        value, flags = pickle_no_compress(key="key", value=100)
         self.assertEqual(value, "100")
         self.assertEqual(flags, memcache_lib.FLAG_INTEGER)
 
@@ -80,8 +80,8 @@ class BaseSerdeTests(unittest.TestCase):
             value = long(100)
             expected_flags = memcache_lib.FLAG_LONG
 
-        value, flags = memcache_lib.python_memcache_serializer(
-            key="key", value=value)
+        pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
+        value, flags = pickle_no_compress(key="key", value=value)
         self.assertEqual(value, "100")
         self.assertEqual(flags, expected_flags)
 
@@ -96,26 +96,27 @@ class BaseSerdeTests(unittest.TestCase):
         pickler = pickler_patch.start()
         self.addCleanup(pickler_patch.stop)
 
-        value, flags = memcache_lib.python_memcache_serializer(
-            key="key", value=("stuff", 1, False))
+        pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
+        value, flags = pickle_no_compress(key="key", value=("stuff", 1, False))
 
         pickler.assertCalledWith(bytes_io_instance, protocol=2)
         pickler.dump.assertCalledWith(("stuff", 1, False))
         self.assertEqual(flags, memcache_lib.FLAG_PICKLE)
 
     def test_deserialize_str(self):
-        value = memcache_lib.python_memcache_deserializer(
-            key="key", value="val", flags=0)
+        value = memcache_lib.decompress_and_unpickle(
+            key="key", serialized="val", flags=0)
         self.assertEqual(value, "val")
 
     def test_deserialize_int(self):
-        value = memcache_lib.python_memcache_deserializer(
-            key="key", value="100", flags=memcache_lib.FLAG_INTEGER)
+        value = memcache_lib.decompress_and_unpickle(
+            key="key", serialized="100", flags=memcache_lib.FLAG_INTEGER)
         self.assertEqual(value, 100)
+        self.assertTrue(isinstance(value, int))
 
     def test_deserialize_long(self):
-        value = memcache_lib.python_memcache_deserializer(
-            key="key", value="100", flags=memcache_lib.FLAG_LONG)
+        value = memcache_lib.decompress_and_unpickle(
+            key="key", serialized="100", flags=memcache_lib.FLAG_LONG)
 
         try:
             expected_class = long
@@ -142,8 +143,8 @@ class BaseSerdeTests(unittest.TestCase):
         expected_value = object()
         unpickler_instance.load.return_value = expected_value
 
-        value = memcache_lib.python_memcache_deserializer(
-            key="key", value="garbage", flags=memcache_lib.FLAG_PICKLE)
+        value = memcache_lib.decompress_and_unpickle(
+            key="key", serialized="garbage", flags=memcache_lib.FLAG_PICKLE)
 
         bytes_io.assertCalledWith("garbage")
         unpickler.assertCalledWith(bytes_io_instance)
@@ -151,16 +152,16 @@ class BaseSerdeTests(unittest.TestCase):
         self.assertEqual(value, expected_value)
 
 
-class FullSerdeTests(unittest.TestCase):
+class CompressionSerdeTests(unittest.TestCase):
     def test_serialize_no_compress(self):
         zlib_patch = mock.patch.object(memcache_lib, "zlib")
         zlib = zlib_patch.start()
         self.addCleanup(zlib_patch.stop)
 
-        serializer = memcache_lib.make_memcache_serializer(
+        pickle_no_compress = memcache_lib.make_pickle_and_compress_fn(
             min_compress_length=0,  # disable compression
         )
-        value, flags = serializer(key="key", value="simple string")
+        value, flags = pickle_no_compress(key="key", value="simple string")
         self.assertEqual(value, "simple string")
         self.assertEqual(flags, 0)
         zlib.compress.assertNotCalled()
@@ -173,11 +174,11 @@ class FullSerdeTests(unittest.TestCase):
         expected_value = object()
         zlib.compress.return_value = expected_value
 
-        serializer = memcache_lib.make_memcache_serializer(
+        pickle_and_compress = memcache_lib.make_pickle_and_compress_fn(
             min_compress_length=1,
             compress_level=1,
         )
-        value, flags = serializer(key="key", value="simple string")
+        value, flags = pickle_and_compress(key="key", value="simple string")
         self.assertEqual(value, expected_value)
         self.assertEqual(flags, memcache_lib.FLAG_ZLIB)
         zlib.compress.assertCalledWith("simple string", 1)
@@ -187,8 +188,8 @@ class FullSerdeTests(unittest.TestCase):
         zlib = zlib_patch.start()
         self.addCleanup(zlib_patch.stop)
 
-        value = memcache_lib.memcache_deserializer(
-            key="key", value="stuff", flags=0)
+        value = memcache_lib.decompress_and_unpickle(
+            key="key", serialized="stuff", flags=0)
         self.assertEqual(value, "stuff")
         zlib.decompress.assertNotCalled()
 
@@ -200,7 +201,7 @@ class FullSerdeTests(unittest.TestCase):
         expected_value = object()
         zlib.decompress.return_value = expected_value
 
-        value = memcache_lib.memcache_deserializer(
-            key="key", value="nonsense", flags=memcache_lib.FLAG_ZLIB)
+        value = memcache_lib.decompress_and_unpickle(
+            key="key", serialized="nonsense", flags=memcache_lib.FLAG_ZLIB)
         self.assertEqual(value, expected_value)
         zlib.decompress.assertCalledWith("nonsense")

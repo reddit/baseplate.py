@@ -5,7 +5,6 @@ from __future__ import unicode_literals
 
 from pymemcache.client.base import PooledClient
 
-from .lib import make_memcache_serializer, memcache_deserializer
 from ...context import ContextFactory
 from ... import config
 
