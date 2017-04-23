@@ -37,24 +37,20 @@ def decompress_and_unpickle(key, serialized, flags):
 
     if flags & FLAG_ZLIB:
         serialized = zlib.decompress(serialized)
+        flags ^= FLAG_ZLIB
 
     if flags == 0:
         return serialized
-
-    if flags & FLAG_INTEGER:
+    elif flags == FLAG_INTEGER:
         return int(serialized)
-
-    if flags & FLAG_LONG:
+    elif flags == FLAG_LONG:
         return long(serialized)
-
-    if flags & FLAG_PICKLE:
+    else:
         try:
             return pickle.loads(serialized)
         except Exception:
             logging.info('Pickle error', exc_info=True)
             return None
-
-    return serialized
 
 
 def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
@@ -84,21 +80,19 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
 
         """
 
-        flags = 0
-
         if isinstance(value, string_types):
             serialized = value
+            flags = 0
         elif isinstance(value, int):
-            flags |= FLAG_INTEGER
             serialized = "%d" % value
+            flags = FLAG_INTEGER
         elif isinstance(value, long):
-            flags |= FLAG_LONG
             serialized = "%d" % value
+            flags = FLAG_LONG
         else:
-            flags |= FLAG_PICKLE
-
             # use protocol 2 which is the highest value supported by python2
             serialized = pickle.dumps(value, protocol=2)
+            flags = FLAG_PICKLE
 
         if (compress_level and
                 min_compress_length and
