@@ -42,6 +42,11 @@ def decompress_and_unpickle(key, serialized, flags):
     if flags == 0:
         return serialized
     elif flags == FLAG_INTEGER:
+        # python3 doesn't have a long integer type, so all integers are written
+        # with FLAG_INTEGER. This means that a value written by a python3
+        # client can exceed the maximum integer value (sys.maxint). This
+        # appears to be ok--python2 will automatically convert to long if the
+        # value is too large.
         return int(serialized)
     elif flags == FLAG_LONG:
         return long(serialized)
