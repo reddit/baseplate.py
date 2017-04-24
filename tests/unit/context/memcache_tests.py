@@ -14,6 +14,7 @@ except ImportError:
 else:
     del pymemcache
 
+from baseplate._compat import builtins
 from baseplate.config import ConfigurationError
 from baseplate.context.memcache import pool_from_config
 from baseplate.context.memcache import lib as memcache_lib
@@ -176,7 +177,7 @@ class CompressionSerdeTests(unittest.TestCase):
         self.assertEqual(value, "stuff")
         zlib.decompress.assertNotCalled()
 
-    def test_deserialize_decompress(self):
+    def test_deserialize_decompress_str(self):
         zlib_patch = mock.patch.object(memcache_lib, "zlib")
         zlib = zlib_patch.start()
         self.addCleanup(zlib_patch.stop)
@@ -184,7 +185,72 @@ class CompressionSerdeTests(unittest.TestCase):
         expected_value = object()
         zlib.decompress.return_value = expected_value
 
+        flags = 0 | memcache_lib.FLAG_ZLIB
         value = memcache_lib.decompress_and_unpickle(
-            key="key", serialized="nonsense", flags=memcache_lib.FLAG_ZLIB)
+            key="key", serialized="nonsense", flags=flags)
         self.assertEqual(value, expected_value)
         zlib.decompress.assertCalledWith("nonsense")
+
+    def test_deserialize_decompress_int(self):
+        zlib_patch = mock.patch.object(memcache_lib, "zlib")
+        zlib = zlib_patch.start()
+        self.addCleanup(zlib_patch.stop)
+
+        expected_zlib_value = object()
+        zlib.decompress.return_value = expected_zlib_value
+
+        int_patch = mock.patch.object(builtins, "int")
+        int_cls = int_patch.start()
+        self.addCleanup(int_patch.stop)
+
+        expected_int_value = object()
+        int_cls.return_value = expected_int_value
+        flags = memcache_lib.FLAG_INTEGER | memcache_lib.FLAG_ZLIB
+        value = memcache_lib.decompress_and_unpickle(
+            key="key", serialized="nonsense", flags=flags)
+        zlib.decompress.assertCalledWith("nonsense")
+        int_cls.assertCalledWith(expected_zlib_value)
+        self.assertEqual(value, expected_int_value)
+
+    def test_deserialize_decompress_long(self):
+        zlib_patch = mock.patch.object(memcache_lib, "zlib")
+        zlib = zlib_patch.start()
+        self.addCleanup(zlib_patch.stop)
+
+        expected_zlib_value = object()
+        zlib.decompress.return_value = expected_zlib_value
+
+        long_patch = mock.patch.object(memcache_lib, "long")
+        long_cls = long_patch.start()
+        self.addCleanup(long_patch.stop)
+
+        expected_long_value = object()
+        long_cls.return_value = expected_long_value
+        flags = memcache_lib.FLAG_LONG | memcache_lib.FLAG_ZLIB
+        value = memcache_lib.decompress_and_unpickle(
+            key="key", serialized="nonsense", flags=flags)
+        zlib.decompress.assertCalledWith("nonsense")
+        long_cls.assertCalledWith(expected_zlib_value)
+        self.assertEqual(value, expected_long_value)
+
+    def test_deserialize_decompress_unpickle(self):
+        zlib_patch = mock.patch.object(memcache_lib, "zlib")
+        zlib = zlib_patch.start()
+        self.addCleanup(zlib_patch.stop)
+
+        expected_zlib_value = object()
+        zlib.decompress.return_value = expected_zlib_value
+
+        pickle_patch = mock.patch.object(memcache_lib, "pickle")
+        pickle = pickle_patch.start()
+        self.addCleanup(pickle_patch.stop)
+
+        expected_pickle_value = object()
+        pickle.loads.return_value = expected_pickle_value
+
+        flags = memcache_lib.FLAG_PICKLE | memcache_lib.FLAG_ZLIB
+        value = memcache_lib.decompress_and_unpickle(
+            key="key", serialized="nonsense", flags=flags)
+        zlib.decompress.assertCalledWith("nonsense")
+        pickle.loads.assertCalledWith(expected_zlib_value)
+        self.assertEqual(value, expected_pickle_value)

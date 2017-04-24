@@ -17,6 +17,7 @@ if sys.version_info.major == 3:  # pragma: nocover
     range = range
     string_types = str,
     long = int
+    import builtins
 else:  # pragma: nocover
     import ConfigParser as configparser
     import Queue as queue
@@ -25,6 +26,7 @@ else:  # pragma: nocover
     range = xrange
     string_types = basestring,
     long = long
+    import __builtin__ as builtins
 
 
 __all__ = [
