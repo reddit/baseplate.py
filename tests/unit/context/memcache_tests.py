@@ -68,7 +68,7 @@ class BaseSerdeTests(unittest.TestCase):
         pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
         value, flags = pickle_no_compress(key="key", value=100)
         self.assertEqual(value, "100")
-        self.assertEqual(flags, memcache_lib.FLAG_INTEGER)
+        self.assertEqual(flags, memcache_lib.Flags.INTEGER)
 
     def test_serialize_long(self):
         try:
@@ -76,10 +76,10 @@ class BaseSerdeTests(unittest.TestCase):
         except NameError:
             # python3
             value = 100
-            expected_flags = memcache_lib.FLAG_INTEGER
+            expected_flags = memcache_lib.Flags.INTEGER
         else:
             value = long(100)
-            expected_flags = memcache_lib.FLAG_LONG
+            expected_flags = memcache_lib.Flags.LONG
 
         pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
         value, flags = pickle_no_compress(key="key", value=value)
@@ -95,7 +95,7 @@ class BaseSerdeTests(unittest.TestCase):
         value, flags = pickle_no_compress(key="key", value=("stuff", 1, False))
 
         pickle.dumps.assertCalledWith(("stuff", 1, False), protocol=2)
-        self.assertEqual(flags, memcache_lib.FLAG_PICKLE)
+        self.assertEqual(flags, memcache_lib.Flags.PICKLE)
 
     def test_deserialize_str(self):
         value = memcache_lib.decompress_and_unpickle(
@@ -104,13 +104,13 @@ class BaseSerdeTests(unittest.TestCase):
 
     def test_deserialize_int(self):
         value = memcache_lib.decompress_and_unpickle(
-            key="key", serialized="100", flags=memcache_lib.FLAG_INTEGER)
+            key="key", serialized="100", flags=memcache_lib.Flags.INTEGER)
         self.assertEqual(value, 100)
         self.assertTrue(isinstance(value, int))
 
     def test_deserialize_long(self):
         value = memcache_lib.decompress_and_unpickle(
-            key="key", serialized="100", flags=memcache_lib.FLAG_LONG)
+            key="key", serialized="100", flags=memcache_lib.Flags.LONG)
 
         try:
             expected_class = long
@@ -130,7 +130,7 @@ class BaseSerdeTests(unittest.TestCase):
         pickle.loads.return_value = expected_value
 
         value = memcache_lib.decompress_and_unpickle(
-            key="key", serialized="garbage", flags=memcache_lib.FLAG_PICKLE)
+            key="key", serialized="garbage", flags=memcache_lib.Flags.PICKLE)
 
         pickle.loads.assertCalledWith("garbage")
         self.assertEqual(value, expected_value)
@@ -164,7 +164,7 @@ class CompressionSerdeTests(unittest.TestCase):
         )
         value, flags = pickle_and_compress(key="key", value="simple string")
         self.assertEqual(value, expected_value)
-        self.assertEqual(flags, memcache_lib.FLAG_ZLIB)
+        self.assertEqual(flags, memcache_lib.Flags.ZLIB)
         zlib.compress.assertCalledWith("simple string", 1)
 
     def test_deserialize_no_decompress(self):
@@ -185,7 +185,7 @@ class CompressionSerdeTests(unittest.TestCase):
         expected_value = object()
         zlib.decompress.return_value = expected_value
 
-        flags = 0 | memcache_lib.FLAG_ZLIB
+        flags = 0 | memcache_lib.Flags.ZLIB
         value = memcache_lib.decompress_and_unpickle(
             key="key", serialized="nonsense", flags=flags)
         self.assertEqual(value, expected_value)
@@ -205,7 +205,7 @@ class CompressionSerdeTests(unittest.TestCase):
 
         expected_int_value = object()
         int_cls.return_value = expected_int_value
-        flags = memcache_lib.FLAG_INTEGER | memcache_lib.FLAG_ZLIB
+        flags = memcache_lib.Flags.INTEGER | memcache_lib.Flags.ZLIB
         value = memcache_lib.decompress_and_unpickle(
             key="key", serialized="nonsense", flags=flags)
         zlib.decompress.assertCalledWith("nonsense")
@@ -226,7 +226,7 @@ class CompressionSerdeTests(unittest.TestCase):
 
         expected_long_value = object()
         long_cls.return_value = expected_long_value
-        flags = memcache_lib.FLAG_LONG | memcache_lib.FLAG_ZLIB
+        flags = memcache_lib.Flags.LONG | memcache_lib.Flags.ZLIB
         value = memcache_lib.decompress_and_unpickle(
             key="key", serialized="nonsense", flags=flags)
         zlib.decompress.assertCalledWith("nonsense")
@@ -248,7 +248,7 @@ class CompressionSerdeTests(unittest.TestCase):
         expected_pickle_value = object()
         pickle.loads.return_value = expected_pickle_value
 
-        flags = memcache_lib.FLAG_PICKLE | memcache_lib.FLAG_ZLIB
+        flags = memcache_lib.Flags.PICKLE | memcache_lib.Flags.ZLIB
         value = memcache_lib.decompress_and_unpickle(
             key="key", serialized="nonsense", flags=flags)
         zlib.decompress.assertCalledWith("nonsense")

@@ -18,10 +18,20 @@ achieved with pickle_and_compress() and decompress_and_unpickle().
 """
 
 
-FLAG_PICKLE = 1 << 0
-FLAG_INTEGER = 1 << 1
-FLAG_LONG = 1 << 2
-FLAG_ZLIB = 1 << 3
+class Flags(object):
+    """Memcached client flags
+
+    Flags are an arbitrary 16-bit unsigned integer that the memcache server
+    stores along with the data and sends back when the item is retrieved.
+    Clients may use this as a bit field to store data-specific information;
+    this field is opaque to the server.
+
+    """
+
+    PICKLE = 1 << 0
+    INTEGER = 1 << 1
+    LONG = 1 << 2
+    ZLIB = 1 << 3
 
 
 def decompress_and_unpickle(key, serialized, flags):
@@ -35,20 +45,20 @@ def decompress_and_unpickle(key, serialized, flags):
 
     """
 
-    if flags & FLAG_ZLIB:
+    if flags & Flags.ZLIB:
         serialized = zlib.decompress(serialized)
-        flags ^= FLAG_ZLIB
+        flags ^= Flags.ZLIB
 
     if flags == 0:
         return serialized
-    elif flags == FLAG_INTEGER:
+    elif flags == Flags.INTEGER:
         # python3 doesn't have a long integer type, so all integers are written
-        # with FLAG_INTEGER. This means that a value written by a python3
+        # with Flags.INTEGER. This means that a value written by a python3
         # client can exceed the maximum integer value (sys.maxint). This
         # appears to be ok--python2 will automatically convert to long if the
         # value is too large.
         return int(serialized)
-    elif flags == FLAG_LONG:
+    elif flags == Flags.LONG:
         return long(serialized)
     else:
         try:
@@ -90,20 +100,20 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
             flags = 0
         elif isinstance(value, int):
             serialized = "%d" % value
-            flags = FLAG_INTEGER
+            flags = Flags.INTEGER
         elif isinstance(value, long):
             serialized = "%d" % value
-            flags = FLAG_LONG
+            flags = Flags.LONG
         else:
             # use protocol 2 which is the highest value supported by python2
             serialized = pickle.dumps(value, protocol=2)
-            flags = FLAG_PICKLE
+            flags = Flags.PICKLE
 
         if (compress_level and
                 min_compress_length and
                 len(serialized) > min_compress_length):
             compressed = zlib.compress(serialized, compress_level)
-            flags |= FLAG_ZLIB
+            flags |= Flags.ZLIB
             return compressed, flags
         else:
             return serialized, flags
