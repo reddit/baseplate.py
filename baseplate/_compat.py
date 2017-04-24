@@ -35,4 +35,6 @@ __all__ = [
     "BytesIO",
     "range",
     "string_types",
+    "pickle",
+    "builtins",
 ]
