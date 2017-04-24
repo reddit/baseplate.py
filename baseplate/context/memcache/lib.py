@@ -12,8 +12,12 @@ from ..._compat import (
 
 Memcached can only store strings, so to store arbitrary objects we need to
 serialize them to strings and be able to deserialize them back to their
-original form. General purpose serialization and deserialization can be
-achieved with pickle_and_compress() and decompress_and_unpickle().
+original form.
+
+Services that need to read and write to the same memcache instances as r2
+should use pickle_and_compress() and decompress_and_unpickle().
+
+New services should avoid using pickle for serialization.
 
 """
 
