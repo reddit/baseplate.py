@@ -91,10 +91,14 @@ class SerdeTests(unittest.TestCase):
         json = json_patch.start()
         self.addCleanup(json_patch.stop)
 
+        expected_value = object()
+        json.dumps.return_value = expected_value
+
         dump_no_compress = memcache_lib.make_dump_and_compress_fn()
         value, flags = dump_no_compress(key="key", value=("stuff", 1, False))
 
         json.dumps.assertCalledWith(("stuff", 1, False))
+        self.assertEqual(value, expected_value)
         self.assertEqual(flags, memcache_lib.Flags.JSON)
 
     def test_deserialize_str(self):
@@ -288,10 +292,14 @@ class R2CompatSerdeTests(unittest.TestCase):
         pickle = pickle_patch.start()
         self.addCleanup(pickle_patch.stop)
 
+        expected_value = object()
+        pickle.dumps.return_value = expected_value
+
         pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
         value, flags = pickle_no_compress(key="key", value=("stuff", 1, False))
 
         pickle.dumps.assertCalledWith(("stuff", 1, False), protocol=2)
+        self.assertEqual(value, expected_value)
         self.assertEqual(flags, memcache_lib.PickleFlags.PICKLE)
 
     def test_deserialize_str(self):
