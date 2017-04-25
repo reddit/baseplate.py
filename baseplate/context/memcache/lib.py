@@ -65,12 +65,15 @@ def decompress_and_load(key, serialized, flags):
         return int(serialized)
     elif flags == Flags.LONG:
         return long(serialized)
-    else:
+    elif flags == Flags.JSON:
         try:
             return json.loads(serialized)
         except Exception:
             logging.info('json error', exc_info=True)
             return None
+    else:
+        logging.info('unrecognized flags')
+        return serialized
 
 
 def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
@@ -165,12 +168,15 @@ def decompress_and_unpickle(key, serialized, flags):
         return int(serialized)
     elif flags == PickleFlags.LONG:
         return long(serialized)
-    else:
+    elif flags == PickleFlags.PICKLE:
         try:
             return pickle.loads(serialized)
         except Exception:
             logging.info('Pickle error', exc_info=True)
             return None
+    else:
+        logging.info('unrecognized flags')
+        return serialized
 
 
 def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
