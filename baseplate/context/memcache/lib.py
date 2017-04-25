@@ -79,7 +79,8 @@ def decompress_and_load(key, serialized, flags):
 def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
     """Create a serialization method compatible with decompress_and_load().
 
-    The resulting method is a chain of json.loads and zlib compression.
+    The resulting method is a chain of json.loads and zlib compression. Values
+    that are not json serializable will result in a TypeError.
 
     :param int min_compress_length: the minimum serialized string length to
         enable zlib compression. 0 disables compression.
