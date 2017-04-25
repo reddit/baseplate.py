@@ -68,7 +68,7 @@ def decompress_and_load(key, serialized, flags):
     elif flags == Flags.JSON:
         try:
             return json.loads(serialized)
-        except Exception:
+        except ValueError:
             logging.info('json error', exc_info=True)
             return None
     else:
