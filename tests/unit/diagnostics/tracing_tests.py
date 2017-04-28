@@ -17,6 +17,7 @@ from baseplate.diagnostics.tracing import (
     RemoteRecorder,
     NullRecorder,
     LoggingRecorder,
+    make_client,
 )
 
 from ... import mock
@@ -27,32 +28,32 @@ class TraceObserverTests(unittest.TestCase):
         self.mock_context = mock.Mock()
 
     def test_null_recorder_setup(self):
-        baseplate_observer = TraceBaseplateObserver(
-            'test-service',
-            log_if_unconfigured=False,
-        )
+        client = make_client("test-service", log_if_unconfigured=False)
+        baseplate_observer = TraceBaseplateObserver(client)
         self.assertEqual(type(baseplate_observer.recorder), NullRecorder)
 
     def test_logging_recorder_setup(self):
-        baseplate_observer = TraceBaseplateObserver('test-service')
+        client = make_client("test-service")
+        baseplate_observer = TraceBaseplateObserver(client)
         self.assertEqual(type(baseplate_observer.recorder), LoggingRecorder)
 
     def test_sets_hostname(self):
-        baseplate_observer = TraceBaseplateObserver('test-service')
+        client = make_client("test-service")
+        baseplate_observer = TraceBaseplateObserver(client)
         self.assertIsNotNone(baseplate_observer.hostname)
 
     def test_remote_recorder_setup(self):
-        baseplate_observer = TraceBaseplateObserver(
-            'test-service',
-            tracing_endpoint=Endpoint("test:1111"),
-        )
+        client = make_client(
+            "test-service", tracing_endpoint=Endpoint("test:1111"))
+        baseplate_observer = TraceBaseplateObserver(client)
         self.assertTrue(
             isinstance(baseplate_observer.recorder,
                        RemoteRecorder)
         )
 
     def test_register_server_span_observer(self):
-        baseplate_observer = TraceBaseplateObserver('test-service')
+        client = make_client("test-service")
+        baseplate_observer = TraceBaseplateObserver(client)
         context_mock = mock.Mock()
         span = ServerSpan('test-id', 'test-parent-id', 'test-span-id',
                           True, 0, 'test', self.mock_context)
@@ -83,8 +84,8 @@ class TraceObserverTests(unittest.TestCase):
         )
 
     def test_should_sample_utilizes_sampled_setting(self):
-        baseplate_observer = TraceBaseplateObserver('test-service',
-                                                    sample_rate=0)
+        client = make_client("test-service", sample_rate=0)
+        baseplate_observer = TraceBaseplateObserver(client)
         span_with_sampled_flag = Span('test-id',
                                       'test-parent',
                                       'test-span-id',
@@ -97,8 +98,8 @@ class TraceObserverTests(unittest.TestCase):
         )
 
     def test_should_sample_utilizes_force_sampling(self):
-        baseplate_observer = TraceBaseplateObserver('test-service',
-                                                    sample_rate=0)
+        client = make_client("test-service", sample_rate=0)
+        baseplate_observer = TraceBaseplateObserver(client)
         span_with_forced = Span('test-id',
                                 'test-parent',
                                 'test-span-id',
@@ -121,8 +122,8 @@ class TraceObserverTests(unittest.TestCase):
         )
 
     def test_should_sample_utilizes_sample_rate(self):
-        baseplate_observer = TraceBaseplateObserver('test-service',
-                                                    sample_rate=1)
+        client = make_client("test-service", sample_rate=1)
+        baseplate_observer = TraceBaseplateObserver(client)
         span = Span('test-id',
                     'test-parent',
                     'test-span-id',
@@ -135,8 +136,8 @@ class TraceObserverTests(unittest.TestCase):
         self.assertFalse(baseplate_observer.should_sample(span))
 
     def test_no_tracing_without_sampling(self):
-        baseplate_observer = TraceBaseplateObserver('test-service',
-                                                    sample_rate=0)
+        client = make_client("test-service", sample_rate=0)
+        baseplate_observer = TraceBaseplateObserver(client)
         context_mock = mock.Mock()
         span = ServerSpan('test-id', 'test-parent-id', 'test-span-id',
                           False, 0, 'test', self.mock_context)

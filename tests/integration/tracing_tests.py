@@ -11,6 +11,7 @@ from baseplate.diagnostics.tracing import (
     TraceSpanObserver,
     NullRecorder,
     RemoteRecorder,
+    make_client,
 )
 
 try:
@@ -51,7 +52,8 @@ class TracingTests(unittest.TestCase):
         configurator.add_view(
             example_application, route_name="example", renderer="json")
 
-        self.observer = TraceBaseplateObserver('test-service')
+        self.client = make_client("test-service")
+        self.observer = TraceBaseplateObserver(self.client)
 
         self.baseplate = Baseplate()
         self.baseplate.register(self.observer)
@@ -74,11 +76,19 @@ class TracingTests(unittest.TestCase):
             self.assertEqual(len(span['annotations']), 2)
             self.assertEqual(span['parentId'], 0)
 
-    def test_configure_tracing_with_defaults(self):
+    def test_configure_tracing_with_defaults_legacy_style(self):
         baseplate = Baseplate()
         self.assertEqual(0, len(baseplate.observers))
-        baseplate.configure_tracing('test',
-                                    None)
+        baseplate.configure_tracing('test')
+        self.assertEqual(1, len(baseplate.observers))
+        tracing_observer = baseplate.observers[0]
+        self.assertEqual('test',tracing_observer.service_name)
+
+    def test_configure_tracing_with_defaults_new_style(self):
+        baseplate = Baseplate()
+        self.assertEqual(0, len(baseplate.observers))
+        client = make_client("test")
+        baseplate.configure_tracing(client)
         self.assertEqual(1, len(baseplate.observers))
         tracing_observer = baseplate.observers[0]
         self.assertEqual('test',tracing_observer.service_name)

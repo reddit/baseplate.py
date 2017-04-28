@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import collections
 import json
 import logging
 import random
@@ -48,14 +49,16 @@ def current_epoch_microseconds():
                total_seconds() * 1000 * 1000)
 
 
-class TraceBaseplateObserver(BaseplateObserver):
-    """Distributed tracing observer.
+TracingClient = collections.namedtuple(
+    "TracingClient", "service_name sample_rate recorder")
 
-    This observer handles Zipkin-compatible distributed tracing
-    instrumentation for both inbound and outbound requests.
-    Baseplate span-specific tracing observers (TraceSpanObserver
-    and TraceServerSpanObserver) are registered for tracking,
-    serializing, and recording span data.
+
+def make_client(service_name, tracing_endpoint=None, max_span_queue_size=50000,
+                num_span_workers=5, span_batch_interval=0.5, num_conns=100,
+                sample_rate=0.1, log_if_unconfigured=True):
+    """Create and return a tracing client based on configuration options.
+
+    This client can be used by the :py:class:`TraceBaseplateObserver`.
 
     :param str service_name: The name for the service this observer
         is registered to.
@@ -65,41 +68,53 @@ class TraceBaseplateObserver(BaseplateObserver):
     :param int max_span_queue_size: span processing queue limit.
     :param int num_span_workers: number of worker threads for span processing.
     :param float span_batch_interval: wait time for span processing in seconds.
-    :param float sample_rate: percentage of unsampled requests to record traces for.
+    :param float sample_rate: percentage of unsampled requests to record traces
+        for.
     """
-    def __init__(self, service_name,
-                 tracing_endpoint=None,
-                 max_span_queue_size=50000,
-                 num_span_workers=5,
-                 span_batch_interval=0.5,
-                 num_conns=100,
-                 sample_rate=0.1,
-                 log_if_unconfigured=True):
-        self.service_name = service_name
+    if tracing_endpoint:
+        remote_addr = '%s:%s' % tracing_endpoint.address
+        logger.info("Recording spans to %s", remote_addr)
+        recorder = RemoteRecorder(
+            remote_addr,
+            num_conns=num_conns,
+            max_queue_size=max_span_queue_size,
+            num_workers=num_span_workers,
+            batch_wait_interval=span_batch_interval,
+        )
+    elif log_if_unconfigured:
+        recorder = LoggingRecorder(
+            max_queue_size=max_span_queue_size,
+            num_workers=num_span_workers,
+            batch_wait_interval=span_batch_interval,
+        )
+    else:
+        recorder = NullRecorder(
+            max_queue_size=max_span_queue_size,
+            num_workers=num_span_workers,
+            batch_wait_interval=span_batch_interval,
+        )
+
+    return TracingClient(service_name, sample_rate, recorder)
+
+
+class TraceBaseplateObserver(BaseplateObserver):
+    """Distributed tracing observer.
+
+    This observer handles Zipkin-compatible distributed tracing
+    instrumentation for both inbound and outbound requests.
+    Baseplate span-specific tracing observers (TraceSpanObserver
+    and TraceServerSpanObserver) are registered for tracking,
+    serializing, and recording span data.
+
+    :param baseplate.diagnostics.tracing.TracingClient client: The client
+        where metrics will be sent.
+
+    """
+    def __init__(self, tracing_client):
+        self.service_name = tracing_client.service_name
+        self.sample_rate = tracing_client.sample_rate
+        self.recorder = tracing_client.recorder
         self.hostname = socket.gethostbyname(socket.gethostname())
-        self.sample_rate = sample_rate
-        if tracing_endpoint:
-            remote_addr = '%s:%s' % tracing_endpoint.address
-            logger.info("Recording spans to %s", remote_addr)
-            self.recorder = RemoteRecorder(
-                remote_addr,
-                num_conns=num_conns,
-                max_queue_size=max_span_queue_size,
-                num_workers=num_span_workers,
-                batch_wait_interval=span_batch_interval,
-            )
-        elif log_if_unconfigured:
-            self.recorder = LoggingRecorder(
-                max_queue_size=max_span_queue_size,
-                num_workers=num_span_workers,
-                batch_wait_interval=span_batch_interval,
-            )
-        else:
-            self.recorder = NullRecorder(
-                max_queue_size=max_span_queue_size,
-                num_workers=num_span_workers,
-                batch_wait_interval=span_batch_interval,
-            )
 
     @classmethod
     def force_sampling(cls, span):
