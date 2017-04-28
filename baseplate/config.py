@@ -48,6 +48,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     ...     "some_file": config.File(mode="r"),
     ...     "optional": config.Optional(config.Integer, default=9001),
     ...     "sample_rate": config.Percent,
+    ...     "interval": config.Fallback(config.Timespan, config.Integer),
     ... })
 
     >>> print(cfg.simple)
@@ -65,6 +66,9 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
     >>> cfg.sample_rate
     0.371
+
+    >>> print(cfg.interval)
+    0:00:30
 
 .. testcleanup::
 
@@ -309,6 +313,20 @@ def Optional(T, default=None):
         else:
             return default
     return optional
+
+
+def Fallback(T1, T2):
+    """An option of type T1, or if that fails to parse, of type T2.
+
+    This is useful for backwards-compatible configuration changes.
+
+    """
+    def fallback(text):
+        try:
+            return T1(text)
+        except ValueError:
+            return T2(text)
+    return fallback
 
 
 class ConfigNamespace(dict):

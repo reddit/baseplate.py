@@ -226,6 +226,16 @@ class OptionalTests(unittest.TestCase):
             parser("asdf")
 
 
+class FallbackTests(unittest.TestCase):
+    def test_primary_option_works(self):
+        parser = config.Fallback(config.Percent, config.Float)
+        self.assertAlmostEqual(parser("33%"), .33)
+
+    def test_fallback_option_works(self):
+        parser = config.Fallback(config.Percent, config.Float)
+        self.assertAlmostEqual(parser(".44"), .44)
+
+
 class TestParseConfig(unittest.TestCase):
     def setUp(self):
         self.config = {
