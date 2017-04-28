@@ -7,6 +7,7 @@ import collections
 import random
 
 from .integration.wrapped_context import WrappedRequestContext
+from ._utils import warn_deprecated
 
 
 class BaseplateObserver(object):
@@ -161,41 +162,33 @@ class Baseplate(object):
         from .diagnostics.metrics import MetricsBaseplateObserver
         self.register(MetricsBaseplateObserver(metrics_client))
 
-    def configure_tracing(self, service_name,
-                          tracing_endpoint,
-                          num_conns=100,
-                          max_span_queue_size=50000,
-                          num_span_workers=5,
-                          span_batch_interval=0.5,
-                          sample_rate=0.1,
-                          log_if_unconfigured=True):
+    def configure_tracing(self, tracing_client, *args, **kwargs):
         """Collect and send span information for request tracing.
 
-        :param str service_name: The name for the service this observer
-            is registered to.
-        :param baseplate.config.EndpointConfiguration tracing_endpoint: destination
-            to record span data.
-        :param int num_conns: pool size for remote recorder connection pool.
-        :param int max_span_queue_size: span processing queue limit.
-        :param int num_span_workers: number of worker threads for span processing.
-        :param float span_batch_interval: wait time for span processing in seconds.
-        :param float sample_rate: percentage of unsampled requests to record traces for.
-        :param bool log_if_unconfigured: flag to write traces to logger if no
-            tracing_endpoint is specified.
+        When configured, this will send tracing information automatically
+        collected by Baseplate to the configured distributed tracing service.
+
+        :param baseplate.diagnostics.tracing.TracingClient tracing_client: Tracing
+            client to send request traces to.
+
         """
-        from .diagnostics.tracing import TraceBaseplateObserver
-        self.register(
-            TraceBaseplateObserver(
-                service_name,
-                num_conns=num_conns,
-                tracing_endpoint=tracing_endpoint,
-                max_span_queue_size=max_span_queue_size,
-                num_span_workers=num_span_workers,
-                span_batch_interval=span_batch_interval,
-                sample_rate=sample_rate,
-                log_if_unconfigured=log_if_unconfigured,
-            )
+        from .diagnostics.tracing import (
+            make_client,
+            TraceBaseplateObserver,
+            TracingClient,
         )
+
+        # the first parameter was service_name before, so if it's not a client
+        # object we'll act like this is the old-style invocation and use the
+        # first parameter as service_name instead, passing on the old arguments
+        if not isinstance(tracing_client, TracingClient):
+            warn_deprecated("Passing tracing configuration directly to "
+                            "configure_tracing is deprecated in favor of "
+                            "using baseplate.make_tracing_client and passing "
+                            "the constructed client on.")
+            tracing_client = make_client(tracing_client, *args, **kwargs)
+
+        self.register(TraceBaseplateObserver(tracing_client))
 
     def add_to_context(self, name, context_factory):  # pragma: nocover
         """Add an attribute to each request's context object.
