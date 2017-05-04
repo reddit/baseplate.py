@@ -103,6 +103,7 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
         :param str key: the memcached key.
         :param value: python object to be serialized and set to memcached.
         :returns: value serialized as str, flags int.
+        :raises ValueError: if `value` is not json serializable
 
         """
 
@@ -116,6 +117,7 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
             serialized = "%d" % value
             flags = Flags.LONG
         else:
+            # NOTE: json.dumps raises ValueError if `value` is not serializable
             serialized = json.dumps(value)
             flags = Flags.JSON
 
