@@ -1,14 +1,3 @@
-import logging
-import json
-import zlib
-
-from ..._compat import (
-    long,
-    pickle,
-    string_types,
-)
-
-
 """Memcache serialization/deserialization (and compression) helper methods.
 
 Memcached can only store strings, so to store arbitrary objects we need to
@@ -21,6 +10,21 @@ Services that need to read and write to the same memcache instances as r2
 should use pickle_and_compress() and decompress_and_unpickle().
 
 """
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
+import logging
+import json
+import zlib
+
+from ..._compat import (
+    long,
+    pickle,
+    string_types,
+)
 
 
 class Flags(object):
