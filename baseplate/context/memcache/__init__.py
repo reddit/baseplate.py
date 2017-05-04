@@ -36,10 +36,10 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
     :param str prefix: prefix for config keys
     :param func serializer: function to serialize values to strings suitable
         for being stored in memcached. An example is
-        ``baseplate.context.memcache.lib.make_memcache_serializer``
+        :py:func:``baseplate.context.memcache.lib.make_memcache_serializer``
     :param func deserializer: function to convert strings returned from
         memcached to arbitrary objects, must be compatible with ``serializer``.
-        An example is `baseplate.context.memcache.lib.memcache_deserializer``.
+        An example is :py:func:`baseplate.context.memcache.lib.memcache_deserializer``.
 
     :returns: :py:class:`pymemcache.client.base.PooledClient`
 
