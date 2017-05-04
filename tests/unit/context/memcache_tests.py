@@ -56,6 +56,13 @@ class PoolFromConfigTests(unittest.TestCase):
             "noodle.endpoint": "localhost:1234",
         }, prefix="noodle.")
 
+    def test_nodelay(self):
+        pool = pool_from_config({
+            "memcache.endpoint": "localhost:1234",
+            "memcache.no_delay": "False",
+        })
+        self.assertEqual(pool.no_delay, False)
+
 
 class SerdeTests(unittest.TestCase):
     def test_serialize_str(self):

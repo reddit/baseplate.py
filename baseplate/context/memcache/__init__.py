@@ -53,8 +53,7 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
             "max_pool_size": config.Optional(config.Integer, default=None),
             "connect_timeout": config.Optional(config.Float, default=None),
             "timeout": config.Optional(config.Float, default=None),
-            # TODO: bug in Optional prevents this from being unset
-            #"no_delay": config.Optional(config.Boolean, default=True),
+            "no_delay": config.Optional(config.Boolean, default=True),
         },
     })
 
@@ -66,7 +65,7 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
         timeout=options.timeout,
         serializer=serializer,
         deserializer=deserializer,
-        no_delay=True,
+        no_delay=options.no_delay,
         max_pool_size=options.max_pool_size,
     )
 
