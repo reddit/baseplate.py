@@ -156,6 +156,10 @@ def decompress_and_unpickle(key, serialized, flags):
         to use to indicate how the value was serialized.
     :returns str value: the deserialized value.
 
+    .. warning:: Please don't use this! Unless you really need backwards
+        compatibility with already stored picked values you should use the
+        json serialization provided by baseplate.context.memcache.lib.decompress_and_load
+
     """
 
     if flags & PickleFlags.ZLIB:
@@ -196,6 +200,10 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
     :param int compress_level: zlib compression level. 0 disables compression
         and 9 is the maximum value.
     :returns func memcache_serializer: the serializer method.
+
+    .. warning:: Please don't use this! Unless you really need backwards
+        compatibility with already stored picked values you should use the
+        json serialization provided by baseplate.context.memcache.lib.make_dump_and_compress_fn
 
     """
 
