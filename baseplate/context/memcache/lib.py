@@ -160,7 +160,7 @@ def decompress_and_unpickle(key, serialized, flags):
 
     .. warning:: Please don't use this! Unless you really need backwards
         compatibility with already stored picked values you should use the
-        json serialization provided by baseplate.context.memcache.lib.decompress_and_load
+        json serialization provided by :py:func:`baseplate.context.memcache.lib.decompress_and_load`.
 
     """
 
@@ -205,7 +205,7 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
 
     .. warning:: Please don't use this! Unless you really need backwards
         compatibility with already stored picked values you should use the
-        json serialization provided by baseplate.context.memcache.lib.make_dump_and_compress_fn
+        json serialization provided by :py:func:`baseplate.context.memcache.lib.make_dump_and_compress_fn`.
 
     """
 
