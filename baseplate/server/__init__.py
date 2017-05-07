@@ -56,7 +56,7 @@ Configuration = collections.namedtuple(
 
 
 def read_config(config_file, server_name, app_name):
-    parser = configparser.SafeConfigParser()
+    parser = configparser.RawConfigParser()
     parser.readfp(config_file)
 
     filename = config_file.name
