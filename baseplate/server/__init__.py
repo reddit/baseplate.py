@@ -56,7 +56,9 @@ Configuration = collections.namedtuple(
 
 
 def read_config(config_file, server_name, app_name):
-    parser = configparser.SafeConfigParser()
+    # we use RawConfigParser to reduce surprise caused by interpolation and so
+    # that config.Percent works more naturally (no escaping %).
+    parser = configparser.RawConfigParser()
     parser.readfp(config_file)
 
     filename = config_file.name

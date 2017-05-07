@@ -22,7 +22,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     from baseplate import config
     from baseplate._compat import configparser
     from tempfile import NamedTemporaryFile
-    config_parser = configparser.ConfigParser()
+    config_parser = configparser.RawConfigParser()
     config_parser.readfp(open("docs/config_example.ini"))
 
     tempfile = NamedTemporaryFile()
