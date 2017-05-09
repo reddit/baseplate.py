@@ -1,3 +1,13 @@
+baseplate (0.18.0) trusty; urgency=medium
+
+  * add memcached serde helpers
+  * add instrumentation for CQLMapper clients
+  * restructure Baseplate.configure_tracing for consistency
+  * disable interpolation when parsing config files
+  * add Fallback option to config parsers
+
+ -- Neil Williams <neil@reddit.com>  Tue, 09 May 2017 08:01:08 -0700
+
 baseplate (0.17.1) trusty; urgency=medium
 
   * Add configuration for trace debug logging
