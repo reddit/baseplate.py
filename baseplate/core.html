@@ -132,24 +132,16 @@ request metrics to.</td>
 
 <dl class="method">
 <dt id="baseplate.core.Baseplate.configure_tracing">
-<tt class="descname">configure_tracing</tt><big>(</big><em>service_name</em>, <em>tracing_endpoint</em>, <em>num_conns=100</em>, <em>max_span_queue_size=50000</em>, <em>num_span_workers=5</em>, <em>span_batch_interval=0.5</em>, <em>sample_rate=0.1</em><big>)</big><a class="headerlink" href="#baseplate.core.Baseplate.configure_tracing" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">configure_tracing</tt><big>(</big><em>tracing_client</em>, <em>*args</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#baseplate.core.Baseplate.configure_tracing" title="Permalink to this definition">¶</a></dt>
 <dd><p>Collect and send span information for request tracing.</p>
+<p>When configured, this will send tracing information automatically
+collected by Baseplate to the configured distributed tracing service.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>service_name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name for the service this observer
-is registered to.</li>
-<li><strong>tracing_endpoint</strong> (<a class="reference internal" href="config.html#baseplate.config.EndpointConfiguration" title="baseplate.config.EndpointConfiguration"><em>baseplate.config.EndpointConfiguration</em></a>) &#8211; destination
-to record span data.</li>
-<li><strong>num_conns</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; pool size for remote recorder connection pool.</li>
-<li><strong>max_span_queue_size</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; span processing queue limit.</li>
-<li><strong>num_span_workers</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; number of worker threads for span processing.</li>
-<li><strong>span_batch_interval</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) &#8211; wait time for span processing in seconds.</li>
-<li><strong>sample_rate</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#float" title="(in Python v3.4)"><em>float</em></a>) &#8211; percentage of unsampled requests to record traces for.</li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>tracing_client</strong> (<em>baseplate.diagnostics.tracing.TracingClient</em>) &#8211; Tracing
+client to send request traces to.</td>
 </tr>
 </tbody>
 </table>
@@ -256,16 +248,10 @@ could be the URL fetched, or how many items were sent in a batch, or whatever
 else might be helpful.</p>
 <dl class="class">
 <dt id="baseplate.core.ServerSpan">
-<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">ServerSpan</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>sampled</em>, <em>flags</em>, <em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">ServerSpan</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>sampled</em>, <em>flags</em>, <em>name</em>, <em>context</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan" title="Permalink to this definition">¶</a></dt>
 <dd><p>A server span represents a request this server is handling.</p>
 <p>The server span is available on the <a class="reference internal" href="../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a> during requests
 as the <tt class="docutils literal"><span class="pre">trace</span></tt> attribute.</p>
-<dl class="method">
-<dt id="baseplate.core.ServerSpan.make_child">
-<tt class="descname">make_child</tt><big>(</big><em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan.make_child" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return a child span representing an outbound service call.</p>
-</dd></dl>
-
 <dl class="method">
 <dt id="baseplate.core.ServerSpan.finish">
 <tt class="descname">finish</tt><big>(</big><em>exc_info=None</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan.finish" title="Permalink to this definition">¶</a></dt>
@@ -296,6 +282,35 @@ lifetime of a span.</p>
 <li><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; The name of the log entry. This should be a stable
 identifier that can apply to multiple span instances.</li>
 <li><strong>payload</strong> &#8211; Optional log entry payload. This can be arbitrary data.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.ServerSpan.make_child">
+<tt class="descname">make_child</tt><big>(</big><em>name</em>, <em>local=False</em>, <em>component_name=None</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpan.make_child" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a child Span whose parent is this Span.</p>
+<p>The child span can either be a local span representing an in-request
+operation or a span representing an outbound service call.</p>
+<p>In a server, a local span represents the time spent within a
+local component performing an operation or set of operations.
+The local component is some grouping of business logic,
+which is then split up into operations which could each be wrapped
+in local spans.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; Name to identify the operation this span
+is recording.</li>
+<li><strong>local</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) &#8211; Make this span a LocalSpan if True, otherwise
+make this span a base Span.</li>
+<li><strong>component_name</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; Name to identify local component
+this span is recording in if it is a local span.</li>
 </ul>
 </td>
 </tr>
@@ -346,7 +361,7 @@ calls <a class="reference internal" href="#baseplate.core.ServerSpan.finish" tit
 
 <dl class="class">
 <dt id="baseplate.core.Span">
-<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">Span</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>sampled</em>, <em>flags</em>, <em>name</em><big>)</big><a class="headerlink" href="#baseplate.core.Span" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><tt class="descclassname">baseplate.core.</tt><tt class="descname">Span</tt><big>(</big><em>trace_id</em>, <em>parent_id</em>, <em>span_id</em>, <em>sampled</em>, <em>flags</em>, <em>name</em>, <em>context</em><big>)</big><a class="headerlink" href="#baseplate.core.Span" title="Permalink to this definition">¶</a></dt>
 <dd><p>A span represents a single RPC within a system.</p>
 <dl class="method">
 <dt id="baseplate.core.Span.register">
@@ -424,6 +439,12 @@ indicates normal exit.</td>
 </table>
 </dd></dl>
 
+<dl class="method">
+<dt id="baseplate.core.Span.make_child">
+<tt class="descname">make_child</tt><big>(</big><em>name</em>, <em>local=False</em>, <em>component_name=None</em><big>)</big><a class="headerlink" href="#baseplate.core.Span.make_child" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return a child Span whose parent is this Span.</p>
+</dd></dl>
+
 </dd></dl>
 
 </div>
@@ -491,7 +512,7 @@ this request.</li>
 <dt id="baseplate.core.ServerSpanObserver.on_child_span_created">
 <tt class="descname">on_child_span_created</tt><big>(</big><em>span</em><big>)</big><a class="headerlink" href="#baseplate.core.ServerSpanObserver.on_child_span_created" title="Permalink to this definition">¶</a></dt>
 <dd><p>Called when a child span is created.</p>
-<p><a class="reference internal" href="#baseplate.core.ServerSpan" title="baseplate.core.ServerSpan"><tt class="xref py py-class docutils literal"><span class="pre">ServerSpan</span></tt></a> objects call this when a new child span is
+<p><a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> objects call this when a new child span is
 created.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -570,6 +591,22 @@ exception info. Otherwise, <a class="reference external" href="https://docs.pyth
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>exc_info</strong> &#8211; If the span ended because of an exception, the
 exception info. Otherwise, <a class="reference external" href="https://docs.python.org/3.4/library/constants.html#None" title="(in Python v3.4)"><tt class="xref py py-data docutils literal"><span class="pre">None</span></tt></a>.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="baseplate.core.SpanObserver.on_child_span_created">
+<tt class="descname">on_child_span_created</tt><big>(</big><em>span</em><big>)</big><a class="headerlink" href="#baseplate.core.SpanObserver.on_child_span_created" title="Permalink to this definition">¶</a></dt>
+<dd><p>Called when a child span is created.</p>
+<p><a class="reference internal" href="#baseplate.core.SpanObserver" title="baseplate.core.SpanObserver"><tt class="xref py py-class docutils literal"><span class="pre">SpanObserver</span></tt></a> objects call this when a new child span is
+created.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>span</strong> (<a class="reference internal" href="#baseplate.core.Span" title="baseplate.core.Span"><em>baseplate.core.Span</em></a>) &#8211; The new child span.</td>
 </tr>
 </tbody>
 </table>

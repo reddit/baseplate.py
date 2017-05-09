@@ -137,12 +137,31 @@ automatically record diagnostic information.</p>
 </table>
 </dd></dl>
 
+<dl class="class">
+<dt id="baseplate.context.cassandra.CQLMapperContextFactory">
+<em class="property">class </em><tt class="descclassname">baseplate.context.cassandra.</tt><tt class="descname">CQLMapperContextFactory</tt><big>(</big><em>session</em><big>)</big><a class="headerlink" href="#baseplate.context.cassandra.CQLMapperContextFactory" title="Permalink to this definition">¶</a></dt>
+<dd><p>CQLMapper ORM connection context factory</p>
+<p>This factory will attach a new CQLMapper
+<tt class="xref py py-class docutils literal"><span class="pre">cqlmapper.connection.Connection</span></tt> to an attribute on the
+<a class="reference internal" href="../../glossary.html#term-context-object"><em class="xref std std-term">context object</em></a>. This Connection object will use the same proxy
+object that CassandraContextFactory attaches to a context to run queries
+so the <cite>execute</cite> command will automatically record diagnostic information.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>session</strong> (<a class="reference external" href="https://datastax.github.io/python-driver/api/cassandra/cluster.html#cassandra.cluster.Session" title="(in Cassandra Driver v3.0.0)"><em>cassandra.cluster.Session</em></a>) &#8211; A configured session object.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 <div class="section" id="memcache">
 <h2>Memcache<a class="headerlink" href="#memcache" title="Permalink to this headline">¶</a></h2>
 <dl class="function">
 <dt id="baseplate.context.memcache.pool_from_config">
-<tt class="descclassname">baseplate.context.memcache.</tt><tt class="descname">pool_from_config</tt><big>(</big><em>app_config</em>, <em>prefix=u'memcache.'</em>, <em>**kwargs</em><big>)</big><a class="headerlink" href="#baseplate.context.memcache.pool_from_config" title="Permalink to this definition">¶</a></dt>
+<tt class="descclassname">baseplate.context.memcache.</tt><tt class="descname">pool_from_config</tt><big>(</big><em>app_config</em>, <em>prefix=u'memcache.'</em>, <em>serializer=None</em>, <em>deserializer=None</em><big>)</big><a class="headerlink" href="#baseplate.context.memcache.pool_from_config" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make a PooledClient from a configuration dictionary.</p>
 <p>The keys useful to <tt class="xref py py-func docutils literal"><span class="pre">pool_from_config()</span></tt> should be prefixed, e.g.
 <tt class="docutils literal"><span class="pre">memcache.endpoint</span></tt>, <tt class="docutils literal"><span class="pre">memcache.max_pool_size</span></tt>, etc. The <tt class="docutils literal"><span class="pre">prefix</span></tt> argument
@@ -178,6 +197,27 @@ timeout.</p>
 </dl>
 </li>
 </ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>app_config</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#dict" title="(in Python v3.4)"><em>dict</em></a>) &#8211; the config dictionary</li>
+<li><strong>prefix</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; prefix for config keys</li>
+<li><strong>serializer</strong> (<em>func</em>) &#8211; function to serialize values to strings suitable
+for being stored in memcached. An example is
+:py:func:<tt class="docutils literal"><span class="pre">baseplate.context.memcache.lib.make_dump_and_compress_fn</span></tt></li>
+<li><strong>deserializer</strong> (<em>func</em>) &#8211; function to convert strings returned from
+memcached to arbitrary objects, must be compatible with <tt class="docutils literal"><span class="pre">serializer</span></tt>.
+An example is <tt class="xref py py-func docutils literal"><span class="pre">baseplate.context.memcache.lib.decompress_and_load`()</span></tt>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><tt class="xref py py-class docutils literal"><span class="pre">pymemcache.client.base.PooledClient</span></tt></p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 <dl class="class">
@@ -211,6 +251,118 @@ and automatically record diagnostic information.</p>
 except that operations are wrapped with diagnostic collection. Some methods
 may not yet be wrapped with monitoring, please request assistance if any
 needed methods are not being monitored.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.context.memcache.lib.decompress_and_load">
+<tt class="descclassname">baseplate.context.memcache.lib.</tt><tt class="descname">decompress_and_load</tt><big>(</big><em>key</em>, <em>serialized</em>, <em>flags</em><big>)</big><a class="headerlink" href="#baseplate.context.memcache.lib.decompress_and_load" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deserialization method compatible with dump_and_compress().</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; the memcached key.</li>
+<li><strong>serialized</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; the serialized object returned from memcached.</li>
+<li><strong>flags</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; value stored and returned from memcached for the client
+to use to indicate how the value was serialized.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Returns str value:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">the deserialized value.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.context.memcache.lib.make_dump_and_compress_fn">
+<tt class="descclassname">baseplate.context.memcache.lib.</tt><tt class="descname">make_dump_and_compress_fn</tt><big>(</big><em>min_compress_length=0</em>, <em>compress_level=1</em><big>)</big><a class="headerlink" href="#baseplate.context.memcache.lib.make_dump_and_compress_fn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a serialization method compatible with decompress_and_load().</p>
+<p>The resulting method is a chain of json.loads and zlib compression. Values
+that are not json serializable will result in a TypeError.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>min_compress_length</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; the minimum serialized string length to
+enable zlib compression. 0 disables compression.</li>
+<li><strong>compress_level</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; zlib compression level. 0 disables compression
+and 9 is the maximum value.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Returns func memcache_serializer:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">the serializer method.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.context.memcache.lib.decompress_and_unpickle">
+<tt class="descclassname">baseplate.context.memcache.lib.</tt><tt class="descname">decompress_and_unpickle</tt><big>(</big><em>key</em>, <em>serialized</em>, <em>flags</em><big>)</big><a class="headerlink" href="#baseplate.context.memcache.lib.decompress_and_unpickle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deserialization method compatible with pickle_and_compress().</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>key</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; the memcached key.</li>
+<li><strong>serialized</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#str" title="(in Python v3.4)"><em>str</em></a>) &#8211; the serialized object returned from memcached.</li>
+<li><strong>flags</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; value stored and returned from memcached for the client
+to use to indicate how the value was serialized.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Returns str value:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">the deserialized value.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Please don&#8217;t use this! Unless you really need backwards
+compatibility with already stored picked values you should use the
+json serialization provided by <a class="reference internal" href="#baseplate.context.memcache.lib.decompress_and_load" title="baseplate.context.memcache.lib.decompress_and_load"><tt class="xref py py-func docutils literal"><span class="pre">baseplate.context.memcache.lib.decompress_and_load()</span></tt></a>.</p>
+</div>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.context.memcache.lib.make_pickle_and_compress_fn">
+<tt class="descclassname">baseplate.context.memcache.lib.</tt><tt class="descname">make_pickle_and_compress_fn</tt><big>(</big><em>min_compress_length=0</em>, <em>compress_level=1</em><big>)</big><a class="headerlink" href="#baseplate.context.memcache.lib.make_pickle_and_compress_fn" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a serialization method compatible with decompress_and_unpickle().</p>
+<p>The resulting method is a chain of pickling and zlib compression.</p>
+<p>This serializer is compatible with pylibmc.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>min_compress_length</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; the minimum serialized string length to
+enable zlib compression. 0 disables compression.</li>
+<li><strong>compress_level</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; zlib compression level. 0 disables compression
+and 9 is the maximum value.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Returns func memcache_serializer:</th></tr>
+<tr class="field-even field"><td>&nbsp;</td><td class="field-body"><p class="first last">the serializer method.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Please don&#8217;t use this! Unless you really need backwards
+compatibility with already stored picked values you should use the
+json serialization provided by <a class="reference internal" href="#baseplate.context.memcache.lib.make_dump_and_compress_fn" title="baseplate.context.memcache.lib.make_dump_and_compress_fn"><tt class="xref py py-func docutils literal"><span class="pre">baseplate.context.memcache.lib.make_dump_and_compress_fn()</span></tt></a>.</p>
+</div>
 </dd></dl>
 
 </div>

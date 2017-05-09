@@ -68,6 +68,49 @@ for the metrics client.</td>
 </table>
 </dd></dl>
 
+<dl class="function">
+<dt id="baseplate.make_tracing_client">
+<tt class="descclassname">baseplate.</tt><tt class="descname">make_tracing_client</tt><big>(</big><em>raw_config</em>, <em>log_if_unconfigured=True</em><big>)</big><a class="headerlink" href="#baseplate.make_tracing_client" title="Permalink to this definition">¶</a></dt>
+<dd><p>Configure and return a tracing client.</p>
+<p>This expects one configuration option and can take many optional ones:</p>
+<dl class="docutils">
+<dt><tt class="docutils literal"><span class="pre">tracing.service_name</span></tt></dt>
+<dd>The name for the service this observer is registered to.</dd>
+<dt><tt class="docutils literal"><span class="pre">tracing.endpoint</span></tt> (optional)</dt>
+<dd>Destination to record span data.</dd>
+<dt><tt class="docutils literal"><span class="pre">tracing.max_span_queue_size</span></tt> (optional)</dt>
+<dd>Span processing queue limit.</dd>
+<dt><tt class="docutils literal"><span class="pre">tracing.num_span_workers</span></tt> (optional)</dt>
+<dd>Number of worker threads for span processing.</dd>
+<dt><tt class="docutils literal"><span class="pre">tracing.span_batch_interval</span></tt> (optional)</dt>
+<dd>Wait time for span processing in seconds.</dd>
+<dt><tt class="docutils literal"><span class="pre">tracing.num_conns</span></tt> (optional)</dt>
+<dd>Pool size for remote recorder connection pool.</dd>
+<dt><tt class="docutils literal"><span class="pre">tracing.sample_rate</span></tt> (optional)</dt>
+<dd>Percentage of unsampled requests to record traces for (e.g. 37%)</dd>
+</dl>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>raw_config</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/stdtypes.html#dict" title="(in Python v3.4)"><em>dict</em></a>) &#8211; The app configuration which should have settings
+for the tracing client.</li>
+<li><strong>log_if_unconfigured</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#bool" title="(in Python v3.4)"><em>bool</em></a>) &#8211; When the client is not configured, should
+trace spans be logged or discarded silently?</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A configured client.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last"><tt class="xref py py-class docutils literal"><span class="pre">baseplate.diagnostics.tracing.TracingClient</span></tt></p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 </div>
 
 

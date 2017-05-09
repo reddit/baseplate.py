@@ -225,12 +225,12 @@
   <dt><a href="baseplate/core.html#baseplate.core.Baseplate.configure_metrics">configure_metrics() (baseplate.core.Baseplate method)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/core.html#baseplate.core.Baseplate.configure_tracing">configure_tracing() (baseplate.core.Baseplate method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/thrift_pool.html#baseplate.thrift_pool.ThriftConnectionPool.connection">connection() (baseplate.thrift_pool.ThriftConnectionPool method)</a>
   </dt>
@@ -261,11 +261,25 @@
   </dt>
 
       </dl></dd>
+      
+  <dt><a href="baseplate/context/index.html#baseplate.context.cassandra.CQLMapperContextFactory">CQLMapperContextFactory (class in baseplate.context.cassandra)</a>
+  </dt>
+
   </dl></td>
 </tr></table>
 
 <h2 id="D">D</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/context/index.html#baseplate.context.memcache.lib.decompress_and_load">decompress_and_load() (in module baseplate.context.memcache.lib)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/context/index.html#baseplate.context.memcache.lib.decompress_and_unpickle">decompress_and_unpickle() (in module baseplate.context.memcache.lib)</a>
+  </dt>
+
+  </dl></td>
   <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/metrics.html#baseplate.metrics.Counter.decrement">decrement() (baseplate.metrics.Counter method)</a>
@@ -323,6 +337,10 @@
 <h2 id="F">F</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/config.html#baseplate.config.Fallback">Fallback() (in module baseplate.config)</a>
+  </dt>
+
       
   <dt><a href="baseplate/events.html#baseplate.events.FieldKind">FieldKind (class in baseplate.events)</a>
   </dt>
@@ -461,8 +479,18 @@
   <dt><a href="baseplate/core.html#baseplate.core.ServerSpan.make_child">make_child() (baseplate.core.ServerSpan method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="baseplate/core.html#baseplate.core.Span.make_child">(baseplate.core.Span method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="baseplate/metrics.html#baseplate.metrics.make_client">make_client() (in module baseplate.metrics)</a>
+  </dt>
+
+      
+  <dt><a href="baseplate/context/index.html#baseplate.context.memcache.lib.make_dump_and_compress_fn">make_dump_and_compress_fn() (in module baseplate.context.memcache.lib)</a>
   </dt>
 
       
@@ -474,6 +502,10 @@
   </dt>
 
       
+  <dt><a href="baseplate/context/index.html#baseplate.context.memcache.lib.make_pickle_and_compress_fn">make_pickle_and_compress_fn() (in module baseplate.context.memcache.lib)</a>
+  </dt>
+
+      
   <dt><a href="baseplate/core.html#baseplate.core.Baseplate.make_server_span">make_server_span() (baseplate.core.Baseplate method)</a>
   </dt>
 
@@ -481,12 +513,16 @@
   <dt><a href="baseplate/crypto.html#baseplate.crypto.MessageSigner.make_signature">make_signature() (baseplate.crypto.MessageSigner method)</a>
   </dt>
 
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/index.html#baseplate.make_tracing_client">make_tracing_client() (in module baseplate)</a>
+  </dt>
+
       
   <dt><a href="baseplate/context/index.html#baseplate.context.memcache.MemcacheContextFactory">MemcacheContextFactory (class in baseplate.context.memcache)</a>
   </dt>
 
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt><a href="baseplate/message_queue.html#baseplate.message_queue.MessageQueue">MessageQueue (class in baseplate.message_queue)</a>
   </dt>
@@ -545,6 +581,12 @@
   <dt><a href="baseplate/core.html#baseplate.core.ServerSpanObserver.on_child_span_created">on_child_span_created() (baseplate.core.ServerSpanObserver method)</a>
   </dt>
 
+      <dd><dl>
+        
+  <dt><a href="baseplate/core.html#baseplate.core.SpanObserver.on_child_span_created">(baseplate.core.SpanObserver method)</a>
+  </dt>
+
+      </dl></dd>
       
   <dt><a href="baseplate/core.html#baseplate.core.ServerSpanObserver.on_finish">on_finish() (baseplate.core.ServerSpanObserver method)</a>
   </dt>
@@ -610,15 +652,19 @@
   </dt>
 
       
-  <dt><a href="baseplate/random.html#baseplate.random.WeightedLottery.pick">pick() (baseplate.random.WeightedLottery method)</a>
+  <dt><a href="baseplate/config.html#baseplate.config.Percent">Percent() (in module baseplate.config)</a>
   </dt>
 
       
-  <dt><a href="baseplate/context/index.html#baseplate.context.redis.MonitoredRedisConnection.pipeline">pipeline() (baseplate.context.redis.MonitoredRedisConnection method)</a>
+  <dt><a href="baseplate/random.html#baseplate.random.WeightedLottery.pick">pick() (baseplate.random.WeightedLottery method)</a>
   </dt>
 
   </dl></td>
   <td style="width: 33%" valign="top"><dl>
+      
+  <dt><a href="baseplate/context/index.html#baseplate.context.redis.MonitoredRedisConnection.pipeline">pipeline() (baseplate.context.redis.MonitoredRedisConnection method)</a>
+  </dt>
+
       
   <dt><a href="baseplate/context/index.html#baseplate.context.memcache.pool_from_config">pool_from_config() (in module baseplate.context.memcache)</a>
   </dt>

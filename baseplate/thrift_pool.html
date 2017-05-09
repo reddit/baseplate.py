@@ -75,7 +75,9 @@ kept alive. Connections older than this will be reaped.</li>
 RPC call can take before a TimeoutError is raised.</li>
 <li><strong>max_retries</strong> (<a class="reference external" href="https://docs.python.org/3.4/library/functions.html#int" title="(in Python v3.4)"><em>int</em></a>) &#8211; The maximum number of times the pool will attempt
 to open a connection.</li>
-<li><strong>transport_wrapper</strong> (<em>thrift.transport.TTransport.TTransportFactoryBase</em>) &#8211; Factory class that wraps the thrift connection in a framed/buffered transport if necessary.</li>
+<li><strong>protocol_factory</strong> (<em>thrift.protocol.TProtocol.TProtocolBase</em>) &#8211; The
+factory to use for creating protocols from transports. This is useful
+for talking to services that don&#8217;t support THeaderProtocol.</li>
 </ul>
 </td>
 </tr>

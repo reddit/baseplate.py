@@ -51,6 +51,8 @@ and values into a structured and typed configuration object.</p>
 <span class="na">nested.once</span> <span class="o">=</span> <span class="s">1</span>
 <span class="na">nested.really.deep</span> <span class="o">=</span> <span class="s">3 seconds</span>
 <span class="na">some_file</span> <span class="o">=</span> <span class="s">/var/lib/whatever.txt</span>
+<span class="na">sample_rate</span> <span class="o">=</span> <span class="s">37.1%</span>
+<span class="na">interval</span> <span class="o">=</span> <span class="s">30 seconds</span>
 </pre></div>
 </div>
 <p>Might be parsed like the following. Note: when running under the baseplate
@@ -71,6 +73,8 @@ server, The <tt class="docutils literal"><span class="pre">config_parser.items(.
 <span class="gp">... </span>    <span class="p">},</span>
 <span class="gp">... </span>    <span class="s">&quot;some_file&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">File</span><span class="p">(</span><span class="n">mode</span><span class="o">=</span><span class="s">&quot;r&quot;</span><span class="p">),</span>
 <span class="gp">... </span>    <span class="s">&quot;optional&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">Optional</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">Integer</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">9001</span><span class="p">),</span>
+<span class="gp">... </span>    <span class="s">&quot;sample_rate&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">Percent</span><span class="p">,</span>
+<span class="gp">... </span>    <span class="s">&quot;interval&quot;</span><span class="p">:</span> <span class="n">config</span><span class="o">.</span><span class="n">Fallback</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">Timespan</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">Integer</span><span class="p">),</span>
 <span class="gp">... </span><span class="p">})</span>
 
 <span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">simple</span><span class="p">)</span>
@@ -85,6 +89,12 @@ server, The <tt class="docutils literal"><span class="pre">config_parser.items(.
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cfg</span><span class="o">.</span><span class="n">some_file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
 <span class="go">&#39;cool&#39;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cfg</span><span class="o">.</span><span class="n">some_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cfg</span><span class="o">.</span><span class="n">sample_rate</span>
+<span class="go">0.371</span>
+
+<span class="gp">&gt;&gt;&gt; </span><span class="k">print</span><span class="p">(</span><span class="n">cfg</span><span class="o">.</span><span class="n">interval</span><span class="p">)</span>
+<span class="go">0:00:30</span>
 </pre></div>
 </div>
 <div class="section" id="parser">
@@ -191,6 +201,14 @@ which the file is opened.</td>
 </dd></dl>
 
 <dl class="function">
+<dt id="baseplate.config.Percent">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">Percent</tt><big>(</big><em>text</em><big>)</big><a class="headerlink" href="#baseplate.config.Percent" title="Permalink to this definition">¶</a></dt>
+<dd><p>A percentage.</p>
+<p>This takes a string of the form &#8220;37.2%&#8221; or &#8220;44%&#8221; and
+returns a float in the range [0.0, 1.0].</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="baseplate.config.OneOf">
 <tt class="descclassname">baseplate.config.</tt><tt class="descname">OneOf</tt><big>(</big><em>**options</em><big>)</big><a class="headerlink" href="#baseplate.config.OneOf" title="Permalink to this definition">¶</a></dt>
 <dd><p>One of several predecided options.</p>
@@ -222,6 +240,13 @@ to be a valid choice, wrap with <a class="reference internal" href="#baseplate.c
 <dt id="baseplate.config.Optional">
 <tt class="descclassname">baseplate.config.</tt><tt class="descname">Optional</tt><big>(</big><em>T</em>, <em>default=None</em><big>)</big><a class="headerlink" href="#baseplate.config.Optional" title="Permalink to this definition">¶</a></dt>
 <dd><p>An option of type T, or <tt class="docutils literal"><span class="pre">default</span></tt> if not configured.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="baseplate.config.Fallback">
+<tt class="descclassname">baseplate.config.</tt><tt class="descname">Fallback</tt><big>(</big><em>T1</em>, <em>T2</em><big>)</big><a class="headerlink" href="#baseplate.config.Fallback" title="Permalink to this definition">¶</a></dt>
+<dd><p>An option of type T1, or if that fails to parse, of type T2.</p>
+<p>This is useful for backwards-compatible configuration changes.</p>
 </dd></dl>
 
 <p>If you need something custom or fancy for your application, just use a
