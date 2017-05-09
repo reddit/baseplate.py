@@ -22,6 +22,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import sys
+
 from thrift.Thrift import TProcessorEventHandler
 
 from ...core import TraceInfo
@@ -92,7 +94,11 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
         handler_context.trace.start()
 
     def handlerDone(self, handler_context, fn_name, result):
-        handler_context.trace.finish()
+        if not getattr(handler_context.trace, "is_finished", False):
+            # for unexpected exceptions, we call trace.finish() in handlerError
+            handler_context.trace.finish()
 
     def handlerError(self, handler_context, fn_name, exception):
+        handler_context.trace.finish(exc_info=sys.exc_info())
+        handler_context.trace.is_finished = True
         self.logger.exception("Unexpected exception in %r.", fn_name)

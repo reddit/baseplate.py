@@ -13,18 +13,28 @@ except ImportError:
 
 from baseplate.core import Baseplate, BaseplateObserver, ServerSpanObserver
 from baseplate.integration.thrift import BaseplateProcessorEventHandler
-from baseplate.thrift import BaseplateService
 
 from thrift.protocol.THeaderProtocol import THeaderProtocol
 from thrift.server.TServer import TRpcConnectionContext
-from thrift.transport.TTransport import TMemoryBuffer
+from thrift.transport.TTransport import TMemoryBuffer, TTransportException
 
+from .test_thrift import TestService, ttypes
 from .. import mock
 
 
-class TestHandler(BaseplateService.ContextIface):
-    def is_healthy(self, context):
+class UnexpectedException(Exception):
+    pass
+
+
+class TestHandler(TestService.ContextIface):
+    def example_simple(self, context):
         return True
+
+    def example_throws(self, context, crash):
+        if crash:
+            raise UnexpectedException
+        else:
+            raise ttypes.ExpectedException
 
 
 class ThriftTests(unittest.TestCase):
@@ -53,7 +63,7 @@ class ThriftTests(unittest.TestCase):
         event_handler = BaseplateProcessorEventHandler(self.logger, baseplate)
 
         handler = TestHandler()
-        self.processor = BaseplateService.ContextProcessor(handler)
+        self.processor = TestService.ContextProcessor(handler)
         self.processor.setEventHandler(event_handler)
 
     @mock.patch("random.getrandbits")
@@ -62,10 +72,10 @@ class ThriftTests(unittest.TestCase):
 
         client_memory_trans = TMemoryBuffer()
         client_prot = THeaderProtocol(client_memory_trans)
-        client = BaseplateService.Client(client_prot)
+        client = TestService.Client(client_prot)
         try:
-            client.is_healthy()
-        except:
+            client.example_simple()
+        except TTransportException:
             pass  # we don't have a test response for the client
         self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
@@ -78,8 +88,9 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(server_span.parent_id, None)
         self.assertEqual(server_span.id, 1234)
 
-        self.assertTrue(self.server_observer.on_start.called)
-        self.assertTrue(self.server_observer.on_finish.called)
+        self.assertEqual(self.server_observer.on_start.call_count, 1)
+        self.assertEqual(self.server_observer.on_finish.call_count, 1)
+        self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
 
     def test_with_headers(self):
         client_memory_trans = TMemoryBuffer()
@@ -90,10 +101,10 @@ class ThriftTests(unittest.TestCase):
         client_header_trans.set_header("Span", "3456")
         client_header_trans.set_header("Sampled", "1")
         client_header_trans.set_header("Flags", "1")
-        client = BaseplateService.Client(client_prot)
+        client = TestService.Client(client_prot)
         try:
-            client.is_healthy()
-        except:
+            client.example_simple()
+        except TTransportException:
             pass  # we don't have a test response for the client
         self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
@@ -107,5 +118,39 @@ class ThriftTests(unittest.TestCase):
         self.assertTrue(server_span.sampled)
         self.assertEqual(server_span.flags, 1)
 
-        self.assertTrue(self.server_observer.on_start.called)
-        self.assertTrue(self.server_observer.on_finish.called)
+        self.assertEqual(self.server_observer.on_start.call_count, 1)
+        self.assertEqual(self.server_observer.on_finish.call_count, 1)
+        self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
+
+    def test_expected_exception_not_passed_to_server_span_finish(self):
+        client_memory_trans = TMemoryBuffer()
+        client_prot = THeaderProtocol(client_memory_trans)
+        client = TestService.Client(client_prot)
+        try:
+            client.example_throws(crash=False)
+        except TTransportException:
+            pass  # we don't have a test response for the client
+        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
+
+        self.processor.process(self.iprot, self.oprot, self.server_context)
+
+        self.assertEqual(self.server_observer.on_start.call_count, 1)
+        self.assertEqual(self.server_observer.on_finish.call_count, 1)
+        self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
+
+    def test_unexpected_exception_passed_to_server_span_finish(self):
+        client_memory_trans = TMemoryBuffer()
+        client_prot = THeaderProtocol(client_memory_trans)
+        client = TestService.Client(client_prot)
+        try:
+            client.example_throws(crash=True)
+        except TTransportException:
+            pass  # we don't have a test response for the client
+        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
+
+        self.processor.process(self.iprot, self.oprot, self.server_context)
+
+        self.assertEqual(self.server_observer.on_start.call_count, 1)
+        self.assertEqual(self.server_observer.on_finish.call_count, 1)
+        _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
+        self.assertIsInstance(captured_exc, UnexpectedException)
