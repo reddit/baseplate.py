@@ -186,6 +186,11 @@ def load_and_run_script():
 
     parser.add_argument("--debug", action="store_true", default=False,
         help="enable extra-verbose debug logging")
+    parser.add_argument("--live", dest='dry_run', action='store_false',
+        help="Run script in live mode rather than dry-run mode.  In dry-run "
+        "mode, the script should not apply any changes, only report what "
+        "would be changed.")
+    parser.set_defaults(dry_run=True)
     parser.add_argument("--app-name", default="main", metavar="NAME",
         help="name of app to load from config_file (default: main)")
     parser.add_argument("config_file", type=argparse.FileType("r"),
@@ -196,4 +201,5 @@ def load_and_run_script():
     args = parser.parse_args(sys.argv[1:])
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
+    config.app.setdefault('baseplate.dry_run', args.dry_run)
     args.entrypoint(config.app)
