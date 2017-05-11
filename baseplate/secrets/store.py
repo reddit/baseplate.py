@@ -231,8 +231,8 @@ class SecretsStore(ContextFactory):
 
         try:
             current_value = secret_attributes["current"]
-        except KeyError as exc:
-            raise CorruptSecretError(path, "secret does not have %s" % exc)
+        except KeyError:
+            raise CorruptSecretError(path, "secret does not have 'current' value")
 
         encoding = secret_attributes.get("encoding", "identity")
         return VersionedSecret(

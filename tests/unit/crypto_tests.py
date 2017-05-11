@@ -7,6 +7,7 @@ import datetime
 import unittest
 
 from baseplate import crypto
+from baseplate.secrets import VersionedSecret
 
 from .. import mock
 
@@ -61,3 +62,33 @@ class SignatureTests(unittest.TestCase):
     def test_signature_urlsafe(self):
         signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
         self.assertTrue(b"=" not in signature)
+
+
+class VersionedSecretTests(unittest.TestCase):
+    @mock.patch("time.time")
+    def test_versioned(self, time):
+        time.return_value = 1000
+
+        message = "hello!"
+        max_age = datetime.timedelta(seconds=30)
+
+        versioned = VersionedSecret(previous=b"one", current=b"two", next=b"three")
+
+        previous = VersionedSecret.from_simple_secret(versioned.previous)
+        current = VersionedSecret.from_simple_secret(versioned.current)
+        next = VersionedSecret.from_simple_secret(versioned.next)
+
+        self.assertEqual(crypto.make_signature(versioned, message, max_age),
+                         crypto.make_signature(current, message, max_age))
+
+        signature = crypto.make_signature(previous, message, max_age)
+        info = crypto.validate_signature(versioned, message, signature)
+        self.assertEqual(info.expiration, 1030)
+
+        signature = crypto.make_signature(current, message, max_age)
+        info = crypto.validate_signature(versioned, message, signature)
+        self.assertEqual(info.expiration, 1030)
+
+        signature = crypto.make_signature(next, message, max_age)
+        info = crypto.validate_signature(versioned, message, signature)
+        self.assertEqual(info.expiration, 1030)

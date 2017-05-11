@@ -6,8 +6,9 @@ baseplate.crypto
 Message Signing
 ---------------
 
-.. autoclass:: MessageSigner
-   :members:
+.. autofunction:: make_signature
+
+.. autofunction:: validate_signature
 
 .. autoclass:: SignatureInfo
 
