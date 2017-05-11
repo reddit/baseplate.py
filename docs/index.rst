@@ -59,6 +59,7 @@ be used without the framework.
    baseplate.metrics: Counters and timers for statsd <baseplate/metrics>
    baseplate.random: Extensions to the standard library's random module <baseplate/random>
    baseplate.retry: Policies for retrying operations <baseplate/retry>
+   baseplate.secrets: Secure storage and access to secret tokens and credentials <baseplate/secrets>
    baseplate.thrift_pool: A Thrift client connection pool <baseplate/thrift_pool>
    baseplate.service_discovery: Integration with Synapse service discovery <baseplate/service_discovery>
 
