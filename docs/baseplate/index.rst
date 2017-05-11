@@ -3,6 +3,6 @@ baseplate
 
 .. automodule:: baseplate
 
-.. autofunction:: make_metrics_client
-.. autofunction:: make_tracing_client
+.. autofunction:: metrics_client_from_config
+.. autofunction:: tracing_client_from_config
 .. autofunction:: error_reporter_from_config

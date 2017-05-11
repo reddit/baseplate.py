@@ -9,9 +9,10 @@ import sys
 from . import config, metrics
 from .core import Baseplate
 from .diagnostics import tracing
+from ._utils import warn_deprecated
 
 
-def make_metrics_client(raw_config):
+def metrics_client_from_config(raw_config):
     """Configure and return a metrics client.
 
     This expects two configuration options:
@@ -39,7 +40,13 @@ def make_metrics_client(raw_config):
     return metrics.make_client(cfg.metrics.namespace, cfg.metrics.endpoint)
 
 
-def make_tracing_client(raw_config, log_if_unconfigured=True):
+def make_metrics_client(raw_config):
+    warn_deprecated("make_metrics_client is deprecated in favor of the more "
+                    "consistently named metrics_client_from_config")
+    return metrics_client_from_config(raw_config)
+
+
+def tracing_client_from_config(raw_config, log_if_unconfigured=True):
     """Configure and return a tracing client.
 
     This expects one configuration option and can take many optional ones:
@@ -94,6 +101,12 @@ def make_tracing_client(raw_config, log_if_unconfigured=True):
         sample_rate=cfg.tracing.sample_rate,
         log_if_unconfigured=log_if_unconfigured,
     )
+
+
+def make_tracing_client(raw_config, log_if_unconfigured=True):
+    warn_deprecated("make_tracing_client is deprecated in favor of the more "
+                    "consistently named tracing_client_from_config")
+    return tracing_client_from_config(raw_config, log_if_unconfigured)
 
 
 def error_reporter_from_config(raw_config, module_name):
@@ -178,8 +191,10 @@ def error_reporter_from_config(raw_config, module_name):
 
 
 __all__ = [
+    "error_reporter_from_config",
     "make_metrics_client",
     "make_tracing_client",
-    "error_reporter_from_config",
+    "metrics_client_from_config",
+    "tracing_client_from_config",
     "Baseplate",
 ]
