@@ -30,7 +30,7 @@ intersphinx_mapping = {
     # pymemcache's objects.inv doesn't seem to work correctly, don't use until it's fixed
     #"pymemcache": ("https://pymemcache.readthedocs.io/en/latest/", None),
     "redis": ("https://redis-py.readthedocs.org/en/latest/", "intersphinx/redis.inv"),
-    "sqlalchemy": ("http://www.sqlalchemy.org/docs/05/objects.inv", "intersphinx/sqlalchemy.inv"),
+    "sqlalchemy": ("https://docs.sqlalchemy.org/en/latest/", "intersphinx/sqlalchemy.inv"),
     "raven": ("https://docs.sentry.io/", "intersphinx/sentry.inv"),
 }
 
