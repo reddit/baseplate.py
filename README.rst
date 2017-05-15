@@ -16,9 +16,9 @@ including:
 -  and various helper libraries like a Thrift client pool
 
 Check out the `quick
-start <http://reddit.github.io/baseplate/quickstart.html>`__ to get
+start <https://baseplate.readthedocs.io/en/stable/quickstart.html>`__ to get
 going quickly, or read the `full
-docs <http://reddit.github.io/baseplate/index.html>`__.
+docs <https://baseplate.readthedocs.io/en/stable/>`__.
 
 .. |Build Status| image:: https://travis-ci.org/reddit/baseplate.svg?branch=master
    :target: https://travis-ci.org/reddit/baseplate
