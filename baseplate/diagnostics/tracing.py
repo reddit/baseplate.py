@@ -25,6 +25,8 @@ from ..core import (
 
 logger = logging.getLogger(__name__)
 
+# Suppress noisy INFO logging of underlying connection management module
+logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 # Span annotation types
 ANNOTATIONS = {
