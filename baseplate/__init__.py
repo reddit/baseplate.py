@@ -57,7 +57,7 @@ def make_tracing_client(raw_config, log_if_unconfigured=True):
     ``tracing.num_conns`` (optional)
         Pool size for remote recorder connection pool.
     ``tracing.sample_rate`` (optional)
-        Percentage of unsampled requests to record traces for (e.g. 37%)
+        Percentage of unsampled requests to record traces for (e.g. "37%")
 
     :param dict raw_config: The app configuration which should have settings
         for the tracing client.
@@ -117,7 +117,7 @@ def crash_reporter_from_config(raw_config, module_name):
         Comma-delimited list of fully qualified names of exception classes
         (potentially with * globs) to not report.
     ``sentry.sample_rate`` (optional)
-        Percentage of crashes to report. (e.g. 37%)
+        Percentage of crashes to report. (e.g. "37%")
     ``sentry.processors`` (optional)
         Comma-delimited list of fully qualified names of processor classes
         to apply to events before sending to Sentry.
