@@ -190,7 +190,7 @@ class Baseplate(object):
 
         self.register(TraceBaseplateObserver(tracing_client))
 
-    def configure_crash_reporting(self, client):  # pragma: nocover
+    def configure_error_reporting(self, client):  # pragma: nocover
         """Send reports for unexpected exceptions to the given client.
 
         This also adds a :py:class:`raven.Client` object to the ``sentry``

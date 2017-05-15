@@ -96,8 +96,8 @@ def make_tracing_client(raw_config, log_if_unconfigured=True):
     )
 
 
-def crash_reporter_from_config(raw_config, module_name):
-    """Configure and return a crash reporter.
+def error_reporter_from_config(raw_config, module_name):
+    """Configure and return a error reporter.
 
     This expects one configuration option and can take many optional ones:
 
@@ -117,14 +117,14 @@ def crash_reporter_from_config(raw_config, module_name):
         Comma-delimited list of fully qualified names of exception classes
         (potentially with * globs) to not report.
     ``sentry.sample_rate`` (optional)
-        Percentage of crashes to report. (e.g. "37%")
+        Percentage of errors to report. (e.g. "37%")
     ``sentry.processors`` (optional)
         Comma-delimited list of fully qualified names of processor classes
         to apply to events before sending to Sentry.
 
     Example usage::
 
-        crash_reporter_from_config(app_config, __name__)
+        error_reporter_from_config(app_config, __name__)
 
     :param dict raw_config: The app configuration which should have settings
         for the tracing client.
@@ -180,6 +180,6 @@ def crash_reporter_from_config(raw_config, module_name):
 __all__ = [
     "make_metrics_client",
     "make_tracing_client",
-    "crash_reporter_from_config",
+    "error_reporter_from_config",
     "Baseplate",
 ]
