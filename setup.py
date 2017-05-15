@@ -47,7 +47,7 @@ setup(
     author="Neil Williams",
     author_email="neil@reddit.com",
     license="BSD",
-    url="https://reddit.github.io/baseplate/",
+    url="https://baseplate.readthedocs.io/en/stable/",
     version="0.18.0",
 
     packages=find_packages(exclude=["tests", "tests.*"]),

@@ -1,0 +1,10 @@
+# requirements for building the sphinx docs
+alabaster
+cassandra-driver
+git+https://github.com/reddit/fbthrift.git@patch-queue/ubuntu/trusty#egg=thrift&subdirectory=thrift/lib/py/
+posix_ipc
+pymemcache
+pyramid
+redis
+sphinxcontrib-spelling
+SQLAlchemy
