@@ -10,6 +10,7 @@ Instrumented Client Libraries
    :titlesonly:
 
    baseplate.context.cassandra: Cassandra CQL Client <cassandra>
+   baseplate.context.hvac: Client for using Vault's advanced features <hvac>
    baseplate.context.memcache: Memcached Client <memcache>
    baseplate.context.redis: Redis Client <redis>
    baseplate.context.sqlalchemy: SQL Client for relational databases (e.g. PostgreSQL) <sqlalchemy>

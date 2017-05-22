@@ -35,6 +35,7 @@ before_install:
             python3-cqlmapper \
             python3-fbthrift \
             python3-gevent \
+            python3-hvac \
             python3-nose \
             python3-posix-ipc \
             python3-pymemcache \
@@ -50,6 +51,7 @@ before_install:
             python-fbthrift \
             python-flake8 \
             python-gevent \
+            python-hvac \
             python-mock \
             python-nose \
             python-posix-ipc \
@@ -61,8 +63,10 @@ before_install:
             python-sphinx \
             python-sphinxcontrib.spelling \
             python-sqlalchemy \
-            python-webtest
+            python-webtest \
+            unzip
     - sudo service cassandra start
+    - wget https://releases.hashicorp.com/vault/0.6.2/vault_0.6.2_linux_amd64.zip && unzip vault_0.6.2_linux_amd64.zip && ./vault server -dev -dev-root-token-id=b4c6f298-3f80-11e7-8b88-5254001e7ad3 &
     - sleep 10  # cassandra takes a while to start up
 
 script:

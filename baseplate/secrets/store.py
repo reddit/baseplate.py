@@ -245,6 +245,9 @@ class SecretsStore(ContextFactory):
 
         :rtype: :py:class:`str`
 
+        .. seealso:: The :py:mod:`baseplate.context.hvac` module provides
+            integration with HVAC, a Vault client.
+
         """
         self._load_if_needed()
         return self._data["vault"]["url"]
@@ -256,6 +259,9 @@ class SecretsStore(ContextFactory):
         Vault role. This is only necessary if talking directly to Vault.
 
         :rtype: :py:class:`str`
+
+        .. seealso:: The :py:mod:`baseplate.context.hvac` module provides
+            integration with HVAC, a Vault client.
 
         """
         self._load_if_needed()
