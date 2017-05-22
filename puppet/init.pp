@@ -23,3 +23,4 @@ include nginx
 include cassandra
 include memcached
 include redis
+include vault
