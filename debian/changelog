@@ -1,3 +1,16 @@
+baseplate (0.19.0) trusty; urgency=medium
+
+  * add sentry integration
+  * add vault integration
+  * fix exception propagation to span finish in thrift integration
+  * suppress noisy urllib3 logs from zipkin integration
+  * rework message signer to take advantage of versioned secrets from vault
+  * rename make_{metrics,tracing}_client (with shims)
+  * fix context property attachment in local spans
+  * fix healthcheck tool in python3
+
+ -- Neil Williams <neil@reddit.com>  Thu, 25 May 2017 14:36:50 -0700
+
 baseplate (0.18.0) trusty; urgency=medium
 
   * add memcached serde helpers
