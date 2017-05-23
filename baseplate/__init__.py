@@ -115,7 +115,7 @@ def error_reporter_from_config(raw_config, module_name):
     This expects one configuration option and can take many optional ones:
 
     ``sentry.dsn``
-        The DSN provided by Sentry.
+        The DSN provided by Sentry. If blank, the reporter will discard events.
     ``sentry.site`` (optional)
         An arbitrary string to identify this client installation.
     ``sentry.environment`` (optional)
@@ -149,7 +149,7 @@ def error_reporter_from_config(raw_config, module_name):
 
     cfg = config.parse_config(raw_config, {
         "sentry": {
-            "dsn": config.String,
+            "dsn": config.Optional(config.String, default=None),
             "site": config.Optional(config.String, default=None),
             "environment": config.Optional(config.String, default=None),
             "include_paths": config.Optional(config.String, default=None),
