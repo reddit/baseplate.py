@@ -21,17 +21,22 @@ class SentryBaseplateObserver(BaseplateObserver):
         self.raven = raven
 
     def on_server_span_created(self, context, server_span):
-        observer = SentryServerSpanObserver(self.raven)
+        observer = SentryServerSpanObserver(self.raven, server_span)
         server_span.register(observer)
         context.sentry = self.raven
 
 
 class SentryServerSpanObserver(ServerSpanObserver):
-    def __init__(self, raven):
+    def __init__(self, raven, server_span):
         self.raven = raven
+        self.server_span = server_span
 
     def on_start(self):
         self.raven.context.activate()
+
+        # for now, this is just a tag for us humans to use
+        # https://github.com/getsentry/sentry/issues/716
+        self.raven.tags_context({"trace_id": self.server_span.trace_id})
 
     def on_set_tag(self, key, value):
         if key.startswith("http"):
