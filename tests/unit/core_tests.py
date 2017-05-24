@@ -172,7 +172,7 @@ class ServerSpanTests(unittest.TestCase):
         server_span = ServerSpan("trace", "parent", "id", None, 0, "name", mock_context)
         server_span.register(mock_observer)
         local_span = server_span.make_child("test_op", local=True,
-                                                           component_name="test_component")
+                                            component_name="test_component")
         self.assertNotEqual(local_span.context, mock_context)
 
 

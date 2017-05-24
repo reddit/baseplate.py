@@ -60,4 +60,4 @@ class ContextObserver(BaseplateObserver):
     def on_child_span_created(self, child_span):
         if isinstance(child_span, LocalSpan):
             context_attr = self.context_factory.make_object_for_context(self.name, child_span)
-            setattr(child_span.context, self.name, context_attr)
+            child_span.context.shadow_context_attr(self.name, context_attr)
