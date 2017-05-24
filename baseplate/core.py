@@ -376,7 +376,7 @@ class LocalSpan(Span):
             if component_name is None:
                 raise ValueError("Cannot create local span without component name.")
             span.component_name = component_name
-            context_copy.trace = span
+            context_copy.shadow_context_attr('trace', span)
         else:
             span = Span(self.trace_id, self.id, span_id, self.sampled, self.flags, name, self.context)
         for observer in self.observers:

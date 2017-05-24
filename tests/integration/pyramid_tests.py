@@ -31,24 +31,25 @@ def example_application(request):
         raise TestException("this is a test")
     return {"test": "success"}
 
-def local_tracing_app(request):
-    local_span = request.trace.make_child('local-req', local=True,
-                                          component_name='local-op')
-    local_span.start()
-    local_span.finish()
+
+def local_tracing_within_context(request):
+    with request.trace.make_child('local-req',
+                                  local=True,
+                                  component_name='in-context'):
+        pass
     return {'trace': 'success'}
 
 class ConfiguratorTests(unittest.TestCase):
     def setUp(self):
         configurator = Configurator()
         configurator.add_route("example", "/example", request_method="GET")
-        configurator.add_route("trace", "/trace", request_method="GET")
+        configurator.add_route("trace_context", "/trace_context", request_method="GET")
 
         configurator.add_view(
             example_application, route_name="example", renderer="json")
 
         configurator.add_view(
-            local_tracing_app, route_name="trace", renderer="json")
+            local_tracing_within_context, route_name="trace_context", renderer="json")
 
         self.observer = mock.Mock(spec=BaseplateObserver)
         self.server_observer = mock.Mock(spec=ServerSpanObserver)
@@ -132,6 +133,9 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(server_span.parent_id, None)
         self.assertEqual(server_span.id, getrandbits.return_value)
 
-    def test_local_trace(self):
-        self.test_app.get('/trace')
+    def test_local_trace_in_context(self):
+        self.test_app.get('/trace_context')
         self.assertEqual(self.server_observer.on_child_span_created.call_count, 1)
+        child_span = self.server_observer.on_child_span_created.call_args[0][0]
+        context, server_span = self.observer.on_server_span_created.call_args[0]
+        self.assertNotEqual(child_span.context, context)
