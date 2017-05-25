@@ -9,11 +9,11 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import socket
-import urlparse
-import urllib
 
 import requests.adapters
 import urllib3.connectionpool
+
+from ._compat import unquote, urlparse
 
 # the adapter code below is inspired by similar code in
 # https://github.com/msabramo/requests-unixsocket/blob/master/requests_unixsocket/adapters.py
@@ -24,10 +24,10 @@ class _UNIXConnection(urllib3.connectionpool.HTTPConnection):
     # pylint: disable=super-init-not-called
     def __init__(self, url):
         urllib3.connectionpool.HTTPConnection.__init__(self, "localhost")
-        self.url = urlparse.urlparse(url)
+        self.url = urlparse(url)
 
     def connect(self):
-        socket_path = urllib.unquote(self.url.netloc)
+        socket_path = unquote(self.url.netloc)
 
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.settimeout(1)

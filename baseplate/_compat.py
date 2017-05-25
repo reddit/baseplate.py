@@ -14,7 +14,7 @@ if sys.version_info.major == 3:  # pragma: nocover
     import queue
     from io import BytesIO
     import pickle
-    from urllib.parse import urljoin  # pylint: disable=no-name-in-module
+    from urllib.parse import urlparse, urljoin, unquote # pylint: disable=no-name-in-module
     range = range
     string_types = str,
     long = int
@@ -24,7 +24,8 @@ else:  # pragma: nocover
     import Queue as queue
     import cPickle as pickle
     from cStringIO import StringIO as BytesIO
-    from urlparse import urljoin
+    from urllib import unquote
+    from urlparse import urlparse, urljoin
     range = xrange
     string_types = basestring,
     long = long
@@ -39,5 +40,7 @@ __all__ = [
     "queue",
     "range",
     "string_types",
+    "unquote",
     "urljoin",
+    "urlparse",
 ]
