@@ -14,7 +14,7 @@ if sys.version_info.major == 3:  # pragma: nocover
     import queue
     from io import BytesIO
     import pickle
-    from urllib.parse import urlparse, urljoin, unquote # pylint: disable=no-name-in-module
+    from urllib.parse import urlparse, urljoin, unquote  # pylint: disable=no-name-in-module
     range = range
     string_types = str,
     long = int
