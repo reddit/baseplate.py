@@ -269,7 +269,7 @@ def secrets_store_from_config(app_config):
     """
     cfg = config.parse_config(app_config, {
         "secrets": {
-            "path": config.String,
+            "path": config.Optional(config.String, default="/var/local/secrets.json"),
         },
     })
     # pylint: disable=no-member
