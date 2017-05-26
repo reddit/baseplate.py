@@ -3,72 +3,23 @@ baseplate.context
 
 .. automodule:: baseplate.context
 
+Instrumented Client Libraries
+-----------------------------
 
-Services
---------
+.. toctree::
+   :titlesonly:
 
-.. autoclass:: baseplate.context.thrift.ThriftContextFactory
-
-
-Cassandra
----------
-
-.. autofunction:: baseplate.context.cassandra.cluster_from_config
-
-.. autoclass:: baseplate.context.cassandra.CassandraContextFactory
-
-.. autoclass:: baseplate.context.cassandra.CQLMapperContextFactory
-
-
-Memcache
---------
-
-.. autofunction:: baseplate.context.memcache.pool_from_config
-
-.. autoclass:: baseplate.context.memcache.MemcacheContextFactory
-   :members:
-
-.. autoclass:: baseplate.context.memcache.MonitoredMemcacheConnection
-   :members:
-
-.. autofunction:: baseplate.context.memcache.lib.decompress_and_load
-
-.. autofunction:: baseplate.context.memcache.lib.make_dump_and_compress_fn
-
-.. autofunction:: baseplate.context.memcache.lib.decompress_and_unpickle
-
-.. autofunction:: baseplate.context.memcache.lib.make_pickle_and_compress_fn
-
-
-Redis
------
-
-.. autofunction:: baseplate.context.redis.pool_from_config
-
-.. autoclass:: baseplate.context.redis.RedisContextFactory
-   :members:
-
-.. autoclass:: baseplate.context.redis.MonitoredRedisConnection
-   :members:
-
-
-SQLAlchemy
-----------
-
-.. autoclass:: baseplate.context.sqlalchemy.SQLAlchemyEngineContextFactory
-
-.. autoclass:: baseplate.context.sqlalchemy.SQLAlchemySessionContextFactory
-
+   baseplate.context.cassandra: Cassandra CQL Client <cassandra>
+   baseplate.context.memcache: Memcached Client <memcache>
+   baseplate.context.redis: Redis Client <redis>
+   baseplate.context.sqlalchemy: SQL Client for relational databases (e.g. PostgreSQL) <sqlalchemy>
+   baseplate.context.thrift: Thrift client for RPC to other backend services <thrift>
 
 DIY: The Factory
 ----------------
 
-.. note::
-
-   Stuff beyond this point is only useful if you are implementing your own
-   context helpers. You can stop reading here if the stuff above already has
-   you covered!
-
+If a library you want isn't supported here, it can be added to your own
+application by subclassing :py:class:`~baseplate.context.ContextFactory`.
 
 .. autoclass:: baseplate.context.ContextFactory
    :members:
