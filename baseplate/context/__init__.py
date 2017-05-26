@@ -1,9 +1,8 @@
 """Helpers that integrate common client libraries with baseplate's diagnostics.
 
 This package contains modules which integrate various client libraries with
-Baseplate's diagnostics and tracing facilities. When using these helpers,
-trace information and monitoring are automatically collected and sent on for
-you.
+Baseplate's instrumentation. When using them, trace information is passed on
+and metrics are collected automatically.
 
 To use these helpers, use the
 :py:meth:`~baseplate.core.Baseplate.add_to_context` method on your
@@ -17,9 +16,6 @@ and then a context-aware version of the client will show up on the
 
     def my_handler(self, context):
         context.my_client.make_some_remote_call()
-
-If a library you want isn't supported here, it can be added to your own
-application by subclassing :py:class:`~baseplate.context.ContextFactory`.
 
 """
 from __future__ import absolute_import

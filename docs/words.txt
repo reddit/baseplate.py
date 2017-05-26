@@ -3,11 +3,13 @@ app
 backend
 backends
 backoff
+cassandra
 config
 Config
 configurables
 Cookiecutter
 crypto
+deserialization
 Deserialization
 deserialized
 Einhorn
@@ -41,11 +43,13 @@ revalidate
 rlimit
 serializable
 serializer
+sqlalchemy
 statsd
 subclassing
 sysctls
 unpickle
 unsampled
+url
 versioned
 Versioned
 walkthrough
