@@ -30,6 +30,12 @@ class StoreTests(unittest.TestCase):
         self.tempfile.write(data.encode("utf8"))
         self.tempfile.flush()
 
+    def test_file_not_found(self):
+        secrets = store.SecretsStore("/does_not_exist")
+
+        with self.assertRaises(store.SecretsNotAvailableError):
+            secrets.get_raw("test")
+
     def test_initial_fetch_loads_secrets(self):
         self._fill_secrets_file("""{
             "secrets": {

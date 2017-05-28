@@ -39,3 +39,5 @@ Exceptions
 .. autoexception:: CorruptSecretError
 
 .. autoexception:: SecretNotFoundError
+
+.. autoexception:: SecretsNotAvailableError

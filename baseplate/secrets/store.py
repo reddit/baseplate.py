@@ -43,6 +43,17 @@ class CorruptSecretError(Exception):
         return "{}: {}".format(self.path, self.message)
 
 
+class SecretsNotAvailableError(Exception):
+    """Raised when the secrets store was not accessible."""
+
+    def __init__(self, inner):
+        super(SecretsNotAvailableError, self).__init__()
+        self.inner = inner
+
+    def __str__(self):  # pragma: nocover
+        return "could not load secrets: {}".format(self.inner)
+
+
 _VersionedSecret = collections.namedtuple(
     "VersionedSecret", "previous current next")
 
@@ -132,12 +143,15 @@ class SecretsStore(ContextFactory):
         except OSError:
             secrets_file_updated = False
 
-        if secrets_file_updated:
+        if self._secrets is None or secrets_file_updated:
             logger.debug("Loading secrets from %s.", self._path)
 
-            with open(self._path) as f:
-                raw_data = json.load(f)
-                mtime = os.fstat(f.fileno()).st_mtime
+            try:
+                with open(self._path) as f:
+                    raw_data = json.load(f)
+                    mtime = os.fstat(f.fileno()).st_mtime
+            except IOError as exc:
+                raise SecretsNotAvailableError(exc)
 
             self._vault_token = raw_data["vault_token"]
             self._secrets = raw_data["secrets"]
