@@ -30,15 +30,35 @@ class MetricsBaseplateObserver(BaseplateObserver):
         self.client = client
 
     def on_server_span_created(self, context, server_span):
-        context.metrics = self.client.batch()
-        observer = MetricsServerSpanObserver(context.metrics, "server." + server_span.name)
+        batch = self.client.batch()
+        context.metrics = batch
+        observer = MetricsServerSpanObserver(batch, server_span)
         server_span.register(observer)
 
 
-class MetricsSpanObserver(SpanObserver):
-    def __init__(self, batch, name):
+class MetricsServerSpanObserver(SpanObserver):
+    def __init__(self, batch, server_span):
         self.batch = batch
-        self.timer = batch.timer(name)
+        self.timer = batch.timer("server." + server_span.name)
+
+    def on_start(self):
+        self.timer.start()
+
+    def on_finish(self, exc_info):
+        self.timer.stop()
+        self.batch.flush()
+
+    def on_child_span_created(self, span):  # pragma: nocover
+        if isinstance(span, LocalSpan):
+            observer = MetricsLocalSpanObserver(self.batch, span)
+        else:
+            observer = MetricsClientSpanObserver(self.batch, span)
+        span.register(observer)
+
+
+class MetricsLocalSpanObserver(SpanObserver):
+    def __init__(self, batch, span):
+        self.timer = batch.timer(span.component_name + "." + span.name)
 
     def on_start(self):
         self.timer.start()
@@ -47,14 +67,16 @@ class MetricsSpanObserver(SpanObserver):
         self.timer.stop()
 
 
-class MetricsServerSpanObserver(MetricsSpanObserver):
-    def on_child_span_created(self, span):  # pragma: nocover
-        if isinstance(span, LocalSpan):
-            observer = MetricsSpanObserver(self.batch, span.component_name + "." + span.name)
-        else:
-            observer = MetricsSpanObserver(self.batch, "clients." + span.name)
-        span.register(observer)
+class MetricsClientSpanObserver(SpanObserver):
+    def __init__(self, batch, span):
+        self.batch = batch
+        self.base_name = "clients." + span.name
+        self.timer = batch.timer(self.base_name)
+
+    def on_start(self):
+        self.timer.start()
 
     def on_finish(self, exc_info):
-        super(MetricsServerSpanObserver, self).on_finish(exc_info)
-        self.batch.flush()
+        self.timer.stop()
+        suffix = "success" if not exc_info else "failure"
+        self.batch.counter(self.base_name + "." + suffix).increment()
