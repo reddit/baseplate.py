@@ -44,6 +44,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         event.listen(engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(engine, "after_cursor_execute", self.on_after_execute)
+        event.listen(engine, "dbapi_error", self.on_dbapi_error)
 
     def make_object_for_context(self, name, server_span):
         self.threadlocal.context_name = name
@@ -72,8 +73,14 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     # pylint: disable=unused-argument, too-many-arguments
     def on_after_execute(self, conn, cursor, statement, parameters, context, executemany):
-        """Handle the engine's after_cursor_execute event."""
+        """Handle the event which happens after successful cursor execution."""
         self.threadlocal.current_span.finish()
+        self.threadlocal.current_span = None
+
+    def on_dbapi_error(self, conn, cursor, statement, parameters, context, exception):
+        """Handle the event which happens on exceptions during execution."""
+        exc_info = (type(exception), exception, None)
+        self.threadlocal.current_span.finish(exc_info=exc_info)
         self.threadlocal.current_span = None
 
 
