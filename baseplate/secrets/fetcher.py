@@ -262,7 +262,7 @@ def main():
             secrets[secret_name], expiration = client.get_secret(secret_name)
             soonest_expiration = min(soonest_expiration, expiration)
 
-        with open(cfg.output.path, "w") as f:
+        with open(cfg.output.path + ".tmp", "w") as f:
             os.fchown(f.fileno(), cfg.output.owner, cfg.output.group)
             os.fchmod(f.fileno(), cfg.output.mode)
 
@@ -270,6 +270,9 @@ def main():
                 "vault_token": client.token,
                 "secrets": secrets,
             }, f, indent=2, sort_keys=True)
+
+        # swap out the file contents atomically
+        os.rename(cfg.output.path + ".tmp", cfg.output.path)
 
         time_til_expiration = soonest_expiration - datetime.datetime.utcnow()
         time_to_sleep = time_til_expiration - VAULT_TOKEN_PREFETCH_TIME
