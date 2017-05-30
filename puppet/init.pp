@@ -21,4 +21,5 @@ include nginx
 
 # for integration tests
 include cassandra
+include memcached
 include redis
