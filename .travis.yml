@@ -15,9 +15,12 @@ virtualenv:
 
 before_install:
     - sudo add-apt-repository -y ppa:reddit/ppa
+    - echo "deb http://debian.datastax.com/community stable main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
+    - sudo apt-key add puppet/modules/cassandra/files/repo_key
     - sudo apt-get update -q
     - >
         sudo apt-get install -y \
+            cassandra=2.2.8 \
             fbthrift-compiler \
             make \
             pylint \
@@ -55,6 +58,8 @@ before_install:
             python-sphinxcontrib.spelling \
             python-sqlalchemy \
             python-webtest
+    - sudo service cassandra start
+    - sleep 10  # cassandra takes a while to start up
 
 script:
     - make

@@ -18,3 +18,6 @@ include baseplate
 
 # for viewing generated docs and reports
 include nginx
+
+# for integration tests
+include cassandra

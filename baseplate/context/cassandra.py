@@ -96,8 +96,8 @@ def _on_execute_complete(_, span):
 
 
 def _on_execute_failed(exc, span):
-    span.set_tag("error", str(exc))
-    span.finish()
+    exc_info = (type(exc), exc, None)
+    span.finish(exc_info=exc_info)
 
 
 class CassandraSessionAdapter(object):

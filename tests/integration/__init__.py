@@ -1,4 +1,25 @@
+import socket
+import unittest
+
 from baseplate.core import BaseplateObserver, SpanObserver
+
+
+def skip_if_server_unavailable(name, port):
+    """Raise SkipTest if the given server is not available.
+
+    This is useful for running tests in environments where we can't launch
+    servers.
+
+    """
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(.1)
+        sock.connect(("localhost", port))
+    except socket.error:
+        raise unittest.SkipTest("local %s does not appear available" % name)
+    else:
+        sock.close()
 
 
 class TestSpanObserver(SpanObserver):
