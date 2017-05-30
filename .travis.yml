@@ -16,15 +16,49 @@ virtualenv:
 before_install:
     - sudo add-apt-repository -y ppa:reddit/ppa
     - sudo apt-get update -q
-    - sudo apt-get install -y python-fbthrift python3-fbthrift fbthrift-compiler python-sphinx python-sphinxcontrib.spelling python-alabaster python-posix-ipc python3-posix-ipc python-enum34 python-flake8 pylint python-redis python-gevent python-pymemcache python3-pymemcache
-
-install:
-    - pip install -e ".[pyramid]"
-    - pip install webtest coverage
+    - >
+        sudo apt-get install -y \
+            fbthrift-compiler \
+            make \
+            pylint \
+            python \
+            python3 \
+            python3-cassandra \
+            python3-coverage \
+            python3-cqlmapper \
+            python3-fbthrift \
+            python3-gevent \
+            python3-nose \
+            python3-posix-ipc \
+            python3-pymemcache \
+            python3-redis \
+            python3-requests \
+            python3-setuptools \
+            python3-sqlalchemy \
+            python3-webtest \
+            python-alabaster \
+            python-coverage \
+            python-cqlmapper \
+            python-enum34 \
+            python-fbthrift \
+            python-flake8 \
+            python-gevent \
+            python-mock \
+            python-nose \
+            python-posix-ipc \
+            python-pymemcache \
+            python-pyramid \
+            python-redis \
+            python-requests \
+            python-setuptools \
+            python-sphinx \
+            python-sphinxcontrib.spelling \
+            python-sqlalchemy \
+            python-webtest
 
 script:
     - make
-    - nosetests
+    - nosetests -v
     - sphinx-build -M doctest docs/ build/
     - sphinx-build -M spelling docs/ build/
     - make lint

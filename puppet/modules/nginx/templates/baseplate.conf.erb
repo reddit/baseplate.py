@@ -1,0 +1,7 @@
+server {
+    listen 80 default_server;
+
+    root <%= @project_path %>/build;
+    index index.html;
+    autoindex on;
+}
