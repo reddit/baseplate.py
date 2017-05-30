@@ -39,7 +39,6 @@ def _make_baseplate_tween(handler, registry):
             response = handler(request)
         except:
             if hasattr(request, "trace"):
-                request.trace.set_tag("error", True)
                 request.trace.finish(exc_info=sys.exc_info())
             raise
         else:

@@ -164,6 +164,8 @@ class TraceSpanObserver(SpanObserver):
         self.client_send = self.start
 
     def on_finish(self, exc_info):
+        if exc_info:
+            self.on_set_tag("error", True)
         self.end = current_epoch_microseconds()
         self.elapsed = self.end - self.start
         self.record()
@@ -323,11 +325,6 @@ class TraceServerSpanObserver(TraceSpanObserver):
                                                child_span,
                                                self.recorder)
         child_span.register(trace_observer)
-
-    def on_finish(self, exc_info):
-        self.end = current_epoch_microseconds()
-        self.elapsed = self.end - self.start
-        self.record()
 
     def _serialize(self):
         """Serialize span information into Zipkin-accepted format."""
