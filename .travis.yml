@@ -5,6 +5,9 @@ branches:
 sudo: required
 dist: trusty
 
+services:
+    - redis
+
 language: python
 python:
     - "2.7"
