@@ -24,8 +24,8 @@ application frameworks to provide automatic diagnostics to services.
 The Library
 -----------
 
-Baseplate also provides a collection of "extra batteries", independent modules
-that provide commonly needed functionality to applications. They can be used
+Baseplate also provides a collection of "extra batteries". These independent
+modules provide commonly needed functionality to applications. They can be used
 separately from the rest of Baseplate.
 
 .. toctree::
