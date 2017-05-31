@@ -1,8 +1,8 @@
 """Helpers that integrate common client libraries with baseplate's diagnostics.
 
 This package contains modules which integrate various client libraries with
-Baseplate's instrumentation. When using them, trace information is passed on
-and metrics are collected automatically.
+Baseplate's instrumentation. When using these client library integrations,
+trace information is passed on and metrics are collected automatically.
 
 To use these helpers, use the
 :py:meth:`~baseplate.core.Baseplate.add_to_context` method on your
