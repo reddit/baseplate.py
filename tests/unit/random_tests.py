@@ -87,6 +87,10 @@ class WeightedChoiceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             lottery.sample(5)
 
+        # should not raise
+        self.assertEqual(sorted(lottery.sample(len(items))),
+                         sorted(items))
+
     def test_sample(self):
         weight_fn = lambda i: 3 if i == "c" else 1
         items = [

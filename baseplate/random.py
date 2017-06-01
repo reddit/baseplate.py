@@ -77,7 +77,7 @@ class WeightedLottery(object):
         :param int sample_size: The number of items to sample from the lottery.
 
         """
-        if not 0 <= sample_size < len(self.items):
+        if not 0 <= sample_size <= len(self.items):
             raise ValueError("sample size is negative or larger than the population")
 
         already_picked = set()
