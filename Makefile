@@ -1,4 +1,4 @@
-all: thrift build
+all: thrift
 
 THRIFT=thrift1
 THRIFT_OPTS=-strict -gen py:utf8strings,slots,new_style
@@ -24,15 +24,22 @@ $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/t
 	cp -r $(THRIFT_BUILDDIR)/$</test tests/integration/test_thrift
 	touch $@
 
-build:
-	python2 setup.py build
-	python3 setup.py build
-
 docs:
 	sphinx-build -M html docs/ build/
 
 spelling:
 	sphinx-build -M spelling docs/ build/
+
+tests: thrift
+	nosetests -v
+	nosetests3 -v
+	sphinx-build -M doctest docs/ build/
+
+lint:
+	flake8 baseplate/
+	pylint --errors-only baseplate/
+
+checks: tests lint spelling
 
 clean:
 	-rm -rf build/
@@ -41,23 +48,4 @@ clean:
 realclean: clean
 	-rm -rf baseplate.egg-info/
 
-tests:
-	nosetests
-	nosetests3
-	sphinx-build -M doctest docs/ build/
-	sphinx-build -M spelling docs/ build/
-
-develop:
-	python2 setup.py develop
-	python3 setup.py develop
-
-install:
-	python2 setup.py install
-	python3 setup.py install
-
-lint:
-	flake8 baseplate/
-	pylint --errors-only baseplate/
-
-
-.PHONY: docs spelling clean realclean tests develop install build lint
+.PHONY: docs spelling clean realclean tests lint checks
