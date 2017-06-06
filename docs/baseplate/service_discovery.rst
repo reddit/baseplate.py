@@ -1,5 +1,5 @@
-baseplate.service_discovery
-===========================
+``baseplate.service_discovery``
+===============================
 
 .. automodule:: baseplate.service_discovery
 

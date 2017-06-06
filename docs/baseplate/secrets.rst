@@ -1,5 +1,5 @@
-baseplate.secrets
-=================
+``baseplate.secrets``
+=====================
 
 .. automodule:: baseplate.secrets
 

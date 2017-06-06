@@ -1,5 +1,5 @@
-baseplate.random
-================
+``baseplate.random``
+====================
 
 .. automodule:: baseplate.random
 

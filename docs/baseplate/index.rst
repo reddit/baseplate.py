@@ -1,5 +1,5 @@
-baseplate
-=========
+``baseplate``
+=============
 
 .. automodule:: baseplate
 

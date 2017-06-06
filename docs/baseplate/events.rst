@@ -1,5 +1,5 @@
-baseplate.events
-================
+``baseplate.events``
+====================
 
 .. automodule:: baseplate.events
 

@@ -1,5 +1,5 @@
-baseplate.metrics
-=================
+``baseplate.metrics``
+=====================
 
 .. automodule:: baseplate.metrics
 

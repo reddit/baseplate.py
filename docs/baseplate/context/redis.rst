@@ -1,5 +1,5 @@
-baseplate.context.redis
-=======================
+``baseplate.context.redis``
+===========================
 
 .. automodule:: baseplate.context.redis
 

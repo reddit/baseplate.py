@@ -18,13 +18,13 @@ def metrics_client_from_config(raw_config):
     This expects two configuration options:
 
     ``metrics.namespace``
-        The root key to namespace all metrics in this application under.
+        The root key to prefix all metrics in this application with.
     ``metrics.endpoint``
         A ``host:port`` pair, e.g. ``localhost:2014``. If an empty string, a
         client that discards all metrics will be returned.
 
-    :param dict raw_config: The app configuration which should have settings
-        for the metrics client.
+    :param dict raw_config: The application configuration which should have
+        settings for the metrics client.
     :return: A configured client.
     :rtype: :py:class:`baseplate.metrics.Client`
 
@@ -66,8 +66,8 @@ def tracing_client_from_config(raw_config, log_if_unconfigured=True):
     ``tracing.sample_rate`` (optional)
         Percentage of unsampled requests to record traces for (e.g. "37%")
 
-    :param dict raw_config: The app configuration which should have settings
-        for the tracing client.
+    :param dict raw_config: The application configuration which should have
+        settings for the tracing client.
     :param bool log_if_unconfigured: When the client is not configured, should
         trace spans be logged or discarded silently?
     :return: A configured client.
@@ -139,8 +139,8 @@ def error_reporter_from_config(raw_config, module_name):
 
         error_reporter_from_config(app_config, __name__)
 
-    :param dict raw_config: The app configuration which should have settings
-        for the tracing client.
+    :param dict raw_config: The application configuration which should have
+        settings for the error reporter.
     :param str module_name: ``__name__`` of the root module of the application.
     :rtype: :py:class:`raven.Client`
 

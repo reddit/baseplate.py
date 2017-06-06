@@ -1,5 +1,5 @@
-baseplate.context.thrift
-========================
+``baseplate.context.thrift``
+============================
 
 .. automodule:: baseplate.context.thrift
 

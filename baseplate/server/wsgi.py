@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 def make_server(config, listener, app):
-    """Make a Gevent server for WSGI apps."""
+    """Make a gevent server for WSGI apps."""
     max_concurrency = int(config.get("max_concurrency", 0)) or None
     stop_timeout = int(config.get("stop_timeout", 0))
     handler = config.get("handler", None)

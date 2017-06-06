@@ -1,5 +1,5 @@
-baseplate.crypto
-================
+``baseplate.crypto``
+====================
 
 .. automodule:: baseplate.crypto
 

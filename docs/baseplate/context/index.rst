@@ -1,5 +1,5 @@
-baseplate.context
-=================
+``baseplate.context``
+=====================
 
 .. automodule:: baseplate.context
 
@@ -20,7 +20,7 @@ DIY: The Factory
 ----------------
 
 If a library you want isn't supported here, it can be added to your own
-application by subclassing :py:class:`~baseplate.context.ContextFactory`.
+application by implementing :py:class:`~baseplate.context.ContextFactory`.
 
 .. autoclass:: baseplate.context.ContextFactory
    :members:

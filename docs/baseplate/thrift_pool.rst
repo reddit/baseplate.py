@@ -1,5 +1,5 @@
-baseplate.thrift_pool
-=====================
+``baseplate.thrift_pool``
+=========================
 
 .. automodule:: baseplate.thrift_pool
 

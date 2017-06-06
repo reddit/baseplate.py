@@ -1,7 +1,7 @@
-baseplate-healthcheck
-=====================
+``baseplate-healthcheck``
+=========================
 
-Baseplate services have well-defined healthcheck endpoints. The
+Baseplate services have well-defined health-check endpoints. The
 ``baseplate-healthcheck`` tool connects to a given service and checks these
 endpoints to see if they're alive.
 
@@ -31,4 +31,4 @@ Usage
 -----
 
 This script can be used as part of a process to validate a server after
-creation, or to revalidate a service for use in a service discovery system.
+creation, or to check service liveliness for a service discovery system.

@@ -57,7 +57,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         """Handle the engine's before_cursor_execute event."""
         # http://docs.sqlalchemy.org/en/latest/orm/session_basics.html#is-the-session-thread-safe
         assert self.threadlocal.current_span is None, \
-            "sqlalchemy sessions cannot be used concurrently"
+            "SQLAlchemy sessions cannot be used concurrently"
 
         trace_name = "{}.{}".format(self.threadlocal.context_name, "execute")
         span = self.threadlocal.server_span.make_child(trace_name)

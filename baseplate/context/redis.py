@@ -86,7 +86,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
     :py:meth:`~baseplate.context.redis.MonitoredRedisConnection.pipeline`
     method.
 
-    .. note:: Locks and pubsub are currently unsupported.
+    .. note:: Locks and PubSub are currently unsupported.
 
     """
 

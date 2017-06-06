@@ -1,5 +1,5 @@
-baseplate.context.cassandra
-===========================
+``baseplate.context.cassandra``
+===============================
 
 .. automodule:: baseplate.context.cassandra
 

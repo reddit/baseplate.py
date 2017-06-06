@@ -1,5 +1,5 @@
-baseplate.context.memcache
-==========================
+``baseplate.context.memcache``
+==============================
 
 .. automodule:: baseplate.context.memcache
 

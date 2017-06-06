@@ -1,5 +1,5 @@
-baseplate.integration
-=====================
+``baseplate.integration``
+=========================
 
 .. automodule:: baseplate.integration
 

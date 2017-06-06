@@ -1,5 +1,5 @@
-baseplate-serve
-===============
+``baseplate-serve``
+===================
 
 Baseplate comes with a simple Gevent-based server for both Thrift and WSGI
 applications called ``baseplate-serve2`` or ``baseplate-serve3`` depending
@@ -9,9 +9,9 @@ Configuration
 -------------
 
 There is one required parameter on the command line, the path to an INI-format
-configuration file. There should be two sections in the file: the server
-section and the app section. The section headers look like ``server:main`` or
-``app:main`` where the part before the ``:`` is the type of section and the
+configuration file. There should be two sections in the file: the ``server``
+section and the ``app`` section. The section headers look like ``server:main``
+or ``app:main`` where the part before the ``:`` is the type of section and the
 part after is the "name". Baseplate looks for sections named ``main`` by
 default but can be overridden with the ``--server-name`` and ``--app-name``
 options.
@@ -36,7 +36,7 @@ comes with two servers built in:
 ``baseplate.server.wsgi``
    A Gevent WSGI server.
 
-Both take two optional configurables as well:
+Both take two optional configuration values as well:
 
 ``max_concurrency``
    The maximum number of simultaneous clients the server will handle. Unlimited

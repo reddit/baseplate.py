@@ -1,5 +1,5 @@
-baseplate.core
-==============
+``baseplate.core``
+==================
 
 The heart of the Baseplate framework is its diagnostics system. Here's an
 incomplete example of an application built with the framework::

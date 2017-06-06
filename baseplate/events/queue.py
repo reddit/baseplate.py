@@ -31,7 +31,7 @@ from baseplate._utils import warn_deprecated
 
 # pylint: disable=pointless-string-statement,no-init
 class FieldKind(Enum):
-    """Enum of field kinds."""
+    """Field kinds."""
     NORMAL = None
     """
     For fields normal fields with no hashing/indexing requirements.

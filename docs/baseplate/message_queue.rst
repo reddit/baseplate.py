@@ -1,5 +1,5 @@
-baseplate.message_queue
-=======================
+``baseplate.message_queue``
+===========================
 
 This module provides a thin wrapper around POSIX Message queues.
 
@@ -10,10 +10,10 @@ This module provides a thin wrapper around POSIX Message queues.
 
    There are also various limits on the sizes of queues:
 
-   * The ``msgqueue`` rlimit limits the amount of space the user can use on
+   * The ``msgqueue`` ``rlimit`` limits the amount of space the user can use on
      message queues.
-   * The ``fs.mqueue.msg_max`` and ``fs.mqueue.msgsize_max`` sysctls limit the
-     maximum number of messages and the maximum size of each message respectively
+   * The ``fs.mqueue.msg_max`` and ``fs.mqueue.msgsize_max`` sysctls limit
+     the maximum number of messages and the maximum size of each message
      which a queue can be configured to have.
 
 .. _POSIX Message queues: http://man7.org/linux/man-pages/man7/mq_overview.7.html

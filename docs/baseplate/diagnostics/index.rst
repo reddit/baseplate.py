@@ -1,5 +1,5 @@
-baseplate.diagnostics
-=====================
+``baseplate.diagnostics``
+=========================
 
 .. automodule:: baseplate.diagnostics
 

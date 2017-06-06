@@ -14,11 +14,10 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
     """Make a PooledClient from a configuration dictionary.
 
     The keys useful to :py:func:`pool_from_config` should be prefixed, e.g.
-    ``memcache.endpoint``, ``memcache.max_pool_size``, etc. The ``prefix`` argument
-    specifies the prefix used to filter keys. Each key is mapped to a
+    ``memcache.endpoint``, ``memcache.max_pool_size``, etc. The ``prefix``
+    argument specifies the prefix used to filter keys. Each key is mapped to a
     corresponding keyword argument on the
-    `PooledClient <https://pymemcache.readthedocs.io/en/latest/apidoc/pymemcache.client.base.html#pymemcache.client.base.PooledClient>`_
-    constructor.
+    :py:class:`~pymemcache.client.base.PooledClient` constructor.
 
     Supported keys:
 
@@ -34,12 +33,12 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
 
     :param dict app_config: the config dictionary
     :param str prefix: prefix for config keys
-    :param func serializer: function to serialize values to strings suitable
+    :param callable serializer: function to serialize values to strings suitable
         for being stored in memcached. An example is
-        :py:func:``baseplate.context.memcache.lib.make_dump_and_compress_fn``
-    :param func deserializer: function to convert strings returned from
+        :py:func:`~baseplate.context.memcache.lib.make_dump_and_compress_fn`.
+    :param callable deserializer: function to convert strings returned from
         memcached to arbitrary objects, must be compatible with ``serializer``.
-        An example is :py:func:`baseplate.context.memcache.lib.decompress_and_load``.
+        An example is :py:func:`~baseplate.context.memcache.lib.decompress_and_load`.
 
     :returns: :py:class:`pymemcache.client.base.PooledClient`
 
@@ -75,10 +74,10 @@ class MemcacheContextFactory(ContextFactory):
 
     This factory will attach a
     :py:class:`~baseplate.context.memcache.MonitoredMemcacheConnection` to an
-    attribute on the :term:`context object`. When memcache commands are executed
-    via this connection object, they will use connections from the provided
-    `PooledClient <https://pymemcache.readthedocs.io/en/latest/apidoc/pymemcache.client.base.html#pymemcache.client.base.PooledClient>`_
-    and automatically record diagnostic information.
+    attribute on the :term:`context object`. When memcache commands are
+    executed via this connection object, they will use connections from the
+    provided :py:class:`~pymemcache.client.base.PooledClient` and automatically
+    record diagnostic information.
 
     :param pymemcache.client.base.PooledClient pooled_client: A pooled client.
 
@@ -96,10 +95,10 @@ class MonitoredMemcacheConnection(PooledClient):
     """Memcache connection that collects diagnostic information.
 
     This connection acts like a
-    `PooledClient <https://pymemcache.readthedocs.io/en/latest/apidoc/pymemcache.client.base.html#pymemcache.client.base.PooledClient>`_
-    except that operations are wrapped with diagnostic collection. Some methods
-    may not yet be wrapped with monitoring, please request assistance if any
-    needed methods are not being monitored.
+    :py:class:`~pymemcache.client.base.PooledClient` except that operations are
+    wrapped with diagnostic collection. Some methods may not yet be wrapped
+    with monitoring. Please request assistance if any needed methods are not
+    being monitored.
 
     """
 

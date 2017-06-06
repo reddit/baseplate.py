@@ -295,7 +295,7 @@ class Gauge(object):
 def make_client(namespace, endpoint):
     """Return a configured client.
 
-    :param str namespace: The root key to namespace all metrics under.
+    :param str namespace: The root key to prefix all metrics with.
     :param baseplate.config.EndpointConfiguration endpoint: The endpoint to
         send metrics to or :py:data:`None`.  If :py:data:`None`, the returned
         client will discard all metrics.

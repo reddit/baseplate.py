@@ -1,5 +1,5 @@
-baseplate.config
-================
+``baseplate.config``
+====================
 
 .. automodule:: baseplate.config
 

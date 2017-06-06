@@ -1,5 +1,5 @@
-baseplate-script
-================
+``baseplate-script``
+====================
 
 This command allows you to run a piece of Python code with the application
 config loaded similarly to `baseplate-serve`_. The command is

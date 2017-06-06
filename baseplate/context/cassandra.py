@@ -18,10 +18,9 @@ def cluster_from_config(app_config, prefix="cassandra.", **kwargs):
     ``cassandra.contact_points`` etc. The ``prefix`` argument specifies the
     prefix used to filter keys.  Each key is mapped to a corresponding keyword
     argument on the :py:class:`~cassandra.cluster.Cluster` constructor.  Any
-    kwargs given to this function will be passed through to the
-    :py:class:`~cassandra.cluster.Cluster` constructor.  If you pass a kwarg
-    that is duplicated by ``app_config`` then the value in ``app_config``
-    will be passed rather than the one in kwargs.
+    keyword arguments given to this function will be passed through to the
+    :py:class:`~cassandra.cluster.Cluster` constructor. Keyword arguments take
+    precedence over the configuration file.
 
     Supported keys:
 
