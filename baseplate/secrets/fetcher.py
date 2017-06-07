@@ -275,7 +275,9 @@ def main():
                     "token": client.token,
                     "url": cfg.vault.url,
                 },
-                # this is here for backwards compatibility
+
+                # this is here to allow an upgrade path. the fetcher should
+                # be upgraded first followed by the application workers.
                 "vault_token": client.token,
             }, f, indent=2, sort_keys=True)
 
