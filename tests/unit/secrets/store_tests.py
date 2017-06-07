@@ -41,7 +41,10 @@ class StoreTests(unittest.TestCase):
             "secrets": {
                 "test": {"a": 1}
             },
-            "vault_token": "test"
+            "vault": {
+                "token": "test",
+                "url": "http://vault.example.com:8200/"
+            }
         }""")
 
         secrets = store.SecretsStore(self.tempfile.name)
@@ -49,6 +52,7 @@ class StoreTests(unittest.TestCase):
 
         self.assertEqual(secret, {"a": 1})
         self.assertEqual(secrets.get_vault_token(), "test")
+        self.assertEqual(secrets.get_vault_url(), "http://vault.example.com:8200/")
 
         with self.assertRaises(store.SecretNotFoundError):
             secrets.get_raw("does_not_exist")
@@ -62,7 +66,10 @@ class StoreTests(unittest.TestCase):
             "secrets": {
                 "test": {"a": 1}
             },
-            "vault_token": "test1"
+            "vault": {
+                "token": "test",
+                "url": "http://vault.example.com:8200/"
+            }
         }""")
 
         secrets = store.SecretsStore(self.tempfile.name)
@@ -83,7 +90,10 @@ class StoreTests(unittest.TestCase):
             "secrets": {
                 "test": {"a": 1}
             },
-            "vault_token": "test1"
+            "vault": {
+                "token": "test",
+                "url": "http://vault.example.com:8200/"
+            }
         }""")
 
         secrets = store.SecretsStore(self.tempfile.name)
@@ -95,7 +105,10 @@ class StoreTests(unittest.TestCase):
             "secrets": {
                 "test": {"a": 2}
             },
-            "vault_token": "test1"
+            "vault": {
+                "token": "test",
+                "url": "http://vault.example.com:8200/"
+            }
         }""")
         self.assertEqual(secrets.get_raw("test"), {"a": 2})
 
@@ -128,7 +141,10 @@ class StoreTests(unittest.TestCase):
                     "encoding": "base64"
                 }
             },
-            "vault_token": "test1"
+            "vault": {
+                "token": "test",
+                "url": "http://vault.example.com:8200/"
+            }
         }""")
 
         secrets = store.SecretsStore(self.tempfile.name)
@@ -179,7 +195,10 @@ class StoreTests(unittest.TestCase):
                     "encoding": "base64"
                 }
             },
-            "vault_token": "test1"
+            "vault": {
+                "token": "test",
+                "url": "http://vault.example.com:8200/"
+            }
         }""")
 
         secrets = store.SecretsStore(self.tempfile.name)

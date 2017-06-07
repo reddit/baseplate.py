@@ -125,17 +125,15 @@ class SecretsStore(ContextFactory):
     def __init__(self, path):
         self._path = path
         self._mtime = 0
-        self._secrets = None
-        self._vault_token = None
+        self._data = None
 
     def _load_if_needed(self):
-        """Load the secrets from disk if expired or modified since last read.
+        """Load the secrets from disk if modified since last read.
 
-        Expired secrets are always bad, but it's also important to reload if
-        changed because this allows configuration changes of the fetcher daemon
-        to be picked up automatically by running services without being
-        restarted and also makes us less susceptible to race conditions when
-        both are being restarted at the same time.
+        It's important to reload if changed because this allows configuration
+        changes of the fetcher daemon to be picked up automatically by running
+        services without being restarted and also makes us less susceptible to
+        race conditions when both are being restarted at the same time.
 
         """
         try:
@@ -143,31 +141,18 @@ class SecretsStore(ContextFactory):
         except OSError:
             secrets_file_updated = False
 
-        if self._secrets is None or secrets_file_updated:
+        if self._data is None or secrets_file_updated:
             logger.debug("Loading secrets from %s.", self._path)
 
             try:
                 with open(self._path) as f:
-                    raw_data = json.load(f)
+                    data = json.load(f)
                     mtime = os.fstat(f.fileno()).st_mtime
             except IOError as exc:
                 raise SecretsNotAvailableError(exc)
 
-            self._vault_token = raw_data["vault_token"]
-            self._secrets = raw_data["secrets"]
+            self._data = data
             self._mtime = mtime
-
-    def get_vault_token(self):
-        """Return a Vault authentication token.
-
-        The token will have policies attached based on the current EC2 server's
-        Vault role. This is only necessary if talking directly to Vault.
-
-        :rtype: :py:class:`str`
-
-        """
-        self._load_if_needed()
-        return self._vault_token
 
     def get_raw(self, path):
         """Return a dictionary of key/value pairs for the given secret path.
@@ -180,7 +165,7 @@ class SecretsStore(ContextFactory):
         self._load_if_needed()
 
         try:
-            return self._secrets[path]
+            return self._data["secrets"][path]
         except KeyError:
             raise SecretNotFoundError(path)
 
@@ -254,6 +239,27 @@ class SecretsStore(ContextFactory):
             current=_decode_secret(path, encoding, current_value),
             next=next_value and _decode_secret(path, encoding, next_value),
         )
+
+    def get_vault_url(self):
+        """Return the URL for accessing Vault directly.
+
+        :rtype: :py:class:`str`
+
+        """
+        self._load_if_needed()
+        return self._data["vault"]["url"]
+
+    def get_vault_token(self):
+        """Return a Vault authentication token.
+
+        The token will have policies attached based on the current EC2 server's
+        Vault role. This is only necessary if talking directly to Vault.
+
+        :rtype: :py:class:`str`
+
+        """
+        self._load_if_needed()
+        return self._data["vault"]["token"]
 
     def make_object_for_context(self, name, server_span):  # pragma: nocover
         """Return an object that can be added to the context object.

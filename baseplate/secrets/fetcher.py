@@ -30,12 +30,15 @@ with the following structure:
             "secret/two": {...},
             "secret/three": {...}
         },
-        "vault_token": "9da4241c-3460-11e7-84ac-0e9f9d32522f"
+        "vault": {
+            "token": "9da4241c-3460-11e7-84ac-0e9f9d32522f",
+            "url": "https://vault.example.com:8200/"
+        }
     }
 
-The vault_token can be used for direct communication with Vault using the
-server's authority. The file will be updated as secrets expire and need to be
-refetched.
+The vault token and URL can be used for direct communication with Vault using
+the server's authority. The file will be updated as secrets expire and need to
+be refetched.
 
 The `store` module in this package contains utilities for interacting with this
 file from a running service.
@@ -267,8 +270,13 @@ def main():
             os.fchmod(f.fileno(), cfg.output.mode)
 
             json.dump({
-                "vault_token": client.token,
                 "secrets": secrets,
+                "vault": {
+                    "token": client.token,
+                    "url": cfg.vault.url,
+                },
+                # this is here for backwards compatibility
+                "vault_token": client.token,
             }, f, indent=2, sort_keys=True)
 
         # swap out the file contents atomically
