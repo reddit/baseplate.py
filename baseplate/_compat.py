@@ -12,7 +12,7 @@ import sys
 if sys.version_info.major == 3:  # pragma: nocover
     import configparser
     import queue
-    from io import BytesIO
+    from io import BytesIO, StringIO
     import pickle
     from urllib.parse import urlparse, urljoin, unquote  # pylint: disable=no-name-in-module
     range = range
@@ -23,12 +23,13 @@ else:  # pragma: nocover
     import ConfigParser as configparser
     import Queue as queue
     import cPickle as pickle
-    from cStringIO import StringIO as BytesIO
+    from cStringIO import StringIO
     from urllib import unquote
     from urlparse import urlparse, urljoin
     range = xrange
     string_types = basestring,
     long = long
+    BytesIO = StringIO
     import __builtin__ as builtins
 
 

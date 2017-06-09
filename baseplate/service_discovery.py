@@ -24,10 +24,9 @@ from __future__ import unicode_literals
 
 import collections
 import json
-import logging
-import os
 
 from .config import Endpoint
+from .file_watcher import FileWatcher, WatchedFileNotAvailableError
 from .random import WeightedLottery
 
 
@@ -57,10 +56,22 @@ class Backend(Backend_):
     pass
 
 
-def _backend_from_json(d):
-    endpoint = Endpoint("%s:%d" % (d["host"], d["port"]))
-    weight = d["weight"] if d["weight"] is not None else 1
-    return Backend(d["id"], d["name"], endpoint, weight)
+_Inventory = collections.namedtuple("_Inventory", "backends lottery")
+
+
+def _parse(watched_file):
+    backends = []
+    for d in json.load(watched_file):
+        endpoint = Endpoint("%s:%d" % (d["host"], d["port"]))
+        weight = d["weight"] if d["weight"] is not None else 1
+        backend = Backend(d["id"], d["name"], endpoint, weight)
+        backends.append(backend)
+
+    lottery = None
+    if backends:
+        lottery = WeightedLottery(backends, weight_key=lambda b: b.weight)
+
+    return _Inventory(backends, lottery)
 
 
 class NoBackendsAvailableError(Exception):
@@ -76,22 +87,7 @@ class ServiceInventory(object):
 
     """
     def __init__(self, filename):
-        self.filename = filename
-        self.mtime = None
-        self.backends = []
-        self.lottery = None
-
-    def _load_backends(self):
-        logging.debug("Loading backends from %s", self.filename)
-
-        try:
-            with open(self.filename) as f:
-                self.backends = [_backend_from_json(d) for d in json.load(f)]
-                self.lottery = WeightedLottery(
-                    self.backends, weight_key=lambda b: b.weight)
-                self.mtime = os.fstat(f.fileno()).st_mtime
-        except IOError as exc:
-            logging.debug("Failed to read service inventory: %s", exc)
+        self._filewatcher = FileWatcher(filename, _parse)
 
     def get_backends(self):
         """Return a list of all available backends in the inventory.
@@ -102,24 +98,12 @@ class ServiceInventory(object):
         :rtype: list of :py:class:`Backend` objects
 
         """
-        if self.mtime is None:
-            # we've not loaded the file yet (or we did but that file
-            # got deleted). load the inventory anew.
-            self._load_backends()
-        else:
-            try:
-                current_mtime = os.path.getmtime(self.filename)
-            except OSError:
-                # we had loaded the inventory, but now the file is
-                # gone. blank out our mtime so we try to fetch every
-                # time, but keep the old list around so we don't go
-                # dark.
-                self.mtime = None
-            else:
-                if self.mtime < current_mtime:
-                    # our copy of the data is stale. reload.
-                    self._load_backends()
-        return self.backends
+
+        try:
+            # pylint: disable=maybe-no-member
+            return self._filewatcher.get_data().backends
+        except WatchedFileNotAvailableError:
+            return []
 
     def get_backend(self):
         """Return a randomly chosen backend from the available backends.
@@ -133,9 +117,13 @@ class ServiceInventory(object):
 
         """
 
-        # refresh as necessary
-        backends = self.get_backends()
-        if not backends:
+        try:
+            inventory = self._filewatcher.get_data()
+        except WatchedFileNotAvailableError:
+            inventory = None
+
+        # pylint: disable=maybe-no-member
+        if not inventory or not inventory.backends:
             raise NoBackendsAvailableError
 
-        return self.lottery.pick()
+        return inventory.lottery.pick()
