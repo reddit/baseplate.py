@@ -236,20 +236,6 @@ class GaugeTests(unittest.TestCase):
         with self.assertRaises(Exception):
             gauge.replace(-2)
 
-    def test_increment(self):
-        gauge = metrics.Gauge(self.transport, b"example")
-        gauge.increment(33)
-        self.assertEqual(self.transport.send.call_count, 1)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:+33|g"))
-
-    def test_decrement(self):
-        gauge = metrics.Gauge(self.transport, b"example")
-        gauge.decrement(33)
-        self.assertEqual(self.transport.send.call_count, 1)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:-33|g"))
-
 
 class MakeClientTests(unittest.TestCase):
     def test_no_endpoint(self):

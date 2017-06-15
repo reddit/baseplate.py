@@ -19,7 +19,6 @@ Basic example usage:
 
     client = make_metrics_client(app_config)
     client.counter("events.connect").increment()
-    client.gauge("connections").increment()
     client.gauge("workers").replace(4)
 
     with client.timer("something.todo"):
@@ -266,32 +265,15 @@ class Counter(object):
 class Gauge(object):
     """A gauge representing an arbitrary value.
 
-    Gauges maintain their value over time if not updated. They can be changed
-    by relative amounts or have their values wholesale replaced.
+    .. note:: The statsd protocol supports incrementing/decrementing gauges
+        from their current value. We do not support that here because this
+        feature is unpredictable in face of the statsd server restarting and
+        the "current value" being lost.
 
     """
     def __init__(self, transport, name):
         self.transport = transport
         self.name = name
-
-    def increment(self, delta=1):
-        """Increment the value of the gauge.
-
-        This will change the value of the gauge relative to what it was before.
-
-        :param float delta: The amount to change the gauge by.
-
-        """
-        serialized = self.name + (":{:+g}|g".format(delta).encode())
-        self.transport.send(serialized)
-
-    def decrement(self, delta=1):
-        """Decrement the value of the gauge.
-
-        This is equivalent to :py:meth:`increment` with delta negated.
-
-        """
-        self.increment(-delta)
 
     def replace(self, new_value):
         """Replace the value held by the gauge.
