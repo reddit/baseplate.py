@@ -73,6 +73,8 @@ def is_same_domain(host, patterns):
     for pattern in patterns:
         pattern = pattern.lower()
         matches = (
+            # Use `[:1]` rather than `[0]` so we don't throw an `IndexError`
+            # when given a pattern of `""`
             pattern[:1] == '.' and (host.endswith(pattern) or host == pattern[1:]) or
             pattern == host
         )

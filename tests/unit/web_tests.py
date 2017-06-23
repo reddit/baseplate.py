@@ -20,9 +20,13 @@ class IsSameDomainTests(unittest.TestCase):
         self.assertFalse(web.is_same_domain("baz.com", patterns))
 
     def test_subdomain_matching(self):
-        self.assertTrue(web.is_same_domain("foo.com", ".foo.com"))
-        self.assertTrue(web.is_same_domain("bar.foo.com", ".foo.com"))
-        self.assertFalse(web.is_same_domain("bar.foo.com", "foo.com"))
+        self.assertTrue(web.is_same_domain("foo.com", {".foo.com"}))
+        self.assertTrue(web.is_same_domain("bar.foo.com", {".foo.com"}))
+        self.assertFalse(web.is_same_domain("bar.foo.com", {"foo.com"}))
+        self.assertTrue(web.is_same_domain("baz.bar.foo.com", {".foo.com"}))
+        self.assertFalse(web.is_same_domain("baz.bar.foo.com", {"bar.foo.com"}))
+        self.assertTrue(web.is_same_domain("baz.bar.foo.com", {".bar.foo.com"}))
+        self.assertFalse(web.is_same_domain("foo.com", {".bar.foo.com"}))
 
 
 class IsWebSafeURLTests(unittest.TestCase):
