@@ -236,6 +236,63 @@ class FallbackTests(unittest.TestCase):
         self.assertAlmostEqual(parser(".44"), .44)
 
 
+class DictOfTests(unittest.TestCase):
+    def test_empty(self):
+        parser = config.DictOf(config.Integer)
+        result = parser.parse("my_key", {"not_related": "a"})
+        self.assertEqual(result, {})
+
+    def test_scalar_children(self):
+        parser = config.DictOf(config.Integer)
+        result = parser.parse("my_key", {
+            "my_key.a": "1",
+            "my_key.b": "2",
+        })
+        self.assertEqual(result, {"a": 1, "b": 2})
+
+    def test_vector_children(self):
+        parser = config.DictOf({"a": config.Integer, "b": config.String})
+        result = parser.parse("my_key", {
+            "my_key.first.a": "1",
+            "my_key.first.b": "test",
+            "my_key.first.c": "ignored",
+            "my_key.second.a": "2",
+            "my_key.second.b": "test",
+        })
+        self.assertEqual(result, {
+            "first": {
+                "a": 1,
+                "b": "test",
+            },
+
+            "second": {
+                "a": 2,
+                "b": "test",
+            },
+        })
+
+    def test_root_level(self):
+        parser = config.DictOf({"a": config.Integer, "b": config.String})
+        result = parser.parse("", {
+            "first.a": "1",
+            "first.b": "test",
+            "first.c": "ignored",
+            "second.a": "2",
+            "second.b": "test",
+        })
+        self.assertEqual(result, {
+            "first": {
+                "a": 1,
+                "b": "test",
+            },
+
+            "second": {
+                "a": 2,
+                "b": "test",
+            },
+        })
+
+
 class TestParseConfig(unittest.TestCase):
     def setUp(self):
         self.config = {
@@ -297,3 +354,14 @@ class TestParseConfig(unittest.TestCase):
             config.parse_config(self.config, {
                 "tree_people": 37,
             })
+
+    def test_subparsers(self):
+        result = config.parse_config(self.config, {
+            "foo": config.DictOf(config.String),
+        })
+        self.assertEqual(result, {
+            "foo": {
+                "bar": "33",
+                "baz": "a cool guy",
+            },
+        })

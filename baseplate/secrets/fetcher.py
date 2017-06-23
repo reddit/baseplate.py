@@ -254,7 +254,7 @@ def main():
         "secrets": config.Optional(config.TupleOf(config.String), default=[]),
     })
 
-    # pylint: disable=no-member
+    # pylint: disable=maybe-no-member
     client_factory = VaultClientFactory(cfg.vault.url, cfg.vault.role)
     while True:
         client = client_factory.get_client()

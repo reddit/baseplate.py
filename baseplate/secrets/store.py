@@ -269,5 +269,5 @@ def secrets_store_from_config(app_config):
             "path": config.Optional(config.String, default="/var/local/secrets.json"),
         },
     })
-    # pylint: disable=no-member
+    # pylint: disable=maybe-no-member
     return SecretsStore(cfg.secrets.path)

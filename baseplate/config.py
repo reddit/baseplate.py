@@ -17,7 +17,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
 .. highlight:: py
 
-.. testsetup::
+.. testsetup:: overview
 
     from baseplate import config
     from baseplate._compat import configparser
@@ -30,7 +30,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     tempfile.flush()
     config_parser.set("app:main", "some_file", tempfile.name)
 
-.. doctest::
+.. doctest:: overview
 
     >>> raw_config = dict(config_parser.items("app:main"))
 
@@ -70,7 +70,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     >>> print(cfg.interval)
     0:00:30
 
-.. testcleanup::
+.. testcleanup:: overview
 
     tempfile.close()
 
@@ -83,6 +83,7 @@ from __future__ import unicode_literals
 import base64
 import collections
 import datetime
+import re
 import socket
 
 
@@ -196,8 +197,6 @@ def File(mode="r"):
 
     :param str mode: an optional string that specifies the mode in
         which the file is opened.
-
-
 
     """
     def open_file(text):
@@ -333,30 +332,165 @@ class ConfigNamespace(dict):
         self.__dict__ = self
 
 
-def _parse_config_section(config, spec, root):
-    parsed = ConfigNamespace()
-    for key, parser_or_spec in spec.items():
-        assert "." not in key, "dots are not allowed in keys"
+class Parser(object):
+    """Base for config parsers."""
 
-        if root:
-            key_path = "%s.%s" % (root, key)
+    @staticmethod
+    def from_spec(spec):
+        """Return a parser for the given spec object."""
+        if isinstance(spec, Parser):
+            return spec
+        elif isinstance(spec, dict):
+            return SpecParser(spec)
+        elif callable(spec):
+            return CallableParser(spec)
         else:
-            key_path = key
+            raise AssertionError("invalid specification: %r" % spec)
 
-        if callable(parser_or_spec):
-            parser = parser_or_spec
-            raw_value = config.get(key_path, "")
+    def parse(self, key_path, raw_config):
+        """Parse and return the relevant info for a given key.
 
-            try:
-                parsed[key] = parser(raw_value)
-            except Exception as e:
-                raise ConfigurationError(key, e)
-        elif isinstance(parser_or_spec, dict):
-            subspec = parser_or_spec
-            parsed[key] = _parse_config_section(config, subspec, root=key_path)
+        :param str key_path: The key this parser is looking for.
+        :param dict raw_config: The full raw configuration dictionary.
+
+        """
+        raise NotImplementedError
+
+
+class SpecParser(Parser):
+    """A parser that validates a static specification."""
+
+    def __init__(self, spec):
+        self.spec = spec
+
+    def parse(self, root, raw_config):
+        parsed = ConfigNamespace()
+        for key, spec in self.spec.items():
+            assert "." not in key, "dots are not allowed in keys"
+
+            if root:
+                key_path = "%s.%s" % (root, key)
+            else:
+                key_path = key
+
+            parser = Parser.from_spec(spec)
+            parsed[key] = parser.parse(key_path, raw_config)
+        return parsed
+
+
+class CallableParser(Parser):
+    """A parser that wraps a simple callable."""
+
+    def __init__(self, callable):
+        self.callable = callable
+
+    def parse(self, key_path, raw_config):
+        raw_value = raw_config.get(key_path, "")
+
+        try:
+            return self.callable(raw_value)
+        except Exception as exc:
+            raise ConfigurationError(key_path, exc)
+
+
+class DictOf(Parser):
+    """A group of options of a given type.
+
+    This is useful for providing data to the application without the
+    application having to know ahead of time all of the possible keys.
+
+    .. highlight:: ini
+
+    .. include:: ../config_dictof_example.ini
+       :literal:
+
+    .. highlight:: py
+
+    .. testsetup:: dictof_simple
+
+        from baseplate import config
+        from baseplate._compat import configparser
+        config_parser = configparser.RawConfigParser()
+        config_parser.readfp(open("docs/config_dictof_example.ini"))
+        raw_config = dict(config_parser.items("app:main"))
+
+    .. doctest:: dictof_simple
+
+        >>> cfg = config.parse_config(raw_config, {
+        ...     "population": config.DictOf(config.Integer),
+        ... })
+
+        >>> len(cfg.population)
+        5
+
+        >>> cfg.population["br"]
+        207645000
+
+    It can also be combined with other configuration specs or parsers to parse
+    more complicated structures:
+
+    .. highlight:: ini
+
+    .. include:: ../config_dictof_spec_example.ini
+       :literal:
+
+    .. highlight:: py
+
+    .. testsetup:: dictof_spec
+
+        from baseplate import config
+        from baseplate._compat import configparser
+        config_parser = configparser.RawConfigParser()
+        config_parser.readfp(open("docs/config_dictof_spec_example.ini"))
+        raw_config = dict(config_parser.items("app:main"))
+
+    .. doctest:: dictof_spec
+
+        >>> cfg = config.parse_config(raw_config, {
+        ...     "countries": config.DictOf({
+        ...         "population": config.Integer,
+        ...         "capital": config.String,
+        ...     }),
+        ... })
+
+        >>> len(cfg.countries)
+        5
+
+        >>> cfg.countries["cn"].capital
+        'Beijing'
+
+        >>> cfg.countries["id"].population
+        263447000
+
+    """
+
+    def __init__(self, spec):
+        self.subparser = Parser.from_spec(spec)
+
+    def parse(self, key_path, raw_config):
+        # match keys that start out with the prefix we expect (key_path) and
+        # extract the subkey from the.key.prefix.{subkey}.the.rest
+        if key_path:
+            root = key_path + "."
         else:
-            raise AssertionError("invalid specification: %r" % parser_or_spec)
-    return parsed
+            root = ""
+        matcher = re.compile("^" + root.replace(".", r"\.") + r"([^.]+)")
+
+        values = ConfigNamespace()
+        seen_subkeys = set()
+        for key in raw_config:
+            m = matcher.search(key)
+            if not m:
+                continue
+
+            subkey = m.group(1)
+            if subkey in seen_subkeys:
+                continue
+
+            full_path = root + subkey
+            values[subkey] = self.subparser.parse(full_path, raw_config)
+            seen_subkeys.add(subkey)
+        return values
 
 
 def parse_config(config, spec):
@@ -368,4 +502,5 @@ def parse_config(config, spec):
     :return: A structured configuration object.
 
     """
-    return _parse_config_section(config, spec, root=None)
+    parser = Parser.from_spec(spec)
+    return parser.parse("", config)

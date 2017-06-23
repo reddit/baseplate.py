@@ -36,7 +36,7 @@ def metrics_client_from_config(raw_config):
         },
     })
 
-    # pylint: disable=no-member
+    # pylint: disable=maybe-no-member
     return metrics.make_client(cfg.metrics.namespace, cfg.metrics.endpoint)
 
 
@@ -90,7 +90,7 @@ def tracing_client_from_config(raw_config, log_if_unconfigured=True):
         },
     })
 
-    # pylint: disable=no-member
+    # pylint: disable=maybe-no-member
     return tracing.make_client(
         service_name=cfg.tracing.service_name,
         tracing_endpoint=cfg.tracing.endpoint,
@@ -176,7 +176,7 @@ def error_reporter_from_config(raw_config, module_name):
         else:
             break
 
-    # pylint: disable=no-member
+    # pylint: disable=maybe-no-member
     return raven.Client(
         dsn=cfg.sentry.dsn,
         site=cfg.sentry.site,

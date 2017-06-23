@@ -25,12 +25,20 @@ make complicated expressions.
 .. autofunction:: Percent
 .. autofunction:: OneOf
 .. autofunction:: TupleOf
-.. autofunction:: Optional
-.. autofunction:: Fallback
 
 If you need something custom or fancy for your application, just use a
 callable which takes a string and returns the parsed value or raises
 :py:exc:`ValueError`.
+
+Combining Types
+---------------
+
+These options are used in combination with other types to form more complex
+configurations.
+
+.. autofunction:: Optional
+.. autofunction:: Fallback
+.. autofunction:: DictOf
 
 Data Types
 ----------
