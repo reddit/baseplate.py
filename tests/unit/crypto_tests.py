@@ -59,6 +59,12 @@ class SignatureTests(unittest.TestCase):
         with self.assertRaises(crypto.UnreadableSignatureError):
             self.signer.validate_signature(self.message, signature[2:])
 
+    def test_invalid(self):
+        bad_signature = self.signer.make_signature(self.message + "bad", max_age=datetime.timedelta(seconds=30))
+
+        with self.assertRaises(crypto.IncorrectSignatureError):
+            self.signer.validate_signature(self.message, bad_signature)
+
     def test_signature_urlsafe(self):
         signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
         self.assertTrue(b"=" not in signature)
