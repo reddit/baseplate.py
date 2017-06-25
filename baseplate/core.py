@@ -13,7 +13,7 @@ from ._utils import warn_deprecated
 class BaseplateObserver(object):
     """Interface for an observer that watches Baseplate."""
 
-    def on_server_span_created(self, context, server_span):  # pragma: nocover
+    def on_server_span_created(self, context, server_span):
         """Called when a server span is created.
 
         :py:class:`Baseplate` calls this when a new request begins.
@@ -26,7 +26,7 @@ class BaseplateObserver(object):
         raise NotImplementedError
 
 
-class SpanObserver(object):  # pragma: nocover
+class SpanObserver(object):
     """Interface for an observer that watches a span."""
 
     def on_start(self):
@@ -50,7 +50,7 @@ class SpanObserver(object):  # pragma: nocover
         """
         pass
 
-    def on_child_span_created(self, span):  # pragma: nocover
+    def on_child_span_created(self, span):
         """Called when a child span is created.
 
         :py:class:`SpanObserver` objects call this when a new child span is
@@ -142,12 +142,12 @@ class Baseplate(object):
         """
         self.observers.append(observer)
 
-    def configure_logging(self):  # pragma: nocover
+    def configure_logging(self):
         """Add request context to the logging system."""
         from .diagnostics.logging import LoggingBaseplateObserver
         self.register(LoggingBaseplateObserver())
 
-    def configure_metrics(self, metrics_client):  # pragma: nocover
+    def configure_metrics(self, metrics_client):
         """Send timing metrics to the given client.
 
         This also adds a :py:class:`baseplate.metrics.Batch` object to the
@@ -190,7 +190,7 @@ class Baseplate(object):
 
         self.register(TraceBaseplateObserver(tracing_client))
 
-    def configure_error_reporting(self, client):  # pragma: nocover
+    def configure_error_reporting(self, client):
         """Send reports for unexpected exceptions to the given client.
 
         This also adds a :py:class:`raven.Client` object to the ``sentry``
@@ -203,7 +203,7 @@ class Baseplate(object):
         from .diagnostics.sentry import SentryBaseplateObserver
         self.register(SentryBaseplateObserver(client))
 
-    def add_to_context(self, name, context_factory):  # pragma: nocover
+    def add_to_context(self, name, context_factory):
         """Add an attribute to each request's context object.
 
         On each request, the factory will be asked to create an appropriate

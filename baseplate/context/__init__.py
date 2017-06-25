@@ -39,7 +39,7 @@ class ContextFactory(object):
 
     """
 
-    def make_object_for_context(self, name, server_span):  # pragma: nocover
+    def make_object_for_context(self, name, server_span):
         """Return an object that can be added to the context object."""
         raise NotImplementedError
 

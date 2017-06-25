@@ -127,13 +127,13 @@ class MonitoredRedisConnection(redis.StrictRedis):
         )
 
     # these commands are not yet implemented, but probably not unimplementable
-    def transaction(self, *args, **kwargs):  # pragma: nocover
+    def transaction(self, *args, **kwargs):
         raise NotImplementedError
 
-    def lock(self, *args, **kwargs):  # pragma: nocover
+    def lock(self, *args, **kwargs):
         raise NotImplementedError
 
-    def pubsub(self, *args, **kwargs):  # pragma: nocover
+    def pubsub(self, *args, **kwargs):
         raise NotImplementedError
 
 

@@ -62,7 +62,7 @@ class TestSpanObserver(SpanObserver):
         self.on_finish_called = True
         self.on_finish_exc_info = exc_info
 
-    def on_child_span_created(self, span):  # pragma: nocover
+    def on_child_span_created(self, span):
         child = TestSpanObserver(span)
         self.children.append(child)
         span.register(child)
