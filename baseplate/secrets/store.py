@@ -24,34 +24,28 @@ class SecretNotFoundError(Exception):
     """Raised when the requested secret is not in the local vault."""
 
     def __init__(self, name):
-        super(SecretNotFoundError, self).__init__()
+        super(SecretNotFoundError, self).__init__(
+            "secret not found: {!r}".format(name))
         self.name = name
-
-    def __str__(self):  # pragma: nocover
-        return "secret not found: {!r}".format(self.name)
 
 
 class CorruptSecretError(Exception):
     """Raised when the requested secret does not match the expected format."""
 
     def __init__(self, path, message):
-        super(CorruptSecretError, self).__init__()
+        super(CorruptSecretError, self).__init__(
+            "{}: {}".format(path, message))
         self.path = path
         self.message = message
-
-    def __str__(self):  # pragma: nocover
-        return "{}: {}".format(self.path, self.message)
 
 
 class SecretsNotAvailableError(Exception):
     """Raised when the secrets store was not accessible."""
 
     def __init__(self, inner):
-        super(SecretsNotAvailableError, self).__init__()
+        super(SecretsNotAvailableError, self).__init__(
+            "could not load secrets: {}".format(inner))
         self.inner = inner
-
-    def __str__(self):  # pragma: nocover
-        return "could not load secrets: {}".format(self.inner)
 
 
 _VersionedSecret = collections.namedtuple(
@@ -267,7 +261,7 @@ class SecretsStore(ContextFactory):
         self._load_if_needed()
         return self._data["vault"]["token"]
 
-    def make_object_for_context(self, name, server_span):  # pragma: nocover
+    def make_object_for_context(self, name, server_span):
         """Return an object that can be added to the context object.
 
         This allows the secret store to be used with

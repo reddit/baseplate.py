@@ -89,12 +89,10 @@ import socket
 class ConfigurationError(Exception):
     """Raised when the configuration violates the spec."""
     def __init__(self, key, error):
-        super(ConfigurationError, self).__init__()
+        super(ConfigurationError, self).__init__(
+            "{}: {}".format(key, error))
         self.key = key
         self.error = error
-
-    def __str__(self):  # pragma: nocover
-        return "{}: {}".format(self.key, self.error)
 
 
 def String(text):
