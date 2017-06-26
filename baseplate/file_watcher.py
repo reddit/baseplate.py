@@ -48,12 +48,10 @@ class WatchedFileNotAvailableError(Exception):
     """Raised when the watched file could not be loaded."""
 
     def __init__(self, path, inner):
-        super(WatchedFileNotAvailableError, self).__init__()
+        super(WatchedFileNotAvailableError, self).__init__(
+            "{}: {}".format(path, inner))
         self.path = path
         self.inner = inner
-
-    def __str__(self):  # pragma: nocover
-        return "{}: {}".format(self.path, self.inner)
 
 
 class FileWatcher(object):
