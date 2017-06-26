@@ -3,12 +3,13 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import os
-import tempfile
-import time
 import unittest
 
 from baseplate import service_discovery
+from baseplate._compat import StringIO
+from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
+
+from .. import mock
 
 
 TEST_INVENTORY_ONE = """\
@@ -60,23 +61,18 @@ TEST_INVENTORY_TWO = """\
 
 class ServiceInventoryTests(unittest.TestCase):
     def setUp(self):
-        self.inventory_filename = tempfile.mktemp()
+        self.mock_filewatcher = mock.Mock(spec=FileWatcher)
+        self.inventory = service_discovery.ServiceInventory("/whatever")
+        self.inventory._filewatcher = self.mock_filewatcher
 
-    def tearDown(self):
-        try:
-            os.unlink(self.inventory_filename)
-        except OSError:
-            pass
+    def _set_inventory_contents(self, text):
+        parsed = service_discovery._parse(StringIO(text))
+        self.mock_filewatcher.get_data.return_value = parsed
 
     def test_load_backends(self):
-        with open(self.inventory_filename, "w") as f:
-            f.write(TEST_INVENTORY_ONE)
+        self._set_inventory_contents(TEST_INVENTORY_ONE)
 
-        inventory = service_discovery.ServiceInventory(self.inventory_filename)
-
-        backends = inventory.get_backends()
-        self.assertEqual(len(backends), 1)
-        backends = inventory.get_backends()
+        backends = self.inventory.get_backends()
         self.assertEqual(len(backends), 1)
         self.assertEqual(backends[0].id, 205)
         self.assertEqual(backends[0].name, "i-258fc8b6")
@@ -84,52 +80,23 @@ class ServiceInventoryTests(unittest.TestCase):
         self.assertEqual(backends[0].endpoint.address.port, 9090)
         self.assertEqual(backends[0].weight, 1)
 
-        with open(self.inventory_filename, "w") as f:
-            f.write(TEST_INVENTORY_TWO)
+        self._set_inventory_contents(TEST_INVENTORY_TWO)
 
-        # force update the mtime into the future so we don't have to
-        # wait around for the filesystem's minimum resolution
-        os.utime(self.inventory_filename, (time.time(), time.time()))
-
-        backends = inventory.get_backends()
+        backends = self.inventory.get_backends()
         self.assertEqual(len(backends), 3)
-        backends = inventory.get_backends()
-        self.assertEqual(len(backends), 3)
-
-    def test_file_starts_out_missing_then_appears(self):
-        inventory = service_discovery.ServiceInventory(self.inventory_filename)
-
-        backends = inventory.get_backends()
-        self.assertEqual(backends, [])
-
-        with open(self.inventory_filename, "w") as f:
-            f.write(TEST_INVENTORY_ONE)
-
-        backends = inventory.get_backends()
-        self.assertEqual(len(backends), 1)
-
-    def test_file_exists_then_goes_missing(self):
-        with open(self.inventory_filename, "w") as f:
-            f.write(TEST_INVENTORY_ONE)
-
-        inventory = service_discovery.ServiceInventory(self.inventory_filename)
-        backends = inventory.get_backends()
-        self.assertEqual(len(backends), 1)
-
-        os.unlink(self.inventory_filename)
-
-        backends = inventory.get_backends()
-        self.assertEqual(len(backends), 1)
 
     def test_single_get(self):
-        with open(self.inventory_filename, "w") as f:
-            f.write(TEST_INVENTORY_ONE)
-
-        inventory = service_discovery.ServiceInventory(self.inventory_filename)
-        backend = inventory.get_backend()
+        self._set_inventory_contents(TEST_INVENTORY_ONE)
+        backend = self.inventory.get_backend()
         self.assertEqual(backend.id, 205)
 
     def test_no_backends_available(self):
-        inventory = service_discovery.ServiceInventory(self.inventory_filename)
+        self.mock_filewatcher.get_data.side_effect = WatchedFileNotAvailableError("", None)
         with self.assertRaises(service_discovery.NoBackendsAvailableError):
-            inventory.get_backend()
+            self.inventory.get_backend()
+        self.assertEqual(self.inventory.get_backends(), [])
+        self.mock_filewatcher.get_data.side_effect = None
+
+        self._set_inventory_contents("[]")
+        with self.assertRaises(service_discovery.NoBackendsAvailableError):
+            self.inventory.get_backend()

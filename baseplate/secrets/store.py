@@ -9,9 +9,9 @@ import binascii
 import collections
 import json
 import logging
-import os
 
 from .. import config
+from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
 from ..context import ContextFactory
 
 
@@ -123,36 +123,13 @@ class SecretsStore(ContextFactory):
     """
 
     def __init__(self, path):
-        self._path = path
-        self._mtime = 0
-        self._data = None
+        self._filewatcher = FileWatcher(path, json.load)
 
-    def _load_if_needed(self):
-        """Load the secrets from disk if modified since last read.
-
-        It's important to reload if changed because this allows configuration
-        changes of the fetcher daemon to be picked up automatically by running
-        services without being restarted and also makes us less susceptible to
-        race conditions when both are being restarted at the same time.
-
-        """
+    def _get_data(self):
         try:
-            secrets_file_updated = self._mtime < os.path.getmtime(self._path)
-        except OSError:
-            secrets_file_updated = False
-
-        if self._data is None or secrets_file_updated:
-            logger.debug("Loading secrets from %s.", self._path)
-
-            try:
-                with open(self._path) as f:
-                    data = json.load(f)
-                    mtime = os.fstat(f.fileno()).st_mtime
-            except IOError as exc:
-                raise SecretsNotAvailableError(exc)
-
-            self._data = data
-            self._mtime = mtime
+            return self._filewatcher.get_data()
+        except WatchedFileNotAvailableError as exc:
+            raise SecretsNotAvailableError(exc)
 
     def get_raw(self, path):
         """Return a dictionary of key/value pairs for the given secret path.
@@ -162,10 +139,10 @@ class SecretsStore(ContextFactory):
         :rtype: :py:class:`dict`
 
         """
-        self._load_if_needed()
+        data = self._get_data()
 
         try:
-            return self._data["secrets"][path]
+            return data["secrets"][path]
         except KeyError:
             raise SecretNotFoundError(path)
 
@@ -249,8 +226,8 @@ class SecretsStore(ContextFactory):
             integration with HVAC, a Vault client.
 
         """
-        self._load_if_needed()
-        return self._data["vault"]["url"]
+        data = self._get_data()
+        return data["vault"]["url"]
 
     def get_vault_token(self):
         """Return a Vault authentication token.
@@ -264,8 +241,8 @@ class SecretsStore(ContextFactory):
             integration with HVAC, a Vault client.
 
         """
-        self._load_if_needed()
-        return self._data["vault"]["token"]
+        data = self._get_data()
+        return data["vault"]["token"]
 
     def make_object_for_context(self, name, server_span):  # pragma: nocover
         """Return an object that can be added to the context object.
