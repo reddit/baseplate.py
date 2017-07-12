@@ -56,6 +56,12 @@ class baseplate {
     # compatibility
     'python-enum34',
     'python-mock',
+
+    # debian packaging
+    'devscripts',
+    'debhelper',
+    'python-all',
+    'python3-all',
   ]
 
   package { $packages:
