@@ -1,4 +1,6 @@
-"""Integration with HVAC for advanced Vault features.
+"""Integration with HVAC, a Vault Python client, for advanced Vault features.
+
+See `HVAC's README`_ for documentation on the methods available from its client.
 
 .. note:: The :py:class:`~baseplate.secrets.SecretsStore` handles the most
     common use case of Vault in a Baseplate application: secure retrieval of
@@ -9,6 +11,7 @@
 
 .. _Transit backend: https://www.vaultproject.io/docs/secrets/transit/
 .. _Cubbyholes: https://www.vaultproject.io/docs/secrets/cubbyhole/index.html
+.. _HVAC's README: https://github.com/ianunruh/hvac/blob/master/README.md
 
 """
 from __future__ import absolute_import
