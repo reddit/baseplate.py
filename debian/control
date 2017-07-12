@@ -21,19 +21,19 @@ X-Python-Version: >= 2.7
 X-Python3-Version: >= 3.4
 
 Package: python-baseplate
-Architecture: all
+Architecture: amd64
 Depends: fbthrift-compiler, python-fbthrift, ${python:Depends}, ${misc:Depends}
 Suggests: python-baseplate-doc
 Description: convenient service framework (Python 2)
 
 Package: python3-baseplate
-Architecture: all
+Architecture: amd64
 Depends: fbthrift-compiler, python3-fbthrift, ${python3:Depends}, ${misc:Depends}
 Suggests: python-baseplate-doc
 Description: convenient service framework (Python 3)
 
 Package: python-baseplate-doc
-Architecture: all
+Architecture: amd64
 Section: doc
 Depends: ${misc:Depends}, ${sphinxdoc:Depends}
 Description: convenient service framework - API documentation
