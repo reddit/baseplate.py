@@ -3,6 +3,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import contextlib
+import time
 import unittest
 
 try:
@@ -15,6 +17,9 @@ from baseplate.core import Baseplate
 
 from . import TestBaseplateObserver, skip_if_server_unavailable
 from .. import mock
+
+from baseplate.context.redis import MessageQueue
+from baseplate.message_queue import TimedOutError
 
 
 skip_if_server_unavailable("redis", 6379)
@@ -68,3 +73,39 @@ class RedisIntegrationTests(unittest.TestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
+
+
+class RedisMessageQueueTests(unittest.TestCase):
+    qname = "redisTestQueue"
+
+    def setUp(self):
+        self.pool = redis.ConnectionPool(host="localhost")
+
+    def test_put_get(self):
+        message_queue = MessageQueue(self.qname, self.pool)
+
+        with contextlib.closing(message_queue) as mq:
+            mq.put(b"x")
+            message = mq.get()
+            self.assertEqual(message, b"x")
+
+    def test_get_timeout(self):
+        message_queue = MessageQueue(self.qname, self.pool)
+
+        with contextlib.closing(message_queue) as mq:
+            start = time.time()
+            with self.assertRaises(TimedOutError):
+                mq.get(timeout=1)
+            elapsed = time.time() - start
+            self.assertAlmostEqual(elapsed, 1.0, places=1)
+
+    def test_put_zero_timeout(self):
+        message_queue = MessageQueue(self.qname, self.pool)
+
+        with contextlib.closing(message_queue) as mq:
+            mq.put(b"x", timeout=0)
+            message = mq.get()
+            self.assertEqual(message, b"x")
+
+    def tearDown(self):
+        redis.Redis(connection_pool=self.pool).delete(self.qname)
