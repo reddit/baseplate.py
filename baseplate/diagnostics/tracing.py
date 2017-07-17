@@ -116,7 +116,11 @@ class TraceBaseplateObserver(BaseplateObserver):
         self.service_name = tracing_client.service_name
         self.sample_rate = tracing_client.sample_rate
         self.recorder = tracing_client.recorder
-        self.hostname = socket.gethostbyname(socket.gethostname())
+        try:
+            self.hostname = socket.gethostbyname(socket.gethostname())
+        except socket.gaierror as e:
+            logger.error("Hostname could not be resolved, error=%s", e)
+            self.hostname = 'undefined'
 
     @classmethod
     def force_sampling(cls, span):
