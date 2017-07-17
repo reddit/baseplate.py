@@ -95,9 +95,19 @@ class RedisMessageQueueTests(unittest.TestCase):
         with contextlib.closing(message_queue) as mq:
             start = time.time()
             with self.assertRaises(TimedOutError):
-                mq.get(timeout=1)
+                message_queue.get(timeout=1)
             elapsed = time.time() - start
-            self.assertAlmostEqual(elapsed, 1.0, places=1)
+            self.assertAlmostEqual(elapsed, 1.0, places=0)
+
+    def test_get_zero_timeout(self):
+        message_queue = MessageQueue(self.qname, self.pool)
+
+        message_queue.put(b"y")
+        message = message_queue.get(timeout=0)
+        self.assertEqual(message, b"y")
+
+        with self.assertRaises(TimedOutError):
+            message_queue.get(timeout=0)
 
     def test_put_zero_timeout(self):
         message_queue = MessageQueue(self.qname, self.pool)

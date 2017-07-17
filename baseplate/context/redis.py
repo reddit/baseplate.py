@@ -183,11 +183,16 @@ class MessageQueue(object):
         """
         if isinstance(timeout, float):
             timeout = int(ceil(timeout))
-        message = self.client.blpop(self.queue, timeout=timeout)
+
+        if timeout == 0:
+            message = self.client.lpop(self.queue)
+        else:
+            message = self.client.blpop(self.queue, timeout=timeout)
+
         if not message:
             raise message_queue.TimedOutError
 
-        return message[1]
+        return message[1] if isinstance(message, tuple) else message
 
     def put(self, message, timeout=None):
         """Add a message to the queue.
