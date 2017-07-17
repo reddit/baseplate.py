@@ -14,6 +14,7 @@ import time
 from datetime import datetime
 
 import requests
+from requests.exceptions import RequestException
 
 from .._compat import queue
 from ..core import (
@@ -458,11 +459,14 @@ class RemoteRecorder(BaseBatchRecorder):
 
     def flush_func(self, spans):
         """Send a set of spans to remote collector."""
-        self.session.post(
-            self.endpoint,
-            data=json.dumps(spans),
-            headers={
-                'Content-Type': 'application/json',
-            },
-            timeout=1,
-        )
+        try:
+            self.session.post(
+                self.endpoint,
+                data=json.dumps(spans),
+                headers={
+                    'Content-Type': 'application/json',
+                },
+                timeout=1,
+            )
+        except RequestException as e:
+            self.logger.error("Error flushing spans: %s", e)
