@@ -12,7 +12,7 @@ Build-Depends: debhelper (>= 8),
                python-enum34,
                python-requests, python3-requests,
                fbthrift-compiler,
-               python-pyramid, python-fbthrift,
+               python-pyramid, python-fbthrift, python3-fbthrift,
                python-posix-ipc, python3-posix-ipc,
                python-sqlalchemy, python3-sqlalchemy,
                python-sphinx | python3-sphinx, python-alabaster, python-sphinxcontrib.spelling
