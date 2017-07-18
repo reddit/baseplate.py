@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import redis
 import redis.client
+import pickle
 from math import ceil
 
 from . import ContextFactory
@@ -187,15 +188,18 @@ class MessageQueue(object):
         else:
             message = self.client.blpop(self.queue, timeout=timeout)
 
+            if message:  # BLPOP returns a tuple of (key, value) and we just want value
+                message = message[1]
+
         if not message:
             raise message_queue.TimedOutError
 
-        return message[1] if isinstance(message, tuple) else message
+        return pickle.loads(message)
 
     def put(self, message, timeout=None):
         """Add a message to the queue.
         """
-        return self.client.rpush(self.queue, message)
+        return self.client.rpush(self.queue, pickle.dumps(message))
 
     def unlink(self):
         """Not implemented for redis variant
