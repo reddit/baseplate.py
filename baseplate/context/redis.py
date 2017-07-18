@@ -152,7 +152,7 @@ class MonitoredRedisPipeline(redis.client.StrictPipeline):
 
 
 class MessageQueue(object):
-    """A redis-backed variant of :py:class:`~baseplate.message_queue.MessageQueue`.
+    """A Redis-backed variant of :py:class:`~baseplate.message_queue.MessageQueue`.
 
     :param name: can be any string.
 
@@ -188,10 +188,13 @@ class MessageQueue(object):
         else:
             message = self.client.blpop(self.queue, timeout=timeout)
 
+            if message:
+                message = message[1]
+
         if not message:
             raise message_queue.TimedOutError
 
-        return message[1] if isinstance(message, tuple) else message
+        return message
 
     def put(self, message, timeout=None):
         """Add a message to the queue.
@@ -203,14 +206,14 @@ class MessageQueue(object):
         return self.client.rpush(self.queue, message)
 
     def unlink(self):
-        """Not implemented for redis variant
+        """Not implemented for Redis variant
         """
         pass
 
     def close(self):
         """Close queue when finished
 
-        Will delete the queue from the redis server (Note, can still enqueue
+        Will delete the queue from the Redis server (Note, can still enqueue
         and dequeue as the actions will recreate the queue)
         """
         self.client.delete(self.queue)
