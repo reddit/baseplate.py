@@ -1,3 +1,22 @@
+baseplate (0.20.0) trusty; urgency=medium
+
+  * Add HVAC integration
+  * Add statsd counters on span success/failure
+  * Factor out file change watching to FileWatcher API
+  * Add DictOf configuration parser for dynamic configs
+  * LOTS of test coverage improvements
+  * Documentation cleanup.
+  * Atomically swap secrets file
+  * Add Vault URL to secrets file
+  * Remove Gauge increment/decrement support
+  * Raise proper error when secrets file not available
+  * Fix SQLAlchemy instrumentation's reporting of errors
+  * Fix Cassandra instrumentation's reporting of errors
+  * Send error tags to Zipkin consistently
+  * Swallow some exceptions in Zipkin integration
+
+ -- Neil Williams <neil@reddit.com>  Wed, 12 Jul 2017 00:05:59 -0700
+
 baseplate (0.19.0) trusty; urgency=medium
 
   * add sentry integration
