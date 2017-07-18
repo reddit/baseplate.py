@@ -8,9 +8,7 @@ import redis.client
 from math import ceil
 
 from . import ContextFactory
-from .. import config
-
-from .. import message_queue
+from .. import config, message_queue
 
 
 def pool_from_config(app_config, prefix="redis.", **kwargs):
@@ -154,19 +152,19 @@ class MonitoredRedisPipeline(redis.client.StrictPipeline):
 
 
 class MessageQueue(object):
-    """A redis-backed variant of ``message_queue.MessageQueue``.
+    """A redis-backed variant of :py:class:`~baseplate.message_queue.MessageQueue`.
 
-    ``name`` can be any string.
+    :param ``name`` can be any string.
 
-    ``client`` should be a ``redis.ConnectionPool`` or
-    ``redis.BlockingConnectionPool`` from which a client connection can be
-    created from (preferrably generated from the ``pool_from_config`` helper).
+    :param ``client`` should be a :py:class:`redis.ConnectionPool` or
+    :py:class:`redis.BlockingConnectionPool` from which a client connection can be
+    created from (preferrably generated from the :py:func:`pool_from_config` helper).
 
     """
     def __init__(self, name, client):
         self.queue = name
-        if isinstance(client, redis.BlockingConnectionPool) \
-                or isinstance(client, redis.ConnectionPool):
+        if isinstance(client, redis.BlockingConnectionPool) or \
+                isinstance(client, redis.ConnectionPool):
             self.client = redis.Redis(connection_pool=client)
         else:
             self.client = client
@@ -206,6 +204,7 @@ class MessageQueue(object):
 
     def close(self):
         """Close queue when finished
+
         Will delete the queue from the redis server (Note, can still enqueue
         and dequeue as the actions will recreate the queue)
         """
