@@ -16,3 +16,6 @@ Classes
 
 .. autoclass:: baseplate.context.redis.MonitoredRedisConnection
    :members:
+
+.. autoclass:: baseplate.context.redis.MessageQueue
+   :members:

@@ -154,11 +154,12 @@ class MonitoredRedisPipeline(redis.client.StrictPipeline):
 class MessageQueue(object):
     """A redis-backed variant of :py:class:`~baseplate.message_queue.MessageQueue`.
 
-    :param ``name`` can be any string.
+    :param name: can be any string.
 
-    :param ``client`` should be a :py:class:`redis.ConnectionPool` or
-    :py:class:`redis.BlockingConnectionPool` from which a client connection can be
-    created from (preferrably generated from the :py:func:`pool_from_config` helper).
+    :param client: should be a :py:class:`redis.ConnectionPool` or
+           :py:class:`redis.BlockingConnectionPool` from which a client
+           connection can be created from (preferably generated from the
+           :py:func:`pool_from_config` helper).
 
     """
     def __init__(self, name, client):
@@ -194,6 +195,10 @@ class MessageQueue(object):
 
     def put(self, message, timeout=None):
         """Add a message to the queue.
+
+        :param message: will be typecast to a string upon storage and will come
+               out of the queue as a string regardless of what type they are
+               when passed into this method.
         """
         return self.client.rpush(self.queue, message)
 
