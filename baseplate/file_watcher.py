@@ -82,19 +82,24 @@ class FileWatcher(object):
         the freshest data.
 
         """
+
         try:
-            file_changed = self._mtime < os.path.getmtime(self._path)
-        except OSError:
-            file_changed = False
+            current_mtime = os.path.getmtime(self._path)
+        except OSError as exc:
+            if self._data is _NOT_LOADED:
+                raise WatchedFileNotAvailableError(self._path, exc)
+            return self._data
 
-        if self._data is _NOT_LOADED or file_changed:
+        if self._mtime < current_mtime:
             logger.debug("Loading %s.", self._path)
-
             try:
                 with open(self._path, "r") as f:
                     self._data = self._parser(f)
-                    self._mtime = os.fstat(f.fileno()).st_mtime
-            except IOError as exc:
-                raise WatchedFileNotAvailableError(self._path, exc)
+            except Exception as exc:
+                if self._data is _NOT_LOADED:
+                    raise WatchedFileNotAvailableError(self._path, exc)
+                logger.warning("%s: failed to load, using cached data: %s",
+                               self._path, exc)
+            self._mtime = current_mtime
 
         return self._data
