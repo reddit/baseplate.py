@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
 import os
 import tempfile
 import unittest
@@ -31,6 +32,9 @@ class FileWatcherTests(unittest.TestCase):
             self.assertEqual(result, mock_parser.return_value)
             self.assertEqual(mock_parser.call_count, 1)
 
+            result = watcher.get_data()
+            self.assertEqual(mock_parser.call_count, 1)
+
         # ensure the loaded data stays around even when the file was deleted
         result = watcher.get_data()
         self.assertEqual(result, mock_parser.return_value)
@@ -54,3 +58,41 @@ class FileWatcherTests(unittest.TestCase):
 
             result = watcher.get_data()
             self.assertEqual(result, "breaking news: hello again!")
+
+    def test_file_failing_to_parse_on_first_load_raises(self):
+        with tempfile.NamedTemporaryFile() as watched_file:
+            watched_file.write(b"!")
+            watched_file.flush()
+            os.utime(watched_file.name, (1, 1))
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=json.load)
+
+            with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
+                watcher.get_data()
+
+    def test_file_failing_to_parse_after_first_load_uses_cached_data(self):
+        with tempfile.NamedTemporaryFile() as watched_file:
+            watched_file.write(b'{"a": 1}')
+            watched_file.flush()
+            os.utime(watched_file.name, (1, 1))
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=json.load)
+
+            result = watcher.get_data()
+            self.assertEqual(result, {"a": 1})
+
+            watched_file.seek(0)
+            watched_file.write(b"!")
+            watched_file.flush()
+            os.utime(watched_file.name, (2, 2))
+
+            result = watcher.get_data()
+            self.assertEqual(result, {"a": 1})
+
+            watched_file.seek(0)
+            watched_file.write(b'{"b": 3}')
+            watched_file.flush()
+            os.utime(watched_file.name, (3, 3))
+
+            result = watcher.get_data()
+            self.assertEqual(result, {"b": 3})
