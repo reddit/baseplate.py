@@ -80,3 +80,7 @@ class MetricsClientSpanObserver(SpanObserver):
         self.timer.stop()
         suffix = "success" if not exc_info else "failure"
         self.batch.counter(self.base_name + "." + suffix).increment()
+
+    def on_log(self, name, payload):
+        if name == "error.object":
+            self.batch.counter.increment("errors.%s" % payload.__class__.__name__)
