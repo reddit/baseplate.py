@@ -19,6 +19,10 @@ if sys.version_info.major == 3:  # pragma: nocover
     string_types = str,
     long = int
     import builtins
+
+    def iteritems(d):
+        return iter(d.items())
+
 else:  # pragma: nocover
     import ConfigParser as configparser
     import Queue as queue
@@ -31,6 +35,9 @@ else:  # pragma: nocover
     long = long
     BytesIO = StringIO
     import __builtin__ as builtins
+
+    def iteritems(d):
+        return d.iteritems()
 
 
 __all__ = [
