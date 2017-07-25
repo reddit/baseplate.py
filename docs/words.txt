@@ -23,6 +23,8 @@ Redis
 serializable
 serialized
 serializer
+subreddit
+subreddits
 statsd
 sysctls
 unsampled
