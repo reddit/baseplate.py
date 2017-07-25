@@ -23,8 +23,17 @@ from baseplate.diagnostics.tracing import (
 from ... import mock
 
 
-class TraceObserverTests(unittest.TestCase):
+class TraceTestBase(unittest.TestCase):
+
     def setUp(self):
+        thread_patch = mock.patch("threading.Thread", autospec=True)
+        thread_patch.start()
+        self.addCleanup(thread_patch.stop)
+
+
+class TraceObserverTests(TraceTestBase):
+    def setUp(self):
+        super(TraceObserverTests, self).setUp()
         self.mock_context = mock.Mock()
 
     def test_null_recorder_setup(self):
@@ -145,8 +154,9 @@ class TraceObserverTests(unittest.TestCase):
         self.assertEqual(len(span.observers), 0)
 
 
-class TraceSpanObserverTests(unittest.TestCase):
+class TraceSpanObserverTests(TraceTestBase):
     def setUp(self):
+        super(TraceSpanObserverTests, self).setUp()
         self.recorder = NullRecorder()
         self.mock_context = mock.Mock()
 
@@ -244,8 +254,9 @@ class TraceSpanObserverTests(unittest.TestCase):
         self.assertEqual(span_obj['parentId'], 0)
 
 
-class TraceServerSpanObserverTests(unittest.TestCase):
+class TraceServerSpanObserverTests(TraceTestBase):
     def setUp(self):
+        super(TraceServerSpanObserverTests, self).setUp()
         self.recorder = NullRecorder()
         self.mock_context = mock.Mock()
         self.span = ServerSpan('test-id',
@@ -307,8 +318,9 @@ class TraceServerSpanObserverTests(unittest.TestCase):
         self.assertEqual(len(child_span.observers), 1)
         self.assertEqual(child_span.observers[0].span, child_span)
 
-class TraceLocalSpanObserverTests(unittest.TestCase):
+class TraceLocalSpanObserverTests(TraceTestBase):
     def setUp(self):
+        super(TraceLocalSpanObserverTests, self).setUp()
         self.recorder = NullRecorder()
         self.mock_context = mock.Mock()
         self.span = ServerSpan('test-id',
@@ -371,8 +383,9 @@ class TraceLocalSpanObserverTests(unittest.TestCase):
         self.assertEqual(lc_annotation['endpoint']['serviceName'], 'test-service')
         self.assertEqual(lc_annotation['value'], 'test-component')
 
-class NullRecorderTests(unittest.TestCase):
+class NullRecorderTests(TraceTestBase):
     def setUp(self):
+        super(NullRecorderTests, self).setUp()
         self.recorder = NullRecorder()
         self.mock_context = mock.Mock()
 
@@ -387,8 +400,9 @@ class NullRecorderTests(unittest.TestCase):
         self.recorder.flush_func([span])
 
 
-class RemoteRecorderTests(unittest.TestCase):
+class RemoteRecorderTests(TraceTestBase):
     def setUp(self):
+        super(RemoteRecorderTests, self).setUp()
         self.endpoint = "test:1111"
 
     def test_init(self):
