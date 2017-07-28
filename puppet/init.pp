@@ -24,3 +24,4 @@ include cassandra
 include memcached
 include redis
 include vault
+include zookeeper
