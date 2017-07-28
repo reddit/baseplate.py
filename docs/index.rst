@@ -37,6 +37,7 @@ separately from the rest of Baseplate.
    baseplate.events: Events for the data pipeline <baseplate/events>
    baseplate.experiments: Experiments framework <baseplate/experiments/index>
    baseplate.file_watcher: Read files from disk as they change <baseplate/file_watcher>
+   baseplate.live_data: Tools for centralized data that updates near instantly <baseplate/live_data>
    baseplate.message_queue: POSIX IPC Message Queues <baseplate/message_queue>
    baseplate.metrics: Counters and timers for statsd <baseplate/metrics>
    baseplate.random: Extensions to the standard library's random module <baseplate/random>

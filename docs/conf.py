@@ -31,6 +31,7 @@ intersphinx_mapping = {
     "redis": ("https://redis-py.readthedocs.org/en/latest/", "intersphinx/redis.inv"),
     "sqlalchemy": ("https://docs.sqlalchemy.org/en/latest/", "intersphinx/sqlalchemy.inv"),
     "raven": ("https://docs.sentry.io/", "intersphinx/sentry.inv"),
+    "kazoo": ("https://kazoo.readthedocs.io/en/latest/", "intersphinx/kazoo.inv"),
 }
 
 # The suffix of source filenames.
