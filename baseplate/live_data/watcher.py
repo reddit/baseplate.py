@@ -38,6 +38,8 @@ class NodeWatcher(object):
                 logger.debug("%s: couldn't unlink: %s", self.dest, exc)
             return
 
+        # swap out the file atomically so clients watching the file never catch
+        # us mid-write.
         logger.info("Updating %r", self.dest)
         with open(self.dest + ".tmp", "wb") as tmpfile:
             tmpfile.write(data)
