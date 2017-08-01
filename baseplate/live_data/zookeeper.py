@@ -59,6 +59,21 @@ def zookeeper_client_from_config(secrets, app_config, read_only=None):
         timeout=cfg.timeout.total_seconds(),
         auth_data=auth_data,
         read_only=read_only,
+
+        # this retry policy tells Kazoo how often it should attempt connections
+        # to ZooKeeper from its worker thread/greenlet. when the connection is
+        # lost during normal operation (i.e. after it was first established)
+        # Kazoo will do retries quietly in the background while the application
+        # continues forward. because of this, we want it to retry forever so
+        # that it doesn't just give up at some point. the application can still
+        # decide if it wants to exit after being disconnected for an amount of
+        # time by polling the KazooClient.connected property.
+        #
+        # note: KazooClient.start() has a timeout parameter which defaults to
+        # 15 seconds and controls the maximum amount of time start() will block
+        # attempting to get a connection. so even though we do infinite retries
+        # here, users of this function can configure the amount of time they
+        # are willing to wait for initial connection.
         connection_retry=dict(
             max_tries=-1,  # keep reconnecting forever
             delay=0.1,  # initial delay
