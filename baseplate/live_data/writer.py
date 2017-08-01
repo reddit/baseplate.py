@@ -20,27 +20,17 @@ logger = logging.getLogger(__name__)
 
 
 class WriterError(Exception):
-    exit_status = 0
+    pass
 
 
 class NodeDoesNotExistError(WriterError):
-    exit_status = 1
-
     def __init__(self):
         super(NodeDoesNotExistError, self).__init__(
             "Target node does not exist. Please create it with appropriate "
             "ACLs first.")
 
 
-class NoChangesError(WriterError):
-    def __init__(self):
-        super(NoChangesError, self).__init__(
-            "No changes detected. Exiting without writing.")
-
-
 class UnexpectedChangeError(WriterError):
-    exit_status = 1
-
     def __init__(self):
         super(UnexpectedChangeError, self).__init__(
             "The data in ZooKeeper changed unexpectedly.")
@@ -58,7 +48,8 @@ def write_file_to_zookeeper(zookeeper, source_file, dest_path):
     new_data = source_file.read()
 
     if current_data == new_data:
-        raise NoChangesError
+        logger.info("No changes detected. Not writing.")
+        return False
 
     try:
         current_text = current_data.decode("utf8")
@@ -78,6 +69,7 @@ def write_file_to_zookeeper(zookeeper, source_file, dest_path):
         raise UnexpectedChangeError
 
     logger.info("Wrote data to Zookeeper.")
+    return True
 
 
 def main():
@@ -110,7 +102,7 @@ def main():
         write_file_to_zookeeper(zookeeper, args.source, args.dest)
     except WriterError as exc:
         print(exc, file=sys.stderr)
-        sys.exit(exc.exit_status)
+        sys.exit(1)
     finally:
         zookeeper.stop()
 

@@ -13,7 +13,6 @@ except ImportError:
 
 from baseplate._compat import BytesIO
 from baseplate.live_data.writer import (
-    NoChangesError,
     NodeDoesNotExistError,
     UnexpectedChangeError,
     write_file_to_zookeeper,
@@ -54,14 +53,15 @@ class LiveDataWriterTests(unittest.TestCase):
         self.zookeeper.set(TEST_NODE_PATH, data)
 
         input = BytesIO(data)
-        with self.assertRaises(NoChangesError):
-            write_file_to_zookeeper(self.zookeeper, input, TEST_NODE_PATH)
+        did_write = write_file_to_zookeeper(self.zookeeper, input, TEST_NODE_PATH)
+        self.assertFalse(did_write)
 
     def test_successful_set(self):
         self.assertEqual(self.zookeeper.get(TEST_NODE_PATH)[0], b"")
 
         input = BytesIO(b"new_data")
-        write_file_to_zookeeper(self.zookeeper, input, TEST_NODE_PATH)
+        did_write = write_file_to_zookeeper(self.zookeeper, input, TEST_NODE_PATH)
+        self.assertTrue(did_write)
 
         self.assertEqual(self.zookeeper.get(TEST_NODE_PATH)[0], b"new_data")
 
