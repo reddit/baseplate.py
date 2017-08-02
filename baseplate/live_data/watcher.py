@@ -60,8 +60,8 @@ def watch_zookeeper_nodes(zookeeper, nodes):
                     os.utime(node.dest, None)
                 except OSError as exc:
                     if exc.errno != errno.ENOENT:
-                        logger.info("%s: could not heartbeat: %s",
-                                    node.dest, exc)
+                        logger.warning(
+                            "%s: could not heartbeat: %s", node.dest, exc)
 
 
 def main():
