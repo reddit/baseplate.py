@@ -60,6 +60,14 @@ def watch_zookeeper_nodes(zookeeper, nodes):
             for node in nodes:
                 try:
                     logger.debug("Heartbeating %s", node.dest)
+
+                    # this will make FileWatchers re-parse the file on the next
+                    # read which is unfortunate but we do it anyway. it's
+                    # important to monitor that the file is being updated as
+                    # accurately as possible rather than using a separate file
+                    # or mechanism as a proxy. for example, the actual output
+                    # file could have bogus permissions that would go unnoticed
+                    # if the heartbeat still worked independently.
                     os.utime(node.dest, None)
                 except OSError as exc:
                     logger.warning("%s: could not heartbeat: %s", node.dest, exc)
