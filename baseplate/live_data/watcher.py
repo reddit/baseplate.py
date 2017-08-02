@@ -24,8 +24,7 @@ HEARTBEAT_INTERVAL = 60
 
 
 class NodeWatcher(object):
-    def __init__(self, source, dest):
-        self.source = source
+    def __init__(self, dest):
         self.dest = dest
 
     def on_change(self, data, _):
@@ -48,7 +47,7 @@ class NodeWatcher(object):
 
 def watch_zookeeper_nodes(zookeeper, nodes):
     for node in nodes:
-        watcher = NodeWatcher(node.source, node.dest)
+        watcher = NodeWatcher(node.dest)
         zookeeper.DataWatch(node.source, watcher.on_change)
 
     while True:
