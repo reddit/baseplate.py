@@ -1,3 +1,14 @@
+baseplate (0.21.0) trusty; urgency=medium
+
+  * Add iteritems to _compat
+  * Patch out threading.Thread in tracing tests to address test failures
+  * Add on_log to MetricsClientSpanObserver to add error counters for client spans
+  * Add experiments framework
+  * Pull uid/gid/octal configuration parsers into config module
+  * Add live data watcher and writer tools
+
+ -- Andrew Boyle <andrew.boyle@reddit.com>  Wed, 02 Aug 2017 18:45:32 +0000
+
 baseplate (0.20.0) trusty; urgency=medium
 
   * Add HVAC integration
