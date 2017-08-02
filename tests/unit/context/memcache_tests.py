@@ -36,8 +36,8 @@ class PoolFromConfigTests(unittest.TestCase):
     def test_timeouts(self):
         pool = pool_from_config({
             "memcache.endpoint": "localhost:1234",
-            "memcache.timeout": 1.23,
-            "memcache.connect_timeout": 4.56,
+            "memcache.timeout": "1.23",
+            "memcache.connect_timeout": "4.56",
         })
 
         self.assertEqual(pool.timeout, 1.23)
@@ -46,7 +46,7 @@ class PoolFromConfigTests(unittest.TestCase):
     def test_max_connections(self):
         pool = pool_from_config({
             "memcache.endpoint": "localhost:1234",
-            "memcache.max_pool_size": 300,
+            "memcache.max_pool_size": "300",
         })
 
         self.assertEqual(pool.client_pool.max_size, 300)

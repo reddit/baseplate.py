@@ -83,6 +83,9 @@ from __future__ import unicode_literals
 import base64
 import collections
 import datetime
+import functools
+import grp
+import pwd
 import re
 import socket
 
@@ -108,14 +111,21 @@ def Float(text):
     return float(text)
 
 
-def Integer(text):
+def Integer(text=None, base=10):
     """An integer.
 
     To prevent mistakes, this will raise an error if the user attempts
     to configure a non-whole number.
 
+    :param int base: (Optional) If specified, the base of the integer to parse.
+
     """
-    return int(text)
+    if text is not None:
+        # this allows the original config.Integer format
+        return int(text, base=base)
+    else:
+        # and this allows the base to be specified as config.Integer(base=N)
+        return functools.partial(int, base=base)
 
 
 def Boolean(text):
@@ -257,6 +267,30 @@ def Percent(text):
         raise ValueError("percentage is out of valid range")
 
     return percentage
+
+
+def UnixUser(text):
+    """A Unix user name.
+
+    The parsed value will be the integer user ID.
+
+    """
+    try:
+        return pwd.getpwnam(text).pw_uid
+    except KeyError as exc:
+        raise ValueError(exc)
+
+
+def UnixGroup(text):
+    """A Unix group name.
+
+    The parsed value will be the integer group ID.
+
+    """
+    try:
+        return grp.getgrnam(text).gr_gid
+    except KeyError as exc:
+        raise ValueError(exc)
 
 
 def OneOf(**options):

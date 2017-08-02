@@ -51,12 +51,10 @@ from __future__ import unicode_literals
 
 import argparse
 import datetime
-import grp
 import json
 import logging
 import os
 import posixpath
-import pwd
 import time
 
 import requests
@@ -208,18 +206,6 @@ class VaultClient(object):
         return payload["data"], ttl_to_time(payload["lease_duration"])
 
 
-def octal_integer(text):
-    return int(text, base=8)
-
-
-def user_name_to_uid(text):
-    return pwd.getpwnam(text).pw_uid
-
-
-def group_name_to_gid(text):
-    return grp.getgrnam(text).gr_gid
-
-
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("config_file", type=argparse.FileType("r"),
@@ -246,9 +232,9 @@ def main():
 
         "output": {
             "path": config.Optional(config.String, default="/var/local/secrets.json"),
-            "owner": config.Optional(user_name_to_uid, default=0),
-            "group": config.Optional(group_name_to_gid, default=0),
-            "mode": config.Optional(octal_integer, default=0o400),
+            "owner": config.Optional(config.UnixUser, default=0),
+            "group": config.Optional(config.UnixGroup, default=0),
+            "mode": config.Optional(config.Integer(base=8), default=0o400),
         },
 
         "secrets": config.Optional(config.TupleOf(config.String), default=[]),
