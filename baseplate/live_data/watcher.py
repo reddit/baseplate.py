@@ -5,7 +5,6 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import argparse
-import errno
 import logging
 import os
 import sys
@@ -20,7 +19,7 @@ from .zookeeper import zookeeper_client_from_config
 logger = logging.getLogger(__name__)
 
 
-HEARTBEAT_INTERVAL = 60
+HEARTBEAT_INTERVAL = 300
 
 
 class NodeWatcher(object):
@@ -63,9 +62,7 @@ def watch_zookeeper_nodes(zookeeper, nodes):
                     logger.debug("Heartbeating %s", node.dest)
                     os.utime(node.dest, None)
                 except OSError as exc:
-                    if exc.errno != errno.ENOENT:
-                        logger.warning(
-                            "%s: could not heartbeat: %s", node.dest, exc)
+                    logger.warning("%s: could not heartbeat: %s", node.dest, exc)
 
 
 def main():
