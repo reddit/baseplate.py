@@ -35,6 +35,10 @@ class IntegerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             config.Integer("1.2")
 
+    def test_non_decimal(self):
+        result = config.Integer(base=8)("0600")
+        self.assertEqual(result, 384)
+
 
 class FloatTests(unittest.TestCase):
     def test_parse_float_valid(self):
@@ -178,6 +182,26 @@ class PercentTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             config.Percent("30%%%%")
+
+
+class UnixUserTests(unittest.TestCase):
+    def test_valid_user(self):
+        result = config.UnixUser("root")
+        self.assertEqual(result, 0)
+
+    def test_invalid_user(self):
+        with self.assertRaises(ValueError):
+            config.UnixUser("fhqwhgads")
+
+
+class UnixGroupTests(unittest.TestCase):
+    def test_valid_group(self):
+        result = config.UnixGroup("root")
+        self.assertEqual(result, 0)
+
+    def test_invalid_group(self):
+        with self.assertRaises(ValueError):
+            config.UnixGroup("fhqwhgads")
 
 
 class OneOfTests(unittest.TestCase):

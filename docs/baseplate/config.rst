@@ -23,6 +23,8 @@ make complicated expressions.
 .. autofunction:: Base64
 .. autofunction:: File
 .. autofunction:: Percent
+.. autofunction:: UnixUser
+.. autofunction:: UnixGroup
 .. autofunction:: OneOf
 .. autofunction:: TupleOf
 
