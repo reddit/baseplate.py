@@ -50,9 +50,13 @@ def watch_zookeeper_nodes(zookeeper, nodes):
         watcher = NodeWatcher(node.dest)
         zookeeper.DataWatch(node.source, watcher.on_change)
 
+    # all the interesting stuff is now happening in the Kazoo worker thread
+    # and so we'll just spin and periodically heartbeat to prove we're alive.
     while True:
         time.sleep(HEARTBEAT_INTERVAL)
 
+        # see the comment in baseplate.live_data.zookeeper for explanation of
+        # how reconnects work with the background thread.
         if zookeeper.connected:
             for node in nodes:
                 try:
