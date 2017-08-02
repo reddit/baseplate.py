@@ -79,6 +79,8 @@ def main():
     else:
         level = logging.INFO
     logging.basicConfig(level=level, format="%(message)s")
+
+    # quiet kazoo's verbose logs a bit
     logging.getLogger("kazoo").setLevel(logging.WARNING)
 
     parser = configparser.RawConfigParser()
