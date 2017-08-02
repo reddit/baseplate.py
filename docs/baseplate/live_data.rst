@@ -43,6 +43,9 @@ Where ``some_config.ini`` might look like:
 
    nodes.b.source = /another/node/in/zookeeper
    nodes.b.dest = /var/local/another-file
+   nodes.b.owner = www-data
+   nodes.b.group = www-data
+   nodes.b.mode = 0400
 
 Each of the defined ``nodes`` will be watched by the daemon.
 

@@ -23,8 +23,11 @@ HEARTBEAT_INTERVAL = 300
 
 
 class NodeWatcher(object):
-    def __init__(self, dest):
+    def __init__(self, dest, owner, group, mode):
         self.dest = dest
+        self.owner = owner
+        self.group = group
+        self.mode = mode
 
     def on_change(self, data, _):
         if data is None:
@@ -40,13 +43,17 @@ class NodeWatcher(object):
         # us mid-write.
         logger.info("Updating %r", self.dest)
         with open(self.dest + ".tmp", "wb") as tmpfile:
+            if self.owner and self.group:
+                os.fchown(tmpfile.fileno(), self.owner, self.group)
+            os.fchmod(tmpfile.fileno(), self.mode)
+
             tmpfile.write(data)
         os.rename(self.dest + ".tmp", self.dest)
 
 
 def watch_zookeeper_nodes(zookeeper, nodes):
     for node in nodes:
-        watcher = NodeWatcher(node.dest)
+        watcher = NodeWatcher(node.dest, node.owner, node.group, node.mode)
         zookeeper.DataWatch(node.source, watcher.on_change)
 
     # all the interesting stuff is now happening in the Kazoo worker thread
@@ -99,6 +106,9 @@ def main():
         "nodes": config.DictOf({
             "source": config.String,
             "dest": config.String,
+            "owner": config.Optional(config.UnixUser),
+            "group": config.Optional(config.UnixGroup),
+            "mode": config.Optional(config.Integer(base=8), default=0o400),
         }),
     })
     # pylint: disable=maybe-no-member
