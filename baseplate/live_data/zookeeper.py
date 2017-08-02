@@ -71,9 +71,10 @@ def zookeeper_client_from_config(secrets, app_config, read_only=None):
         #
         # note: KazooClient.start() has a timeout parameter which defaults to
         # 15 seconds and controls the maximum amount of time start() will block
-        # attempting to get a connection. so even though we do infinite retries
-        # here, users of this function can configure the amount of time they
-        # are willing to wait for initial connection.
+        # waiting for the background thread to confirm it has established a
+        # connection. so even though we do infinite retries here, users of this
+        # function can configure the amount of time they are willing to wait
+        # for initial connection.
         connection_retry=dict(
             max_tries=-1,  # keep reconnecting forever
             delay=0.1,  # initial delay
