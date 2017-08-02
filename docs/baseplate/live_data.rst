@@ -46,7 +46,7 @@ Where ``some_config.ini`` might look like:
 
 Each of the defined ``nodes`` will be watched by the daemon.
 
-The watcher daemon will touch the ``mtime`` of the local files once a minute to
+The watcher daemon will touch the ``mtime`` of the local files periodically to
 indicative liveliness to monitoring tools.
 
 
