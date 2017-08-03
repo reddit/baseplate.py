@@ -33,6 +33,10 @@ extras_require = {
         "pyramid",
     ],
 
+    "authn": [
+        "pyjwt",
+    ],
+
     "docs": [
         "sphinx",
         "sphinxcontrib-spelling",
