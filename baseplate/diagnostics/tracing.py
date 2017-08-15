@@ -291,6 +291,26 @@ class TraceLocalSpanObserver(TraceSpanObserver):
     def on_start(self):
         self.start = current_epoch_microseconds()
 
+    def on_child_span_created(self, child_span):
+        """Perform tracing-related actions for child spans creation.
+
+        Register new TraceSpanObserver for the child span
+        being created so span start and finish get properly recorded.
+        """
+        if isinstance(child_span, LocalSpan):
+            trace_observer = TraceLocalSpanObserver(self.service_name,
+                                                    child_span.component_name,
+                                                    self.hostname,
+                                                    child_span,
+                                                    self.recorder)
+
+        else:
+            trace_observer = TraceSpanObserver(self.service_name,
+                                               self.hostname,
+                                               child_span,
+                                               self.recorder)
+        child_span.register(trace_observer)
+
     def _serialize(self):
         annotations = []
         return self._to_span_obj(annotations, self.binary_annotations)
@@ -316,7 +336,11 @@ class TraceServerSpanObserver(TraceSpanObserver):
         self.start = current_epoch_microseconds()
 
     def on_child_span_created(self, child_span):
+        """Perform tracing-related actions for child spans creation.
 
+        Register new TraceSpanObserver for the child span
+        being created so span start and finish get properly recorded.
+        """
         if isinstance(child_span, LocalSpan):
             trace_observer = TraceLocalSpanObserver(self.service_name,
                                                     child_span.component_name,

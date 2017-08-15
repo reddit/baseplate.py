@@ -197,6 +197,25 @@ class LocalSpanTests(unittest.TestCase):
         span.finish()
         mock_observer.on_finish(exc_info=None)
 
+    @mock.patch("random.getrandbits", autospec=True)
+    def test_make_child(self, mock_getrandbits):
+        mock_getrandbits.return_value = 0xCAFE
+
+        mock_observer = mock.Mock(spec=SpanObserver)
+        mock_context = mock.Mock()
+
+        local_span = LocalSpan("trace", "parent", "id", None, 0, "name", mock_context)
+        local_span.register(mock_observer)
+        child_span = local_span.make_child("child_name")
+
+        self.assertEqual(child_span.name, "child_name")
+        self.assertEqual(child_span.id, 0xCAFE)
+        self.assertEqual(child_span.trace_id, "trace")
+        self.assertEqual(child_span.parent_id, "id")
+        self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
+        self.assertEqual(mock_observer.on_child_span_created.call_args,
+            mock.call(child_span))
+
 
 class TraceInfoTests(unittest.TestCase):
 
