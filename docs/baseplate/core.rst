@@ -58,6 +58,37 @@ integrations <integration/index>`.
 .. autoclass:: TraceInfo
    :members: from_upstream
 
+Authentication
+--------------
+
+If the application is dealing with authentication either directly from the
+authentication service or from upstream services, there are some support interfaces
+available for easily working with passing context down or picking up passed down
+contexts.
+
+When receiving an initial authentication token from the authentication service, the
+application should properly store the token in an
+:py:class:`~baseplate.core.AuthenticationContext` object attached to the current
+context::
+
+    authentication_token = retrieve_token_from_authentication_service()
+    context.authentication = AuthenticationContext(authentication_token, secrets_store)
+
+This will allow for this token to both be verified correctly and for the token to be
+passed downstream to other services that may need it.
+
+.. autoclass:: AuthenticationContextFactory
+   :members:
+
+.. autoclass:: AuthenticationContext
+   :members:
+
+.. autoclass:: UndefinedSecretsException
+   :members:
+
+.. autoclass:: UndefinedAuthenticationError
+   :members:
+
 Spans
 -----
 

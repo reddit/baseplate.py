@@ -14,8 +14,13 @@ from baseplate.core import (
     Span,
     SpanObserver,
     TraceInfo,
+    AuthenticationContext,
+    UndefinedSecretsException,
+    UndefinedAuthenticationError,
 )
 from baseplate.integration import WrappedRequestContext
+from baseplate.file_watcher import FileWatcher
+from baseplate.secrets import store
 
 from .. import mock
 
@@ -226,3 +231,51 @@ class TraceInfoTests(unittest.TestCase):
         span = TraceInfo.from_upstream(1, 2, 3, None, None)
         self.assertIsNone(span.sampled)
         self.assertIsNone(span.flags)
+
+
+class AuthenticationContextTests(unittest.TestCase):
+    VALID_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjQ2NTY1OTM0NTV9.Q8bz2qccFOHLTQ6H3MPdjSh7wDkRQtbBuBwGMzNRKjDFSkCoVF5kiwhBUdwbW8UXO5iZn4Bh7oKdj69lIEOATUxFBblU8Do05EfjECXLYGdbr6ClNmldrB8SsdAtQYQ4Ud-70Z8_75QvkqX_TY5OA4asGJZwH9MC7oHey47-38I"
+    EXPIRED_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE1MDI5OTM3NTN9.OPBIxaOEx0hnnB_wrfCuqfSIeP0a1abNdoZ2KejXReKeETQathr-PW2GqAhjGcUdCG3rXK8ezFKXdlB65kloqNdQii5b3qaJ5PDIdMNxY0Oi7TAqH86oog_umm7G-_p4MPPhRjxUm6Qp85-EaJUgyv26BUKSYY7-KyySjnrmP8g"
+    TOKEN_SECRET = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC0Kd3qYtc6zI5tj3iKBux70BhE\nZLLJ7fAKNBUO7h9FCwUcYku+SFigzNOu3AAYt3seNgxl+cvMR2+SNwsa605J9D1v\n9eGmpcITQi85SeJnfR7LJUMu7RieY5wEl0RyuwnSkX3Gkv0+hZISC/XYcWEYolIi\n8725u7u/8HRtUeHoLwIDAQAB\n-----END PUBLIC KEY-----"
+
+    def setUp(self):
+        mock_filewatcher = mock.Mock(spec=FileWatcher)
+        mock_filewatcher.get_data.return_value = {
+            "secrets": {
+                "jwt/authentication/secret": {
+                    "type": "simple",
+                    "value": self.TOKEN_SECRET,
+                },
+            },
+            "vault": {
+                "token": "test",
+                "url": "http://vault.example.com:8200/",
+            }
+        }
+        self.store = store.SecretsStore("/secrets")
+        self.store._filewatcher = mock_filewatcher
+
+    def test_empty_context(self):
+        new_auth_context = AuthenticationContext()
+        self.assertEqual(str(new_auth_context), "")
+
+    def test_no_secrets(self):
+        new_auth_context = AuthenticationContext("test token")
+        with self.assertRaises(UndefinedSecretsException) as e:
+            new_auth_context.valid
+
+    def test_valid_context(self):
+        new_auth_context = AuthenticationContext(self.VALID_TOKEN, self.store)
+        self.assertTrue(new_auth_context.valid)
+        self.assertEqual(new_auth_context.account_id, "test_user_id")
+
+    def test_expired_context(self):
+        new_auth_context = AuthenticationContext(self.EXPIRED_TOKEN, self.store)
+        self.assertFalse(new_auth_context.valid)
+        self.assertEqual(new_auth_context.account_id, None)
+
+    def test_no_context(self):
+        new_auth_context = AuthenticationContext(None, self.store)
+        self.assertEqual(new_auth_context.valid, None)
+        with self.assertRaises(UndefinedAuthenticationError) as e:
+            new_auth_context.account_id

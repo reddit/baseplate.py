@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import collections
 import random
+import jwt
 
 from .integration.wrapped_context import WrappedRequestContext
 from ._utils import warn_deprecated
@@ -121,6 +122,123 @@ class TraceInfo(_TraceInfo):
                 raise ValueError("invalid flags value")
 
         return cls(trace_id, parent_id, span_id, sampled, flags)
+
+
+class AuthenticationContextFactory(object):
+    """Building factory for :py:class:`AuthenticationContext` objects, handles
+    context dependency for the secrets store.
+
+    This factory should be passed into the constructor of any upstream
+    :doc:`integrations <integration/index>` so that it is aware of the
+    application's secret store and can create the authentication context for
+    the incoming requests.
+
+    :param baseplate.secrets.SecretsStore secrets_store: the application's
+        defined secrets store, where application secret lookups should be made
+    """
+    def __init__(self, secrets_store=None):
+        self.secrets = secrets_store
+
+    def make_context(self, token):
+        """:py:class:`AuthenticationContext` builder
+
+        :param token: JWT value originating from the Authentication service
+            either directly or from an upstream service
+        :rtype: :py:class:`AuthenticationContext`
+        """
+        return AuthenticationContext(token=token, secrets=self.secrets)
+
+
+class AuthenticationContext(object):
+    """Wrapper for the contextual authentication information
+
+    :param str token: the JWT value for the currently propagated authentication
+        context
+    :param baseplate.secrets.SecretsStore secrets_store: the application's
+        defined secrets store, where application secret lookups should be made
+    """
+    def __init__(self, token=None, secrets=None):
+        self.token = token
+        self.secrets = secrets
+        self.payload = {}
+        self._valid = None
+
+    def _secret(self):
+        if not self.secrets:
+            raise UndefinedSecretsException
+
+        return self.secrets.get_simple("jwt/authentication/secret")
+
+    @property
+    def valid(self):
+        """Validity of the current authentication context token
+
+        :type: bool
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and validated)
+
+        """
+        if self._valid is not None:
+            return self._valid
+        elif self.token is None:
+            return None
+
+        try:
+            self.payload = jwt.decode(self.token, self._secret(),
+                                      algorithms='RS256')
+            self._valid = True
+        except jwt.ExpiredSignatureError:
+            self._valid = False
+        except jwt.DecodeError:
+            self._valid = False
+
+        return self._valid
+
+    @property
+    def account_id(self):
+        """Authenticated account_id for the current authenticated context
+
+        :type: account_id string or None if context authentication is invalid
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+        :raises: :py:class:`UndefinedAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        if self.token is None:
+            raise UndefinedAuthenticationError
+        if not self.valid:
+            return None
+
+        return self.payload.get("sub", None)
+
+    def __str__(self):
+        return self.token if self.token else ""
+
+
+class UndefinedSecretsException(Exception):
+    """Exception raised when an :py:class:`AuthenticationContext` attempts to
+    parse an authentication JWT payload without having a
+    :py:class:`SecretsStore` defined to provide the necessary secrets values to
+    correctly decrypt and parse the token.
+    """
+    def __init__(self):
+        super(UndefinedSecretsException, self).__init__(
+            "No SecretsStore defined.")
+
+
+class UndefinedAuthenticationError(Exception):
+    """Error raised when attempting to read from an authentication token that
+    is not defined, either because of a badly instantiated context or missing
+    header coming from upstream requests.
+    """
+    def __init__(self):
+        super(UndefinedAuthenticationError, self).__init__(
+            "No Authentication JWT token provided for this context.")
 
 
 class Baseplate(object):

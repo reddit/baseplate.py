@@ -29,7 +29,10 @@ import sys
 import pyramid.events
 import pyramid.tweens
 
-from ..core import TraceInfo
+from ..core import (
+    TraceInfo,
+    AuthenticationContextFactory,
+)
 from ..server import make_app
 
 
@@ -59,6 +62,11 @@ class BaseplateConfigurator(object):
         headers from the client? If ``True``, trace headers in inbound requests
         will be used for the server span. If ``False``, new random trace IDs
         will be generated for each request.
+    :param baseplate.core.AuthenticationContextFactory auth_factory: optional
+        factory used for holding construction context for building the
+        authentication context for incoming requests.  If undefined, thin
+        wrappers for contexts will be set for the purposes of propagating the
+        context downstream, but will error if ever attempted to use.
 
     .. warning::
 
@@ -69,9 +77,12 @@ class BaseplateConfigurator(object):
     """
 
     # TODO: remove the default on trust_trace_headers once apps are updated
-    def __init__(self, baseplate, trust_trace_headers=False):
+    def __init__(self, baseplate, trust_trace_headers=False,
+                 auth_factory=None):
         self.baseplate = baseplate
         self.trust_trace_headers = trust_trace_headers
+        self.auth_factory = auth_factory if auth_factory \
+            else AuthenticationContextFactory()
 
     def _on_new_request(self, event):
         request = event.request
@@ -97,6 +108,11 @@ class BaseplateConfigurator(object):
                     sampled=sampled,
                     flags=flags,
                 )
+
+                authn_jwt = request.headers.get("X-Authentication", None)
+                authentication_context = \
+                    self.auth_factory.make_context(authn_jwt)
+                request.authentication = authentication_context
             except (KeyError, ValueError):
                 pass
 
