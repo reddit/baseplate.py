@@ -160,7 +160,7 @@ class AuthenticationContext(object):
     def __init__(self, token=None, secrets=None):
         self.token = token
         self.secrets = secrets
-        self.payload = {}
+        self._payload = None
         self._valid = None
 
     def _secret(self):
@@ -168,6 +168,14 @@ class AuthenticationContext(object):
             raise UndefinedSecretsException
 
         return self.secrets.get_simple("jwt/authentication/secret")
+
+    def attach_context(self, context):
+        """Attach this authentication wrapper to the provided context
+
+        :param context: request context to attach this authentication to
+
+        """
+        context.authentication = self
 
     @property
     def valid(self):
@@ -186,8 +194,8 @@ class AuthenticationContext(object):
             return None
 
         try:
-            self.payload = jwt.decode(self.token, self._secret(),
-                                      algorithms='RS256')
+            self._payload = jwt.decode(self.token, self._secret(),
+                                       algorithms='RS256')
             self._valid = True
         except jwt.ExpiredSignatureError:
             self._valid = False
@@ -195,6 +203,22 @@ class AuthenticationContext(object):
             self._valid = False
 
         return self._valid
+
+    @property
+    def payload(self):
+        """Decrypted payload of the authentication token.
+
+        :type: dict
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+
+        """
+        if not self.valid:
+            return {}
+
+        return self._payload
 
     @property
     def account_id(self):
@@ -211,8 +235,6 @@ class AuthenticationContext(object):
         """
         if self.token is None:
             raise UndefinedAuthenticationError
-        if not self.valid:
-            return None
 
         return self.payload.get("sub", None)
 

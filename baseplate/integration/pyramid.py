@@ -81,8 +81,7 @@ class BaseplateConfigurator(object):
                  auth_factory=None):
         self.baseplate = baseplate
         self.trust_trace_headers = trust_trace_headers
-        self.auth_factory = auth_factory if auth_factory \
-            else AuthenticationContextFactory()
+        self.auth_factory = auth_factory or AuthenticationContextFactory()
 
     def _on_new_request(self, event):
         request = event.request
@@ -112,7 +111,7 @@ class BaseplateConfigurator(object):
                 authn_jwt = request.headers.get("X-Authentication", None)
                 authentication_context = \
                     self.auth_factory.make_context(authn_jwt)
-                request.authentication = authentication_context
+                authentication_context.attach_context(request)
             except (KeyError, ValueError):
                 pass
 

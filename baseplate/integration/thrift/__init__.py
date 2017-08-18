@@ -54,8 +54,7 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
     def __init__(self, logger, baseplate, auth_factory=None):
         self.logger = logger
         self.baseplate = baseplate
-        self.auth_factory = auth_factory if auth_factory \
-            else AuthenticationContextFactory()
+        self.auth_factory = auth_factory or AuthenticationContextFactory()
 
     def getHandlerContext(self, fn_name, server_context):
         context = RequestContext()
@@ -80,7 +79,7 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
 
             authn_jwt = headers.get(b"Authentication", None)
             authentication_context = self.auth_factory.make_context(authn_jwt)
-            context.authentication = authentication_context
+            authentication_context.attach_context(context)
         except (KeyError, ValueError):
             pass
 

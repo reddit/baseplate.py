@@ -72,7 +72,8 @@ application should properly store the token in an
 context::
 
     authentication_token = retrieve_token_from_authentication_service()
-    context.authentication = AuthenticationContext(authentication_token, secrets_store)
+    authentication_context = AuthenticationContext(authentication_token, secrets_store)
+    authentcation_context.attach_context(context)
 
 This will allow for this token to both be verified correctly and for the token to be
 passed downstream to other services that may need it.
