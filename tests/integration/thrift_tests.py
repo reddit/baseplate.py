@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import logging
 import unittest
+import jwt
 
 try:
     from io import BytesIO as StringIO
@@ -172,8 +173,11 @@ class ThriftTests(unittest.TestCase):
 
         context, _ = self.observer.on_server_span_created.call_args[0]
 
-        self.assertTrue(context.authentication.valid)
-        self.assertEqual(context.authentication.account_id, "test_user_id")
+        try:
+            self.assertTrue(context.authentication.valid)
+            self.assertEqual(context.authentication.account_id, "test_user_id")
+        except jwt.exceptions.InvalidAlgorithmError:
+            raise unittest.SkipTest("cryptography is not installed")
 
     def test_expected_exception_not_passed_to_server_span_finish(self):
         client_memory_trans = TMemoryBuffer()

@@ -37,6 +37,7 @@ before_install:
             python3-fbthrift \
             python3-gevent \
             python3-hvac \
+            python3-jwt \
             python3-kazoo \
             python3-nose \
             python3-posix-ipc \
@@ -49,11 +50,13 @@ before_install:
             python-alabaster \
             python-coverage \
             python-cqlmapper \
+            python-cryptography \
             python-enum34 \
             python-fbthrift \
             python-flake8 \
             python-gevent \
             python-hvac \
+            python-jwt \
             python-kazoo \
             python-mock \
             python-nose \

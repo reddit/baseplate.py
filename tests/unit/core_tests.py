@@ -4,6 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import unittest
+import jwt
 
 from baseplate.core import (
     Baseplate,
@@ -24,6 +25,11 @@ from baseplate.secrets import store
 
 from .. import mock
 
+cryptography_installed = True
+try:
+    import cryptography
+except:
+    cryptography_installed = False
 
 def make_test_server_span(context=None):
     if not context:
@@ -257,25 +263,29 @@ class AuthenticationContextTests(unittest.TestCase):
 
     def test_empty_context(self):
         new_auth_context = AuthenticationContext()
-        self.assertEqual(str(new_auth_context), "")
+        self.assertEqual(new_auth_context.token, None)
 
     def test_no_secrets(self):
         new_auth_context = AuthenticationContext("test token")
         with self.assertRaises(UndefinedSecretsException) as e:
             new_auth_context.valid
 
+    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_valid_context(self):
         new_auth_context = AuthenticationContext(self.VALID_TOKEN, self.store)
         self.assertTrue(new_auth_context.valid)
         self.assertEqual(new_auth_context.account_id, "test_user_id")
 
+    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_expired_context(self):
         new_auth_context = AuthenticationContext(self.EXPIRED_TOKEN, self.store)
         self.assertFalse(new_auth_context.valid)
         self.assertEqual(new_auth_context.account_id, None)
 
+    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_no_context(self):
         new_auth_context = AuthenticationContext(None, self.store)
         self.assertEqual(new_auth_context.valid, None)
+
         with self.assertRaises(UndefinedAuthenticationError) as e:
             new_auth_context.account_id

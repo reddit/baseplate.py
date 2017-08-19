@@ -6,6 +6,7 @@ from __future__ import print_function
 #from __future__ import unicode_literals
 
 import unittest
+import jwt
 
 from baseplate import Baseplate
 from baseplate.core import (
@@ -139,8 +140,11 @@ class ConfiguratorTests(unittest.TestCase):
             "X-Flags": "1",
         })
         context, _ = self.observer.on_server_span_created.call_args[0]
-        self.assertTrue(context.authentication.valid)
-        self.assertEqual(context.authentication.account_id, "test_user_id")
+        try:
+            self.assertTrue(context.authentication.valid)
+            self.assertEqual(context.authentication.account_id, "test_user_id")
+        except jwt.exceptions.InvalidAlgorithmError:
+            raise unittest.SkipTest("cryptography is not installed")
 
     def test_blind_passthrough(self):
         self.test_app.get("/example", headers={
@@ -152,7 +156,8 @@ class ConfiguratorTests(unittest.TestCase):
             "X-Flags": "1",
         })
         context, _ = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(str(context.authentication), "invalid_but_doesnt_matter")
+        self.assertEqual(context.authentication.token, "invalid_but_doesnt_matter")
+
 
     def test_not_found(self):
         self.test_app.get("/nope", status=404)
