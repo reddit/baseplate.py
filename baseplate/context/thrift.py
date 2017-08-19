@@ -108,7 +108,7 @@ class PooledClientProxy(object):
                                 and span.context.authentication.token:
                             prot.trans.set_header(
                                 "Authentication",
-                                str(span.context.authentication)
+                                span.context.authentication.token
                             )
                         client = self.client_cls(prot)
                         method = getattr(client, name)

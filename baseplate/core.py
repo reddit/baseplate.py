@@ -125,8 +125,7 @@ class TraceInfo(_TraceInfo):
 
 
 class AuthenticationContextFactory(object):
-    """Building factory for :py:class:`AuthenticationContext` objects, handles
-    context dependency for the secrets store.
+    """Factory for consistent AuthenticationContext creation.
 
     This factory should be passed into the constructor of any upstream
     :doc:`integrations <integration/index>` so that it is aware of the
@@ -140,9 +139,9 @@ class AuthenticationContextFactory(object):
         self.secrets = secrets_store
 
     def make_context(self, token):
-        """:py:class:`AuthenticationContext` builder
+        """Builds :py:class:`AuthenticationContext` using stored values
 
-        :param token: JWT value originating from the Authentication service
+        :param token: token value originating from the Authentication service
             either directly or from an upstream service
         :rtype: :py:class:`AuthenticationContext`
         """
@@ -152,7 +151,7 @@ class AuthenticationContextFactory(object):
 class AuthenticationContext(object):
     """Wrapper for the contextual authentication information
 
-    :param str token: the JWT value for the currently propagated authentication
+    :param str token: the value for the currently propagated authentication
         context
     :param baseplate.secrets.SecretsStore secrets_store: the application's
         defined secrets store, where application secret lookups should be made
@@ -238,29 +237,29 @@ class AuthenticationContext(object):
 
         return self.payload.get("sub", None)
 
-    def __str__(self):
-        return self.token if self.token else ""
-
 
 class UndefinedSecretsException(Exception):
-    """Exception raised when an :py:class:`AuthenticationContext` attempts to
-    parse an authentication JWT payload without having a
-    :py:class:`SecretsStore` defined to provide the necessary secrets values to
-    correctly decrypt and parse the token.
+    """Exception raised when no SecretsStore is defined during token parsing
+
+    Occurs in the :py:class:`AuthenticationContext` object when it attempts to
+    parse an authentication payload without having a :py:class:`SecretsStore`
+    defined to provide the necessary secrets values to correctly decrypt and
+    parse the token.
     """
     def __init__(self):
         super(UndefinedSecretsException, self).__init__(
-            "No SecretsStore defined.")
+            "No SecretsStore defined for Authentication token parsing.")
 
 
 class UndefinedAuthenticationError(Exception):
-    """Error raised when attempting to read from an authentication token that
-    is not defined, either because of a badly instantiated context or missing
-    header coming from upstream requests.
+    """Error raised when attempting to read from an unset authentication token
+
+    Occurs either because of a badly instantiated context or missing header
+    coming from upstream requests.
     """
     def __init__(self):
         super(UndefinedAuthenticationError, self).__init__(
-            "No Authentication JWT token provided for this context.")
+            "No Authentication token provided for this context.")
 
 
 class Baseplate(object):

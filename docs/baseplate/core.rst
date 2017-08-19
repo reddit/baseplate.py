@@ -61,10 +61,12 @@ integrations <integration/index>`.
 Authentication
 --------------
 
-If the application is dealing with authentication either directly from the
-authentication service or from upstream services, there are some support interfaces
-available for easily working with passing context down or picking up passed down
-contexts.
+If the application is directly receiving authentication from the authentication
+service or if it is receiving and wants to check authentication received from an
+upstream service, there are some support interfaces available for easily working
+with passing context down or picking up passed down contexts.  These helpers allow
+for the application to easily verify and access important values to ensure actions
+it is performing should be allowed in the current context.
 
 When receiving an initial authentication token from the authentication service, the
 application should properly store the token in an
@@ -73,7 +75,7 @@ context::
 
     authentication_token = retrieve_token_from_authentication_service()
     authentication_context = AuthenticationContext(authentication_token, secrets_store)
-    authentcation_context.attach_context(context)
+    authentication_context.attach_context(context)
 
 This will allow for this token to both be verified correctly and for the token to be
 passed downstream to other services that may need it.
