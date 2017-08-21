@@ -108,9 +108,9 @@ class BaseplateConfigurator(object):
                     flags=flags,
                 )
 
-                authn_jwt = request.headers.get("X-Authentication", None)
+                authn_token = request.headers.get("X-Authentication", None)
                 authentication_context = \
-                    self.auth_factory.make_context(authn_jwt)
+                    self.auth_factory.make_context(authn_token)
                 authentication_context.attach_context(request)
             except (KeyError, ValueError):
                 pass

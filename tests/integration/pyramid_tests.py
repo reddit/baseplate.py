@@ -126,6 +126,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(server_span.id, 3456)
         self.assertEqual(server_span.sampled, True)
         self.assertEqual(server_span.flags, 1)
+        self.assertFalse(context.authentication.defined)
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
@@ -156,8 +157,7 @@ class ConfiguratorTests(unittest.TestCase):
             "X-Flags": "1",
         })
         context, _ = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(context.authentication.token, "invalid_but_doesnt_matter")
-
+        self.assertEqual(context.authentication._token, "invalid_but_doesnt_matter")
 
     def test_not_found(self):
         self.test_app.get("/nope", status=404)

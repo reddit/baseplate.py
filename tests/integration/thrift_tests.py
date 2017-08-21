@@ -147,6 +147,7 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(server_span.id, 3456)
         self.assertTrue(server_span.sampled)
         self.assertEqual(server_span.flags, 1)
+        self.assertFalse(context.authentication.defined)
 
         self.assertEqual(self.server_observer.on_start.call_count, 1)
         self.assertEqual(self.server_observer.on_finish.call_count, 1)

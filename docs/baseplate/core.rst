@@ -89,7 +89,7 @@ passed downstream to other services that may need it.
 .. autoclass:: UndefinedSecretsException
    :members:
 
-.. autoclass:: UndefinedAuthenticationError
+.. autoclass:: WithheldAuthenticationError
    :members:
 
 Spans

@@ -17,7 +17,7 @@ from baseplate.core import (
     TraceInfo,
     AuthenticationContext,
     UndefinedSecretsException,
-    UndefinedAuthenticationError,
+    WithheldAuthenticationError,
 )
 from baseplate.integration import WrappedRequestContext
 from baseplate.file_watcher import FileWatcher
@@ -263,7 +263,7 @@ class AuthenticationContextTests(unittest.TestCase):
 
     def test_empty_context(self):
         new_auth_context = AuthenticationContext()
-        self.assertEqual(new_auth_context.token, None)
+        self.assertEqual(new_auth_context._token, None)
 
     def test_no_secrets(self):
         new_auth_context = AuthenticationContext("test token")
@@ -285,7 +285,8 @@ class AuthenticationContextTests(unittest.TestCase):
     @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_no_context(self):
         new_auth_context = AuthenticationContext(None, self.store)
-        self.assertEqual(new_auth_context.valid, None)
+        self.assertFalse(new_auth_context.defined)
+        self.assertFalse(new_auth_context.valid)
 
-        with self.assertRaises(UndefinedAuthenticationError) as e:
+        with self.assertRaises(WithheldAuthenticationError) as e:
             new_auth_context.account_id

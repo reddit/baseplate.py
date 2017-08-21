@@ -157,16 +157,17 @@ class AuthenticationContext(object):
         defined secrets store, where application secret lookups should be made
     """
     def __init__(self, token=None, secrets=None):
-        self.token = token
-        self.secrets = secrets
+        self._secret_store = secrets
+        self._token = token
         self._payload = None
         self._valid = None
+        self.defined = self._token is not None
 
     def _secret(self):
-        if not self.secrets:
+        if not self._secret_store:
             raise UndefinedSecretsException
 
-        return self.secrets.get_simple("jwt/authentication/secret")
+        return self._secret_store.get_simple("jwt/authentication/secret")
 
     def attach_context(self, context):
         """Attach this authentication wrapper to the provided context
@@ -189,16 +190,16 @@ class AuthenticationContext(object):
         """
         if self._valid is not None:
             return self._valid
-        elif self.token is None:
-            return None
+        elif not self.defined:
+            return False
 
         try:
-            self._payload = jwt.decode(self.token, self._secret(),
+            self._payload = jwt.decode(self._token, self._secret(),
                                        algorithms='RS256')
             self._valid = True
-        except jwt.ExpiredSignatureError:
+        except jwt.ExpiredSignatureError:  # when the token has expired
             self._valid = False
-        except jwt.DecodeError:
+        except jwt.DecodeError:  # When the token is malformed
             self._valid = False
 
         return self._valid
@@ -228,12 +229,12 @@ class AuthenticationContext(object):
             :py:class:`SecretsStore` has not been bound to the context handling
             class (means that the authentication payload could not be decrypted
             and the user_id returned)
-        :raises: :py:class:`UndefinedAuthenticationError` if there was no
+        :raises: :py:class:`WithheldAuthenticationError` if there was no
             authentication token defined for the current context
 
         """
-        if self.token is None:
-            raise UndefinedAuthenticationError
+        if not self.defined:
+            raise WithheldAuthenticationError
 
         return self.payload.get("sub", None)
 
@@ -251,14 +252,14 @@ class UndefinedSecretsException(Exception):
             "No SecretsStore defined for Authentication token parsing.")
 
 
-class UndefinedAuthenticationError(Exception):
+class WithheldAuthenticationError(Exception):
     """Error raised when attempting to read from an unset authentication token
 
     Occurs either because of a badly instantiated context or missing header
     coming from upstream requests.
     """
     def __init__(self):
-        super(UndefinedAuthenticationError, self).__init__(
+        super(WithheldAuthenticationError, self).__init__(
             "No Authentication token provided for this context.")
 
 

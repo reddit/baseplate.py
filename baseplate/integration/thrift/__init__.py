@@ -77,8 +77,8 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
                 flags=flags,
             )
 
-            authn_jwt = headers.get(b"Authentication", None)
-            authentication_context = self.auth_factory.make_context(authn_jwt)
+            authn_token = headers.get(b"Authentication", None)
+            authentication_context = self.auth_factory.make_context(authn_token)
             authentication_context.attach_context(context)
         except (KeyError, ValueError):
             pass
