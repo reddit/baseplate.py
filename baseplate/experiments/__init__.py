@@ -163,11 +163,7 @@ class Experiments(object):
 
         extra_event_fields = extra_event_fields or {}
 
-        event_type = experiment.get_event_type()
-        if not event_type:
-            return
-
-        event = Event("bucketing_events", event_type)
+        event = Event("bucketing_events", "bucket")
         for field, value in iteritems(extra_event_fields):
             event.set_field(field, value)
 
