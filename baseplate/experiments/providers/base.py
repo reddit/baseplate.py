@@ -23,11 +23,6 @@ class Experiment(object):
             raise NotImplementedError
         return None
 
-    def get_event_type(self):
-        if self.should_log_bucketing():
-            raise NotImplementedError
-        return None
-
     def variant(self, **kwargs):
         """Determine which variant, if any, of this experiment is active.
 

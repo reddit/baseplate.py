@@ -136,12 +136,6 @@ class R2Experiment(Experiment):
         else:
             return None
 
-    def get_event_type(self):
-        if self.bucket_val == "content_id":
-            return "bucket_page"
-        else:
-            return "bucket"
-
     def should_log_bucketing(self):
         return True
 
