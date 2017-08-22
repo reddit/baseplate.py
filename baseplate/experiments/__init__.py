@@ -59,6 +59,7 @@ class Experiments(object):
         self._span = server_span
         self._context_name = context_name
         self._already_bucketed = set()
+        self._experiment_cache = {}
 
     def _get_config(self, name):
         try:
@@ -76,6 +77,16 @@ class Experiments(object):
         except TypeError as exc:
             logger.warning("Could not load experiment config: %s", str(exc))
             return
+
+    def _get_experiment(self, name):
+        if name not in self._experiment_cache:
+            experiment_config = self._get_config(name)
+            if not experiment_config:
+                experiment = None
+            else:
+                experiment = parse_experiment(experiment_config)
+            self._experiment_cache[name] = experiment
+        return self._experiment_cache[name]
 
     def variant(self, name, bucketing_event_override=None,
                 extra_event_fields=None, **kwargs):
@@ -116,8 +127,9 @@ class Experiments(object):
         :rtype: :py:class:`str`
         :return: Variant name if a variant is active, None otherwise.
         """
-        experiment_config = self._get_config(name)
-        if not experiment_config:
+        experiment = self._get_experiment(name)
+
+        if experiment is None:
             return None
 
         experiment = parse_experiment(experiment_config)
