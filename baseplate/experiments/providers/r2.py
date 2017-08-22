@@ -207,12 +207,14 @@ class R2Experiment(Experiment):
                     else:
                         final_value = value.lower()
                     if final_value in allowed_values:
-                        return True
+                        if targeting_param == "logged_in" and self.newer_than:
+                            user_created = kwargs.get("user_created")
+                            if (user_created and
+                                    user_created > self.newer_than):
+                                return True
 
-        user_created = kwargs.get("user_created")
-        if self.newer_than and user_created and user_created > self.newer_than:
-            return True
-
+                        else:
+                            return True
         return False
 
     def _calculate_bucket(self, bucket_val):

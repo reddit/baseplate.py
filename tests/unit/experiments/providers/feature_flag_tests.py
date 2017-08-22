@@ -785,6 +785,9 @@ class TestFeatureFlag(unittest.TestCase):
             "type": "feature_flag",
             "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
             "experiment": {
+                "targeting": {
+                    "logged_in": [True],
+                },
                 "newer_than": int(time.time()) - THIRTY_DAYS.total_seconds(),
                 "variants": {
                     "active": 100,
@@ -809,6 +812,9 @@ class TestFeatureFlag(unittest.TestCase):
             "type": "feature_flag",
             "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
             "experiment": {
+                "targeting": {
+                    "logged_in": [True],
+                },
                 "newer_than": int(time.time()) + THIRTY_DAYS.total_seconds(),
                 "variants": {
                     "active": 100,
@@ -820,6 +826,35 @@ class TestFeatureFlag(unittest.TestCase):
             user_id=self.user_id,
             logged_in=self.user_logged_in,
             user_created=int(time.time()),
+        ), "active")
+        self.assertNotEqual(feature_flag.variant(
+            user_id=self.user_id,
+            logged_in=self.user_logged_in,
+        ), "active")
+
+
+    def test_newer_than_only_on_logged_in_check(self):
+        cfg = {
+            "id": 1,
+            "name": "test_feature",
+            "type": "feature_flag",
+            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "experiment": {
+                "targeting": {
+                    "logged_in": [True],
+                    "user_name": ["gary"],
+                },
+                "newer_than": int(time.time()) + THIRTY_DAYS.total_seconds(),
+                "variants": {
+                    "active": 100,
+                },
+            },
+        }
+        feature_flag = parse_experiment(cfg)
+        self.assertEqual(feature_flag.variant(
+            user_id=self.user_id,
+            logged_in=self.user_logged_in,
+            user_name="gary",
         ), "active")
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
