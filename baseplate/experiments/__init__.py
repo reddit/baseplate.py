@@ -132,8 +132,9 @@ class Experiments(object):
         if experiment is None:
             return None
 
-        experiment = parse_experiment(experiment_config)
-        variant = experiment.variant(**kwargs)
+        span_name = "{}.{}".format(self._context_name, "variant")
+        with self._span.make_child(span_name, local=True, component_name=name):
+            variant = experiment.variant(**kwargs)
 
         do_log = True
 
