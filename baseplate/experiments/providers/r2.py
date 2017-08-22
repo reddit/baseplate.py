@@ -92,7 +92,7 @@ class R2Experiment(Experiment):
             self.overrides[key] = {}
             is_case_sensitive = key in self._case_sensitive_overrides
             for k, v in iteritems(value):
-                if is_case_sensitive:
+                if is_case_sensitive or not isinstance(k, string_types):
                     override_val = k
                 else:
                     override_val = k.lower()

@@ -337,6 +337,29 @@ class TestR2Experiment(unittest.TestCase):
         scaled_percentage = float(count) / (almost_fifty_fifty.num_buckets / 100)
         self.assertEqual(scaled_percentage, 50)
 
+    def test_non_string_override_value(self):
+        experiment = parse_experiment({
+            "id": 1,
+            "name": "test",
+            "owner": "test",
+            "type": "r2",
+            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "experiment": {
+                "overrides": {
+                    "logged_in": {
+                        True: "active",
+                    },
+                },
+                "variants": {
+                    'active': 10,
+                    'control_1': 10,
+                    'control_2': 20,
+                }
+            }
+        })
+        variant = experiment.variant(logged_in=True)
+        self.assertEqual(variant, "active")
+
 
 class TestSimulatedR2Experiments(unittest.TestCase):
 
