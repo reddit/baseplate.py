@@ -141,6 +141,11 @@ class R2Experiment(Experiment):
 
     def variant(self, **kwargs):
         lower_kwargs = {k.lower(): v for k, v in iteritems(kwargs)}
+
+        variant = self._check_overrides(**lower_kwargs)
+        if variant is not None and variant in self.variants:
+            return variant
+
         if self.bucket_val not in lower_kwargs:
             logger.info(
                 "Must specify %s in call to variant for experiment %s.",
@@ -157,10 +162,6 @@ class R2Experiment(Experiment):
                 self.name,
             )
             return None
-
-        variant = self._check_overrides(**lower_kwargs)
-        if variant is not None and variant in self.variants:
-            return variant
 
         if not self._is_enabled(**lower_kwargs):
             return None
