@@ -69,8 +69,7 @@ class TestExperiments(unittest.TestCase):
             experiments.variant("test", user_id=self.user_id)
             self.assertEqual(self.event_queue.put.call_count, 1)
 
-    def test_that_bucketing_events_are_always_sent_with_override_true(self):
-        """Send bucketing events on invalid requests with override"""
+    def test_that_override_true_has_no_effect(self):
         self.mock_filewatcher.get_data.return_value = {
             "test": {
                 "id": 1,
@@ -103,11 +102,7 @@ class TestExperiments(unittest.TestCase):
             self.assertEqual(self.event_queue.put.call_count, 1)
             experiments.variant("test", user_id=self.user_id,
                                 bucketing_event_override=True)
-            self.assertEqual(self.event_queue.put.call_count, 2)
-            p.return_value = None
-            experiments.variant("test", user_id=self.user_id,
-                                bucketing_event_override=True)
-            self.assertEqual(self.event_queue.put.call_count, 3)
+            self.assertEqual(self.event_queue.put.call_count, 1)
 
     def test_that_bucketing_events_are_not_sent_with_override_false(self):
         """Don't send events when override is False"""

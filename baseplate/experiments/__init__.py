@@ -113,12 +113,11 @@ class Experiments(object):
         :param bool bucketing_event_override: (Optional) Set if you need to
             override the default behavior for sending bucketing events.  This
             parameter should be set sparingly as it breaks the assumption that
-            if you check a variant multiple times in a request, it will fire
-            one and only one bucketing event.  If set to True, will always log
-            bucketing events unless the experiment explicitly disables them,
-            even if a bucketing event has already been logged or the variant is
-            `None`.  If set to False, will never send a bucketing event. If set
-            to None, no override will be applied.  Set to None by default.
+            you will fire a bucketing event when you first check the state of
+            an experiment.  If set to False, will never send a bucketing event.
+            If set to None, no override will be applied.  Set to None by
+            default.  Note that setting bucketing_event_override to True has no
+            effect, it will behave the same as when it is set to None.
         :param dict extra_event_fields: (Optional) Any extra fields you want to
             add to the bucketing event.
         :param kwargs:  Arguments that will be passed to experiment.variant to
@@ -136,25 +135,27 @@ class Experiments(object):
         with self._span.make_child(span_name, local=True, component_name=name):
             variant = experiment.variant(**kwargs)
 
+        bucketing_id = experiment.get_unique_id(**kwargs)
         do_log = True
+
+        if not bucketing_id:
+            do_log = False
 
         if variant is None:
             do_log = False
 
-        bucketing_id = experiment.get_unique_id(**kwargs)
+        if bucketing_event_override is False:
+            do_log = False
 
         if bucketing_id and bucketing_id in self._already_bucketed:
             do_log = False
 
-        if bucketing_event_override is not None:
-            do_log = bool(bucketing_event_override)
-
         do_log = do_log and experiment.should_log_bucketing()
 
         if do_log:
+            assert bucketing_id
             self._log_bucketing_event(experiment, variant, extra_event_fields)
-            if bucketing_id:
-                self._already_bucketed.add(bucketing_id)
+            self._already_bucketed.add(bucketing_id)
 
         return variant
 
