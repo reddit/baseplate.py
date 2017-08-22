@@ -564,6 +564,31 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             config=config,
         )
 
+    def test_no_targeting_no_variant(self):
+        config = {
+            "id": 1,
+            "name": "test",
+            "owner": "test",
+            "type": "r2",
+            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "experiment": {
+                "variants": {
+                    "larger": 5,
+                    "smaller": 10,
+                    "control_1": 10,
+                    "control_2": 10,
+                },
+            },
+        }
+        self.assert_no_user_experiment(
+            users=get_users(2000),
+            config=config,
+        )
+        self.assert_no_user_experiment(
+            users=get_users(2000, logged_in=False),
+            config=config,
+        )
+
     def test_loggedin_experiment(self):
         config = {
             "id": 1,
