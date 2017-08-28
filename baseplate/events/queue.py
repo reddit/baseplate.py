@@ -22,6 +22,8 @@ import time
 import uuid
 
 from enum import Enum
+from thrift.util import Serializer
+from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
 from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
 from baseplate.context import ContextFactory
@@ -147,15 +149,46 @@ class EventQueueFullError(EventError):
         super(EventQueueFullError, self).__init__("The event queue is full.")
 
 
-class EventQueue(ContextFactory):
-    """A queue to transfer events to the publisher."""
+def serialize_v1_event(event):
+    """Serialize an Event object for the V1 event protocol.
 
-    def __init__(self, name):
+    :param baseplate.events.Event event: An event object.
+
+    """
+    return event.serialize()
+
+
+_V2_PROTOCOL_FACTORY = TJSONProtocolFactory()
+
+
+def serialize_v2_event(event):
+    """Serialize a Thrift struct to bytes for the V2 event protocol.
+
+    :param event: A Thrift struct from the event schemas.
+
+    """
+    return Serializer.serialize(_V2_PROTOCOL_FACTORY, event)
+
+
+class EventQueue(ContextFactory):
+    """A queue to transfer events to the publisher.
+
+    :param str name: The name of the event queue to send to. This specifies
+        which publisher should send the events which can be useful for routing
+        to different event pipelines (prod/test/v2 etc.).
+    :param callable event_serializer: A callable that takes an event object
+        and returns serialized bytes ready to send on the wire. See below for
+        options.
+
+    """
+
+    def __init__(self, name, event_serializer=serialize_v1_event):
         self.queue = MessageQueue(
             "/events-" + name,
             max_messages=MAX_QUEUE_SIZE,
             max_message_size=MAX_EVENT_SIZE,
         )
+        self.serialize_event = event_serializer
 
     def put(self, event):
         """Add an event to the queue.
@@ -164,13 +197,14 @@ class EventQueue(ContextFactory):
         publisher on the server will take these events and send them to the
         collector.
 
-        :param baseplate.events.Event event: The event to send.
+        :param event: The event to send. The type of event object passed in
+            depends on the selected ``event_serializer``.
         :raises: :py:exc:`EventTooLargeError` The serialized event is too large.
         :raises: :py:exc:`EventQueueFullError` The queue is full. Events are
             not being published fast enough.
 
         """
-        serialized = event.serialize()
+        serialized = self.serialize_event(event)
         if len(serialized) > MAX_EVENT_SIZE:
             raise EventTooLargeError(len(serialized))
 

@@ -1,4 +1,5 @@
 import argparse
+import collections
 import email.utils
 import gzip
 import hashlib
@@ -22,57 +23,125 @@ POST_TIMEOUT = 3
 # maximum time (seconds) an event can sit around while we wait for more
 # messages to batch
 MAX_BATCH_AGE = 1
+# maximum size (in bytes) of a batch of events
+MAX_BATCH_SIZE = 500 * 1024
 # seconds to wait between retries when the collector fails
 RETRY_DELAY = 2
 
 
-class Batcher(object):
-    """Time-aware batching producer.
+SerializedBatch = collections.namedtuple("SerializedBatch", "count bytes")
 
-    A batch-consumer gives necessary context to this object. It must provide:
-        * batch_size_limit - the maximum size of an individual batch
-        * batch_size_overhead - base size cost of a batch
-        * get_item_size() - given an item, return its batch-relevant size
-        * consume_batch() - consume a fully formed batch
 
-    A flush may occur if the batch reaches the maximum specified size during
-    add() or if explicitly flush()ed.
+class BatchFull(Exception):
+    pass
 
-    """
-    def __init__(self, consumer):
-        self.consumer = consumer
-        self.batch = []
-        self.batch_size = self.consumer.batch_size_overhead
+
+class Batch(object):
+    def add(self, item):
+        raise NotImplementedError
+
+    def serialize(self):
+        raise NotImplementedError
+
+    def reset(self):
+        raise NotImplementedError
+
+
+class TimeLimitedBatch(Batch):
+    def __init__(self, inner, max_age=MAX_BATCH_AGE):
+        self.batch = inner
         self.batch_start = None
+        self.max_age = max_age
 
     @property
-    def batch_age(self):
-        """Return the age in seconds of the oldest item in the batch.
-
-        If there are no items in the batch, 0 is returned.
-
-        """
+    def age(self):
         if not self.batch_start:
             return 0
         return time.time() - self.batch_start
 
     def add(self, item):
-        """Add an item to the batch, potentially flushing."""
-        item_size = self.consumer.get_item_size(item)
-        if self.batch_size + item_size > self.consumer.batch_size_limit:
-            self.flush()
-        self.batch.append(item)
-        self.batch_size += item_size
+        if self.age >= self.max_age:
+            raise BatchFull
+
+        self.batch.add(item)
+
         if not self.batch_start:
             self.batch_start = time.time()
 
-    def flush(self):
-        """Explicitly flush the batch if any items are enqueued."""
-        if self.batch:
-            self.consumer.consume_batch(self.batch)
-            self.batch = []
-            self.batch_size = self.consumer.batch_size_overhead
-            self.batch_start = None
+    def serialize(self):
+        return self.batch.serialize()
+
+    def reset(self):
+        self.batch.reset()
+        self.batch_start = None
+
+
+class V1Batch(Batch):
+    def __init__(self, max_size=MAX_BATCH_SIZE):
+        self.max_size = max_size
+        self.reset()
+
+    def add(self, item):
+        if not item:
+            return
+
+        serialized_size = len(item) + 1  # the comma at the end
+
+        if self._size + serialized_size > self.max_size:
+            raise BatchFull
+
+        self._items.append(item)
+        self._size += serialized_size
+
+    def serialize(self):
+        return SerializedBatch(
+            count=len(self._items),
+            bytes=b"[" + b",".join(self._items) + b"]",
+        )
+
+    def reset(self):
+        self._items = []
+        self._size = 2  # the [] that wrap the json list
+
+
+class V2Batch(Batch):
+    # V2 batches are a struct with a single field of list<Event> type. because
+    # we don't have the individual event schemas here, but pre-serialized
+    # individual events instead, we mimic TJSONProtocol's container format
+    # manually here.
+    #
+    # the format string in this header is for the length field. it should be
+    # kept a similar number of bytes to the output of the formatting so the
+    # initial size estimate is OK. 4 digits should be plenty.
+    _header = '{"1":{"lst":["rec",%01d,'
+    _end = b']}}'
+
+    def __init__(self, max_size=MAX_BATCH_SIZE):
+        self.max_size = max_size
+        self.reset()
+
+    def add(self, item):
+        if not item:
+            return
+
+        serialized_size = len(item) + 1  # the comma at the end
+
+        if self._size + serialized_size > self.max_size:
+            raise BatchFull
+
+        self._items.append(item)
+        self._size += serialized_size
+
+    def serialize(self):
+        header = (self._header % len(self._items)).encode()
+        return SerializedBatch(
+            count=len(self._items),
+            bytes=header + b",".join(self._items) + self._end,
+        )
+
+    def reset(self):
+        self._items = []
+        self._size = len(self._header) + len(self._end)
 
 
 def gzip_compress(content):
@@ -82,35 +151,29 @@ def gzip_compress(content):
     return buf.getvalue()
 
 
-class BatchConsumer(object):
-    batch_size_overhead = 2  # the [] that wrap the json list
-    batch_size_limit = 500 * 1024
-
+class BatchPublisher(object):
     def __init__(self, metrics_client, cfg):
         self.metrics = metrics_client
-        self.url = "https://%s/v1" % cfg.collector.hostname
+        self.url = "https://%s/v%d" % (cfg.collector.hostname, cfg.collector.version)
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
         self.session = requests.Session()
-
-    @staticmethod
-    def get_item_size(item):
-        # the item is already serialized, so we'll just add one byte for comma
-        return len(item) + 1
 
     def _sign_payload(self, payload):
         digest = hmac.new(self.key_secret, payload, hashlib.sha256).hexdigest()
         return "key={key}, mac={mac}".format(key=self.key_name, mac=digest)
 
-    def consume_batch(self, items):
-        logger.info("sending batch of %d items", len(items))
-        payload = b"[" + b",".join(items) + b"]"
-        compressed_payload = gzip_compress(payload)
+    def publish(self, payload):
+        if not payload.count:
+            return
+
+        logger.info("sending batch of %d events", payload.count)
+        compressed_payload = gzip_compress(payload.bytes)
         headers = {
             "Date": email.utils.formatdate(usegmt=True),
             "User-Agent": "baseplate-event-publisher/1.0",
             "Content-Type": "application/json",
-            "X-Signature": self._sign_payload(payload),
+            "X-Signature": self._sign_payload(payload.bytes),
             "Content-Encoding": "gzip",
         }
 
@@ -138,10 +201,16 @@ class BatchConsumer(object):
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
-                self.metrics.counter("sent").increment(len(items))
+                self.metrics.counter("sent").increment(payload.count)
                 return
 
             time.sleep(RETRY_DELAY)
+
+
+SERIALIZER_BY_VERSION = {
+    1: V1Batch,
+    2: V2Batch,
+}
 
 
 def publish_events():
@@ -166,6 +235,7 @@ def publish_events():
     cfg = config.parse_config(raw_config, {
         "collector": {
             "hostname": config.String,
+            "version": config.Optional(config.Integer, default=1),
         },
 
         "key": {
@@ -176,27 +246,30 @@ def publish_events():
 
     metrics_client = make_metrics_client(raw_config)
 
-    consumer = BatchConsumer(metrics_client, cfg)
-    batcher = Batcher(consumer)
     event_queue = MessageQueue(
         "/events-" + args.queue_name,
         max_messages=MAX_QUEUE_SIZE,
         max_message_size=MAX_EVENT_SIZE,
     )
 
-    try:
-        while True:
-            try:
-                message = event_queue.get(timeout=.2)
-            except TimedOutError:
-                pass
-            else:
-                batcher.add(message)
+    # pylint: disable=maybe-no-member
+    serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()
+    batcher = TimeLimitedBatch(serializer)
+    publisher = BatchPublisher(metrics_client, cfg)
 
-            if batcher.batch_age > MAX_BATCH_AGE:
-                batcher.flush()
-    finally:
-        batcher.flush()
+    while True:
+        try:
+            message = event_queue.get(timeout=.2)
+        except TimedOutError:
+            message = None
+
+        try:
+            batcher.add(message)
+        except BatchFull:
+            serialized = batcher.serialize()
+            publisher.publish(serialized)
+            batcher.reset()
+            batcher.add(message)
 
 
 if __name__ == "__main__":

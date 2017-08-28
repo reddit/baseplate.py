@@ -20,12 +20,15 @@ Memcache
 memcached
 Queing
 Redis
+schemaless
+schemas
 serializable
 serialized
 serializer
+Serializers
+statsd
 subreddit
 subreddits
-statsd
 sysctls
 unsampled
 versioned

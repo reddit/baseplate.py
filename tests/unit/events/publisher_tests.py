@@ -15,47 +15,67 @@ from baseplate.events import publisher
 from ... import mock
 
 
-class BatcherTests(unittest.TestCase):
+class TimeLimitedBatchTests(unittest.TestCase):
     def setUp(self):
-        self.consumer = mock.Mock()
-        self.consumer.batch_size_overhead = 0
-        self.consumer.get_item_size = lambda item: len(item)
-        self.consumer.batch_size_limit = 5
-        self.batcher = publisher.Batcher(self.consumer)
+        self.inner = mock.Mock(autospec=publisher.Batch)
+        self.batch = publisher.TimeLimitedBatch(self.inner, max_age=1)
 
-    def test_flush_empty_does_nothing(self):
-        self.batcher.flush()
-        self.assertEqual(self.consumer.consume_batch.called, False)
+    def test_serialize(self):
+        result = self.batch.serialize()
+        self.assertEqual(result, self.inner.serialize.return_value)
 
-    def test_start_time(self):
-        with mock.patch("time.time") as mock_time:
-            self.assertEqual(self.batcher.batch_age, 0)
+    @mock.patch("time.time")
+    def test_add_after_time_up_and_reset(self, mock_time):
+        mock_time.return_value = 1
 
-            mock_time.return_value = 33
-            self.batcher.add("a")
-            self.assertEqual(self.batcher.batch_start, 33)
+        self.batch.add("a")
+        self.inner.add.assert_call_count(1)
 
-            mock_time.return_value = 34
-            self.batcher.add("b")
-            self.assertEqual(self.batcher.batch_start, 33)
+        with self.assertRaises(publisher.BatchFull):
+            mock_time.return_value = 3
+            self.batch.add("b")
+        self.inner.add.assert_call_count(1)
 
-            mock_time.return_value = 35
-            self.assertEqual(self.batcher.batch_age, 2)
+        self.batch.reset()
+        self.batch.add("b")
+        self.inner.add.assert_call_count(2)
+        self.inner.reset.assert_call_count(1)
 
-        self.batcher.flush()
-        self.assertEqual(self.batcher.batch_start, None)
 
-    def test_manual_flush(self):
-        self.batcher.add("a")
-        self.batcher.add("b")
-        self.batcher.flush()
-        self.consumer.consume_batch.assert_called_once_with(["a", "b"])
+class BatchTests(unittest.TestCase):
+    def test_v1(self):
+        batch = publisher.V1Batch(max_size=10)
+        batch.add(None)
+        batch.add(b"1")
+        batch.add(b"2")
 
-    def test_flush_when_full(self):
-        for i in range(self.consumer.batch_size_limit+1):
-            self.batcher.add(str(i))
-        self.consumer.consume_batch.assert_called_once_with(
-            ["0", "1", "2", "3", "4"])
+        result = batch.serialize()
+        self.assertEqual(result.count, 2)
+        self.assertEqual(result.bytes, b'[1,2]')
+
+        with self.assertRaises(publisher.BatchFull):
+            batch.add(b"x" * 100)
+
+        batch.reset()
+        result = batch.serialize()
+        self.assertEqual(result.count, 0)
+
+    def test_v2(self):
+        batch = publisher.V2Batch(max_size=50)
+        batch.add(None)
+        batch.add(b"a")
+        batch.add(b"b")
+
+        result = batch.serialize()
+        self.assertEqual(result.count, 2)
+        self.assertEqual(result.bytes, b'{"1":{"lst":["rec",2,a,b]}}')
+
+        with self.assertRaises(publisher.BatchFull):
+            batch.add(b"x" * 100)
+
+        batch.reset()
+        result = batch.serialize()
+        self.assertEqual(result.count, 0)
 
 
 class CompressTests(unittest.TestCase):
@@ -66,12 +86,13 @@ class CompressTests(unittest.TestCase):
         self.assertEqual(raw, decompressed)
 
 
-class ConsumerTests(unittest.TestCase):
+class PublisherTests(unittest.TestCase):
     @mock.patch("requests.Session", autospec=True)
     def setUp(self, Session):
         self.config = config.ConfigNamespace()
         self.config.collector = config.ConfigNamespace()
         self.config.collector.hostname = "test.local"
+        self.config.collector.version = 1
         self.config.key = config.ConfigNamespace()
         self.config.key.name = "TestKey"
         self.config.key.secret = b"hunter2"
@@ -80,17 +101,17 @@ class ConsumerTests(unittest.TestCase):
 
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
 
-        self.consumer = publisher.BatchConsumer(
+        self.publisher = publisher.BatchPublisher(
             self.metrics_client, self.config)
 
-    def test_item_size(self):
-        size = self.consumer.get_item_size(b"{}")
-        self.assertEqual(size, 3)
+    def test_empty_batch(self):
+        self.publisher.publish(publisher.SerializedBatch(count=0, bytes=b''))
+        self.assertEqual(self.session.post.call_count, 0)
 
     def test_publish_success(self):
-        events = [b'{"example": "value"}']
+        events = b'[{"example": "value"}]'
 
-        self.consumer.consume_batch(events)
+        self.publisher.publish(publisher.SerializedBatch(count=1, bytes=events))
 
         self.assertEqual(self.session.post.call_count, 1)
 
@@ -103,9 +124,21 @@ class ConsumerTests(unittest.TestCase):
     @mock.patch("time.sleep")
     def test_publish_retry(self, mock_sleep):
         self.session.post.side_effect = [requests.HTTPError(504), IOError, mock.Mock()]
-        events = [b'{"example": "value"}']
+        events = b'[{"example": "value"}]'
 
-        self.consumer.consume_batch(events)
+        self.publisher.publish(publisher.SerializedBatch(count=1, bytes=events))
 
         self.assertEqual(mock_sleep.call_count, 2)
         self.assertEqual(self.session.post.call_count, 3)
+
+    @mock.patch("time.sleep")
+    def test_fail_on_client_error(self, mock_sleep):
+        self.session.post.side_effect = [
+            requests.HTTPError(400, response=mock.Mock(status_code=400))]
+        events = b'[{"example": "value"}]'
+
+        with self.assertRaises(requests.HTTPError):
+            self.publisher.publish(publisher.SerializedBatch(count=1, bytes=events))
+
+        self.assertEqual(mock_sleep.call_count, 0)
+        self.assertEqual(self.session.post.call_count, 1)
