@@ -15,6 +15,7 @@ Build-Depends: debhelper (>= 8),
                python-pyramid, python-fbthrift, python3-fbthrift,
                python-posix-ipc, python3-posix-ipc,
                python-sqlalchemy, python3-sqlalchemy,
+               python-jwt, python3-jwt,
                python-sphinx | python3-sphinx, python-alabaster, python-sphinxcontrib.spelling
 Standards-Version: 3.9.5
 X-Python-Version: >= 2.7
