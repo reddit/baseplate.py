@@ -104,12 +104,14 @@ class PooledClientProxy(object):
                             prot.trans.set_header("Sampled", sampled)
                         if span.flags:
                             prot.trans.set_header("Flags", str(span.flags))
-                        if hasattr(span.context, "authentication") \
-                                and span.context.authentication.token:
-                            prot.trans.set_header(
-                                "Authentication",
-                                span.context.authentication.token
-                            )
+
+                        try:
+                            auth_token = span.context.authentication.token
+                        except AttributeError:
+                            pass
+                        else:
+                            prot.trans.set_header("Authentication", auth_token)
+
                         client = self.client_cls(prot)
                         method = getattr(client, name)
                         return method(*args, **kwargs)
