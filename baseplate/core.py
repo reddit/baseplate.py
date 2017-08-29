@@ -397,6 +397,7 @@ class Span(object):
         self.sampled = sampled
         self.flags = flags
         self.name = name
+        self.context = context
         self.observers = []
 
     def register(self, observer):
@@ -476,18 +477,6 @@ class Span(object):
 
 
 class LocalSpan(Span):
-    def __init__(self,
-                 trace_id,
-                 parent_id,
-                 span_id,
-                 sampled,
-                 flags,
-                 name,
-                 context):
-        super(LocalSpan, self).__init__(trace_id, parent_id, span_id, sampled,
-                                        flags, name, context)
-        self.context = context
-
     def make_child(self, name, local=False, component_name=None):
         """Return a child Span whose parent is this Span.
 
