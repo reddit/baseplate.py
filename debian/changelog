@@ -1,3 +1,15 @@
+baseplate (0.22.0) trusty; urgency=medium
+
+  * add authentication context and context propagation
+  * add support for v2 thrift-based events
+  * add redis-backed MessageQueue implementation
+  * experiments: various bug fixes in bucketing logic
+  * experiments: add local span around variant check
+  * experiments: cache parsed objects for perf boost
+  * fix observation of child spans created inside local spans
+
+ -- Neil Williams <neil@reddit.com>  Tue, 29 Aug 2017 11:26:38 -0700
+
 baseplate (0.21.0) trusty; urgency=medium
 
   * Add iteritems to _compat
