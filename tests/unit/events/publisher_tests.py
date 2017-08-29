@@ -29,17 +29,17 @@ class TimeLimitedBatchTests(unittest.TestCase):
         mock_time.return_value = 1
 
         self.batch.add("a")
-        self.inner.add.assert_call_count(1)
+        self.assertEqual(self.inner.add.call_count, 1)
 
         with self.assertRaises(publisher.BatchFull):
             mock_time.return_value = 3
             self.batch.add("b")
-        self.inner.add.assert_call_count(1)
+        self.assertEqual(self.inner.add.call_count, 1)
 
         self.batch.reset()
         self.batch.add("b")
-        self.inner.add.assert_call_count(2)
-        self.inner.reset.assert_call_count(1)
+        self.assertEqual(self.inner.add.call_count, 2)
+        self.assertEqual(self.inner.reset.call_count, 1)
 
 
 class BatchTests(unittest.TestCase):
