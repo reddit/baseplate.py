@@ -26,7 +26,10 @@ import sys
 
 from thrift.Thrift import TProcessorEventHandler
 
-from ...core import TraceInfo
+from ...core import (
+    TraceInfo,
+    AuthenticationContextFactory,
+)
 
 
 class RequestContext(object):
@@ -41,11 +44,17 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
     :param logging.Logger logger: The logger to use for error and debug logging.
     :param baseplate.core.Baseplate baseplate: The baseplate instance for your
         application.
+    :param baseplate.core.AuthenticationContextFactory auth_factory: An
+        optional factory for authentication context building from incoming
+        request headers.  If not defined, a thin wrapper will be used to enable
+        passing the context downstream but will error out if attempted to be
+        used.
 
     """
-    def __init__(self, logger, baseplate):
+    def __init__(self, logger, baseplate, auth_factory=None):
         self.logger = logger
         self.baseplate = baseplate
+        self.auth_factory = auth_factory or AuthenticationContextFactory()
 
     def getHandlerContext(self, fn_name, server_context):
         context = RequestContext()
@@ -67,6 +76,10 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
                 sampled=sampled,
                 flags=flags,
             )
+
+            authn_token = headers.get(b"Authentication", None)
+            authentication_context = self.auth_factory.make_context(authn_token)
+            authentication_context.attach_context(context)
         except (KeyError, ValueError):
             pass
 

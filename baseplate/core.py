@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import collections
 import random
+import jwt
 
 from .integration.wrapped_context import WrappedRequestContext
 from ._utils import warn_deprecated
@@ -121,6 +122,145 @@ class TraceInfo(_TraceInfo):
                 raise ValueError("invalid flags value")
 
         return cls(trace_id, parent_id, span_id, sampled, flags)
+
+
+class AuthenticationContextFactory(object):
+    """Factory for consistent AuthenticationContext creation.
+
+    This factory should be passed into the constructor of any upstream
+    :doc:`integrations <integration/index>` so that it is aware of the
+    application's secret store and can create the authentication context for
+    the incoming requests.
+
+    :param baseplate.secrets.SecretsStore secrets_store: the application's
+        defined secrets store, where application secret lookups should be made
+    """
+    def __init__(self, secrets_store=None):
+        self.secrets = secrets_store
+
+    def make_context(self, token):
+        """Builds :py:class:`AuthenticationContext` using stored values
+
+        :param token: token value originating from the Authentication service
+            either directly or from an upstream service
+        :rtype: :py:class:`AuthenticationContext`
+        """
+        return AuthenticationContext(token=token, secrets=self.secrets)
+
+
+class AuthenticationContext(object):
+    """Wrapper for the contextual authentication information
+
+    :param str token: the value for the currently propagated authentication
+        context
+    :param baseplate.secrets.SecretsStore secrets_store: the application's
+        defined secrets store, where application secret lookups should be made
+    """
+    def __init__(self, token=None, secrets=None):
+        self._secret_store = secrets
+        self._token = token
+        self._payload = None
+        self._valid = None
+        self.defined = self._token is not None
+
+    def _secret(self):
+        if not self._secret_store:
+            raise UndefinedSecretsException
+
+        return self._secret_store.get_simple("jwt/authentication/secret")
+
+    def attach_context(self, context):
+        """Attach this authentication wrapper to the provided context
+
+        :param context: request context to attach this authentication to
+
+        """
+        context.authentication = self
+
+    @property
+    def valid(self):
+        """Validity of the current authentication context token
+
+        :type: bool
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and validated)
+
+        """
+        if self._valid is not None:
+            return self._valid
+        elif not self.defined:
+            return False
+
+        try:
+            self._payload = jwt.decode(self._token, self._secret(),
+                                       algorithms='RS256')
+            self._valid = True
+        except jwt.ExpiredSignatureError:  # when the token has expired
+            self._valid = False
+        except jwt.DecodeError:  # When the token is malformed
+            self._valid = False
+
+        return self._valid
+
+    @property
+    def payload(self):
+        """Decrypted payload of the authentication token.
+
+        :type: dict
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+
+        """
+        if not self.valid:
+            return {}
+
+        return self._payload
+
+    @property
+    def account_id(self):
+        """Authenticated account_id for the current authenticated context
+
+        :type: account_id string or None if context authentication is invalid
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+        :raises: :py:class:`WithheldAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        if not self.defined:
+            raise WithheldAuthenticationError
+
+        return self.payload.get("sub", None)
+
+
+class UndefinedSecretsException(Exception):
+    """Exception raised when no SecretsStore is defined during token parsing
+
+    Occurs in the :py:class:`AuthenticationContext` object when it attempts to
+    parse an authentication payload without having a :py:class:`SecretsStore`
+    defined to provide the necessary secrets values to correctly decrypt and
+    parse the token.
+    """
+    def __init__(self):
+        super(UndefinedSecretsException, self).__init__(
+            "No SecretsStore defined for Authentication token parsing.")
+
+
+class WithheldAuthenticationError(Exception):
+    """Error raised when attempting to read from an unset authentication token
+
+    Occurs either because of a badly instantiated context or missing header
+    coming from upstream requests.
+    """
+    def __init__(self):
+        super(WithheldAuthenticationError, self).__init__(
+            "No Authentication token provided for this context.")
 
 
 class Baseplate(object):
