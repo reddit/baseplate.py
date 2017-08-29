@@ -6,6 +6,46 @@
 Building Events
 ---------------
 
+Thrift Schema v2 Events
+~~~~~~~~~~~~~~~~~~~~~~~
+
+For modern Thrift-based events: import the event schemas into your project,
+instantiate and fill out an event object, and pass it into the queue::
+
+   import time
+   import uuid
+
+   from baseplate.events import EventQueue, serialize_v2_event
+
+   from event_schemas.event.ttypes import Event
+
+
+   def make_wsgi_app(app_config):
+      ...
+
+      queue = EventQueue("v2", event_serializer=serialize_v2_event)
+      baseplate.add_to_context("events_v2", queue)
+
+      ...
+
+
+   def my_handler(request):
+      event = Event(
+         source="baseplate",
+         action="test",
+         noun="baseplate",
+         client_timestamp=time.time() * 1000,
+         uuid=str(uuid.uuid4()),
+      )
+      request.events_v2.put(ev2)
+
+
+Legacy schemaless events
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+For legacy schemaless events, you can use these helper objects to build
+payloads:
+
 .. autoclass:: FieldKind
    :members:
 
@@ -32,6 +72,19 @@ It can then be used from the :term:`context object` during requests::
    def some_service_method(self, context):
        event = Event(...)
        context.events_production.put(event)
+
+Serializers
+~~~~~~~~~~~
+
+The ``event_serializer`` parameter to :py:class:`EventQueue` is a callable
+which serializes a given event object. The default is the original schemaless
+format. This can be overridden by passing in a different serializer.  Baseplate
+comes with a serializer for the new Thrift schema based V2 event system as
+well:
+
+.. autofunction:: serialize_v1_event
+
+.. autofunction:: serialize_v2_event
 
 
 Exceptions

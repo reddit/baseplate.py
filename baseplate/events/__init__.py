@@ -13,6 +13,8 @@ from .queue import (
     EventQueueFullError,
     EventTooLargeError,
     FieldKind,
+    serialize_v1_event,
+    serialize_v2_event,
 )
 
 __all__ = [
@@ -22,4 +24,6 @@ __all__ = [
     "EventQueueFullError",
     "EventTooLargeError",
     "FieldKind",
+    "serialize_v1_event",
+    "serialize_v2_event",
 ]
