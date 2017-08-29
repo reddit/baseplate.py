@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import collections
 import math
+import os
 import unittest
 
 from datetime import datetime, timedelta
@@ -116,6 +117,8 @@ class TestR2Experiment(unittest.TestCase):
             long(595),
         )
 
+    @unittest.skipIf(os.environ.get("CI") != "true",
+                     "test takes too long to run for normal local iteration")
     def test_calculate_bucket(self):
         cfg = {
             "id": 1,
@@ -156,6 +159,8 @@ class TestR2Experiment(unittest.TestCase):
             self.assertAlmostEqual(percent_equal, 1.0, delta=.10,
                                    msg='bucket: %s' % bucket)
 
+    @unittest.skipIf(os.environ.get("CI") != "true",
+                     "test takes too long to run for normal local iteration")
     def test_calculate_bucket_with_seed(self):
         cfg = {
             "id": 1,
@@ -386,6 +391,8 @@ class TestR2Experiment(unittest.TestCase):
         self.assertEqual(variant, "active")
 
 
+@unittest.skipIf(os.environ.get("CI") != "true",
+                     "test takes too long to run for normal local iteration")
 class TestSimulatedR2Experiments(unittest.TestCase):
 
     def setUp(self):
