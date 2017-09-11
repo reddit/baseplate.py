@@ -4,12 +4,14 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
+import time
 
 from datetime import datetime
 
 from .feature_flag import FeatureFlag
 from .forced_variant import ForcedVariantExperiment
 from .r2 import R2Experiment
+from ..._utils import warn_deprecated
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +29,14 @@ def parse_experiment(config):
         * **name**: String experiment name, should be unique for each
           experiment.
         * **owner**: The group or individual that owns this experiment.
-        * **expires**: Date when this experiment expires in ISO format
-          (YYYY-MM-DD).  The experiment will expire at 00:00 UTC on the day
-          after the specified date.  Once an experiment is expired, it is
-          considered disabled.
+        * **version**: String to identify the specific version of the
+          experiment.
+        * **start_ts**: A float of seconds since the epoch of date and time
+          when you want the experiment to start.  If an experiment has not been
+          started yet, it is considered disabled.
+        * **stop_ts**: A float of seconds since the epoch of date and time when
+          you want the experiment to stop.  Once an experiment is stopped, it
+          is considered disabled.
         * **type**: String specifying the type of experiment to run.  If this
           value is not recognized, the experiment will be considered disabled.
         * **experiment**: The experiment config dict for the specific type of
@@ -54,15 +60,41 @@ def parse_experiment(config):
     assert isinstance(experiment_id, int)
     name = config["name"]
     owner = config.get("owner")
-    experiment_config = config["experiment"]
-    expiration = datetime.strptime(config["expires"], ISO_DATE_FMT).date()
+    if "start_ts" in config and "stop_ts" in config:
+        start_ts = config["start_ts"]
+        stop_ts = config["stop_ts"]
+    elif "expires" in config:
+        warn_deprecated(
+            "The 'expires' field is in experiment %s deprecated, you should "
+            "use 'start_ts' and 'stop_ts'." % name
+        )
+        start_ts = time.time()
+        expires = datetime.strptime(config["expires"], ISO_DATE_FMT)
+        epoch = datetime(1970, 1, 1)
+        stop_ts = (expires - epoch).total_seconds()
+    else:
+        raise ValueError(
+            "Invalid config for experiment %s, missing start_ts and/or "
+            "stop_ts." % name
+        )
 
-    if datetime.utcnow().date() > expiration:
+    if "version" in config:
+        version = config["version"]
+    else:
+        warn_deprecated(
+            "The 'version' field is not in experiment %s.  This field will be "
+            "required in the future." % name
+        )
+        version = None
+    now = time.time()
+    if now < start_ts or now > stop_ts:
         return ForcedVariantExperiment(None)
 
     enabled = config.get("enabled", True)
     if not enabled:
         return ForcedVariantExperiment(None)
+
+    experiment_config = config["experiment"]
 
     if "global_override" in config:
         # We want to check if "global_override" is in config rather than
@@ -76,6 +108,7 @@ def parse_experiment(config):
             id=experiment_id,
             name=name,
             owner=owner,
+            version=version,
             config=experiment_config,
         )
     elif experiment_type == "feature_flag":
@@ -83,6 +116,7 @@ def parse_experiment(config):
             id=experiment_id,
             name=name,
             owner=owner,
+            version=version,
             config=experiment_config,
         )
     else:

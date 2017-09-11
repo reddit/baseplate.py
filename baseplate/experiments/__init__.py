@@ -174,6 +174,10 @@ class Experiments(object):
         event.set_field("experiment_name", experiment.name)
         event.set_field("owner", experiment.owner)
 
+        version = getattr(experiment, "version", None)
+        if version:
+            event.set_field("version", version)
+
         span_name = "{}.{}".format(self._context_name, "events")
         with self._span.make_child(span_name) as child_span:
             try:
