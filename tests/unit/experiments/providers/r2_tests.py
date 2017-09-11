@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import collections
 import math
 import os
+import time
 import unittest
 
 from datetime import datetime, timedelta
@@ -21,7 +22,7 @@ from baseplate.file_watcher import FileWatcher
 from .... import mock
 
 
-THIRTY_DAYS = timedelta(days=30)
+THIRTY_DAYS = timedelta(days=30).total_seconds()
 
 
 def get_users(num_users, logged_in=True):
@@ -65,7 +66,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     "control_1": 10,
@@ -76,6 +79,27 @@ class TestR2Experiment(unittest.TestCase):
         experiment = parse_experiment(cfg)
         self.assertTrue(isinstance(experiment, R2Experiment))
         self.assertTrue(experiment.should_log_bucketing())
+        self.assertEqual(experiment.version, "1")
+
+    def test_no_version_allowed(self):
+        cfg = {
+            "id": 1,
+            "name": "test",
+            "owner": "test",
+            "type": "r2",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
+            "experiment": {
+                "variants": {
+                    "control_1": 10,
+                    "control_2": 10,
+                }
+            }
+        }
+        experiment = parse_experiment(cfg)
+        self.assertTrue(isinstance(experiment, R2Experiment))
+        self.assertTrue(experiment.should_log_bucketing())
+        self.assertIs(experiment.version, None)
 
     def test_calculate_bucket_value(self):
         cfg = {
@@ -83,7 +107,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     "control_1": 10,
@@ -99,7 +125,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "seed": "test-seed",
                 "variants": {
@@ -125,7 +153,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     "control_1": 10,
@@ -167,7 +197,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     "control_1": 10,
@@ -222,7 +254,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "control_only",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     "control_1": 10,
@@ -235,7 +269,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "three_variants",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     'remove_vote_counters': 5,
@@ -249,7 +285,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "three_variants_more",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     'remove_vote_counters': 15.6,
@@ -300,7 +338,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "fifty_fifty",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     'control_1': 50,
@@ -313,7 +353,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "almost_fifty_fifty",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     'control_1': 49,
@@ -348,7 +390,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
                     "user_name": {
@@ -373,7 +417,9 @@ class TestR2Experiment(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
                     "logged_in": {
@@ -529,7 +575,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "targeting": {
                     "logged_in": [True],
@@ -577,7 +625,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "variants": {
                     "larger": 5,
@@ -602,7 +652,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "targeting": {
                     "logged_in": [True],
@@ -630,7 +682,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": True,
             "experiment": {
                 "targeting": {
@@ -659,7 +713,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": False,
             "experiment": {
                 "targeting": {
@@ -688,7 +744,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "targeting": {
                     "logged_in": [False],
@@ -716,7 +774,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "targeting": {
                     "logged_in": [False],
@@ -747,7 +807,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": True,
             "experiment": {
                 "targeting": {
@@ -776,7 +838,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": False,
             "experiment": {
                 "targeting": {
@@ -805,7 +869,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "targeting": {
                     "logged_in": [True, False],
@@ -829,7 +895,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": False,
             "experiment": {
                 "targeting": {
@@ -854,7 +922,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "targeting": {},
                 "variants": {
@@ -876,7 +946,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "bucket_val": "content_id",
                 "targeting": {
@@ -916,7 +988,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "name": "test",
             "owner": "test",
             "type": "r2",
-            "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "bucket_val": "content_id",
                 "targeting": {

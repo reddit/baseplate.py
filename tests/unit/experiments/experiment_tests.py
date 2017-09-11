@@ -3,9 +3,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import time
 import unittest
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from baseplate.core import ServerSpan
 from baseplate.events import EventQueue
@@ -14,12 +15,11 @@ from baseplate.experiments import (
     ExperimentsContextFactory,
     experiments_client_from_config,
 )
-from baseplate.experiments.providers import ISO_DATE_FMT
 from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
 
 from ... import mock
 
-THIRTY_DAYS = timedelta(days=30)
+THIRTY_DAYS = timedelta(days=30).total_seconds()
 
 
 class TestExperiments(unittest.TestCase):
@@ -40,7 +40,9 @@ class TestExperiments(unittest.TestCase):
                 "name": "test",
                 "owner": "test",
                 "type": "r2",
-                "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
                 "experiment": {
                     "id": 1,
                     "name": "test",
@@ -76,7 +78,9 @@ class TestExperiments(unittest.TestCase):
                 "name": "test",
                 "owner": "test",
                 "type": "r2",
-                "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
                 "experiment": {
                     "variants": {
                         "active": 10,
@@ -112,7 +116,9 @@ class TestExperiments(unittest.TestCase):
                 "name": "test",
                 "owner": "test",
                 "type": "r2",
-                "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
                 "experiment": {
                     "variants": {
                         "active": 10,
@@ -151,7 +157,9 @@ class TestExperiments(unittest.TestCase):
                 "name": "test",
                 "owner": "test",
                 "type": "r2",
-                "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
                 "experiment": {
                     "variants": {
                         "active": 10,
@@ -185,7 +193,9 @@ class TestExperiments(unittest.TestCase):
                 "name": "test",
                 "owner": "test",
                 "type": "r2",
-                "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
                 "experiment": {
                     "variants": {
                         "active": 10,
@@ -253,7 +263,9 @@ class TestExperiments(unittest.TestCase):
                 "name": "test",
                 "owner": "test",
                 "type": "r2",
-                "expires": (datetime.utcnow() + THIRTY_DAYS).strftime(ISO_DATE_FMT),
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
                 "experiment": {
                     "variants": {
                         "active": 10,

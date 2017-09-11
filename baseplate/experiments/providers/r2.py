@@ -57,7 +57,7 @@ class R2Experiment(Experiment):
 
     def __init__(self, id, name, owner, variants, seed=None,
                  bucket_val="user_id", targeting=None, overrides=None,
-                 newer_than=None):
+                 newer_than=None, version=None):
         targeting = dict(targeting or {})
         overrides = dict(overrides or {})
         self.targeting = {}
@@ -105,9 +105,10 @@ class R2Experiment(Experiment):
         self.variants = variants
         self.bucket_val = bucket_val
         self.newer_than = newer_than
+        self.version = version
 
     @classmethod
-    def from_dict(cls, id, name, owner, config):
+    def from_dict(cls, id, name, owner, version, config):
         """Parse the config dict and return a new R2Experiment object.
 
         :param int id: The id of the experiment from the base config.
@@ -120,6 +121,7 @@ class R2Experiment(Experiment):
             id=id,
             name=name,
             owner=owner,
+            version=version,
             variants=config["variants"],
             targeting=config.get("targeting"),
             overrides=config.get("overrides"),
