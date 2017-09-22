@@ -4,11 +4,21 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import collections
+import logging
 import random
+
 import jwt
+from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
+from thrift.util import Serializer
 
 from .integration.wrapped_context import WrappedRequestContext
+from .thrift.ttypes import Loid as TLoid
+from .thrift.ttypes import Request as TRequest
+from .thrift.ttypes import Session as TSession
 from ._utils import warn_deprecated
+
+
+logger = logging.getLogger(__name__)
 
 
 class BaseplateObserver(object):
@@ -318,6 +328,255 @@ class WithheldAuthenticationError(Exception):
     def __init__(self):
         super(WithheldAuthenticationError, self).__init__(
             "No Authentication token provided for this context.")
+
+
+_User = collections.namedtuple(
+    "_User", ["authentication_context", "loid", "cookie_created_ms"])
+_OAuthClient = collections.namedtuple(
+    "_OAuthClient", ["authentication_context"])
+Session = collections.namedtuple("Session", ["id"])
+
+
+class User(_User):
+    """Wrapper for the user values in AuthenticationContext and the LoId cookie.
+    """
+
+    def event_fields(self):
+        """Dictionary of values to be added to events in the current context
+        """
+        if self.is_logged_in:
+            user_id = self.id
+        else:
+            user_id = self.loid
+        return {
+            "user_id": user_id,
+            "user_logged_in": self.is_logged_in,
+            "cookie_created": self.cookie_created_ms,
+        }
+
+    @property
+    def id(self):
+        """Authenticated account_id for the current User
+
+        :type: account_id string or None if context authentication is invalid
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+        :raises: :py:class:`WithheldAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        return self.authentication_context.account_id
+
+    @property
+    def is_logged_in(self):
+        """Does the User have a valid, authenticated id"""
+        try:
+            return self.id is not None
+        except (WithheldAuthenticationError, UndefinedSecretsException):
+            return False
+
+    @property
+    def roles(self):
+        """Authenticated roles for the current User
+
+        :type: set(string)
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+        :raises: :py:class:`WithheldAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        return self.authentication_context.user_roles
+
+
+class OAuthClient(_OAuthClient):
+    """Wrapper for the OAuth2 client values in AuthenticationContext."""
+
+    @property
+    def id(self):
+        """Authenticated id for the current client
+
+        :type: string or None if context authentication is invalid
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+        :raises: :py:class:`WithheldAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        return self.authentication_context.oauth_client_id
+
+    def is_type(self, *client_types):
+        """Is the authenticated client type one of the given types
+
+        When checking the type of the current OauthClient, you should check
+        that the type "is" one of the allowed types rather than checking that
+        it "is not" a disallowed type.
+
+        For example::
+
+            if oauth_client.is_type("third_party"):
+                ...
+
+        not::
+
+            if not oauth_client.is_type("first_party"):
+                ...
+
+
+        :param str *client_types: Case-insensitive sequence of client type
+            names that you want to check.
+
+        :type: bool
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+        :raises: :py:class:`WithheldAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        lower_types = (client_type.lower() for client_type in client_types)
+        return self.authentication_context.oauth_client_type in lower_types
+
+
+class EdgeRequestContext(object):
+    """Contextual information about the initial request to an edge service
+
+    :param bytes header: Serialized "Edge-Request" header.
+    :param baseplate.core.AuthenticationContext authentication_context:
+        Authentication context for the current request if it is authenticated.
+    """
+
+    _HEADER_PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
+
+    def __init__(self, header, authentication_context):
+        self._header = header
+        self._authentication_context = authentication_context
+        self._t_request = None
+        self._user = None
+        self._oauth_client = None
+        self._session = None
+
+    def attach_context(self, context):
+        """Attach this to the provided Baseplate context.
+
+        :param context: request context to attach this to
+        """
+        context.request_context = self
+
+    def header_values(self):
+        """Dictionary of the serialized headers with the request context data
+
+        Used to get the values to forward with upstream service calls.
+        """
+        return {
+            'Edge-Request': self._header,
+            'Authentication': self._authentication_context._token,
+        }
+
+    def event_fields(self):
+        """Dictionary of values to be added to events in the current context
+        """
+        try:
+            oauth_client_id = self.oauth_client.id
+        except (WithheldAuthenticationError, UndefinedSecretsException):
+            oauth_client_id = None
+
+        fields = {
+            'session_id': self.session.id,
+            'oauth_client_id': oauth_client_id,
+        }
+        fields.update(self.user.event_fields())
+        return fields
+
+    @classmethod
+    def create(cls, authentication_context=None, loid_id=None,
+               loid_created_ms=None, session_id=None):
+        """Factory method to create a new EdgeRequestContext object.
+
+        Builds a new EdgeRequestContext object with the given parameters and
+        serializes the "Edge-Request" header.
+
+        :param baseplate.core.AuthenticationContext authentication_context:
+            (Optional) AuthenticationContext for the current request if it is
+            authenticated.
+        :param str loid_id: (Optional) ID for the current LoID in fullname
+            format.
+        :param int loid_created_ms: (Optional) Epoch milliseconds when the
+            current LoID cookie was created.
+        :param str session_id: (Optional) ID for the current session cookie.
+
+        """
+        session = TSession(id=session_id)
+        if not loid_id.startswith("t2_"):
+            raise ValueError(
+                "loid_id <%s> is not in a valid format, it should be in the "
+                "fullname format with the '0' padding removed: 't2_loid_id'",
+                loid_id
+            )
+        loid = TLoid(id=loid_id, created_ms=loid_created_ms)
+        request = TRequest(loid=loid, session=session)
+        header = Serializer.serialize(cls._HEADER_PROTOCOL_FACTORY, request)
+        if authentication_context is None:
+            authentication_context = AuthenticationContext()
+        request_context = cls(header, authentication_context)
+        # Set the _t_request property so we can skip the deserialization step
+        # since we already have the thrift object.
+        request_context._t_request = request
+        return request_context
+
+    @property
+    def user(self):
+        """:py:class:`baseplate.core.User` object for the current context"""
+        if self._user is None:
+            t_context = self._thrift_request_context()
+            self._user = User(
+                authentication_context=self._authentication_context,
+                loid=t_context.loid.id,
+                cookie_created_ms=t_context.loid.created_ms,
+            )
+        return self._user
+
+    @property
+    def oauth_client(self):
+        """:py:class:`baseplate.core.OAuthClient` object for the current context
+        """
+        if self._oauth_client is None:
+            self._oauth_client = OAuthClient(self._authentication_context)
+        return self._oauth_client
+
+    @property
+    def session(self):
+        """:py:class:`baseplate.core.Session` object for the current context"""
+        if self._session is None:
+            t_context = self._thrift_request_context()
+            self._session = Session(id=t_context.session.id)
+        return self._session
+
+    def _thrift_request_context(self):
+        if self._t_request is None:
+            self._t_request = TRequest()
+            self._t_request.loid = TLoid()
+            self._t_request.session = TSession()
+            if self._header:
+                try:
+                    Serializer.deserialize(
+                        self._HEADER_PROTOCOL_FACTORY,
+                        self._header,
+                        self._t_request,
+                    )
+                except Exception:
+                    logger.debug(
+                        "Invalid Edge-Request header. %s",
+                        self._header,
+                    )
+        return self._t_request
 
 
 class Baseplate(object):

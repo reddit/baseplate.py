@@ -18,3 +18,51 @@ service BaseplateService {
     */
     bool is_healthy(),
 }
+
+
+/** The components of the Reddit LoID cookie that we want to propogate between
+services.
+
+This model is a component of the "Edge-Request" header.  You should not need to
+interact with this model directly, but rather through the EdgeRequestContext
+interface provided by baseplate.
+
+*/
+struct Loid {
+    /** The ID of the LoID cookie.
+
+    */
+    1: string id;
+    /** The time when the LoID cookie was created in epoch milliseconds.
+
+    */
+    2: i64 created_ms;
+}
+
+/** The components of the Reddit Session tracker cookie that we want to
+propogate between services.
+
+This model is a component of the "Edge-Request" header.  You should not need to
+interact with this model directly, but rather through the EdgeRequestContext
+interface provided by baseplate.
+
+*/
+struct Session {
+    /** The ID of the Session tracker cookie.
+
+    */
+    1: string id;
+}
+
+/** Container model for the Edge-Request context header.
+
+Baseplate will automatically parse this from the "Edge-Request" header and
+provides an interface that wraps this Thrift model.  You should not need to
+interact with this model directly, but rather through the EdgeRequestContext
+interface provided by baseplate.
+
+*/
+struct Request {
+    1: Loid loid;
+    2: Session session;
+}
