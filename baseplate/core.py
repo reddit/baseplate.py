@@ -238,6 +238,63 @@ class AuthenticationContext(object):
 
         return self.payload.get("sub", None)
 
+    @property
+    def user_roles(self):
+        """User roles for the current authenticated context
+
+        :type: set(string)
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+        :raises: :py:class:`WithheldAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        if not self.defined:
+            raise WithheldAuthenticationError
+
+        roles = self.payload.get("user_roles", None)
+        return set(roles) if roles else set()
+
+    @property
+    def oauth_client_id(self):
+        """ID for the OAuth client used with the current authenticated context
+
+        :type: string or None if context authentication is invalid or the user
+            did not authenticate with OAuth2
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+        :raises: :py:class:`WithheldAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        if not self.defined:
+            raise WithheldAuthenticationError
+
+        return self.payload.get("client_id", None)
+
+    @property
+    def oauth_client_type(self):
+        """Type of OAuth client used with the current authenticated context
+
+        :type: string or None if context authentication is invalid or the user
+            did not authenticate with OAuth2
+        :raises: :py:class:`UndefinedSecretsException` if the
+            :py:class:`SecretsStore` has not been bound to the context handling
+            class (means that the authentication payload could not be decrypted
+            and the user_id returned)
+        :raises: :py:class:`WithheldAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        if not self.defined:
+            raise WithheldAuthenticationError
+
+        return self.payload.get("client_type", None)
+
 
 class UndefinedSecretsException(Exception):
     """Exception raised when no SecretsStore is defined during token parsing
