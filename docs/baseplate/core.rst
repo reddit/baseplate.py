@@ -58,40 +58,6 @@ integrations <integration/index>`.
 .. autoclass:: TraceInfo
    :members: from_upstream
 
-Authentication
---------------
-
-If the application is directly receiving authentication from the authentication
-service or if it is receiving and wants to check authentication received from an
-upstream service, there are some support interfaces available for easily working
-with passing context down or picking up passed down contexts.  These helpers allow
-for the application to easily verify and access important values to ensure actions
-it is performing should be allowed in the current context.
-
-When receiving an initial authentication token from the authentication service, the
-application should properly store the token in an
-:py:class:`~baseplate.core.AuthenticationContext` object attached to the current
-context::
-
-    authentication_token = retrieve_token_from_authentication_service()
-    authentication_context = AuthenticationContext(authentication_token, secrets_store)
-    authentication_context.attach_context(context)
-
-This will allow for this token to both be verified correctly and for the token to be
-passed downstream to other services that may need it.
-
-.. autoclass:: AuthenticationContextFactory
-   :members:
-
-.. autoclass:: AuthenticationContext
-   :members:
-
-.. autoclass:: UndefinedSecretsException
-   :members:
-
-.. autoclass:: WithheldAuthenticationError
-   :members:
-
 Spans
 -----
 
@@ -166,6 +132,57 @@ statsd :py:meth:`~!baseplate.core.SpanObserver.on_finish`.
 
 
 .. _convenience_methods:
+
+Edge Request Context
+--------------------
+
+The :py:class:`~baseplate.core.EdgeRequestContext` provides an interface into both
+authentication and context information about the original request from a user.  For edge
+services, it provides helpers to create the initial object and serialize the context
+information into the appropriate headers.  Once this object is created and attached to
+the context, Baseplate will automatically forward the headers to downstream services so they
+can access the authentication and context data as well.
+
+If the application is an edge service that is directly serving client
+requests, then the application should procure an authentication token from the authentication
+service, store the token in an :py:class:`~baseplate.core.AuthenticationContext` object,
+and then store it along with the other context data in an
+:py:class:`~baseplate.core.EdgeRequestContext` object attached to the current context::
+
+    authentication_token = retrieve_token_from_authentication_service()
+    authentication_context = AuthenticationContext(authentication_token, secrets_store)
+    request_context = EdgeRequestContext.create(
+        authentication_context=authentication_context,
+        **edge_request_data
+    )
+    request_context.attach_context(context)
+
+This will allow for the authentication token be verified correctly and for both the
+authentication token and the edge request data to be passed to other services that
+may need it.
+
+.. autoclass:: EdgeRequestContext
+   :members:
+
+.. autoclass:: User
+   :members:
+
+.. autoclass:: OAuthClient
+   :members:
+
+.. autoclass:: Session
+
+.. autoclass:: AuthenticationContextFactory
+   :members:
+
+.. autoclass:: AuthenticationContext
+   :members:
+
+.. autoclass:: UndefinedSecretsException
+   :members:
+
+.. autoclass:: WithheldAuthenticationError
+   :members:
 
 Convenience Methods
 -------------------
