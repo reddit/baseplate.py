@@ -7,21 +7,25 @@ import unittest
 import jwt
 
 from baseplate.core import (
+    AuthenticationContext,
     Baseplate,
     BaseplateObserver,
+    EdgeRequestContext,
     LocalSpan,
     ServerSpan,
     ServerSpanObserver,
     Span,
     SpanObserver,
     TraceInfo,
-    AuthenticationContext,
     UndefinedSecretsException,
     WithheldAuthenticationError,
 )
 from baseplate.integration import WrappedRequestContext
 from baseplate.file_watcher import FileWatcher
 from baseplate.secrets import store
+from baseplate.thrift.ttypes import Loid as TLoid
+from baseplate.thrift.ttypes import Request as TRequest
+from baseplate.thrift.ttypes import Session as TSession
 
 from .. import mock
 
@@ -309,3 +313,169 @@ class AuthenticationContextTests(unittest.TestCase):
 
         with self.assertRaises(WithheldAuthenticationError) as e:
             new_auth_context.account_id
+
+
+class EdgeRequestContextTests(AuthenticationContextTests):
+
+    SERIALIZED_HEADER = b"\x0c\x00\x01\x0b\x00\x01\x00\x00\x00\x0bt2_deadbeef\n\x00\x02\x00\x00\x00\x00\x00\x01\x86\xa0\x00\x0c\x00\x02\x0b\x00\x01\x00\x00\x00\x08beefdead\x00\x00"  # noqa
+    LOID_ID = "t2_deadbeef"
+    LOID_CREATED_MS = 100000
+    SESSION_ID = "beefdead"
+
+    def test_create(self):
+        authentication = AuthenticationContext(self.VALID_TOKEN, self.store)
+        request_context = EdgeRequestContext.create(
+            authentication_context=authentication,
+            loid_id=self.LOID_ID,
+            loid_created_ms=self.LOID_CREATED_MS,
+            session_id=self.SESSION_ID,
+        )
+        self.assertIsNot(request_context._t_request, None)
+        self.assertEqual(request_context._header, self.SERIALIZED_HEADER)
+        self.assertEqual(
+            request_context.header_values(),
+            {
+                "Edge-Request": self.SERIALIZED_HEADER,
+                "Authentication": self.VALID_TOKEN,
+            }
+        )
+
+    def test_create_validation(self):
+        authentication = AuthenticationContext(self.VALID_TOKEN, self.store)
+        with self.assertRaises(ValueError):
+            EdgeRequestContext.create(
+                authentication_context=authentication,
+                loid_id="abc123",
+                loid_created_ms=self.LOID_CREATED_MS,
+                session_id=self.SESSION_ID,
+            )
+
+    def test_logged_out_user(self):
+        authentication = AuthenticationContext()
+        request_context = EdgeRequestContext(self.SERIALIZED_HEADER, authentication)
+        with self.assertRaises(WithheldAuthenticationError):
+            request_context.user.id
+        with self.assertRaises(WithheldAuthenticationError):
+           request_context.user.roles
+        self.assertFalse(request_context.user.is_logged_in)
+        self.assertEqual(request_context.user.loid, self.LOID_ID)
+        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
+        self.assertEqual(
+            request_context.user.event_fields(),
+            {
+                "user_id": self.LOID_ID,
+                "user_logged_in": False,
+                "cookie_created": self.LOID_CREATED_MS,
+            },
+        )
+        with self.assertRaises(WithheldAuthenticationError):
+            request_context.oauth_client.id
+        with self.assertRaises(WithheldAuthenticationError):
+            request_context.oauth_client.is_type("third_party")
+        self.assertEqual(request_context.session.id, self.SESSION_ID)
+        self.assertEqual(
+            request_context.event_fields(),
+            {
+                "user_id": self.LOID_ID,
+                "user_logged_in": False,
+                "cookie_created": self.LOID_CREATED_MS,
+                "session_id": self.SESSION_ID,
+                "oauth_client_id": None,
+            },
+        )
+
+    def test_missing_secrets(self):
+        authentication = AuthenticationContext(self.VALID_TOKEN)
+        request_context = EdgeRequestContext(self.SERIALIZED_HEADER, authentication)
+        with self.assertRaises(UndefinedSecretsException):
+            request_context.user.id
+        with self.assertRaises(UndefinedSecretsException):
+           request_context.user.roles
+        self.assertFalse(request_context.user.is_logged_in)
+        self.assertEqual(request_context.user.loid, self.LOID_ID)
+        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
+        self.assertEqual(
+            request_context.user.event_fields(),
+            {
+                "user_id": self.LOID_ID,
+                "user_logged_in": False,
+                "cookie_created": self.LOID_CREATED_MS,
+            },
+        )
+        with self.assertRaises(UndefinedSecretsException):
+            request_context.oauth_client.id
+        with self.assertRaises(UndefinedSecretsException):
+            request_context.oauth_client.is_type("third_party")
+        self.assertEqual(request_context.session.id, self.SESSION_ID)
+        self.assertEqual(
+            request_context.event_fields(),
+            {
+                "user_id": self.LOID_ID,
+                "user_logged_in": False,
+                "cookie_created": self.LOID_CREATED_MS,
+                "session_id": self.SESSION_ID,
+                "oauth_client_id": None,
+            },
+        )
+
+    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
+    def test_logged_in_user(self):
+        authentication = AuthenticationContext(self.VALID_TOKEN, self.store)
+        request_context = EdgeRequestContext(self.SERIALIZED_HEADER, authentication)
+        self.assertEqual(request_context.user.id, "test_user_id")
+        self.assertTrue(request_context.user.is_logged_in)
+        self.assertEqual(request_context.user.loid, self.LOID_ID)
+        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
+        self.assertEqual(request_context.user.roles, set())
+        self.assertEqual(
+            request_context.user.event_fields(),
+            {
+                "user_id": "test_user_id",
+                "user_logged_in": True,
+                "cookie_created": self.LOID_CREATED_MS,
+            },
+        )
+        self.assertIs(request_context.oauth_client.id, None)
+        self.assertFalse(request_context.oauth_client.is_type("third_party"))
+        self.assertEqual(request_context.session.id, self.SESSION_ID)
+        self.assertEqual(
+            request_context.event_fields(),
+            {
+                "user_id": "test_user_id",
+                "user_logged_in": True,
+                "cookie_created": self.LOID_CREATED_MS,
+                "session_id": self.SESSION_ID,
+                "oauth_client_id": None,
+            },
+        )
+
+    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
+    def test_expired_token(self):
+        authentication = AuthenticationContext(self.EXPIRED_TOKEN, self.store)
+        request_context = EdgeRequestContext(self.SERIALIZED_HEADER, authentication)
+        self.assertEqual(request_context.user.id, None)
+        self.assertEqual(request_context.user.roles, set())
+        self.assertFalse(request_context.user.is_logged_in)
+        self.assertEqual(request_context.user.loid, self.LOID_ID)
+        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
+        self.assertEqual(
+            request_context.user.event_fields(),
+            {
+                "user_id": self.LOID_ID,
+                "user_logged_in": False,
+                "cookie_created": self.LOID_CREATED_MS,
+            },
+        )
+        self.assertIs(request_context.oauth_client.id, None)
+        self.assertFalse(request_context.oauth_client.is_type("third_party"))
+        self.assertEqual(request_context.session.id, self.SESSION_ID)
+        self.assertEqual(
+            request_context.event_fields(),
+            {
+                "user_id": self.LOID_ID,
+                "user_logged_in": False,
+                "cookie_created": self.LOID_CREATED_MS,
+                "session_id": self.SESSION_ID,
+                "oauth_client_id": None,
+            },
+        )
