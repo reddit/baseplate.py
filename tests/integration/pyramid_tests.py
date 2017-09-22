@@ -49,6 +49,7 @@ def local_tracing_within_context(request):
 class ConfiguratorTests(unittest.TestCase):
     VALID_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjQ2NTY1OTM0NTV9.Q8bz2qccFOHLTQ6H3MPdjSh7wDkRQtbBuBwGMzNRKjDFSkCoVF5kiwhBUdwbW8UXO5iZn4Bh7oKdj69lIEOATUxFBblU8Do05EfjECXLYGdbr6ClNmldrB8SsdAtQYQ4Ud-70Z8_75QvkqX_TY5OA4asGJZwH9MC7oHey47-38I"
     TOKEN_SECRET = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC0Kd3qYtc6zI5tj3iKBux70BhE\nZLLJ7fAKNBUO7h9FCwUcYku+SFigzNOu3AAYt3seNgxl+cvMR2+SNwsa605J9D1v\n9eGmpcITQi85SeJnfR7LJUMu7RieY5wEl0RyuwnSkX3Gkv0+hZISC/XYcWEYolIi\n8725u7u/8HRtUeHoLwIDAQAB\n-----END PUBLIC KEY-----"
+    SERIALIZED_REQUEST_HEADER = b"\x0c\x00\x01\x0b\x00\x01\x00\x00\x00\x0bt2_deadbeef\n\x00\x02\x00\x00\x00\x00\x00\x01\x86\xa0\x00\x0c\x00\x02\x0b\x00\x01\x00\x00\x00\x08beefdead\x00\x00"  # noqa
 
     def setUp(self):
         configurator = Configurator()
@@ -126,7 +127,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(server_span.id, 3456)
         self.assertEqual(server_span.sampled, True)
         self.assertEqual(server_span.flags, 1)
-        self.assertFalse(context.authentication.defined)
+        self.assertFalse(context.request_context._authentication_context.defined)
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
@@ -142,8 +143,34 @@ class ConfiguratorTests(unittest.TestCase):
         })
         context, _ = self.observer.on_server_span_created.call_args[0]
         try:
-            self.assertTrue(context.authentication.valid)
-            self.assertEqual(context.authentication.account_id, "test_user_id")
+            self.assertEqual(context.request_context.user.id, "test_user_id")
+            self.assertEqual(context.request_context.user.roles, set())
+            self.assertEqual(context.request_context.user.is_logged_in, True)
+            self.assertEqual(context.request_context.oauth_client.id, None)
+            self.assertFalse(context.request_context.oauth_client.is_type("third_party"))
+        except jwt.exceptions.InvalidAlgorithmError:
+            raise unittest.SkipTest("cryptography is not installed")
+
+    def test_edge_request_headers(self):
+        self.test_app.get("/example", headers={
+            "X-Trace": "1234",
+            "X-Authentication": self.VALID_TOKEN,
+            "X-Edge-Request": self.SERIALIZED_REQUEST_HEADER,
+            "X-Parent": "2345",
+            "X-Span": "3456",
+            "X-Sampled": "1",
+            "X-Flags": "1",
+        })
+        context, _ = self.observer.on_server_span_created.call_args[0]
+        try:
+            self.assertEqual(context.request_context.user.id, "test_user_id")
+            self.assertEqual(context.request_context.user.roles, set())
+            self.assertEqual(context.request_context.user.is_logged_in, True)
+            self.assertEqual(context.request_context.user.loid, "t2_deadbeef")
+            self.assertEqual(context.request_context.user.cookie_created_ms, 100000)
+            self.assertEqual(context.request_context.oauth_client.id, None)
+            self.assertFalse(context.request_context.oauth_client.is_type("third_party"))
+            self.assertEqual(context.request_context.session.id, "beefdead")
         except jwt.exceptions.InvalidAlgorithmError:
             raise unittest.SkipTest("cryptography is not installed")
 
@@ -151,13 +178,22 @@ class ConfiguratorTests(unittest.TestCase):
         self.test_app.get("/example", headers={
             "X-Trace": "1234",
             "X-Authentication": "invalid_but_doesnt_matter",
+            "X-Edge-Request": "also_invalid_but_doesnt_matter",
             "X-Parent": "2345",
             "X-Span": "3456",
             "X-Sampled": "1",
             "X-Flags": "1",
         })
         context, _ = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(context.authentication._token, "invalid_but_doesnt_matter")
+        edge_context_headers = context.request_context.header_values()
+        self.assertEqual(
+            edge_context_headers["Authentication"],
+            "invalid_but_doesnt_matter",
+        )
+        self.assertEqual(
+            edge_context_headers["Edge-Request"],
+            "also_invalid_but_doesnt_matter",
+        )
 
     def test_not_found(self):
         self.test_app.get("/nope", status=404)
