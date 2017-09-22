@@ -89,7 +89,7 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "admin": "active",
                     },
                 },
@@ -106,7 +106,7 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["admin"],
+            user_roles=["admin"],
         ), "active")
 
     def test_admin_disabled(self):
@@ -119,7 +119,7 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "admin": "active",
                     },
                 },
@@ -136,12 +136,12 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=[],
+            user_roles=[],
         ), "active")
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["beta"],
+            user_roles=["beta"],
         ), "active")
 
     def test_employee_enabled(self):
@@ -154,7 +154,7 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "employee": "active",
                     },
                 },
@@ -171,7 +171,7 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["employee"],
+            user_roles=["employee"],
         ), "active")
 
     def test_employee_disabled(self):
@@ -184,7 +184,7 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "employee": "active",
                     },
                 },
@@ -201,12 +201,12 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=[],
+            user_roles=[],
         ), "active")
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["beta"],
+            user_roles=["beta"],
         ), "active")
 
     def test_beta_enabled(self):
@@ -219,7 +219,7 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "beta": "active",
                     },
                 },
@@ -236,7 +236,7 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["beta"],
+            user_roles=["beta"],
         ), "active")
 
     def test_beta_disabled(self):
@@ -249,7 +249,7 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "beta": "active",
                     },
                 },
@@ -266,12 +266,12 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=[],
+            user_roles=[],
         ), "active")
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["admin"],
+            user_roles=["admin"],
         ), "active")
 
     def test_gold_enabled(self):
@@ -284,7 +284,7 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "gold": "active",
                     },
                 },
@@ -301,7 +301,7 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["gold"],
+            user_roles=["gold"],
         ), "active")
 
     def test_gold_disabled(self):
@@ -314,7 +314,7 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "gold": "active",
                     },
                 },
@@ -331,12 +331,12 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=[],
+            user_roles=[],
         ), "active")
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["admin"],
+            user_roles=["admin"],
         ), "active")
 
     def test_percent_loggedin(self):
@@ -743,7 +743,7 @@ class TestFeatureFlag(unittest.TestCase):
             "global_override": None,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "admin": "active",
                     },
                 },
@@ -756,7 +756,7 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertNotEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["admin"],
+            user_roles=["admin"],
         ), "active")
 
         # globally on but not admin should still be True
@@ -770,7 +770,7 @@ class TestFeatureFlag(unittest.TestCase):
             "global_override": "active",
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "admin": "active",
                     },
                 },
@@ -783,7 +783,7 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["admin"],
+            user_roles=["admin"],
         ), "active")
         self.assertEqual(feature_flag.variant(
             user_id=self.user_id,
@@ -800,7 +800,7 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_groups": {
+                    "user_roles": {
                         "admin": "active",
                     },
                     "url_features": {
@@ -816,7 +816,7 @@ class TestFeatureFlag(unittest.TestCase):
         self.assertEqual(feature_flag.variant(
             user_id=self.user_id,
             logged_in=self.user_logged_in,
-            user_groups=["admin"],
+            user_roles=["admin"],
         ), "active")
         self.assertEqual(feature_flag.variant(
             user_id=self.user_id,
