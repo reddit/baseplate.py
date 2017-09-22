@@ -31,6 +31,7 @@ import pyramid.tweens
 
 from ..core import (
     TraceInfo,
+    EdgeRequestContext,
     AuthenticationContextFactory,
 )
 from ..server import make_app
@@ -109,9 +110,16 @@ class BaseplateConfigurator(object):
                 )
 
                 authn_token = request.headers.get("X-Authentication", None)
+                request_context_payload = request.headers.get("X-Edge-Request",
+                                                              None)
                 authentication_context = \
                     self.auth_factory.make_context(authn_token)
                 authentication_context.attach_context(request)
+                request_context = EdgeRequestContext(
+                    header=request_context_payload,
+                    authentication_context=authentication_context,
+                )
+                request_context.attach_context(request)
             except (KeyError, ValueError):
                 pass
 
