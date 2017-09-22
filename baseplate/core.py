@@ -161,6 +161,9 @@ class AuthenticationContextFactory(object):
 class AuthenticationContext(object):
     """Wrapper for the contextual authentication information
 
+    In general, this object should not be used directly but will rather be
+    wrapped by an :py:class:`EdgeRequestContext` object.
+
     :param str token: the value for the currently propagated authentication
         context
     :param baseplate.secrets.SecretsStore secrets_store: the application's
@@ -180,7 +183,14 @@ class AuthenticationContext(object):
         return self._secret_store.get_simple("jwt/authentication/secret")
 
     def attach_context(self, context):
-        """Attach this authentication wrapper to the provided context
+        """.. deprecated:: 0.23.0
+
+        Attaching the AuthenticationContext object to the context directly is
+        considered deprecated.  You should be passing the AuthenticationContext
+        object to the EdgeRequestContext constructor and attaching that object
+        to the context.  Baseplate will only forward the AuthenticationContext
+        if it is included in the EdgeRequestContext object that is attached to
+        the context object.
 
         :param context: request context to attach this authentication to
 
