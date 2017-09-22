@@ -28,6 +28,7 @@ from thrift.Thrift import TProcessorEventHandler
 
 from ...core import (
     TraceInfo,
+    EdgeRequestContext,
     AuthenticationContextFactory,
 )
 
@@ -78,8 +79,14 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
             )
 
             authn_token = headers.get(b"Authentication", None)
+            request_context_payload = headers.get(b"Edge-Request", None)
             authentication_context = self.auth_factory.make_context(authn_token)
             authentication_context.attach_context(context)
+            request_context = EdgeRequestContext(
+                header=request_context_payload,
+                authentication_context=authentication_context,
+            )
+            request_context.attach_context(context)
         except (KeyError, ValueError):
             pass
 
