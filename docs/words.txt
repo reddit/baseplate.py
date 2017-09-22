@@ -7,6 +7,7 @@ deserialization
 Deserialize
 deserialized
 Einhorn
+fullname
 gevent
 hostname
 INI
@@ -18,8 +19,10 @@ localhost
 memcache
 Memcache
 memcached
+OAuth
 Queing
 Redis
+Reddit
 schemaless
 schemas
 serializable
