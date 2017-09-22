@@ -88,7 +88,7 @@ class Experiments(object):
             self._experiment_cache[name] = experiment
         return self._experiment_cache[name]
 
-    def variant(self, name, bucketing_event_override=None,
+    def variant(self, name, user=None, bucketing_event_override=None,
                 extra_event_fields=None, **kwargs):
         """Which variant, if any, is active.
 
@@ -110,6 +110,14 @@ class Experiments(object):
         disabled bucketing events for that check.
 
         :param str name: Name of the experiment you want to run.
+        :param baseplate.core.User user: (Optional) User object for the user
+            you want to check the experiment variant for.  If you set user,
+            the experiment parameters for that user ("user_id", "logged_in",
+            and "user_roles") will be extracted and added to the inputs to the
+            call to Experiment.variant.  The user's event_fields will also be
+            extracted and added to the bucketing event if one is  logged.  It
+            is recommended that you provide a value for user rather than
+            setting the user parameters manually in kwargs.
         :param bool bucketing_event_override: (Optional) Set if you need to
             override the default behavior for sending bucketing events.  This
             parameter should be set sparingly as it breaks the assumption that
@@ -131,11 +139,20 @@ class Experiments(object):
         if experiment is None:
             return None
 
+        inputs = dict(kwargs)
+        if user:
+            if user.is_logged_in:
+                inputs["user_id"] = user.id
+                inputs["user_roles"] = user.roles
+            else:
+                inputs["user_id"] = user.loid
+            inputs["logged_in"] = user.is_logged_in
+
         span_name = "{}.{}".format(self._context_name, "variant")
         with self._span.make_child(span_name, local=True, component_name=name):
-            variant = experiment.variant(**kwargs)
+            variant = experiment.variant(**inputs)
 
-        bucketing_id = experiment.get_unique_id(**kwargs)
+        bucketing_id = experiment.get_unique_id(**inputs)
         do_log = True
 
         if not bucketing_id:
@@ -154,18 +171,39 @@ class Experiments(object):
 
         if do_log:
             assert bucketing_id
-            self._log_bucketing_event(experiment, variant, extra_event_fields)
+            self._log_bucketing_event(experiment, variant, user,
+                                      extra_event_fields)
             self._already_bucketed.add(bucketing_id)
 
         return variant
 
-    def _log_bucketing_event(self, experiment, variant, extra_event_fields):
+    def _log_bucketing_event(self, experiment, variant, user,
+                             extra_event_fields):
         if not self._event_queue:
             return
 
         extra_event_fields = extra_event_fields or {}
 
         event = Event("bucketing_events", "bucket")
+
+        context_fields = {}
+
+        if hasattr(self._span.context, "request_context"):
+            request_fields = self._span.context.request_context.event_fields()
+            context_fields.update(request_fields)
+
+        if user:
+            context_fields.update(user.event_fields())
+
+        if "user_logged_in" in context_fields:
+            context_fields["is_logged_out"] = not context_fields.pop("user_logged_in")
+
+        if "cookie_created" in context_fields:
+            context_fields["loid_created"] = context_fields.pop("cookie_created")
+
+        for field, value in iteritems(context_fields):
+            event.set_field(field, value)
+
         for field, value in iteritems(extra_event_fields):
             event.set_field(field, value)
 
