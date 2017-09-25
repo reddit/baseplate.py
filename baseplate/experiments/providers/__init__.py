@@ -14,7 +14,7 @@ from .r2 import R2Experiment
 logger = logging.getLogger(__name__)
 
 
-ISO_DATE_FMT = "%Y-%d-%m"
+ISO_DATE_FMT = "%Y-%m-%d"
 
 
 def parse_experiment(config):
