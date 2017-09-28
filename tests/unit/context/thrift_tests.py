@@ -63,6 +63,16 @@ class PooledClientProxyTests(unittest.TestCase):
         self.mock_client = self.mock_client_cls.return_value
         self.mock_server_span = mock.MagicMock(spec=core.ServerSpan)
 
+    def initialize_edge_request_headers(self, set_header_fn, authentication,
+                                        edge_request):
+        self.mock_pool.connection().__enter__().trans.set_header = set_header_fn
+        child_span = self.mock_server_span.make_child().__enter__()
+        child_span.context.request_context.header_values.return_value = {
+            'Authentication': authentication,
+            'Edge-Request': edge_request,
+        }
+
+
     @mock.patch("baseplate.context.thrift._enumerate_service_methods")
     def test_proxy_methods_attached(self, mock_enumerate):
         mock_enumerate.return_value = ["one", "two"]
@@ -84,3 +94,38 @@ class PooledClientProxyTests(unittest.TestCase):
         self.assertEqual(self.mock_client.one.call_count, 1)
         self.assertEqual(result, self.mock_client.one.return_value)
         self.assertEqual(self.mock_server_span.make_child.call_args, mock.call("namespace.one"))
+
+    @mock.patch("baseplate.context.thrift._enumerate_service_methods")
+    def test_edge_request_headers(self, mock_enumerate):
+        mock_enumerate.return_value = ["one", "two"]
+        headers = {}
+
+        def mock_set_header(header, val):
+            headers[header] = val
+
+        self.initialize_edge_request_headers(mock_set_header, 'authn_token',
+                                             'edge_request_context')
+
+        proxy = thrift.PooledClientProxy(
+            self.mock_client_cls, self.mock_pool, self.mock_server_span, "namespace")
+        result = proxy.one(mock.sentinel.first, mock.sentinel.second)
+
+        self.assertEqual(headers['Authentication'], 'authn_token')
+        self.assertEqual(headers['Edge-Request'], 'edge_request_context')
+
+    @mock.patch("baseplate.context.thrift._enumerate_service_methods")
+    def test_null_edge_request_headers_not_set(self, mock_enumerate):
+        mock_enumerate.return_value = ["one", "two"]
+        headers = {}
+
+        def mock_set_header(header, val):
+            headers[header] = val
+
+        self.initialize_edge_request_headers(mock_set_header, None, None)
+
+        proxy = thrift.PooledClientProxy(
+            self.mock_client_cls, self.mock_pool, self.mock_server_span, "namespace")
+        result = proxy.one(mock.sentinel.first, mock.sentinel.second)
+
+        self.assertNotIn('Authentication', headers)
+        self.assertNotIn('Edge-Request', headers)
