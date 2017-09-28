@@ -9,9 +9,40 @@ from ...context import ContextFactory
 from ... import config
 
 
+class OptInNoReplyClient(PooledClient):
+    """For writes override the default value of noreply to False.
+
+    noreply can be surprising and possibly dangerous because the client doesn't
+    wait for a response from the server and just returns the equivalent of a
+    success response. No exceptions occur in this mode.
+
+    Callers can still use noreply but they must explicitly opt in on each
+    write operation.
+
+    """
+
+    def set(self, key, value, expire=0, noreply=False):
+        return super(OptInNoReplyClient, self).set(key, value, expire, noreply)
+
+    def set_many(self, values, expire=0, noreply=False):
+        return super(OptInNoReplyClient, self).set_many(values, expire, noreply)
+
+    def add(self, key, value, expire=0, noreply=False):
+        return super(OptInNoReplyClient, self).add(key, value, expire, noreply)
+
+    def delete(self, key, noreply=False):
+        return super(OptInNoReplyClient, self).delete(key, noreply)
+
+    def delete_many(self, keys, noreply=False):
+        return super(OptInNoReplyClient, self).delete_many(keys, noreply)
+
+    def incr(self, key, value, noreply=False):
+        return super(OptInNoReplyClient, self).incr(key, value, noreply)
+
+
 def pool_from_config(app_config, prefix="memcache.", serializer=None,
                      deserializer=None):
-    """Make a PooledClient from a configuration dictionary.
+    """Make a OptInNoReplyClient from a configuration dictionary.
 
     The keys useful to :py:func:`pool_from_config` should be prefixed, e.g.
     ``memcache.endpoint``, ``memcache.max_pool_size``, etc. The ``prefix``
@@ -40,7 +71,7 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
         memcached to arbitrary objects, must be compatible with ``serializer``.
         An example is :py:func:`~baseplate.context.memcache.lib.decompress_and_load`.
 
-    :returns: :py:class:`pymemcache.client.base.PooledClient`
+    :returns: :py:class:`OptInNoReplyClient`
 
     """
 
@@ -58,7 +89,7 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
 
     options = getattr(cfg, config_prefix)
 
-    return PooledClient(
+    return OptInNoReplyClient(
         server=options.endpoint.address,
         connect_timeout=options.connect_timeout,
         timeout=options.timeout,
