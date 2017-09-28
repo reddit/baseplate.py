@@ -12,9 +12,6 @@ from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.util import Serializer
 
 from .integration.wrapped_context import WrappedRequestContext
-from .thrift.ttypes import Loid as TLoid
-from .thrift.ttypes import Request as TRequest
-from .thrift.ttypes import Session as TSession
 from ._utils import warn_deprecated
 
 
@@ -523,6 +520,11 @@ class EdgeRequestContext(object):
         :param str session_id: (Optional) ID for the current session cookie.
 
         """
+        # Importing the Thrift models inline so that building them is not a
+        # hard, import-time dependency for tasks like building the docs.
+        from .thrift.ttypes import Loid as TLoid
+        from .thrift.ttypes import Request as TRequest
+        from .thrift.ttypes import Session as TSession
         session = TSession(id=session_id)
         if not loid_id.startswith("t2_"):
             raise ValueError(
@@ -570,6 +572,11 @@ class EdgeRequestContext(object):
         return self._session
 
     def _thrift_request_context(self):
+        # Importing the Thrift models inline so that building them is not a
+        # hard, import-time dependency for tasks like building the docs.
+        from .thrift.ttypes import Loid as TLoid
+        from .thrift.ttypes import Request as TRequest
+        from .thrift.ttypes import Session as TSession
         if self._t_request is None:
             self._t_request = TRequest()
             self._t_request.loid = TLoid()
