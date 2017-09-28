@@ -53,9 +53,6 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
             "connect_timeout": config.Optional(config.Float, default=None),
             "timeout": config.Optional(config.Float, default=None),
             "no_delay": config.Optional(config.Boolean, default=True),
-            # default_noreply defaults to False for safety. individual
-            # operations can still be passed noreply=True when desired.
-            "default_noreply": config.Optional(config.Boolean, default=False),
         },
     })
 
@@ -69,7 +66,6 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
         deserializer=deserializer,
         no_delay=options.no_delay,
         max_pool_size=options.max_pool_size,
-        default_noreply=options.default_noreply,
     )
 
 
