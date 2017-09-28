@@ -117,6 +117,10 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
         if isinstance(value, string_types):
             serialized = value
             flags = 0
+        elif isinstance(value, bool):
+            # check bool before int because isinstance(False, int) == True
+            serialized = json.dumps(value)
+            flags = Flags.JSON
         elif isinstance(value, int):
             serialized = "%d" % value
             flags = Flags.INTEGER
