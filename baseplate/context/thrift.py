@@ -110,14 +110,12 @@ class PooledClientProxy(object):
                         except AttributeError:
                             pass
                         else:
-                            prot.trans.set_header(
-                                "Authentication",
-                                context_headers.get("Authentication"),
-                            )
-                            prot.trans.set_header(
-                                "Edge-Request",
-                                context_headers.get("Edge-Request"),
-                            )
+                            auth_header = context_headers.get("Authentication")
+                            if auth_header is not None:
+                                prot.trans.set_header("Authentication", auth_header)
+                            request_header = context_headers.get("Edge-Request")
+                            if request_header is not None:
+                                prot.trans.set_header("Edge-Request", request_header)
 
                         client = self.client_cls(prot)
                         method = getattr(client, name)
