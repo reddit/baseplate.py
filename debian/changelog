@@ -1,3 +1,17 @@
+baseplate (0.23.0) trusty; urgency=medium
+
+  * add EdgeRequestContext
+  * add EdgeRequestContext support to pyramid integration
+  * add EdgeRequestContext support to thrift integration and client
+  * integrate EdgeRequestContext with experiments
+  * add new properties to AuthenticationContext
+  * deprecate direct use of AuthenticationContext
+  * update experiment config fields
+  * fix a typo in the iso date format string used to parse the now 
+    deprecated 'expires' field in the experiment config
+
+ -- Andrew Boyle <andrew.boyle@reddit.com>  Mon, 02 Oct 2017 18:45:30 +0000
+
 baseplate (0.22.0) trusty; urgency=medium
 
   * add authentication context and context propagation
