@@ -525,14 +525,16 @@ class EdgeRequestContext(object):
         from .thrift.ttypes import Loid as TLoid
         from .thrift.ttypes import Request as TRequest
         from .thrift.ttypes import Session as TSession
-        session = TSession(id=session_id)
-        if not loid_id.startswith("t2_"):
+
+        if loid_id is not None and not loid_id.startswith("t2_"):
             raise ValueError(
                 "loid_id <%s> is not in a valid format, it should be in the "
                 "fullname format with the '0' padding removed: 't2_loid_id'",
                 loid_id
             )
+
         loid = TLoid(id=loid_id, created_ms=loid_created_ms)
+        session = TSession(id=session_id)
         request = TRequest(loid=loid, session=session)
         header = Serializer.serialize(cls._HEADER_PROTOCOL_FACTORY, request)
         if authentication_context is None:
