@@ -350,6 +350,16 @@ class EdgeRequestContextTests(AuthenticationContextTests):
                 session_id=self.SESSION_ID,
             )
 
+    def test_create_empty_context(self):
+        request_context = EdgeRequestContext.create()
+        self.assertEqual(
+            request_context.header_values(),
+            {
+                "Edge-Request": b'\x0c\x00\x01\x00\x0c\x00\x02\x00\x00',
+                "Authentication": None,
+            },
+        )
+
     def test_logged_out_user(self):
         authentication = AuthenticationContext()
         request_context = EdgeRequestContext(self.SERIALIZED_HEADER, authentication)
