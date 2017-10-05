@@ -1,3 +1,9 @@
+baseplate (0.23.1) trusty; urgency=medium
+
+  * allow loid_id=None in EdgeRequestContext
+
+ -- Andrew Boyle <andrew.boyle@reddit.com>  Thu, 05 Oct 2017 17:51:38 +0000
+
 baseplate (0.23.0) trusty; urgency=medium
 
   * add EdgeRequestContext
