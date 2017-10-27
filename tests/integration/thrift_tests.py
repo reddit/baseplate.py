@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import contextlib
 import logging
 import unittest
 import jwt
@@ -13,11 +14,14 @@ except ImportError:
     from cStringIO import StringIO
 
 from baseplate.core import (
+    AuthenticationContext,
+    AuthenticationContextFactory,
     Baseplate,
     BaseplateObserver,
+    EdgeRequestContext,
     ServerSpanObserver,
-    AuthenticationContextFactory,
 )
+from baseplate.context.thrift import ThriftContextFactory
 from baseplate.file_watcher import FileWatcher
 from baseplate.secrets import store
 
@@ -83,15 +87,15 @@ class ThriftTests(unittest.TestCase):
                 "url": "http://vault.example.com:8200/",
             }
         }
-        secrets = store.SecretsStore("/secrets")
-        secrets._filewatcher = mock_filewatcher
+        self.secrets = store.SecretsStore("/secrets")
+        self.secrets._filewatcher = mock_filewatcher
 
         baseplate = Baseplate()
         baseplate.register(self.observer)
 
         event_handler = BaseplateProcessorEventHandler(
             self.logger, baseplate,
-            auth_factory=AuthenticationContextFactory(secrets))
+            auth_factory=AuthenticationContextFactory(self.secrets))
 
         handler = TestHandler()
         self.processor = TestService.ContextProcessor(handler)
@@ -250,3 +254,57 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(self.server_observer.on_finish.call_count, 1)
         _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
         self.assertIsInstance(captured_exc, UnexpectedException)
+
+    def test_client_proxy_flow(self):
+        client_memory_trans = TMemoryBuffer()
+        client_prot = THeaderProtocol(client_memory_trans)
+
+        class Pool(object):
+            @contextlib.contextmanager
+            def connection(self):
+                yield client_prot
+
+        client_factory = ThriftContextFactory(Pool(), TestService.Client)
+        span = mock.MagicMock()
+        child_span = span.make_child().__enter__()
+        child_span.trace_id = 1
+        child_span.parent_id = 1
+        child_span.id = 1
+        child_span.sampled = True
+        child_span.flags = None
+        # We decode the token to unicode to make sure that it is converted to
+        # bytes correctly by the AuthenticationContext.  We do this because a
+        # unicode token in Python 2 ends up causing a UnicodeDecodeError when
+        # Thrift tries to write the header.
+        unicode_token = self.VALID_TOKEN.decode()
+        auth_context = AuthenticationContext(
+            token=unicode_token,
+            secrets=self.secrets,
+        )
+        edge_context = EdgeRequestContext(
+            authentication_context=auth_context,
+            header=self.SERIALIZED_REQUEST_HEADER,
+        )
+        edge_context.attach_context(child_span.context)
+        client = client_factory.make_object_for_context("test", span)
+        try:
+            client.example_simple()
+        except TTransportException:
+            pass  # we don't have a test response for the client
+        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
+
+        self.processor.process(self.iprot, self.oprot, self.server_context)
+
+        context, _ = self.observer.on_server_span_created.call_args[0]
+
+        try:
+            self.assertEqual(context.request_context.user.id, "test_user_id")
+            self.assertEqual(context.request_context.user.roles, set())
+            self.assertEqual(context.request_context.user.is_logged_in, True)
+            self.assertEqual(context.request_context.user.loid, "t2_deadbeef")
+            self.assertEqual(context.request_context.user.cookie_created_ms, 100000)
+            self.assertEqual(context.request_context.oauth_client.id, None)
+            self.assertFalse(context.request_context.oauth_client.is_type("third_party"))
+            self.assertEqual(context.request_context.session.id, "beefdead")
+        except jwt.exceptions.InvalidAlgorithmError:
+            raise unittest.SkipTest("cryptography is not installed")
