@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import sys
 import unittest
 import jwt
 
@@ -262,8 +263,8 @@ class TraceInfoTests(unittest.TestCase):
         self.assertIsNone(span.flags)
 
 
-class AuthenticationContextTests(unittest.TestCase):
-    VALID_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjQ2NTY1OTM0NTV9.Q8bz2qccFOHLTQ6H3MPdjSh7wDkRQtbBuBwGMzNRKjDFSkCoVF5kiwhBUdwbW8UXO5iZn4Bh7oKdj69lIEOATUxFBblU8Do05EfjECXLYGdbr6ClNmldrB8SsdAtQYQ4Ud-70Z8_75QvkqX_TY5OA4asGJZwH9MC7oHey47-38I"
+class ContextHeaderTestsBase(unittest.TestCase):
+    VALID_TOKEN = b"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjQ2NTY1OTM0NTV9.Q8bz2qccFOHLTQ6H3MPdjSh7wDkRQtbBuBwGMzNRKjDFSkCoVF5kiwhBUdwbW8UXO5iZn4Bh7oKdj69lIEOATUxFBblU8Do05EfjECXLYGdbr6ClNmldrB8SsdAtQYQ4Ud-70Z8_75QvkqX_TY5OA4asGJZwH9MC7oHey47-38I"
     EXPIRED_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE1MDI5OTM3NTN9.OPBIxaOEx0hnnB_wrfCuqfSIeP0a1abNdoZ2KejXReKeETQathr-PW2GqAhjGcUdCG3rXK8ezFKXdlB65kloqNdQii5b3qaJ5PDIdMNxY0Oi7TAqH86oog_umm7G-_p4MPPhRjxUm6Qp85-EaJUgyv26BUKSYY7-KyySjnrmP8g"
     TOKEN_SECRET = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC0Kd3qYtc6zI5tj3iKBux70BhE\nZLLJ7fAKNBUO7h9FCwUcYku+SFigzNOu3AAYt3seNgxl+cvMR2+SNwsa605J9D1v\n9eGmpcITQi85SeJnfR7LJUMu7RieY5wEl0RyuwnSkX3Gkv0+hZISC/XYcWEYolIi\n8725u7u/8HRtUeHoLwIDAQAB\n-----END PUBLIC KEY-----"
 
@@ -284,6 +285,9 @@ class AuthenticationContextTests(unittest.TestCase):
         self.store = store.SecretsStore("/secrets")
         self.store._filewatcher = mock_filewatcher
 
+
+class AuthenticationContextTests(ContextHeaderTestsBase):
+
     def test_empty_context(self):
         new_auth_context = AuthenticationContext()
         self.assertEqual(new_auth_context._token, None)
@@ -292,6 +296,24 @@ class AuthenticationContextTests(unittest.TestCase):
         new_auth_context = AuthenticationContext("test token")
         with self.assertRaises(UndefinedSecretsException) as e:
             new_auth_context.valid
+
+    @unittest.skipIf(sys.version_info.major != 3, "python 3 only")
+    def test_python_3_ensure_token_is_bytes(self):
+        auth_context = AuthenticationContext(token=self.VALID_TOKEN)
+        self.assertEqual(auth_context._token, self.VALID_TOKEN)
+        self.assertIs(type(auth_context._token), bytes)
+        auth_context = AuthenticationContext(token=self.VALID_TOKEN.decode())
+        self.assertEqual(auth_context._token, self.VALID_TOKEN)
+        self.assertIs(type(auth_context._token), bytes)
+
+    @unittest.skipIf(sys.version_info.major != 2, "python 2 only")
+    def test_python_2_ensure_token_is_str(self):
+        # Note, we don't use assertEqual in this test because
+        # `"test" == u"test"` is True
+        auth_context = AuthenticationContext(token=self.VALID_TOKEN.encode())
+        self.assertIs(type(auth_context._token), str)
+        auth_context = AuthenticationContext(token=self.VALID_TOKEN.decode())
+        self.assertIs(type(auth_context._token), str)
 
     @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_valid_context(self):
@@ -315,7 +337,7 @@ class AuthenticationContextTests(unittest.TestCase):
             new_auth_context.account_id
 
 
-class EdgeRequestContextTests(AuthenticationContextTests):
+class EdgeRequestContextTests(ContextHeaderTestsBase):
 
     SERIALIZED_HEADER = b"\x0c\x00\x01\x0b\x00\x01\x00\x00\x00\x0bt2_deadbeef\n\x00\x02\x00\x00\x00\x00\x00\x01\x86\xa0\x00\x0c\x00\x02\x0b\x00\x01\x00\x00\x00\x08beefdead\x00\x00"  # noqa
     LOID_ID = "t2_deadbeef"

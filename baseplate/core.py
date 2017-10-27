@@ -12,6 +12,7 @@ from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.util import Serializer
 
 from .integration.wrapped_context import WrappedRequestContext
+from ._compat import string_types
 from ._utils import warn_deprecated
 
 
@@ -168,6 +169,16 @@ class AuthenticationContext(object):
     """
     def __init__(self, token=None, secrets=None):
         self._secret_store = secrets
+        # Ensure that self._token is str (Python 2) or bytes (Python 3).  While
+        # jwt.decode works correctly if self._token is a str, unicode, or bytes
+        # the Thrift THeaderProtocol that is used to pass this value through
+        # RPC calls expects this value to be a str (or bytes) and breaks if the
+        # length of the value being set as a header is over 128 characters and
+        # the value is of type unicode (Python 2 only).  Rather than coverting
+        # before passing as a header, we encode in the constructor so we know
+        # that self._token is always the same type.
+        if isinstance(token, string_types):
+            token = token.encode()
         self._token = token
         self._payload = None
         self._valid = None
