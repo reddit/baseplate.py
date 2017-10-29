@@ -33,10 +33,37 @@ class TestException(Exception):
     pass
 
 
+class ControlFlowException(Exception):
+    pass
+
+
+class ControlFlowException2(Exception):
+    pass
+
+
+class ExceptionViewException(Exception):
+    pass
+
+
 def example_application(request):
     if "error" in request.params:
         raise TestException("this is a test")
+
+    if "control_flow_exception" in request.params:
+        raise ControlFlowException()
+
+    if "exception_view_exception" in request.params:
+        raise ControlFlowException2()
+
     return {"test": "success"}
+
+
+def render_exception_view(request):
+    return
+
+
+def render_bad_exception_view(request):
+    raise ExceptionViewException()
 
 
 def local_tracing_within_context(request):
@@ -61,6 +88,18 @@ class ConfiguratorTests(unittest.TestCase):
 
         configurator.add_view(
             local_tracing_within_context, route_name="trace_context", renderer="json")
+
+        configurator.add_view(
+            render_exception_view,
+            context=ControlFlowException,
+            renderer="json",
+        )
+
+        configurator.add_view(
+            render_bad_exception_view,
+            context=ControlFlowException2,
+            renderer="json",
+        )
 
         mock_filewatcher = mock.Mock(spec=FileWatcher)
         mock_filewatcher.get_data.return_value = {
@@ -208,6 +247,23 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_finish.called)
         _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
         self.assertIsInstance(captured_exc, TestException)
+
+    def test_control_flow_exception_not_caught(self):
+        self.test_app.get("/example?control_flow_exception")
+
+        self.assertTrue(self.server_observer.on_start.called)
+        self.assertTrue(self.server_observer.on_finish.called)
+        args, _ = self.server_observer.on_finish.call_args
+        self.assertEqual(args[0], None)
+
+    def test_exception_in_exception_view_caught(self):
+        with self.assertRaises(ExceptionViewException):
+            self.test_app.get("/example?exception_view_exception")
+
+        self.assertTrue(self.server_observer.on_start.called)
+        self.assertTrue(self.server_observer.on_finish.called)
+        _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
+        self.assertIsInstance(captured_exc, ExceptionViewException)
 
     @mock.patch("random.getrandbits")
     def test_distrust_headers(self, getrandbits):

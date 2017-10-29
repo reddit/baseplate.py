@@ -33,6 +33,7 @@ statsd
 subreddit
 subreddits
 sysctls
+unhandled
 unsampled
 versioned
 Zipkin

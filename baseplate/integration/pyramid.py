@@ -17,6 +17,15 @@ An abbreviated example of it in use::
 
         return configurator.make_wsgi_app()
 
+.. warning::
+
+    Because of how Baseplate instruments Pyramid, you should not make an
+    `exception view`_ that handles the base :py:exc:`Exception` as this will
+    prevent Baseplate from seeing the unhandled error and reporting it
+    appropriately.
+
+    .. _exception view: https://docs.pylonsproject.org/projects/pyramid_cookbook/en/latest/pylons/exceptions.html#exception-views
+
 """
 
 from __future__ import absolute_import
@@ -138,8 +147,19 @@ class BaseplateConfigurator(object):
 
     def includeme(self, config):
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
+
+        # Position of the tween is important. We need it to cover all code
+        # that can written in the app. This means that it should be above
+        # (wrap) both the exception view handling tween (EXCVIEW) and the
+        # request handling code (MAIN).
+        #
+        # The final order ends up being:
+        # 1. Request ingress (tweens.INGRESS)
+        # 2. baseplate tween
+        # 3. Exception view handler (tweens.EXCVIEW)
+        # 4. App handler code (tweens.MAIN)
         config.add_tween("baseplate.integration.pyramid._make_baseplate_tween",
-                         under=pyramid.tweens.EXCVIEW)
+                         over=pyramid.tweens.EXCVIEW)
 
         # the pyramid "scripting context" (e.g. pshell) sets up a
         # psuedo-request environment but does not call NewRequest. it does,
