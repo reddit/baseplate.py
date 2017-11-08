@@ -6,6 +6,8 @@ The file should contain a section looking like:
     [secret-fetcher]
     vault.url = https://vault.example.com:8200/
     vault.role = my-server-role
+    vault.auth_type = {aws_ec2,kubernetes}
+    vault.auth_path = /v1/auth/{aws-ec2,kubernetes}/login
 
     output.path = /var/local/secrets.json
     output.owner = www-data
@@ -18,7 +20,7 @@ The file should contain a section looking like:
         secret/three,
 
 where each secret is a path to look up in Vault. The daemon authenticates with
-Vault as the EC2 server it is running on. Vault can map that context to
+Vault using the auth backend designated by `auth_type`. Vault can map that context to
 appropriate policies accordingly.
 
 The secrets will be read from Vault and written to output.path as a JSON file
