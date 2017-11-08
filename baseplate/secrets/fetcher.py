@@ -66,6 +66,7 @@ from .. import config
 logger = logging.getLogger(__name__)
 
 
+K8S_SERVICE_ACCOUNT_TOKEN_FILE = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 NONCE_FILENAME = "/var/local/vault.nonce"
 VAULT_TOKEN_PREFETCH_TIME = datetime.timedelta(seconds=60)
 
@@ -108,16 +109,73 @@ def ttl_to_time(ttl):
 
 class VaultClientFactory(object):
     """Factory that makes authenticated clients."""
-    def __init__(self, base_url, role):
-        self.base_url = base_url
-        self.role = role
-        self.session = requests.Session()
-        self.client = None
+    def __init__(self, base_url, role, auth_type, auth_path):
+        self.base_url  = base_url
+        self.role      = role
+        self.auth_type = auth_type
+        self.auth_path = auth_path
+        self.session   = requests.Session()
+        self.client    = None
 
     def _make_client(self):
-        """Authenticate with Vault and return a client containing that token.
+        """Obtain a client token from an auth backend and return a Vault client with it."""
+        if self.auth_type == "aws_ec2":
+            client_token, lease_duration = self._vault_aws_ec2_auth()
+        elif self.auth_type == "kubernetes":
+            client_token, lease_duration = self._vault_kubernetes_auth()
+        else:
+            raise ValueError("Unsupported vault auth_type '%s' provided" % self.auth_type)
 
-        This authenticates with Vault as a specified role using its AWS EC2
+        return VaultClient(
+            self.session,
+            self.base_url,
+            client_token,
+            lease_duration,
+        )
+
+    def _vault_kubernetes_auth(self):
+        """This authenticates with Vault as a specified role using its
+        Kubernetes auth backend. This involves sending Vault a JSON Web Token
+        associated with a Kubernetes service account mounted at a well-known
+        location within a running pod. Vault should be configured with a
+        mapping binding roles to corresponding Kubernetes service accounts and
+        namespaces along with appropriate policies. For example, a pod running
+        in the `prod` namespace with the service account name `my-server`
+        requires a Vault configuration created like so:
+
+            vault write /auth/kubernetes/cluster-name/role/my-server-role \
+                bound_service_account_names=my-server \
+                bound_service_account_namespaces=prod \
+                policies=my-servers-policies \
+                max_ttl=4h
+
+        See https://www.vaultproject.io/docs/auth/kubernetes.html for more info.
+
+        """
+        try:
+            with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE , "r") as f:
+                token = f.read()
+        except IOError as exc:
+            logger.debug("Could not read Kubernetes token file '%s'",
+                         K8S_SERVICE_ACCOUNT_TOKEN_FILE)
+            raise
+
+        login_data = {
+            "jwt": token,
+            "role": self.role,
+        }
+
+        logger.debug("Obtaining Vault token via kubernetes auth.")
+        response = self.session.post(
+            urljoin(self.base_url, self.auth_path),
+            json=login_data,
+        )
+        response.raise_for_status()
+        auth = response.json()["auth"]
+        return auth["client_token"], ttl_to_time(auth["lease_duration"])
+
+    def _vault_aws_ec2_auth(self):
+        """This authenticates with Vault as a specified role using its AWS EC2
         auth backend. This involves sending to Vault the AWS-signed instance
         identity document from the instance metadata API. Vault should have an
         appropriate role-mapping configured for the server so that appropriate
@@ -134,7 +192,7 @@ class VaultClientFactory(object):
         Vault-generated nonce locally in a protected file. This nonce must be
         passed back to Vault on all successive login attempts.
 
-        See https://www.vaultproject.io/docs/auth/aws-ec2.html for more info.
+        See https://www.vaultproject.io/docs/auth/aws.html for more info.
 
         """
         identity_document = fetch_instance_identity()
@@ -148,23 +206,15 @@ class VaultClientFactory(object):
         if nonce:
             login_data["nonce"] = nonce
 
-        logger.debug("Logging into Vault.")
+        logger.debug("Obtaining Vault token via aws_ec2 auth.")
         response = self.session.post(
-            urljoin(self.base_url, "/v1/auth/aws-ec2/login"),
+            urljoin(self.base_url, self.auth_path),
             json=login_data,
         )
         response.raise_for_status()
-        response_payload = response.json()
-
-        nonce = response_payload["auth"]["metadata"]["nonce"]
-        store_nonce(nonce)
-
-        return VaultClient(
-            self.session,
-            self.base_url,
-            response_payload["auth"]["client_token"],
-            ttl_to_time(response_payload["auth"]["lease_duration"]),
-        )
+        auth = response.json()["auth"]
+        store_nonce(auth["metadata"]["nonce"])
+        return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
     def get_client(self):
         """Get an authenticated client, reauthenticating if not cached."""
@@ -228,6 +278,8 @@ def main():
         "vault": {
             "url": config.String,
             "role": config.String,
+            "auth_type": config.Optional(config.String, default="aws_ec2"),
+            "auth_path": config.Optional(config.String, default="/v1/auth/aws-ec2/login"),
         },
 
         "output": {
@@ -241,7 +293,8 @@ def main():
     })
 
     # pylint: disable=maybe-no-member
-    client_factory = VaultClientFactory(cfg.vault.url, cfg.vault.role)
+    client_factory = VaultClientFactory(cfg.vault.url, cfg.vault.role,
+                                        cfg.auth_type, cfg.auth_path)
     while True:
         client = client_factory.get_client()
 
