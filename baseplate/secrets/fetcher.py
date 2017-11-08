@@ -112,12 +112,12 @@ def ttl_to_time(ttl):
 class VaultClientFactory(object):
     """Factory that makes authenticated clients."""
     def __init__(self, base_url, role, auth_type, auth_path):
-        self.base_url  = base_url
-        self.role      = role
+        self.base_url = base_url
+        self.role = role
         self.auth_type = auth_type
         self.auth_path = auth_path
-        self.session   = requests.Session()
-        self.client    = None
+        self.session = requests.Session()
+        self.client = None
 
     def _make_client(self):
         """Obtain a client token from an auth backend and return a Vault client with it."""
@@ -155,9 +155,9 @@ class VaultClientFactory(object):
 
         """
         try:
-            with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE , "r") as f:
+            with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE, "r") as f:
                 token = f.read()
-        except IOError as exc:
+        except IOError:
             logger.debug("Could not read Kubernetes token file '%s'",
                          K8S_SERVICE_ACCOUNT_TOKEN_FILE)
             raise
