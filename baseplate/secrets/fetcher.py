@@ -158,7 +158,7 @@ class VaultClientFactory(object):
             with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE, "r") as f:
                 token = f.read()
         except IOError:
-            logger.debug("Could not read Kubernetes token file '%s'",
+            logger.error("Could not read Kubernetes token file '%s'",
                          K8S_SERVICE_ACCOUNT_TOKEN_FILE)
             raise
 
