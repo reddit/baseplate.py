@@ -1,4 +1,5 @@
 aggregator
+AWS
 backend
 backends
 backoff
@@ -13,6 +14,7 @@ hostname
 INI
 Interana
 iterable
+Kubernetes
 kwargs
 lifecycle
 localhost
