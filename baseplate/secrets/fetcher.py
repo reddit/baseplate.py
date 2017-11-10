@@ -6,8 +6,8 @@ The file should contain a section looking like:
     [secret-fetcher]
     vault.url = https://vault.example.com:8200/
     vault.role = my-server-role
-    vault.auth_type = {aws_ec2,kubernetes}
-    vault.auth_path = /v1/auth/{aws-ec2,kubernetes}/login
+    vault.auth_type = {aws,kubernetes}
+    vault.mount_point = {aws-ec2,kubernetes}
 
     output.path = /var/local/secrets.json
     output.owner = www-data
@@ -20,8 +20,15 @@ The file should contain a section looking like:
         secret/three,
 
 where each secret is a path to look up in Vault. The daemon authenticates with
-Vault using the auth backend designated by `auth_type`. Vault can map that context to
-appropriate policies accordingly.
+Vault as a role using a token obtained from an auth backend designated by `auth_type`.
+
+Currently supported auth types:
+    - aws: uses an AWS-signed instance identity document from the instance
+    metadata API
+    - kubernetes: uses a JWT mounted within a pod associated with a service account
+
+Upon authenticating with this token, the Vault client then gets access based
+upon the policies mapped to the role.
 
 The secrets will be read from Vault and written to output.path as a JSON file
 with the following structure:
@@ -111,22 +118,17 @@ def ttl_to_time(ttl):
 
 class VaultClientFactory(object):
     """Factory that makes authenticated clients."""
-    def __init__(self, base_url, role, auth_type, auth_path):
+    def __init__(self, base_url, role, auth_type, mount_point):
         self.base_url = base_url
         self.role = role
         self.auth_type = auth_type
-        self.auth_path = auth_path
+        self.mount_point = mount_point
         self.session = requests.Session()
         self.client = None
 
     def _make_client(self):
         """Obtain a client token from an auth backend and return a Vault client with it."""
-        if self.auth_type == "aws_ec2":
-            client_token, lease_duration = self._vault_aws_ec2_auth()
-        elif self.auth_type == "kubernetes":
-            client_token, lease_duration = self._vault_kubernetes_auth()
-        else:
-            raise ValueError("Unsupported vault auth_type '%s' provided" % self.auth_type)
+        client_token, lease_duration = self.auth_type()
 
         return VaultClient(
             self.session,
@@ -136,7 +138,9 @@ class VaultClientFactory(object):
         )
 
     def _vault_kubernetes_auth(self):
-        """This authenticates with Vault as a specified role using its
+        """Gets a client token from Vault through the Kubernetes auth backend.
+
+        This authenticates with Vault as a specified role using its
         Kubernetes auth backend. This involves sending Vault a JSON Web Token
         associated with a Kubernetes service account mounted at a well-known
         location within a running pod. Vault should be configured with a
@@ -169,15 +173,17 @@ class VaultClientFactory(object):
 
         logger.debug("Obtaining Vault token via kubernetes auth.")
         response = self.session.post(
-            urljoin(self.base_url, self.auth_path),
+            urljoin(self.base_url, "v1/%s/login" % self.mount_point),
             json=login_data,
         )
         response.raise_for_status()
         auth = response.json()["auth"]
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
-    def _vault_aws_ec2_auth(self):
-        """This authenticates with Vault as a specified role using its AWS EC2
+    def _vault_aws_auth(self):
+        """Gets a client token from Vault through the AWS auth backend.
+
+        This authenticates with Vault as a specified role using its AWS
         auth backend. This involves sending to Vault the AWS-signed instance
         identity document from the instance metadata API. Vault should have an
         appropriate role-mapping configured for the server so that appropriate
@@ -208,9 +214,9 @@ class VaultClientFactory(object):
         if nonce:
             login_data["nonce"] = nonce
 
-        logger.debug("Obtaining Vault token via aws_ec2 auth.")
+        logger.debug("Obtaining Vault token via aws auth.")
         response = self.session.post(
-            urljoin(self.base_url, self.auth_path),
+            urljoin(self.base_url, "v1/auth/%s/login" % self.mount_point),
             json=login_data,
         )
         response.raise_for_status()
@@ -276,12 +282,18 @@ def main():
     parser.readfp(args.config_file)
     fetcher_config = dict(parser.items("secret-fetcher"))
 
+    auth_types = {
+        "aws": VaultClientFactory._vault_aws_auth,
+        "kubernetes": VaultClientFactory._vault_kubernetes_auth,
+    }
+
     cfg = config.parse_config(fetcher_config, {
         "vault": {
             "url": config.String,
             "role": config.String,
-            "auth_type": config.Optional(config.String, default="aws_ec2"),
-            "auth_path": config.Optional(config.String, default="/v1/auth/aws-ec2/login"),
+            "auth_type": config.Optional(config.OneOf(**auth_types),
+                                         default=auth_types["aws"]),
+            "mount_point": config.Optional(config.String, default="aws-ec2"),
         },
 
         "output": {
@@ -296,7 +308,7 @@ def main():
 
     # pylint: disable=maybe-no-member
     client_factory = VaultClientFactory(cfg.vault.url, cfg.vault.role,
-                                        cfg.auth_type, cfg.auth_path)
+                                        cfg.auth_type, cfg.mount_point)
     while True:
         client = client_factory.get_client()
 
