@@ -224,6 +224,14 @@ class VaultClientFactory(object):
         store_nonce(auth["metadata"]["nonce"])
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
+    @staticmethod
+    def auth_types():
+        """Returns a dict of the supported auth types and respective methods."""
+        return {
+            "aws": VaultClientFactory._vault_aws_auth,
+            "kubernetes": VaultClientFactory._vault_kubernetes_auth,
+        }
+
     def get_client(self):
         """Get an authenticated client, reauthenticating if not cached."""
         if not self.client or self.client.is_about_to_expire:
@@ -282,17 +290,12 @@ def main():
     parser.readfp(args.config_file)
     fetcher_config = dict(parser.items("secret-fetcher"))
 
-    auth_types = {
-        "aws": VaultClientFactory._vault_aws_auth,
-        "kubernetes": VaultClientFactory._vault_kubernetes_auth,
-    }
-
     cfg = config.parse_config(fetcher_config, {
         "vault": {
             "url": config.String,
             "role": config.String,
-            "auth_type": config.Optional(config.OneOf(**auth_types),
-                                         default=auth_types["aws"]),
+            "auth_type": config.Optional(config.OneOf(**VaultClientFactory.auth_types()),
+                                         default=VaultClientFactory.auth_types()["aws"]),
             "mount_point": config.Optional(config.String, default="aws-ec2"),
         },
 
