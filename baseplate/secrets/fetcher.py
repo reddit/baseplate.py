@@ -128,7 +128,7 @@ class VaultClientFactory(object):
 
     def _make_client(self):
         """Obtain a client token from an auth backend and return a Vault client with it."""
-        client_token, lease_duration = self.auth_type()
+        client_token, lease_duration = self.auth_type(self)
 
         return VaultClient(
             self.session,
@@ -173,7 +173,7 @@ class VaultClientFactory(object):
 
         logger.debug("Obtaining Vault token via kubernetes auth.")
         response = self.session.post(
-            urljoin(self.base_url, "v1/%s/login" % self.mount_point),
+            urljoin(self.base_url, "v1/auth/%s/login" % self.mount_point),
             json=login_data,
         )
         response.raise_for_status()
