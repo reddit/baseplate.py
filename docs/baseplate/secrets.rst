@@ -7,11 +7,13 @@ Fetcher Daemon
 --------------
 
 The secret fetcher is a sidecar that is run as a single daemon on each server.
-It authenticates to Vault as the server itself and gets appropriate policies
-for access to secrets accordingly. Once authenticated, it fetches a given list
-of secrets from Vault and stores all of the data in a local file. It will
-automatically re-fetch secrets as their leases expire, ensuring that key
-rotation happens on schedule.
+It can authenticate to Vault either as the server itself (through an AWS-signed
+instance identity document) or through a mounted JWT when running within a
+Kubernetes pod. It then gets access to secrets based upon the policies mapped
+to the role it authenticated as. Once authenticated, it fetches a given
+list of secrets from Vault and stores all of the data in a local file.
+It will automatically re-fetch secrets as their leases expire, ensuring
+that key rotation happens on schedule.
 
 Because this is a sidecar, individual application processes don't need to talk
 directly to Vault for simple secret tokens (but can do so if needed for more

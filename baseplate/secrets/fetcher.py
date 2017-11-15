@@ -138,7 +138,7 @@ class VaultClientFactory(object):
         )
 
     def _vault_kubernetes_auth(self):
-        """Gets a client token from Vault through the Kubernetes auth backend.
+        """Get a client token from Vault through the Kubernetes auth backend.
 
         This authenticates with Vault as a specified role using its
         Kubernetes auth backend. This involves sending Vault a JSON Web Token
@@ -181,7 +181,7 @@ class VaultClientFactory(object):
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
     def _vault_aws_auth(self):
-        """Gets a client token from Vault through the AWS auth backend.
+        """Get a client token from Vault through the AWS auth backend.
 
         This authenticates with Vault as a specified role using its AWS
         auth backend. This involves sending to Vault the AWS-signed instance
@@ -226,7 +226,7 @@ class VaultClientFactory(object):
 
     @staticmethod
     def auth_types():
-        """Returns a dict of the supported auth types and respective methods."""
+        """Return a dict of the supported auth types and respective methods."""
         return {
             "aws": VaultClientFactory._vault_aws_auth,
             "kubernetes": VaultClientFactory._vault_kubernetes_auth,
