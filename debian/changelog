@@ -1,3 +1,10 @@
+baseplate (0.23.2) trusty; urgency=medium
+
+  * change baseplate tween position
+  * encode AuthenticationContext token
+
+ -- Andrew Boyle <andrew.boyle@reddit.com>  Thu, 16 Nov 2017 18:56:26 +0000
+
 baseplate (0.23.1) trusty; urgency=medium
 
   * allow loid_id=None in EdgeRequestContext
