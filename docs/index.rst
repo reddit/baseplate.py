@@ -4,8 +4,7 @@ Baseplate
 Baseplate is a framework to build services on and a library of common and
 well-tested code to share. Its goal is to provide all the common things a
 service needs with as few surprises as possible. It can be divided up into
-three distinct categories of components, listed below. If you're just getting
-started or just impatient, check out the :doc:`quickstart`.
+three distinct categories of components, listed below.
 
 The Instrumentation Framework
 -----------------------------
@@ -69,5 +68,4 @@ Appendix
 .. toctree::
    :hidden:
 
-   quickstart
    glossary

@@ -15,10 +15,7 @@ including:
    `Einhorn <https://github.com/stripe/einhorn>`__
 -  and various helper libraries like a Thrift client pool
 
-Check out the `quick
-start <https://baseplate.readthedocs.io/en/stable/quickstart.html>`__ to get
-going quickly, or read the `full
-docs <https://baseplate.readthedocs.io/en/stable/>`__.
+Read the `full docs <https://baseplate.readthedocs.io/en/stable/>`__.
 
 .. |Build Status| image:: https://travis-ci.org/reddit/baseplate.svg?branch=master
    :target: https://travis-ci.org/reddit/baseplate
