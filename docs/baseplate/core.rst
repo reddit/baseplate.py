@@ -58,6 +58,27 @@ integrations <integration/index>`.
 .. autoclass:: TraceInfo
    :members: from_upstream
 
+.. _convenience_methods:
+
+Convenience Methods
+~~~~~~~~~~~~~~~~~~~
+
+Baseplate comes with some core monitoring observers built in and just requires
+you to configure them. You can enable them by calling the relevant methods on
+your application's :py:class:`~baseplate.core.Baseplate` object.
+
+- Logging: :py:meth:`~baseplate.core.Baseplate.configure_logging`
+- Metrics (statsd): :py:meth:`~baseplate.core.Baseplate.configure_metrics`
+- Tracing (Zipkin): :py:meth:`~baseplate.core.Baseplate.configure_tracing`
+- Error Reporting (Sentry): :py:meth:`~baseplate.core.Baseplate.configure_error_reporting`
+
+Additionally, Baseplate provides helpers which can be attached to the
+:term:`context object` in requests. These helpers make the passing of trace
+information and collection of spans automatic and transparent. Because this
+pattern is so common, Baseplate has a special kind of observer for it which can
+be registered with :py:meth:`~baseplate.core.Baseplate.add_to_context`. See the
+:py:mod:`baseplate.context` package for a list of helpers included.
+
 Spans
 -----
 
@@ -130,9 +151,6 @@ statsd :py:meth:`~!baseplate.core.SpanObserver.on_finish`.
 .. autoclass:: SpanObserver
    :members:
 
-
-.. _convenience_methods:
-
 Edge Request Context
 --------------------
 
@@ -143,23 +161,8 @@ information into the appropriate headers.  Once this object is created and attac
 the context, Baseplate will automatically forward the headers to downstream services so they
 can access the authentication and context data as well.
 
-If the application is an edge service that is directly serving client
-requests, then the application should procure an authentication token from the authentication
-service, store the token in an :py:class:`~baseplate.core.AuthenticationContext` object,
-and then store it along with the other context data in an
-:py:class:`~baseplate.core.EdgeRequestContext` object attached to the current context::
-
-    authentication_token = retrieve_token_from_authentication_service()
-    authentication_context = AuthenticationContext(authentication_token, secrets_store)
-    request_context = EdgeRequestContext.create(
-        authentication_context=authentication_context,
-        **edge_request_data
-    )
-    request_context.attach_context(context)
-
-This will allow for the authentication token be verified correctly and for both the
-authentication token and the edge request data to be passed to other services that
-may need it.
+.. autoclass:: EdgeRequestContextFactory
+   :members:
 
 .. autoclass:: EdgeRequestContext
    :members:
@@ -172,33 +175,7 @@ may need it.
 
 .. autoclass:: Session
 
-.. autoclass:: AuthenticationContextFactory
+.. autoclass:: AuthenticationToken
    :members:
 
-.. autoclass:: AuthenticationContext
-   :members:
-
-.. autoclass:: UndefinedSecretsException
-   :members:
-
-.. autoclass:: WithheldAuthenticationError
-   :members:
-
-Convenience Methods
--------------------
-
-Baseplate comes with some core monitoring observers built in and just requires
-you to configure them. You can enable them by calling the relevant methods on
-your application's :py:class:`~baseplate.core.Baseplate` object.
-
-- Logging: :py:meth:`~baseplate.core.Baseplate.configure_logging`
-- Metrics (statsd): :py:meth:`~baseplate.core.Baseplate.configure_metrics`
-- Tracing (Zipkin): :py:meth:`~baseplate.core.Baseplate.configure_tracing`
-- Error Reporting (Sentry): :py:meth:`~baseplate.core.Baseplate.configure_error_reporting`
-
-Additionally, Baseplate provides helpers which can be attached to the
-:term:`context object` in requests. These helpers make the passing of trace
-information and collection of spans automatic and transparent. Because this
-pattern is so common, Baseplate has a special kind of observer for it which can
-be registered with :py:meth:`~baseplate.core.Baseplate.add_to_context`. See the
-:py:mod:`baseplate.context` package for a list of helpers included.
+.. autoexception:: NoAuthenticationError

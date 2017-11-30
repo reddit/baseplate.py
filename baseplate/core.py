@@ -12,8 +12,7 @@ from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.util import Serializer
 
 from .integration.wrapped_context import WrappedRequestContext
-from ._compat import string_types
-from ._utils import warn_deprecated
+from ._utils import warn_deprecated, cached_property
 
 
 logger = logging.getLogger(__name__)
@@ -80,6 +79,11 @@ _TraceInfo = collections.namedtuple("_TraceInfo",
                                     "trace_id parent_id span_id sampled flags")
 
 
+class NoAuthenticationError(Exception):
+    """Raised when trying to use an invalid or missing authentication token."""
+    pass
+
+
 class TraceInfo(_TraceInfo):
     """Trace context for a span.
 
@@ -132,305 +136,189 @@ class TraceInfo(_TraceInfo):
         return cls(trace_id, parent_id, span_id, sampled, flags)
 
 
-class AuthenticationContextFactory(object):
-    """Factory for consistent AuthenticationContext creation.
+class AuthenticationTokenValidator(object):
+    """Factory that knows how to validate raw authentication tokens."""
 
-    This factory should be passed into the constructor of any upstream
-    :doc:`integrations <integration/index>` so that it is aware of the
-    application's secret store and can create the authentication context for
-    the incoming requests.
+    def __init__(self, secrets):
+        self.secrets = secrets
 
-    :param baseplate.secrets.SecretsStore secrets_store: the application's
-        defined secrets store, where application secret lookups should be made
-    """
-    def __init__(self, secrets_store=None):
-        self.secrets = secrets_store
-
-    def make_context(self, token):
-        """Builds :py:class:`AuthenticationContext` using stored values
+    def validate(self, token):
+        """Validate a raw authentication token and return an object.
 
         :param token: token value originating from the Authentication service
             either directly or from an upstream service
-        :rtype: :py:class:`AuthenticationContext`
+        :rtype: :py:class:`AuthenticationToken`
+
         """
-        return AuthenticationContext(token=token, secrets=self.secrets)
+        if not token:
+            return InvalidAuthenticationToken()
+
+        secret = self.secrets.get_versioned("secret/authentication/public-key")
+        for public_key in secret.all_versions:
+            try:
+                decoded = jwt.decode(token, public_key, algorithms="RS256")
+                return ValidatedAuthenticationToken(decoded)
+            except jwt.ExpiredSignatureError:
+                pass
+            except jwt.DecodeError:
+                pass
+
+        return InvalidAuthenticationToken()
 
 
-class AuthenticationContext(object):
-    """Wrapper for the contextual authentication information
+class AuthenticationToken(object):
+    """Information about the authenticated user.
 
-    In general, this object should not be used directly but will rather be
-    wrapped by an :py:class:`EdgeRequestContext` object.
+    :py:class:`EdgeRequestContext` provides high-level helpers for extracting
+    data from authentication tokens. Use those instead of direct access through
+    this class.
 
-    :param str token: the value for the currently propagated authentication
-        context
-    :param baseplate.secrets.SecretsStore secrets_store: the application's
-        defined secrets store, where application secret lookups should be made
     """
-    def __init__(self, token=None, secrets=None):
-        self._secret_store = secrets
-        # Ensure that self._token is str (Python 2) or bytes (Python 3).  While
-        # jwt.decode works correctly if self._token is a str, unicode, or bytes
-        # the Thrift THeaderProtocol that is used to pass this value through
-        # RPC calls expects this value to be a str (or bytes) and breaks if the
-        # length of the value being set as a header is over 128 characters and
-        # the value is of type unicode (Python 2 only).  Rather than coverting
-        # before passing as a header, we encode in the constructor so we know
-        # that self._token is always the same type.
-        if isinstance(token, string_types):
-            token = token.encode()
-        self._token = token
-        self._payload = None
-        self._valid = None
-        self.defined = self._token is not None
-
-    def _secret(self):
-        if not self._secret_store:
-            raise UndefinedSecretsException
-
-        return self._secret_store.get_simple("jwt/authentication/secret")
-
-    def attach_context(self, context):
-        """.. deprecated:: 0.23.0
-
-        Attaching the AuthenticationContext object to the context directly is
-        considered deprecated.  You should be passing the AuthenticationContext
-        object to the EdgeRequestContext constructor and attaching that object
-        to the context.  Baseplate will only forward the AuthenticationContext
-        if it is included in the EdgeRequestContext object that is attached to
-        the context object.
-
-        :param context: request context to attach this authentication to
-
-        """
-        context.authentication = self
 
     @property
-    def valid(self):
-        """Validity of the current authentication context token
-
-        :type: bool
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and validated)
-
-        """
-        if self._valid is not None:
-            return self._valid
-        elif not self.defined:
-            return False
-
-        try:
-            self._payload = jwt.decode(self._token, self._secret(),
-                                       algorithms='RS256')
-            self._valid = True
-        except jwt.ExpiredSignatureError:  # when the token has expired
-            self._valid = False
-        except jwt.DecodeError:  # When the token is malformed
-            self._valid = False
-
-        return self._valid
-
-    @property
-    def payload(self):
-        """Decrypted payload of the authentication token.
-
-        :type: dict
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and the user_id returned)
-
-        """
-        if not self.valid:
-            return {}
-
-        return self._payload
-
-    @property
-    def account_id(self):
-        """Authenticated account_id for the current authenticated context
-
-        :type: account_id string or None if context authentication is invalid
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and the user_id returned)
-        :raises: :py:class:`WithheldAuthenticationError` if there was no
-            authentication token defined for the current context
-
-        """
-        if not self.defined:
-            raise WithheldAuthenticationError
-
-        return self.payload.get("sub", None)
+    def subject(self):
+        """The raw `subject` that is authenticated."""
+        raise NotImplementedError
 
     @property
     def user_roles(self):
-        """User roles for the current authenticated context
-
-        :type: set(string)
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and the user_id returned)
-        :raises: :py:class:`WithheldAuthenticationError` if there was no
-            authentication token defined for the current context
-
-        """
-        if not self.defined:
-            raise WithheldAuthenticationError
-
-        roles = self.payload.get("user_roles", None)
-        return set(roles) if roles else set()
+        raise NotImplementedError
 
     @property
     def oauth_client_id(self):
-        """ID for the OAuth client used with the current authenticated context
-
-        :type: string or None if context authentication is invalid or the user
-            did not authenticate with OAuth2
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and the user_id returned)
-        :raises: :py:class:`WithheldAuthenticationError` if there was no
-            authentication token defined for the current context
-
-        """
-        if not self.defined:
-            raise WithheldAuthenticationError
-
-        return self.payload.get("client_id", None)
+        raise NotImplementedError
 
     @property
     def oauth_client_type(self):
-        """Type of OAuth client used with the current authenticated context
-
-        :type: string or None if context authentication is invalid or the user
-            did not authenticate with OAuth2
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and the user_id returned)
-        :raises: :py:class:`WithheldAuthenticationError` if there was no
-            authentication token defined for the current context
-
-        """
-        if not self.defined:
-            raise WithheldAuthenticationError
-
-        return self.payload.get("client_type", None)
+        raise NotImplementedError
 
 
-class UndefinedSecretsException(Exception):
-    """Exception raised when no SecretsStore is defined during token parsing
+class ValidatedAuthenticationToken(AuthenticationToken):
+    def __init__(self, payload):
+        self.payload = payload
 
-    Occurs in the :py:class:`AuthenticationContext` object when it attempts to
-    parse an authentication payload without having a :py:class:`SecretsStore`
-    defined to provide the necessary secrets values to correctly decrypt and
-    parse the token.
-    """
-    def __init__(self):
-        super(UndefinedSecretsException, self).__init__(
-            "No SecretsStore defined for Authentication token parsing.")
+    @property
+    def subject(self):
+        return self.payload.get("sub")
+
+    @cached_property
+    def user_roles(self):
+        return set(self.payload.get("roles", []))
+
+    @property
+    def oauth_client_id(self):
+        return self.payload.get("client_id")
+
+    @property
+    def oauth_client_type(self):
+        return self.payload.get("client_type")
 
 
-class WithheldAuthenticationError(Exception):
-    """Error raised when attempting to read from an unset authentication token
+class InvalidAuthenticationToken(AuthenticationToken):
+    @property
+    def subject(self):
+        raise NoAuthenticationError
 
-    Occurs either because of a badly instantiated context or missing header
-    coming from upstream requests.
-    """
-    def __init__(self):
-        super(WithheldAuthenticationError, self).__init__(
-            "No Authentication token provided for this context.")
+    @property
+    def user_roles(self):
+        raise NoAuthenticationError
+
+    @property
+    def oauth_client_id(self):
+        raise NoAuthenticationError
+
+    @property
+    def oauth_client_type(self):
+        raise NoAuthenticationError
 
 
 _User = collections.namedtuple(
-    "_User", ["authentication_context", "loid", "cookie_created_ms"])
+    "_User", ["authentication_token", "loid", "cookie_created_ms"])
 _OAuthClient = collections.namedtuple(
-    "_OAuthClient", ["authentication_context"])
+    "_OAuthClient", ["authentication_token"])
 Session = collections.namedtuple("Session", ["id"])
 
 
 class User(_User):
-    """Wrapper for the user values in AuthenticationContext and the LoId cookie.
+    """Wrapper for the user values in AuthenticationToken and the LoId cookie.
     """
 
-    def event_fields(self):
-        """Dictionary of values to be added to events in the current context
+    @property
+    def id(self):
+        """Authenticated account_id for the current User.
+
+        :type: account_id string or None if context authentication is invalid
+        :raises: :py:class:`NoAuthenticationError` if there was no
+            authentication token, it was invalid, or the subject is not an
+            account.
+
         """
+        subject = self.authentication_token.subject
+        if not (subject and subject.startswith("t2_")):
+            raise NoAuthenticationError
+        return subject
+
+    @property
+    def is_logged_in(self):
+        """Does the User have a valid, authenticated id?"""
+        try:
+            return self.id is not None
+        except NoAuthenticationError:
+            return False
+
+    @property
+    def roles(self):
+        """Authenticated roles for the current User.
+
+        :type: set(string)
+        :raises: :py:class:`NoAuthenticationError` if there was no
+            authentication token or it was invalid
+
+        """
+        return self.authentication_token.user_roles
+
+    def has_role(self, role):
+        """Does the authenticated user have the specified role?
+
+        :param str client_types: Case-insensitive sequence role name to check.
+
+        :type: bool
+        :raises: :py:class:`NoAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        return role.lower() in self.roles
+
+    def event_fields(self):
+        """Return fields to be added to events."""
         if self.is_logged_in:
             user_id = self.id
         else:
             user_id = self.loid
+
         return {
             "user_id": user_id,
             "user_logged_in": self.is_logged_in,
             "cookie_created": self.cookie_created_ms,
         }
 
-    @property
-    def id(self):
-        """Authenticated account_id for the current User
-
-        :type: account_id string or None if context authentication is invalid
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and the user_id returned)
-        :raises: :py:class:`WithheldAuthenticationError` if there was no
-            authentication token defined for the current context
-
-        """
-        return self.authentication_context.account_id
-
-    @property
-    def is_logged_in(self):
-        """Does the User have a valid, authenticated id"""
-        try:
-            return self.id is not None
-        except (WithheldAuthenticationError, UndefinedSecretsException):
-            return False
-
-    @property
-    def roles(self):
-        """Authenticated roles for the current User
-
-        :type: set(string)
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and the user_id returned)
-        :raises: :py:class:`WithheldAuthenticationError` if there was no
-            authentication token defined for the current context
-
-        """
-        return self.authentication_context.user_roles
-
 
 class OAuthClient(_OAuthClient):
-    """Wrapper for the OAuth2 client values in AuthenticationContext."""
+    """Wrapper for the OAuth2 client values in AuthenticationToken."""
 
     @property
     def id(self):
         """Authenticated id for the current client
 
         :type: string or None if context authentication is invalid
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and the user_id returned)
-        :raises: :py:class:`WithheldAuthenticationError` if there was no
+        :raises: :py:class:`NoAuthenticationError` if there was no
             authentication token defined for the current context
 
         """
-        return self.authentication_context.oauth_client_id
+        return self.authentication_token.oauth_client_id
 
     def is_type(self, *client_types):
-        """Is the authenticated client type one of the given types
+        """Is the authenticated client type one of the given types?
 
         When checking the type of the current OauthClient, you should check
         that the type "is" one of the allowed types rather than checking that
@@ -447,83 +335,74 @@ class OAuthClient(_OAuthClient):
                 ...
 
 
-        :param str *client_types: Case-insensitive sequence of client type
+        :param str client_types: Case-insensitive sequence of client type
             names that you want to check.
 
         :type: bool
-        :raises: :py:class:`UndefinedSecretsException` if the
-            :py:class:`SecretsStore` has not been bound to the context handling
-            class (means that the authentication payload could not be decrypted
-            and the user_id returned)
-        :raises: :py:class:`WithheldAuthenticationError` if there was no
+        :raises: :py:class:`NoAuthenticationError` if there was no
             authentication token defined for the current context
 
         """
         lower_types = (client_type.lower() for client_type in client_types)
-        return self.authentication_context.oauth_client_type in lower_types
-
-
-class EdgeRequestContext(object):
-    """Contextual information about the initial request to an edge service
-
-    :param bytes header: Serialized "Edge-Request" header.
-    :param baseplate.core.AuthenticationContext authentication_context:
-        Authentication context for the current request if it is authenticated.
-    """
-
-    _HEADER_PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
-
-    def __init__(self, header, authentication_context):
-        self._header = header
-        self._authentication_context = authentication_context
-        self._t_request = None
-        self._user = None
-        self._oauth_client = None
-        self._session = None
-
-    def attach_context(self, context):
-        """Attach this to the provided Baseplate context.
-
-        :param context: request context to attach this to
-        """
-        context.request_context = self
-
-    def header_values(self):
-        """Dictionary of the serialized headers with the request context data
-
-        Used to get the values to forward with upstream service calls.
-        """
-        return {
-            'Edge-Request': self._header,
-            'Authentication': self._authentication_context._token,
-        }
+        return self.authentication_token.oauth_client_type in lower_types
 
     def event_fields(self):
-        """Dictionary of values to be added to events in the current context
-        """
+        """Return fields to be added to events."""
         try:
-            oauth_client_id = self.oauth_client.id
-        except (WithheldAuthenticationError, UndefinedSecretsException):
+            oauth_client_id = self.id
+        except NoAuthenticationError:
             oauth_client_id = None
 
-        fields = {
-            'session_id': self.session.id,
-            'oauth_client_id': oauth_client_id,
+        return {
+            "oauth_client_id": oauth_client_id,
         }
-        fields.update(self.user.event_fields())
-        return fields
 
-    @classmethod
-    def create(cls, authentication_context=None, loid_id=None,
-               loid_created_ms=None, session_id=None):
-        """Factory method to create a new EdgeRequestContext object.
 
-        Builds a new EdgeRequestContext object with the given parameters and
-        serializes the "Edge-Request" header.
+class EdgeRequestContextFactory(object):
+    """Factory for creating :py:class:`EdgeRequestContext` objects.
 
-        :param baseplate.core.AuthenticationContext authentication_context:
-            (Optional) AuthenticationContext for the current request if it is
-            authenticated.
+    Every application should set one of these up. Edge services that talk
+    directly with clients should use :py:meth:`new` directly. For internal
+    services, pass the object off to Baseplate's framework integration
+    (Thrift/Pyramid) for automatic use.
+
+    :param baseplate.secrets.SecretsStore secrets: A configured secrets
+        store.
+
+    """
+    def __init__(self, secrets):
+        self.authn_token_validator = AuthenticationTokenValidator(secrets)
+
+    def new(self,
+            authentication_token=None,
+            loid_id=None, loid_created_ms=None,
+            session_id=None):
+        """Return a new EdgeRequestContext object made from scratch.
+
+        Services at the edge that communicate directly with clients should use
+        this to pass on the information they get to downstream services. They
+        can then use this information to check authentication, run experiments,
+        etc.
+
+        To use this, create and attach the context early in your request flow:
+
+        .. code-block:: python
+
+            auth_cookie = request.cookies["authentication"]
+            token = request.authentication_service.authenticate_cookie(cookie)
+            loid = parse_loid(request.cookies["loid"])
+            session = parse_session(request.cookies["session"])
+
+            edge_context = self.edgecontext_factory.new(
+                authentication_token=token,
+                loid_id=loid.id,
+                loid_created_ms=loid.created,
+                session_id=session.id,
+            )
+            edge_context.attach_context(request)
+
+        :param authentication_token: (Optional) A raw authentication token
+            as returned by the authentication service.
         :param str loid_id: (Optional) ID for the current LoID in fullname
             format.
         :param int loid_created_ms: (Optional) Epoch milliseconds when the
@@ -544,69 +423,112 @@ class EdgeRequestContext(object):
                 loid_id
             )
 
-        loid = TLoid(id=loid_id, created_ms=loid_created_ms)
-        session = TSession(id=session_id)
-        request = TRequest(loid=loid, session=session)
-        header = Serializer.serialize(cls._HEADER_PROTOCOL_FACTORY, request)
-        if authentication_context is None:
-            authentication_context = AuthenticationContext()
-        request_context = cls(header, authentication_context)
+        t_request = TRequest(
+            loid=TLoid(id=loid_id, created_ms=loid_created_ms),
+            session=TSession(id=session_id),
+            authentication_token=authentication_token,
+        )
+        header = Serializer.serialize(
+            EdgeRequestContext._HEADER_PROTOCOL_FACTORY, t_request)
+
+        context = EdgeRequestContext(self.authn_token_validator, header)
         # Set the _t_request property so we can skip the deserialization step
         # since we already have the thrift object.
-        request_context._t_request = request
-        return request_context
+        context._t_request = t_request
+        return context
 
-    @property
-    def user(self):
-        """:py:class:`baseplate.core.User` object for the current context"""
-        if self._user is None:
-            t_context = self._thrift_request_context()
-            self._user = User(
-                authentication_context=self._authentication_context,
-                loid=t_context.loid.id,
-                cookie_created_ms=t_context.loid.created_ms,
-            )
-        return self._user
+    def from_upstream(self, edge_header):
+        """Create and return an EdgeRequestContext from an upstream header.
 
-    @property
-    def oauth_client(self):
-        """:py:class:`baseplate.core.OAuthClient` object for the current context
+        This is generally used internally to Baseplate by framework
+        integrations that automatically pick up context from inbound requests.
+
+        :param edge_header: Raw payload of Edge-Request header from upstream
+            service.
+
         """
-        if self._oauth_client is None:
-            self._oauth_client = OAuthClient(self._authentication_context)
-        return self._oauth_client
+        return EdgeRequestContext(self.authn_token_validator, edge_header)
 
-    @property
+
+class EdgeRequestContext(object):
+    """Contextual information about the initial request to an edge service
+
+    Construct this using an
+    :py:class:`~baseplate.core.EdgeRequestContextFactory`.
+
+    """
+
+    _HEADER_PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
+
+    def __init__(self, authn_token_validator, header):
+        self._authn_token_validator = authn_token_validator
+        self._header = header
+
+    def attach_context(self, context):
+        """Attach this to the provided :term:`context object`.
+
+        :param context: request context to attach this to
+
+        """
+        context.request_context = self
+        context.raw_request_context = self._header
+
+    def event_fields(self):
+        """Return fields to be added to events."""
+        fields = {
+            "session_id": self.session.id,
+        }
+        fields.update(self.user.event_fields())
+        fields.update(self.oauth_client.event_fields())
+        return fields
+
+    @cached_property
+    def authentication_token(self):
+        return self._authn_token_validator.validate(self._t_request.authentication_token)
+
+    @cached_property
+    def user(self):
+        """:py:class:`~baseplate.core.User` object for the current context"""
+        return User(
+            authentication_token=self.authentication_token,
+            loid=self._t_request.loid.id,
+            cookie_created_ms=self._t_request.loid.created_ms,
+        )
+
+    @cached_property
+    def oauth_client(self):
+        """:py:class:`~baseplate.core.OAuthClient` object for the current context
+        """
+        return OAuthClient(self.authentication_token)
+
+    @cached_property
     def session(self):
-        """:py:class:`baseplate.core.Session` object for the current context"""
-        if self._session is None:
-            t_context = self._thrift_request_context()
-            self._session = Session(id=t_context.session.id)
-        return self._session
+        """:py:class:`~baseplate.core.Session` object for the current context"""
+        return Session(id=self._t_request.session.id)
 
-    def _thrift_request_context(self):
+    @cached_property
+    def _t_request(self):  # pylint: disable=method-hidden
         # Importing the Thrift models inline so that building them is not a
         # hard, import-time dependency for tasks like building the docs.
         from .thrift.ttypes import Loid as TLoid
         from .thrift.ttypes import Request as TRequest
         from .thrift.ttypes import Session as TSession
-        if self._t_request is None:
-            self._t_request = TRequest()
-            self._t_request.loid = TLoid()
-            self._t_request.session = TSession()
-            if self._header:
-                try:
-                    Serializer.deserialize(
-                        self._HEADER_PROTOCOL_FACTORY,
-                        self._header,
-                        self._t_request,
-                    )
-                except Exception:
-                    logger.debug(
-                        "Invalid Edge-Request header. %s",
-                        self._header,
-                    )
-        return self._t_request
+        _t_request = TRequest()
+        _t_request.loid = TLoid()
+        _t_request.session = TSession()
+        if self._header:
+            try:
+                Serializer.deserialize(
+                    self._HEADER_PROTOCOL_FACTORY,
+                    self._header,
+                    _t_request,
+                )
+            except Exception:
+                logger.debug(
+                    "Invalid Edge-Request header. %s",
+                    self._header,
+                )
+        return _t_request
 
 
 class Baseplate(object):

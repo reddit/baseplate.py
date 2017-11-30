@@ -14,11 +14,11 @@ except ImportError:
     from cStringIO import StringIO
 
 from baseplate.core import (
-    AuthenticationContext,
-    AuthenticationContextFactory,
     Baseplate,
     BaseplateObserver,
     EdgeRequestContext,
+    EdgeRequestContextFactory,
+    NoAuthenticationError,
     ServerSpanObserver,
 )
 from baseplate.context.thrift import ThriftContextFactory
@@ -32,7 +32,11 @@ from thrift.server.TServer import TRpcConnectionContext
 from thrift.transport.TTransport import TMemoryBuffer, TTransportException
 
 from .test_thrift import TestService, ttypes
-from .. import mock
+from .. import (
+    mock,
+    AUTH_TOKEN_PUBLIC_KEY,
+    SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
+)
 
 
 class UnexpectedException(Exception):
@@ -51,10 +55,6 @@ class TestHandler(TestService.ContextIface):
 
 
 class ThriftTests(unittest.TestCase):
-    VALID_TOKEN = b"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjQ2NTY1OTM0NTV9.Q8bz2qccFOHLTQ6H3MPdjSh7wDkRQtbBuBwGMzNRKjDFSkCoVF5kiwhBUdwbW8UXO5iZn4Bh7oKdj69lIEOATUxFBblU8Do05EfjECXLYGdbr6ClNmldrB8SsdAtQYQ4Ud-70Z8_75QvkqX_TY5OA4asGJZwH9MC7oHey47-38I"
-    TOKEN_SECRET = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC0Kd3qYtc6zI5tj3iKBux70BhE\nZLLJ7fAKNBUO7h9FCwUcYku+SFigzNOu3AAYt3seNgxl+cvMR2+SNwsa605J9D1v\n9eGmpcITQi85SeJnfR7LJUMu7RieY5wEl0RyuwnSkX3Gkv0+hZISC/XYcWEYolIi\n8725u7u/8HRtUeHoLwIDAQAB\n-----END PUBLIC KEY-----"
-    SERIALIZED_REQUEST_HEADER = b"\x0c\x00\x01\x0b\x00\x01\x00\x00\x00\x0bt2_deadbeef\n\x00\x02\x00\x00\x00\x00\x00\x01\x86\xa0\x00\x0c\x00\x02\x0b\x00\x01\x00\x00\x00\x08beefdead\x00\x00"  # noqa
-
     def setUp(self):
         self.itrans = TMemoryBuffer()
         self.iprot = THeaderProtocol(self.itrans)
@@ -77,9 +77,9 @@ class ThriftTests(unittest.TestCase):
         mock_filewatcher = mock.Mock(spec=FileWatcher)
         mock_filewatcher.get_data.return_value = {
             "secrets": {
-                "jwt/authentication/secret": {
-                    "type": "simple",
-                    "value": self.TOKEN_SECRET,
+                "secret/authentication/public-key": {
+                    "type": "versioned",
+                    "current": AUTH_TOKEN_PUBLIC_KEY,
                 },
             },
             "vault": {
@@ -93,9 +93,13 @@ class ThriftTests(unittest.TestCase):
         baseplate = Baseplate()
         baseplate.register(self.observer)
 
+        self.edge_context_factory = EdgeRequestContextFactory(self.secrets)
+
         event_handler = BaseplateProcessorEventHandler(
-            self.logger, baseplate,
-            auth_factory=AuthenticationContextFactory(self.secrets))
+            self.logger,
+            baseplate,
+            edge_context_factory=self.edge_context_factory,
+        )
 
         handler = TestHandler()
         self.processor = TestService.ContextProcessor(handler)
@@ -152,48 +156,19 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(server_span.id, 3456)
         self.assertTrue(server_span.sampled)
         self.assertEqual(server_span.flags, 1)
-        self.assertFalse(context.request_context._authentication_context.defined)
+
+        with self.assertRaises(NoAuthenticationError):
+            context.request_context.user.id
 
         self.assertEqual(self.server_observer.on_start.call_count, 1)
         self.assertEqual(self.server_observer.on_finish.call_count, 1)
         self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
 
-    def test_auth_headers(self):
-        client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocol(client_memory_trans)
-        client_header_trans = client_prot.trans
-        client_header_trans.set_header("Authentication", self.VALID_TOKEN)
-        client_header_trans.set_header("Trace", "1234")
-        client_header_trans.set_header("Parent", "2345")
-        client_header_trans.set_header("Span", "3456")
-        client_header_trans.set_header("Sampled", "1")
-        client_header_trans.set_header("Flags", "1")
-        client = TestService.Client(client_prot)
-        try:
-            client.example_simple()
-        except TTransportException:
-            pass  # we don't have a test response for the client
-        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
-
-        self.processor.process(self.iprot, self.oprot, self.server_context)
-
-        context, _ = self.observer.on_server_span_created.call_args[0]
-
-        try:
-            self.assertEqual(context.request_context.user.id, "test_user_id")
-            self.assertEqual(context.request_context.user.roles, set())
-            self.assertEqual(context.request_context.user.is_logged_in, True)
-            self.assertEqual(context.request_context.oauth_client.id, None)
-            self.assertFalse(context.request_context.oauth_client.is_type("third_party"))
-        except jwt.exceptions.InvalidAlgorithmError:
-            raise unittest.SkipTest("cryptography is not installed")
-
     def test_edge_request_headers(self):
         client_memory_trans = TMemoryBuffer()
         client_prot = THeaderProtocol(client_memory_trans)
         client_header_trans = client_prot.trans
-        client_header_trans.set_header("Authentication", self.VALID_TOKEN)
-        client_header_trans.set_header("Edge-Request", self.SERIALIZED_REQUEST_HEADER)
+        client_header_trans.set_header("Edge-Request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
         client_header_trans.set_header("Trace", "1234")
         client_header_trans.set_header("Parent", "2345")
         client_header_trans.set_header("Span", "3456")
@@ -211,7 +186,7 @@ class ThriftTests(unittest.TestCase):
         context, _ = self.observer.on_server_span_created.call_args[0]
 
         try:
-            self.assertEqual(context.request_context.user.id, "test_user_id")
+            self.assertEqual(context.request_context.user.id, "t2_example")
             self.assertEqual(context.request_context.user.roles, set())
             self.assertEqual(context.request_context.user.is_logged_in, True)
             self.assertEqual(context.request_context.user.loid, "t2_deadbeef")
@@ -272,19 +247,9 @@ class ThriftTests(unittest.TestCase):
         child_span.id = 1
         child_span.sampled = True
         child_span.flags = None
-        # We decode the token to unicode to make sure that it is converted to
-        # bytes correctly by the AuthenticationContext.  We do this because a
-        # unicode token in Python 2 ends up causing a UnicodeDecodeError when
-        # Thrift tries to write the header.
-        unicode_token = self.VALID_TOKEN.decode()
-        auth_context = AuthenticationContext(
-            token=unicode_token,
-            secrets=self.secrets,
-        )
-        edge_context = EdgeRequestContext(
-            authentication_context=auth_context,
-            header=self.SERIALIZED_REQUEST_HEADER,
-        )
+
+        edge_context = self.edge_context_factory.from_upstream(
+            SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
         edge_context.attach_context(child_span.context)
         client = client_factory.make_object_for_context("test", span)
         try:
@@ -298,7 +263,7 @@ class ThriftTests(unittest.TestCase):
         context, _ = self.observer.on_server_span_created.call_args[0]
 
         try:
-            self.assertEqual(context.request_context.user.id, "test_user_id")
+            self.assertEqual(context.request_context.user.id, "t2_example")
             self.assertEqual(context.request_context.user.roles, set())
             self.assertEqual(context.request_context.user.is_logged_in, True)
             self.assertEqual(context.request_context.user.loid, "t2_deadbeef")
