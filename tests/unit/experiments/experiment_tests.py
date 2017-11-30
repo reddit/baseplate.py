@@ -8,7 +8,7 @@ import unittest
 
 from datetime import timedelta
 
-from baseplate.core import AuthenticationContext, ServerSpan, User
+from baseplate.core import ServerSpan, User, AuthenticationToken
 from baseplate.events import EventQueue
 from baseplate.experiments import (
     Experiments,
@@ -32,11 +32,11 @@ class TestExperiments(unittest.TestCase):
         self.mock_span.context = None
         self.mock_span.trace_id = "123456"
         self.user_name = "gary"
-        self.mock_authentication_context = mock.Mock(spec=AuthenticationContext)
-        self.mock_authentication_context.account_id = "t2_1"
-        self.mock_authentication_context.user_roles = set()
+        self.mock_authentication_token = mock.Mock(spec=AuthenticationToken)
+        self.mock_authentication_token.subject = "t2_1"
+        self.mock_authentication_token.user_roles = set()
         self.user = User(
-            authentication_context=self.mock_authentication_context,
+            authentication_token=self.mock_authentication_token,
             loid="t2_1",
             cookie_created_ms=10000,
         )

@@ -3,38 +3,42 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import sys
 import unittest
-import jwt
 
 from baseplate.core import (
-    AuthenticationContext,
     Baseplate,
     BaseplateObserver,
     EdgeRequestContext,
+    EdgeRequestContextFactory,
     LocalSpan,
+    NoAuthenticationError,
     ServerSpan,
     ServerSpanObserver,
     Span,
     SpanObserver,
     TraceInfo,
-    UndefinedSecretsException,
-    WithheldAuthenticationError,
 )
 from baseplate.integration import WrappedRequestContext
 from baseplate.file_watcher import FileWatcher
 from baseplate.secrets import store
-from baseplate.thrift.ttypes import Loid as TLoid
-from baseplate.thrift.ttypes import Request as TRequest
-from baseplate.thrift.ttypes import Session as TSession
 
-from .. import mock
+from .. import (
+    mock,
+    AUTH_TOKEN_PUBLIC_KEY,
+    AUTH_TOKEN_VALID,
+    SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH,
+    SERIALIZED_EDGECONTEXT_WITH_NO_AUTH,
+    SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
+)
 
 cryptography_installed = True
 try:
     import cryptography
 except:
     cryptography_installed = False
+else:
+    del cryptography
+
 
 def make_test_server_span(context=None):
     if not context:
@@ -263,18 +267,18 @@ class TraceInfoTests(unittest.TestCase):
         self.assertIsNone(span.flags)
 
 
-class ContextHeaderTestsBase(unittest.TestCase):
-    VALID_TOKEN = b"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjQ2NTY1OTM0NTV9.Q8bz2qccFOHLTQ6H3MPdjSh7wDkRQtbBuBwGMzNRKjDFSkCoVF5kiwhBUdwbW8UXO5iZn4Bh7oKdj69lIEOATUxFBblU8Do05EfjECXLYGdbr6ClNmldrB8SsdAtQYQ4Ud-70Z8_75QvkqX_TY5OA4asGJZwH9MC7oHey47-38I"
-    EXPIRED_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0X3VzZXJfaWQiLCJleHAiOjE1MDI5OTM3NTN9.OPBIxaOEx0hnnB_wrfCuqfSIeP0a1abNdoZ2KejXReKeETQathr-PW2GqAhjGcUdCG3rXK8ezFKXdlB65kloqNdQii5b3qaJ5PDIdMNxY0Oi7TAqH86oog_umm7G-_p4MPPhRjxUm6Qp85-EaJUgyv26BUKSYY7-KyySjnrmP8g"
-    TOKEN_SECRET = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC0Kd3qYtc6zI5tj3iKBux70BhE\nZLLJ7fAKNBUO7h9FCwUcYku+SFigzNOu3AAYt3seNgxl+cvMR2+SNwsa605J9D1v\n9eGmpcITQi85SeJnfR7LJUMu7RieY5wEl0RyuwnSkX3Gkv0+hZISC/XYcWEYolIi\n8725u7u/8HRtUeHoLwIDAQAB\n-----END PUBLIC KEY-----"
+class EdgeRequestContextTests(unittest.TestCase):
+    LOID_ID = "t2_deadbeef"
+    LOID_CREATED_MS = 100000
+    SESSION_ID = "beefdead"
 
     def setUp(self):
         mock_filewatcher = mock.Mock(spec=FileWatcher)
         mock_filewatcher.get_data.return_value = {
             "secrets": {
-                "jwt/authentication/secret": {
-                    "type": "simple",
-                    "value": self.TOKEN_SECRET,
+                "secret/authentication/public-key": {
+                    "type": "versioned",
+                    "current": AUTH_TOKEN_PUBLIC_KEY,
                 },
             },
             "vault": {
@@ -284,160 +288,48 @@ class ContextHeaderTestsBase(unittest.TestCase):
         }
         self.store = store.SecretsStore("/secrets")
         self.store._filewatcher = mock_filewatcher
-
-
-class AuthenticationContextTests(ContextHeaderTestsBase):
-
-    def test_empty_context(self):
-        new_auth_context = AuthenticationContext()
-        self.assertEqual(new_auth_context._token, None)
-
-    def test_no_secrets(self):
-        new_auth_context = AuthenticationContext("test token")
-        with self.assertRaises(UndefinedSecretsException) as e:
-            new_auth_context.valid
-
-    @unittest.skipIf(sys.version_info.major != 3, "python 3 only")
-    def test_python_3_ensure_token_is_bytes(self):
-        auth_context = AuthenticationContext(token=self.VALID_TOKEN)
-        self.assertEqual(auth_context._token, self.VALID_TOKEN)
-        self.assertIs(type(auth_context._token), bytes)
-        auth_context = AuthenticationContext(token=self.VALID_TOKEN.decode())
-        self.assertEqual(auth_context._token, self.VALID_TOKEN)
-        self.assertIs(type(auth_context._token), bytes)
-
-    @unittest.skipIf(sys.version_info.major != 2, "python 2 only")
-    def test_python_2_ensure_token_is_str(self):
-        # Note, we don't use assertEqual in this test because
-        # `"test" == u"test"` is True
-        auth_context = AuthenticationContext(token=self.VALID_TOKEN.encode())
-        self.assertIs(type(auth_context._token), str)
-        auth_context = AuthenticationContext(token=self.VALID_TOKEN.decode())
-        self.assertIs(type(auth_context._token), str)
-
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
-    def test_valid_context(self):
-        new_auth_context = AuthenticationContext(self.VALID_TOKEN, self.store)
-        self.assertTrue(new_auth_context.valid)
-        self.assertEqual(new_auth_context.account_id, "test_user_id")
-
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
-    def test_expired_context(self):
-        new_auth_context = AuthenticationContext(self.EXPIRED_TOKEN, self.store)
-        self.assertFalse(new_auth_context.valid)
-        self.assertEqual(new_auth_context.account_id, None)
-
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
-    def test_no_context(self):
-        new_auth_context = AuthenticationContext(None, self.store)
-        self.assertFalse(new_auth_context.defined)
-        self.assertFalse(new_auth_context.valid)
-
-        with self.assertRaises(WithheldAuthenticationError) as e:
-            new_auth_context.account_id
-
-
-class EdgeRequestContextTests(ContextHeaderTestsBase):
-
-    SERIALIZED_HEADER = b"\x0c\x00\x01\x0b\x00\x01\x00\x00\x00\x0bt2_deadbeef\n\x00\x02\x00\x00\x00\x00\x00\x01\x86\xa0\x00\x0c\x00\x02\x0b\x00\x01\x00\x00\x00\x08beefdead\x00\x00"  # noqa
-    LOID_ID = "t2_deadbeef"
-    LOID_CREATED_MS = 100000
-    SESSION_ID = "beefdead"
+        self.factory = EdgeRequestContextFactory(self.store)
 
     def test_create(self):
-        authentication = AuthenticationContext(self.VALID_TOKEN, self.store)
-        request_context = EdgeRequestContext.create(
-            authentication_context=authentication,
+        request_context = self.factory.new(
+            authentication_token=AUTH_TOKEN_VALID,
             loid_id=self.LOID_ID,
             loid_created_ms=self.LOID_CREATED_MS,
             session_id=self.SESSION_ID,
         )
         self.assertIsNot(request_context._t_request, None)
-        self.assertEqual(request_context._header, self.SERIALIZED_HEADER)
-        self.assertEqual(
-            request_context.header_values(),
-            {
-                "Edge-Request": self.SERIALIZED_HEADER,
-                "Authentication": self.VALID_TOKEN,
-            }
-        )
+        self.assertEqual(request_context._header, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
 
     def test_create_validation(self):
-        authentication = AuthenticationContext(self.VALID_TOKEN, self.store)
         with self.assertRaises(ValueError):
-            EdgeRequestContext.create(
-                authentication_context=authentication,
+            self.factory.new(
+                authentication_token=None,
                 loid_id="abc123",
                 loid_created_ms=self.LOID_CREATED_MS,
                 session_id=self.SESSION_ID,
             )
 
     def test_create_empty_context(self):
-        request_context = EdgeRequestContext.create()
-        self.assertEqual(
-            request_context.header_values(),
-            {
-                "Edge-Request": b'\x0c\x00\x01\x00\x0c\x00\x02\x00\x00',
-                "Authentication": None,
-            },
-        )
+        request_context = self.factory.new()
+        self.assertEqual(request_context._header, b'\x0c\x00\x01\x00\x0c\x00\x02\x00\x00')
 
     def test_logged_out_user(self):
-        authentication = AuthenticationContext()
-        request_context = EdgeRequestContext(self.SERIALIZED_HEADER, authentication)
-        with self.assertRaises(WithheldAuthenticationError):
-            request_context.user.id
-        with self.assertRaises(WithheldAuthenticationError):
-           request_context.user.roles
-        self.assertFalse(request_context.user.is_logged_in)
-        self.assertEqual(request_context.user.loid, self.LOID_ID)
-        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
-        self.assertEqual(
-            request_context.user.event_fields(),
-            {
-                "user_id": self.LOID_ID,
-                "user_logged_in": False,
-                "cookie_created": self.LOID_CREATED_MS,
-            },
-        )
-        with self.assertRaises(WithheldAuthenticationError):
-            request_context.oauth_client.id
-        with self.assertRaises(WithheldAuthenticationError):
-            request_context.oauth_client.is_type("third_party")
-        self.assertEqual(request_context.session.id, self.SESSION_ID)
-        self.assertEqual(
-            request_context.event_fields(),
-            {
-                "user_id": self.LOID_ID,
-                "user_logged_in": False,
-                "cookie_created": self.LOID_CREATED_MS,
-                "session_id": self.SESSION_ID,
-                "oauth_client_id": None,
-            },
-        )
+        request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_NO_AUTH)
 
-    def test_missing_secrets(self):
-        authentication = AuthenticationContext(self.VALID_TOKEN)
-        request_context = EdgeRequestContext(self.SERIALIZED_HEADER, authentication)
-        with self.assertRaises(UndefinedSecretsException):
+        with self.assertRaises(NoAuthenticationError):
             request_context.user.id
-        with self.assertRaises(UndefinedSecretsException):
+        with self.assertRaises(NoAuthenticationError):
            request_context.user.roles
+
         self.assertFalse(request_context.user.is_logged_in)
         self.assertEqual(request_context.user.loid, self.LOID_ID)
         self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
-        self.assertEqual(
-            request_context.user.event_fields(),
-            {
-                "user_id": self.LOID_ID,
-                "user_logged_in": False,
-                "cookie_created": self.LOID_CREATED_MS,
-            },
-        )
-        with self.assertRaises(UndefinedSecretsException):
+
+        with self.assertRaises(NoAuthenticationError):
             request_context.oauth_client.id
-        with self.assertRaises(UndefinedSecretsException):
+        with self.assertRaises(NoAuthenticationError):
             request_context.oauth_client.is_type("third_party")
+
         self.assertEqual(request_context.session.id, self.SESSION_ID)
         self.assertEqual(
             request_context.event_fields(),
@@ -452,28 +344,20 @@ class EdgeRequestContextTests(ContextHeaderTestsBase):
 
     @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_logged_in_user(self):
-        authentication = AuthenticationContext(self.VALID_TOKEN, self.store)
-        request_context = EdgeRequestContext(self.SERIALIZED_HEADER, authentication)
-        self.assertEqual(request_context.user.id, "test_user_id")
+        request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
+
+        self.assertEqual(request_context.user.id, "t2_example")
         self.assertTrue(request_context.user.is_logged_in)
         self.assertEqual(request_context.user.loid, self.LOID_ID)
         self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
         self.assertEqual(request_context.user.roles, set())
-        self.assertEqual(
-            request_context.user.event_fields(),
-            {
-                "user_id": "test_user_id",
-                "user_logged_in": True,
-                "cookie_created": self.LOID_CREATED_MS,
-            },
-        )
         self.assertIs(request_context.oauth_client.id, None)
         self.assertFalse(request_context.oauth_client.is_type("third_party"))
         self.assertEqual(request_context.session.id, self.SESSION_ID)
         self.assertEqual(
             request_context.event_fields(),
             {
-                "user_id": "test_user_id",
+                "user_id": "t2_example",
                 "user_logged_in": True,
                 "cookie_created": self.LOID_CREATED_MS,
                 "session_id": self.SESSION_ID,
@@ -483,23 +367,20 @@ class EdgeRequestContextTests(ContextHeaderTestsBase):
 
     @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_expired_token(self):
-        authentication = AuthenticationContext(self.EXPIRED_TOKEN, self.store)
-        request_context = EdgeRequestContext(self.SERIALIZED_HEADER, authentication)
-        self.assertEqual(request_context.user.id, None)
-        self.assertEqual(request_context.user.roles, set())
+        request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH)
+
+        with self.assertRaises(NoAuthenticationError):
+            request_context.user.id
+        with self.assertRaises(NoAuthenticationError):
+            request_context.user.roles
+        with self.assertRaises(NoAuthenticationError):
+            request_context.oauth_client.id
+        with self.assertRaises(NoAuthenticationError):
+            request_context.oauth_client.is_type("third_party")
+
         self.assertFalse(request_context.user.is_logged_in)
         self.assertEqual(request_context.user.loid, self.LOID_ID)
         self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
-        self.assertEqual(
-            request_context.user.event_fields(),
-            {
-                "user_id": self.LOID_ID,
-                "user_logged_in": False,
-                "cookie_created": self.LOID_CREATED_MS,
-            },
-        )
-        self.assertIs(request_context.oauth_client.id, None)
-        self.assertFalse(request_context.oauth_client.is_type("third_party"))
         self.assertEqual(request_context.session.id, self.SESSION_ID)
         self.assertEqual(
             request_context.event_fields(),

@@ -38,11 +38,7 @@ import sys
 import pyramid.events
 import pyramid.tweens
 
-from ..core import (
-    TraceInfo,
-    EdgeRequestContext,
-    AuthenticationContextFactory,
-)
+from ..core import TraceInfo
 from ..server import make_app
 
 
@@ -72,11 +68,8 @@ class BaseplateConfigurator(object):
         headers from the client? If ``True``, trace headers in inbound requests
         will be used for the server span. If ``False``, new random trace IDs
         will be generated for each request.
-    :param baseplate.core.AuthenticationContextFactory auth_factory: optional
-        factory used for holding construction context for building the
-        authentication context for incoming requests.  If undefined, thin
-        wrappers for contexts will be set for the purposes of propagating the
-        context downstream, but will error if ever attempted to use.
+    :param baseplate.core.EdgeRequestContextFactory edge_context_factory: A
+        configured factory for handling edge request context.
 
     .. warning::
 
@@ -88,10 +81,10 @@ class BaseplateConfigurator(object):
 
     # TODO: remove the default on trust_trace_headers once apps are updated
     def __init__(self, baseplate, trust_trace_headers=False,
-                 auth_factory=None):
+                 edge_context_factory=None):
         self.baseplate = baseplate
         self.trust_trace_headers = trust_trace_headers
-        self.auth_factory = auth_factory or AuthenticationContextFactory()
+        self.edge_context_factory = edge_context_factory
 
     def _on_new_request(self, event):
         request = event.request
@@ -118,17 +111,13 @@ class BaseplateConfigurator(object):
                     flags=flags,
                 )
 
-                authn_token = request.headers.get("X-Authentication", None)
-                request_context_payload = request.headers.get("X-Edge-Request",
-                                                              None)
-                authentication_context = \
-                    self.auth_factory.make_context(authn_token)
-                authentication_context.attach_context(request)
-                request_context = EdgeRequestContext(
-                    header=request_context_payload,
-                    authentication_context=authentication_context,
-                )
-                request_context.attach_context(request)
+                edge_payload = request.headers.get("X-Edge-Request", None)
+                if self.edge_context_factory:
+                    edge_context = self.edge_context_factory.from_upstream(
+                        edge_payload)
+                    edge_context.attach_context(request)
+                else:
+                    request.raw_request_context = edge_payload
             except (KeyError, ValueError):
                 pass
 

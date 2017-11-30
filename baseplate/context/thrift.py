@@ -106,16 +106,12 @@ class PooledClientProxy(object):
                             prot.trans.set_header("Flags", str(span.flags))
 
                         try:
-                            context_headers = span.context.request_context.header_values()
+                            edge_context = span.context.raw_request_context
                         except AttributeError:
-                            pass
-                        else:
-                            auth_header = context_headers.get("Authentication")
-                            if auth_header is not None:
-                                prot.trans.set_header("Authentication", auth_header)
-                            request_header = context_headers.get("Edge-Request")
-                            if request_header is not None:
-                                prot.trans.set_header("Edge-Request", request_header)
+                            edge_context = None
+
+                        if edge_context:
+                            prot.trans.set_header("Edge-Request", edge_context)
 
                         client = self.client_cls(prot)
                         method = getattr(client, name)
