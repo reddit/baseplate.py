@@ -62,6 +62,16 @@ def _make_baseplate_tween(handler, registry):
     return baseplate_tween
 
 
+class BaseplateEvent(object):
+
+    def __init__(self, request):
+        self.request = request
+
+
+class BaseplateContextInitialized(BaseplateEvent):
+    pass
+
+
 # pylint: disable=abstract-class-not-used
 class BaseplateConfigurator(object):
     """Config extension to integrate Baseplate into Pyramid.
@@ -136,6 +146,7 @@ class BaseplateConfigurator(object):
         request.trace.set_tag("http.url", request.url)
         request.trace.set_tag("http.method", request.method)
         request.trace.set_tag("peer.ipv4", request.remote_addr)
+        request.registry.notify(BaseplateContextInitialized(request))
 
     def _start_server_span(self, request, name, trace_info=None):
         request.trace = self.baseplate.make_server_span(
