@@ -17,6 +17,20 @@ An abbreviated example of it in use::
 
         return configurator.make_wsgi_app()
 
+Events
+------
+
+Baseplate will emit events at various stages of the request lifecycle that
+services can hook into.
+
+:py:class:`ServerSpanInitialized` - Fired after Baseplate initializes the
+ServerSpan for a new Request and before passing the Request to it's handler.
+Note, that Baseplate initializes the ServerSpan in response to a
+:py:class:`pyramid.events.ContextFound` event emitted by Pyramid so while we
+can guarantee what Baseplate has done when this event is emitted, we cannot
+guarantee that any other subscribers to :py:class:`pyramid.events.ContextFound`
+have been called or not.
+
 .. warning::
 
     Because of how Baseplate instruments Pyramid, you should not make an
