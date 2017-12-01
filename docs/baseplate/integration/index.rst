@@ -20,3 +20,11 @@ Pyramid
 .. automodule:: baseplate.integration.pyramid
 
 .. autoclass:: baseplate.integration.pyramid.BaseplateConfigurator
+
+Pyramid Events
+--------------
+
+Baseplate will emit events at various stages of the request lifecycle that
+services can hook into.
+
+.. autoclass:: baseplate.integration.pyramid.ServerSpanInitialized
