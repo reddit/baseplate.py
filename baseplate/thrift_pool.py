@@ -8,7 +8,7 @@ connections have a maximum lifetime, after which they will be recycled.
 
 A basic example of usage::
 
-    pool = ThriftConnectionPool(endpoint)
+    pool = thrift_pool_from_config(app_config, "example_service.")
     with pool.connection() as protocol:
         client = ExampleService.Client(protocol)
         client.do_example_thing()
@@ -30,6 +30,7 @@ from thrift.Thrift import TApplicationException
 from thrift.transport import TSocket
 from thrift.transport.TTransport import TTransportException
 
+from . import config
 from ._compat import queue
 from .retry import RetryPolicy
 
@@ -46,6 +47,53 @@ def _make_transport(endpoint):
         raise Exception("unsupported endpoint family %r" % endpoint.family)
 
     return trans
+
+
+def thrift_pool_from_config(app_config, prefix, **kwargs):
+    """Make a ThriftConnectionPool from a configuration dictionary.
+
+    The keys useful to :py:func:`thrift_pool_from_config` should be prefixed,
+    e.g.  ``example_service.endpoint`` etc. The ``prefix`` argument specifies
+    the prefix used to filter keys.  Each key is mapped to a corresponding
+    keyword argument on the :py:class:`ThriftConnectionPool` constructor.  Any
+    keyword arguments given to this function will be also be passed through to
+    the constructor. Keyword arguments take precedence over the configuration
+    file.
+
+    Supported keys:
+
+    * ``endpoint`` (required): A ``host:port`` pair, e.g. ``localhost:2014``,
+        where the Thrift server can be found.
+    * ``size``: The size of the connection pool.
+    * ``max_age``: The oldest a connection can be before it's recycled and
+        replaced with a new one. Written as a time span e.g. ``1 minute``.
+    * ``timeout``: The maximum amount of time a connection attempt or RPC call
+        can take before a TimeoutError is raised.
+    * ``max_retries``: The maximum number of times the pool will attempt to
+        open a connection.
+
+    """
+    assert prefix.endswith(".")
+    config_prefix = prefix[:-1]
+
+    cfg = config.parse_config(app_config, {
+        config_prefix: {
+            "endpoint": config.Endpoint,
+            "size": config.Optional(config.Integer, default=10),
+            "max_age": config.Optional(config.Timespan, default=config.Timespan("1 minute")),
+            "timeout": config.Optional(config.Timespan, default=config.Timespan("1 second")),
+            "max_retries": config.Optional(config.Integer, default=3),
+        },
+    })
+    options = getattr(cfg, config_prefix)
+
+    return ThriftConnectionPool(
+        endpoint=options.endpoint,
+        size=options.size,
+        max_age=options.max_age.total_seconds(),
+        timeout=options.timeout.total_seconds(),
+        max_retries=options.max_retries,
+    )
 
 
 class ThriftConnectionPool(object):
