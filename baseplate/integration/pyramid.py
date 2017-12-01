@@ -68,7 +68,9 @@ class BaseplateEvent(object):
         self.request = request
 
 
-class BaseplateContextInitialized(BaseplateEvent):
+class ServerSpanInitialized(BaseplateEvent):
+    """Event that Baselpate fires after creating the ServerSpan for a Request.
+    """
     pass
 
 
@@ -146,7 +148,6 @@ class BaseplateConfigurator(object):
         request.trace.set_tag("http.url", request.url)
         request.trace.set_tag("http.method", request.method)
         request.trace.set_tag("peer.ipv4", request.remote_addr)
-        request.registry.notify(BaseplateContextInitialized(request))
 
     def _start_server_span(self, request, name, trace_info=None):
         request.trace = self.baseplate.make_server_span(
@@ -155,6 +156,7 @@ class BaseplateConfigurator(object):
             trace_info=trace_info,
         )
         request.trace.start()
+        request.registry.notify(ServerSpanInitialized(request))
 
     def includeme(self, config):
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
