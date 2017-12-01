@@ -24,7 +24,7 @@ Pyramid
 Pyramid Events
 --------------
 
-Baseplate will emit events at various stages of the request lifecycle that
-services can hook into.
+Within it's Pyramid integraton, Baseplate will emit events at various stages of
+the request lifecycle that services can hook into.
 
 .. autoclass:: baseplate.integration.pyramid.ServerSpanInitialized
