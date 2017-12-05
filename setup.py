@@ -1,3 +1,4 @@
+import os
 import sys
 
 import setuptools.command.build_py
