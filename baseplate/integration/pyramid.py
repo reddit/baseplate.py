@@ -62,6 +62,25 @@ def _make_baseplate_tween(handler, registry):
     return baseplate_tween
 
 
+class BaseplateEvent(object):
+
+    def __init__(self, request):
+        self.request = request
+
+
+class ServerSpanInitialized(BaseplateEvent):
+    """Event that Baseplate fires after creating the ServerSpan for a Request.
+
+    This event will be emitted before the Request is passed along to it's
+    handler.  Baseplate initializes the ServerSpan in response to a
+    :py:class:`pyramid.events.ContextFound` event emitted by Pyramid so while
+    we can guarantee what Baseplate has done when this event is emitted, we
+    cannot guarantee that any other subscribers to
+    :py:class:`pyramid.events.ContextFound` have been called or not.
+    """
+    pass
+
+
 # pylint: disable=abstract-class-not-used
 class BaseplateConfigurator(object):
     """Config extension to integrate Baseplate into Pyramid.
@@ -144,6 +163,7 @@ class BaseplateConfigurator(object):
             trace_info=trace_info,
         )
         request.trace.start()
+        request.registry.notify(ServerSpanInitialized(request))
 
     def includeme(self, config):
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)

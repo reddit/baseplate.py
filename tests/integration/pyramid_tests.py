@@ -20,7 +20,10 @@ from baseplate.secrets import store
 try:
     import webtest
 
-    from baseplate.integration.pyramid import BaseplateConfigurator
+    from baseplate.integration.pyramid import (
+        BaseplateConfigurator,
+        ServerSpanInitialized,
+    )
     from pyramid.config import Configurator
     from pyramid.request import Request
 except ImportError:
@@ -131,6 +134,8 @@ class ConfiguratorTests(unittest.TestCase):
             auth_factory=AuthenticationContextFactory(secrets),
         )
         configurator.include(self.baseplate_configurator.includeme)
+        self.context_init_event_subscriber = mock.Mock()
+        configurator.add_subscriber(self.context_init_event_subscriber, ServerSpanInitialized)
         app = configurator.make_wsgi_app()
         self.test_app = webtest.TestApp(app)
 
@@ -148,6 +153,7 @@ class ConfiguratorTests(unittest.TestCase):
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
+        self.assertTrue(self.context_init_event_subscriber.called)
 
     def test_trace_headers(self):
         self.test_app.get("/example", headers={
@@ -170,6 +176,7 @@ class ConfiguratorTests(unittest.TestCase):
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
+        self.assertTrue(self.context_init_event_subscriber.called)
 
     def test_auth_headers(self):
         self.test_app.get("/example", headers={
@@ -238,6 +245,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.test_app.get("/nope", status=404)
 
         self.assertFalse(self.observer.on_server_span_created.called)
+        self.assertFalse(self.context_init_event_subscriber.called)
 
     def test_exception_caught(self):
         with self.assertRaises(TestException):
@@ -245,6 +253,7 @@ class ConfiguratorTests(unittest.TestCase):
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
+        self.assertTrue(self.context_init_event_subscriber.called)
         _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
         self.assertIsInstance(captured_exc, TestException)
 
@@ -253,6 +262,7 @@ class ConfiguratorTests(unittest.TestCase):
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
+        self.assertTrue(self.context_init_event_subscriber.called)
         args, _ = self.server_observer.on_finish.call_args
         self.assertEqual(args[0], None)
 
@@ -262,6 +272,7 @@ class ConfiguratorTests(unittest.TestCase):
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
+        self.assertTrue(self.context_init_event_subscriber.called)
         _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
         self.assertIsInstance(captured_exc, ExceptionViewException)
 
