@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # this is here and not just a console_script entry point because we want the
 # gevent monkeypatching to happen before any pieces of baseplate are imported
