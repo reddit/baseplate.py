@@ -351,6 +351,7 @@ class EdgeRequestContextTests(unittest.TestCase):
         self.assertEqual(request_context.user.loid, self.LOID_ID)
         self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
         self.assertEqual(request_context.user.roles, set())
+        self.assertFalse(request_context.user.has_role("test"))
         self.assertIs(request_context.oauth_client.id, None)
         self.assertFalse(request_context.oauth_client.is_type("third_party"))
         self.assertEqual(request_context.session.id, self.SESSION_ID)

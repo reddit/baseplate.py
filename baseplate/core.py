@@ -277,6 +277,18 @@ class User(_User):
         """
         return self.authentication_token.user_roles
 
+    def has_role(self, role):
+        """Does the authenticated user have the specified role?
+
+        :param str client_types: Case-insensitive sequence role name to check.
+
+        :type: bool
+        :raises: :py:class:`NoAuthenticationError` if there was no
+            authentication token defined for the current context
+
+        """
+        return role.lower() in self.roles
+
     def event_fields(self):
         """Return fields to be added to events."""
         if self.is_logged_in:
