@@ -203,7 +203,7 @@ class ValidatedAuthenticationToken(AuthenticationToken):
 
     @cached_property
     def user_roles(self):
-        return set(self.payload.get("user_roles", []))
+        return set(self.payload.get("roles", []))
 
     @property
     def oauth_client_id(self):
