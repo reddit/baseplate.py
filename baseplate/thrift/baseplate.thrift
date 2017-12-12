@@ -54,6 +54,11 @@ struct Session {
     1: string id;
 }
 
+/**A raw authentication token as returned by the authentication service.
+
+*/
+typedef string AuthenticationToken
+
 /** Container model for the Edge-Request context header.
 
 Baseplate will automatically parse this from the "Edge-Request" header and
@@ -65,4 +70,5 @@ interface provided by baseplate.
 struct Request {
     1: Loid loid;
     2: Session session;
+    3: AuthenticationToken authentication_token;
 }

@@ -26,11 +26,7 @@ import sys
 
 from thrift.Thrift import TProcessorEventHandler
 
-from ...core import (
-    TraceInfo,
-    EdgeRequestContext,
-    AuthenticationContextFactory,
-)
+from ...core import TraceInfo
 
 
 class RequestContext(object):
@@ -45,17 +41,14 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
     :param logging.Logger logger: The logger to use for error and debug logging.
     :param baseplate.core.Baseplate baseplate: The baseplate instance for your
         application.
-    :param baseplate.core.AuthenticationContextFactory auth_factory: An
-        optional factory for authentication context building from incoming
-        request headers.  If not defined, a thin wrapper will be used to enable
-        passing the context downstream but will error out if attempted to be
-        used.
+    :param baseplate.core.EdgeRequestContextFactory edge_context_factory: A
+        configured factory for handling edge request context.
 
     """
-    def __init__(self, logger, baseplate, auth_factory=None):
+    def __init__(self, logger, baseplate, edge_context_factory=None):
         self.logger = logger
         self.baseplate = baseplate
-        self.auth_factory = auth_factory or AuthenticationContextFactory()
+        self.edge_context_factory = edge_context_factory
 
     def getHandlerContext(self, fn_name, server_context):
         context = RequestContext()
@@ -78,15 +71,15 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
                 flags=flags,
             )
 
-            authn_token = headers.get(b"Authentication", None)
-            request_context_payload = headers.get(b"Edge-Request", None)
-            authentication_context = self.auth_factory.make_context(authn_token)
-            authentication_context.attach_context(context)
-            request_context = EdgeRequestContext(
-                header=request_context_payload,
-                authentication_context=authentication_context,
-            )
-            request_context.attach_context(context)
+            edge_payload = headers.get(b"Edge-Request", None)
+            if self.edge_context_factory:
+                edge_context = self.edge_context_factory.from_upstream(
+                    edge_payload)
+                edge_context.attach_context(context)
+            else:
+                # just attach the raw context so it gets passed on
+                # downstream even if we don't know how to handle it.
+                context.raw_request_context = edge_payload
         except (KeyError, ValueError):
             pass
 
