@@ -254,7 +254,7 @@ class User(_User):
 
         """
         subject = self.authentication_token.subject
-        if not subject.startswith("t2_"):
+        if not (subject and subject.startswith("t2_")):
             raise NoAuthenticationError
         return subject
 

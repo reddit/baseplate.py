@@ -26,6 +26,7 @@ from .. import (
     mock,
     AUTH_TOKEN_PUBLIC_KEY,
     AUTH_TOKEN_VALID,
+    SERIALIZED_EDGECONTEXT_WITH_ANON_AUTH,
     SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH,
     SERIALIZED_EDGECONTEXT_WITH_NO_AUTH,
     SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
@@ -393,3 +394,15 @@ class EdgeRequestContextTests(unittest.TestCase):
                 "oauth_client_id": None,
             },
         )
+
+    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
+    def test_anonymous_token(self):
+        request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_ANON_AUTH)
+
+        with self.assertRaises(NoAuthenticationError):
+            request_context.user.id
+        self.assertFalse(request_context.user.is_logged_in)
+        self.assertEqual(request_context.user.loid, self.LOID_ID)
+        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
+        self.assertEqual(request_context.session.id, self.SESSION_ID)
+        self.assertTrue(request_context.user.has_role("anonymous"))
