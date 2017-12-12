@@ -77,6 +77,8 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
                     edge_payload)
                 edge_context.attach_context(context)
             else:
+                # just attach the raw context so it gets passed on
+                # downstream even if we don't know how to handle it.
                 context.raw_request_context = edge_payload
         except (KeyError, ValueError):
             pass

@@ -117,6 +117,8 @@ class BaseplateConfigurator(object):
                         edge_payload)
                     edge_context.attach_context(request)
                 else:
+                    # just attach the raw context so it gets passed on
+                    # downstream even if we don't know how to handle it.
                     request.raw_request_context = edge_payload
             except (KeyError, ValueError):
                 pass
