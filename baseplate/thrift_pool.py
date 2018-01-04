@@ -87,13 +87,16 @@ def thrift_pool_from_config(app_config, prefix, **kwargs):
     })
     options = getattr(cfg, config_prefix)
 
-    return ThriftConnectionPool(
-        endpoint=options.endpoint,
-        size=options.size,
-        max_age=options.max_age.total_seconds(),
-        timeout=options.timeout.total_seconds(),
-        max_retries=options.max_retries,
-    )
+    if options.size is not None:
+        kwargs.setdefault("size", options.size)
+    if options.max_age is not None:
+        kwargs.setdefault("max_age", options.max_age.total_seconds())
+    if options.timeout is not None:
+        kwargs.setdefault("timeout", options.timeout.total_seconds())
+    if options.max_retries is not None:
+        kwargs.setdefault("max_retries", options.max_retries)
+
+    return ThriftConnectionPool(endpoint=options.endpoint, **kwargs)
 
 
 class ThriftConnectionPool(object):
