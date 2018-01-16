@@ -32,6 +32,7 @@ serialized
 serializer
 Serializers
 statsd
+StatsD
 subreddit
 subreddits
 sysctls

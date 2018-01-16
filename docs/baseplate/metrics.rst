@@ -29,3 +29,7 @@ Metrics
 .. autoclass:: Gauge()
    :members:
    :undoc-members:
+
+.. autoclass:: Histogram()
+   :members:
+   :undoc-members:

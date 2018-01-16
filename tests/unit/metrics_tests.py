@@ -115,6 +115,14 @@ class BaseClientFactoriesTests(unittest.TestCase):
         with self.assertRaises(UnicodeEncodeError):
             self.client.gauge("☃")
 
+    def test_make_histogram(self):
+        histogram = self.client.histogram("some_histogram")
+        self.assertIsInstance(histogram, metrics.Histogram)
+        self.assertEqual(histogram.name, b"namespace.some_histogram")
+
+        with self.assertRaises(UnicodeEncodeError):
+            self.client.gauge("☃")
+
 
 class ClientTests(unittest.TestCase):
     def test_make_batch(self):
@@ -235,6 +243,18 @@ class GaugeTests(unittest.TestCase):
         gauge = metrics.Gauge(self.transport, b"example")
         with self.assertRaises(Exception):
             gauge.replace(-2)
+
+
+class HistogramTests(unittest.TestCase):
+    def setUp(self):
+        self.transport = mock.Mock(spec=metrics.NullTransport)
+
+    def test_log(self):
+        histogram = metrics.Histogram(self.transport, b"example_hist")
+        histogram.add_sample(33)
+        self.assertEqual(self.transport.send.call_count, 1)
+        self.assertEqual(self.transport.send.call_args,
+            mock.call(b"example_hist:33|h"))
 
 
 class MakeClientTests(unittest.TestCase):

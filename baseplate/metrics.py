@@ -138,6 +138,17 @@ class BaseClient(object):
         gauge_name = _metric_join(self.namespace, name.encode("ascii"))
         return Gauge(self.transport, gauge_name)
 
+    def histogram(self, name):
+        """Return a Histogram with the given name.
+
+        :param str name: The name the histogram should have.
+
+        :rtype: :py:class:`Histogram`
+
+        """
+        histogram_name = _metric_join(self.namespace, name.encode("ascii"))
+        return Histogram(self.transport, histogram_name)
+
 
 class Client(BaseClient):
     """A client for statsd."""
@@ -260,6 +271,31 @@ class Counter(object):
 
         """
         self.increment(delta=-delta, sample_rate=sample_rate)
+
+
+class Histogram(object):
+    """A bucketed distribution of integer values across a specific range.
+
+    Records data value counts across a configurable integer value range
+    with configurable buckets of value precision within that range.
+
+    Configuration of each histogram is managed by the backend service,
+    not by this interface. This implementation also depends on histograms
+    being supported by the StatsD backend. Specifically, the StatsD
+    backend must support the :code:`h` key, e.g. :code:`metric_name:320|h`.
+    """
+    def __init__(self, transport, name):
+        self.transport = transport
+        self.name = name
+
+    def add_sample(self, value):
+        """Add a new value to the histogram.
+
+        This records a new value to the histogram; the bucket it goes in
+        is determined by the backend service configurations.
+        """
+        serialized = self.name + (":{:g}|h".format(value).encode())
+        self.transport.send(serialized)
 
 
 class Gauge(object):
