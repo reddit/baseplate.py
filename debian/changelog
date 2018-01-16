@@ -1,3 +1,17 @@
+baseplate (0.24.0) trusty; urgency=medium
+
+  * (BREAKING) Restructure EdgeContext/AuthenticationToken API
+  * Add support to Vault helpers for Kubernetes auth backend
+  * Add new pyramid event emitted after server span is created
+  * Add thrift_pool_from_config helper
+  * Add histogram interface to metrics API
+  * Use '/usr/bin/env python' in hashbang for baseplate-* scripts
+  * Fix infinite retry in publishers when event collector returns validation
+    error
+  * Fix thrift build in 'setup.py sdist'
+
+ -- Neil Williams <neil@reddit.com>  Tue, 16 Jan 2018 10:29:47 -0800
+
 baseplate (0.23.2) trusty; urgency=medium
 
   * change baseplate tween position
