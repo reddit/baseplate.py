@@ -1,3 +1,9 @@
+baseplate (0.24.1) trusty; urgency=medium
+
+  * Fix configparser referencing issue with Kubernetes auth
+
+ -- Matthew Leung <matt.leung@reddit.com>  Thu, 18 Jan 2018 14:25:45 +0000
+
 baseplate (0.24.0) trusty; urgency=medium
 
   * (BREAKING) Restructure EdgeContext/AuthenticationToken API
