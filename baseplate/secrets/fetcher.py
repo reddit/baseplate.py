@@ -311,7 +311,7 @@ def main():
 
     # pylint: disable=maybe-no-member
     client_factory = VaultClientFactory(cfg.vault.url, cfg.vault.role,
-                                        cfg.auth_type, cfg.mount_point)
+                                        cfg.vault.auth_type, cfg.vault.mount_point)
     while True:
         client = client_factory.get_client()
 
