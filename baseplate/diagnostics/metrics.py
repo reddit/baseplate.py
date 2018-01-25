@@ -46,6 +46,8 @@ class MetricsServerSpanObserver(SpanObserver):
 
     def on_finish(self, exc_info):
         self.timer.stop()
+        suffix = "success" if not exc_info else "failure"
+        self.batch.counter(self.base_name + "." + suffix).increment()
         self.batch.flush()
 
     def on_child_span_created(self, span):
