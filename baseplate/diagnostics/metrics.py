@@ -39,6 +39,7 @@ class MetricsBaseplateObserver(BaseplateObserver):
 class MetricsServerSpanObserver(SpanObserver):
     def __init__(self, batch, server_span):
         self.batch = batch
+        self.base_name = "server." + server_span.name
         self.timer = batch.timer("server." + server_span.name)
 
     def on_start(self):
