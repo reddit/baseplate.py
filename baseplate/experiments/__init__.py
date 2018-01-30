@@ -8,10 +8,10 @@ import logging
 
 from .providers import parse_experiment
 from .. import config
-from .._compat import iteritems
 from ..context import ContextFactory
-from ..events import Event, EventTooLargeError, EventQueueFullError
+from ..events import EventTooLargeError, EventQueueFullError
 from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
+from .._utils import to36
 
 
 logger = logging.getLogger(__name__)
@@ -23,16 +23,18 @@ class ExperimentsContextFactory(ContextFactory):
     This factory will attach a new :py:class:`baseplate.experiments.Experiments`
     to an attribute on the :term:`context object`.
     """
-    def __init__(self, path, event_queue):
+    def __init__(self, path, event_queue, event_constructor=None):
         """ExperimentContextFactory constructor
 
         :param str path: Path to the experiment config file.
         :param baseplate.events.EventQueue event_queue: Event queue used for
             logging bucketing events to the event pipeline.  You can set this
-            to None to disable bucketing events entirely.
+            to None to disable bucketing events entirely. This queue should be
+            configured to use baseplate.events.serialize_v2_event
         """
         self._filewatcher = FileWatcher(path, json.load)
         self._event_queue = event_queue
+        self._event_constructor = event_constructor
 
     def make_object_for_context(self, name, server_span):
         return Experiments(
@@ -40,6 +42,7 @@ class ExperimentsContextFactory(ContextFactory):
             event_queue=self._event_queue,
             server_span=server_span,
             context_name=name,
+            event_constructor=self._event_constructor,
         )
 
 
@@ -53,13 +56,14 @@ class Experiments(object):
     active variant.
     """
 
-    def __init__(self, config_watcher, event_queue, server_span, context_name):
+    def __init__(self, config_watcher, event_queue, server_span, context_name, event_constructor=None):
         self._config_watcher = config_watcher
         self._event_queue = event_queue
         self._span = server_span
         self._context_name = context_name
         self._already_bucketed = set()
         self._experiment_cache = {}
+        self._event_constructor = event_constructor
 
     def _get_config(self, name):
         try:
@@ -134,25 +138,43 @@ class Experiments(object):
         :rtype: :py:class:`str`
         :return: Variant name if a variant is active, None otherwise.
         """
+
         experiment = self._get_experiment(name)
 
         if experiment is None:
             return None
 
         inputs = dict(kwargs)
+
+        """ clean up user id. If not a baseplate user, we risk inconsistency."""
         if user:
             if user.is_logged_in:
                 inputs["user_id"] = user.id
                 inputs["user_roles"] = user.roles
+                inputs["logged_in"] = user.is_logged_in
             else:
                 inputs["user_id"] = user.loid
-            inputs["logged_in"] = user.is_logged_in
+                inputs["logged_in"] = False
+
+        #loid is numeric. Convert it to a base-36 string; Ideally, this will
+        #   be fixed before the caller sends it in, but this will catch
+        if isinstance(inputs.get("user_id"), int):
+            if (inputs.get("user_id") < 0):
+                logger.warning("unable to bucket user with invalid user_id < 0")
+                return None
+            inputs["user_id"] = to36(inputs["user_id"])
+
+        # if it's not already a fullname, let's make it one (and strip leading
+        #    zeroes while we're at it. And lowercase it to be safe.)
+        if inputs.get("user_id") and not inputs["user_id"].startswith("t2_"):
+            inputs["user_id"] = "t2_" + inputs["user_id"].lstrip("0").lower()
 
         span_name = "{}.{}".format(self._context_name, "variant")
         with self._span.make_child(span_name, local=True, component_name=name):
             variant = experiment.variant(**inputs)
 
         bucketing_id = experiment.get_unique_id(**inputs)
+
         do_log = True
 
         if not bucketing_id:
@@ -172,54 +194,65 @@ class Experiments(object):
         if do_log:
             assert bucketing_id
             self._log_bucketing_event(experiment, variant, user,
-                                      extra_event_fields)
+                                      inputs)
             self._already_bucketed.add(bucketing_id)
 
         return variant
 
-    def _log_bucketing_event(self, experiment, variant, user,
-                             extra_event_fields):
-        if not self._event_queue:
+    def _log_bucketing_event(self, experiment, variant, user, extra_event_fields):
+
+        """ Logs a v2 bucketing event.
+
+            :param dict experiment: An experiment config dict.
+            :param string variant: The variant bucketed into
+            :param baseplate.core.User user: The user being bucketed. If this
+                is not provided, it is expected that the extra_event_fields
+                dict will contain the following information:
+                - user_id - fullname
+                - logged_in - boolean
+                - cookie_created_timestamp - epoch ms
+                - created_timestamp - epoch ms
+            :param dict extra_event_fields: addtional fields to be added. For
+                now, this expects and will process only the set of
+                user-related fields specified in the user parameter.
+        """
+
+        if not self._event_queue or not self._event_constructor:
+            logger.warning("missing event queue or bucketing constructor")
             return
 
-        extra_event_fields = extra_event_fields or {}
+        event_context_fields = {}
 
-        event = Event("bucketing_events", "bucket")
-
-        context_fields = {}
-
-        if hasattr(self._span.context, "request_context"):
-            request_fields = self._span.context.request_context.event_fields()
-            context_fields.update(request_fields)
+        user_fields = {}
 
         if user:
-            context_fields.update(user.event_fields())
+            user_fields['user_id'] = user.event_fields().get("user_id")
+            user_fields['logged_in'] = user.event_fields().get("user_logged_in")
+            user_fields['cookie_created_timestamp'] = user.event_fields().get("cookie_created")
+        else:
+            user_fields['user_id'] = extra_event_fields.get("user_id")
+            user_fields['logged_in'] = extra_event_fields.get("logged_in")
+            user_fields['cookie_created_timestamp'] = extra_event_fields.get("cookie_created_timestamp")
+            user_fields['created_timestamp'] = extra_event_fields.get("created_timestamp")
 
-        if "user_logged_in" in context_fields:
-            context_fields["is_logged_out"] = not context_fields.pop("user_logged_in")
+        event_context_fields['user'] = user_fields
 
-        if "cookie_created" in context_fields:
-            context_fields["loid_created"] = context_fields.pop("cookie_created")
+        experiment_fields = {}
+        experiment_fields['variant'] = variant
+        experiment_fields['id'] = getattr(experiment, "id", None)
+        experiment_fields['name'] = getattr(experiment, "name", None)
+        experiment_fields['owner'] = getattr(experiment, "owner", None)
+        experiment_fields['version'] = getattr(experiment, "version", None)
 
-        for field, value in iteritems(context_fields):
-            event.set_field(field, value)
+        event_context_fields['experiment'] = experiment_fields
 
-        for field, value in iteritems(extra_event_fields):
-            event.set_field(field, value)
-
-        event.set_field("variant", variant)
-        event.set_field("experiment_id", experiment.id)
-        event.set_field("experiment_name", experiment.name)
-        event.set_field("owner", experiment.owner)
-
-        version = getattr(experiment, "version", None)
-        if version:
-            event.set_field("version", version)
+        event = self._event_constructor(event_context_fields)
 
         span_name = "{}.{}".format(self._context_name, "events")
         with self._span.make_child(span_name) as child_span:
             try:
-                self._event_queue.put(event)
+                serialized = self._event_queue.put(event)
+                print(serialized)
             except EventTooLargeError as exc:
                 logger.warning(
                     "The event payload was too large for the event queue."

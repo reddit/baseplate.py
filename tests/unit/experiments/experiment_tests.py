@@ -22,11 +22,15 @@ from ... import mock
 THIRTY_DAYS = timedelta(days=30).total_seconds()
 
 
+def event_constructor_for_use_in_tests(input_dict=None):
+    return input_dict
+
 class TestExperiments(unittest.TestCase):
 
     def setUp(self):
         super(TestExperiments, self).setUp()
         self.event_queue = mock.Mock(spec=EventQueue)
+        self.event_constructor = event_constructor_for_use_in_tests
         self.mock_filewatcher = mock.Mock(spec=FileWatcher)
         self.mock_span = mock.MagicMock(spec=ServerSpan)
         self.mock_span.context = None
@@ -67,6 +71,7 @@ class TestExperiments(unittest.TestCase):
             event_queue=self.event_queue,
             server_span=self.mock_span,
             context_name="test",
+            event_constructor=self.event_constructor,
         )
 
         with mock.patch(
@@ -77,16 +82,106 @@ class TestExperiments(unittest.TestCase):
             experiments.variant("test", user=self.user)
             self.assertEqual(self.event_queue.put.call_count, 1)
         event = self.event_queue.put.call_args[0][0]
-        self.assertEqual(event.topic, "bucketing_events")
-        self.assertEqual(event.event_type, "bucket")
-        self.assertEqual(event.get_field("experiment_id"), 1)
-        self.assertEqual(event.get_field("experiment_name"), "test")
-        self.assertEqual(event.get_field("variant"), "active")
-        self.assertEqual(event.get_field("owner"), "test_owner")
-        self.assertEqual(event.get_field("user_id"), "t2_1")
-        self.assertEqual(event.get_field("loid_created"), 10000)
-        self.assertEqual(event.get_field("is_logged_out"), False)
+        self.assertEqual(event["user"]["user_id"], "t2_1")
+        self.assertEqual(event["user"]["cookie_created_timestamp"], 10000)
+        self.assertEqual(event["user"]["logged_in"], True)
 
+        self.assertEqual(event["experiment"]["variant"], "active")
+        self.assertEqual(event["experiment"]["id"], 1)
+        self.assertEqual(event["experiment"]["name"], "test")
+        self.assertEqual(event["experiment"]["owner"], "test_owner")
+        self.assertEqual(event["experiment"]["version"], "1")
+
+
+    def test_bucketing_event_fields_without_baseplate_user(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "owner": "test_owner",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "id": 1,
+                    "name": "test",
+                    "variants": {
+                        "active": 10,
+                        "control_1": 10,
+                        "control_2": 10,
+                    }
+                }
+            }
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            event_queue=self.event_queue,
+            server_span=self.mock_span,
+            context_name="test",
+            event_constructor=self.event_constructor,
+        )
+
+        with mock.patch(
+            "baseplate.experiments.providers.r2.R2Experiment.variant",
+            return_value="active",
+        ):
+            self.assertEqual(self.event_queue.put.call_count, 0)
+            experiments.variant("test", user_id="t2_1", logged_in=True)
+            self.assertEqual(self.event_queue.put.call_count, 1)
+        event = self.event_queue.put.call_args[0][0]
+        self.assertEqual(event["user"]["user_id"], "t2_1")
+        self.assertEqual(event["user"]["logged_in"], True)
+
+        self.assertEqual(event["experiment"]["variant"], "active")
+        self.assertEqual(event["experiment"]["id"], 1)
+        self.assertEqual(event["experiment"]["name"], "test")
+        self.assertEqual(event["experiment"]["owner"], "test_owner")
+
+    def test_integer_user_ids(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "owner": "test_owner",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "id": 1,
+                    "name": "test",
+                    "variants": {
+                        "active": 10,
+                        "control_1": 10,
+                        "control_2": 10,
+                    }
+                }
+            }
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            event_queue=self.event_queue,
+            server_span=self.mock_span,
+            context_name="test",
+            event_constructor=self.event_constructor,
+        )
+
+        with mock.patch(
+            "baseplate.experiments.providers.r2.R2Experiment.variant",
+            return_value="active",
+        ):
+            self.assertEqual(self.event_queue.put.call_count, 0)
+            experiments.variant("test", user_id=37, logged_in=True)
+            self.assertEqual(self.event_queue.put.call_count, 1)
+        event = self.event_queue.put.call_args[0][0]
+        self.assertEqual(event["user"]["user_id"], "t2_11")
+        self.assertEqual(event["user"]["logged_in"], True)
+
+        self.assertEqual(event["experiment"]["variant"], "active")
+        self.assertEqual(event["experiment"]["id"], 1)
+        self.assertEqual(event["experiment"]["name"], "test")
+        self.assertEqual(event["experiment"]["owner"], "test_owner")
 
     def test_that_we_only_send_bucketing_event_once(self):
         self.mock_filewatcher.get_data.return_value = {
@@ -114,6 +209,7 @@ class TestExperiments(unittest.TestCase):
             event_queue=self.event_queue,
             server_span=self.mock_span,
             context_name="test",
+            event_constructor=self.event_constructor,
         )
 
         with mock.patch(
@@ -150,6 +246,7 @@ class TestExperiments(unittest.TestCase):
             event_queue=self.event_queue,
             server_span=self.mock_span,
             context_name="test",
+            event_constructor=self.event_constructor,
         )
         with mock.patch(
             "baseplate.experiments.providers.r2.R2Experiment.variant",
@@ -188,6 +285,7 @@ class TestExperiments(unittest.TestCase):
             event_queue=self.event_queue,
             server_span=self.mock_span,
             context_name="test",
+            event_constructor=self.event_constructor,
         )
         with mock.patch(
             "baseplate.experiments.providers.r2.R2Experiment.variant",
@@ -229,6 +327,7 @@ class TestExperiments(unittest.TestCase):
             event_queue=self.event_queue,
             server_span=self.mock_span,
             context_name="test",
+            event_constructor=self.event_constructor,
         )
 
         with mock.patch(
@@ -265,6 +364,7 @@ class TestExperiments(unittest.TestCase):
             event_queue=self.event_queue,
             server_span=self.mock_span,
             context_name="test",
+            event_constructor=self.event_constructor,
         )
 
         with mock.patch(
@@ -290,6 +390,7 @@ class TestExperiments(unittest.TestCase):
             event_queue=self.event_queue,
             server_span=self.mock_span,
             context_name="test",
+            event_constructor=self.event_constructor,
         )
         self.assertEqual(self.event_queue.put.call_count, 0)
         experiments.variant("test", user=self.user)
@@ -304,6 +405,7 @@ class TestExperiments(unittest.TestCase):
             event_queue=self.event_queue,
             server_span=self.mock_span,
             context_name="test",
+            event_constructor=self.event_constructor,
         )
         self.assertEqual(self.event_queue.put.call_count, 0)
         experiments.variant("test", user=self.user)
@@ -335,6 +437,7 @@ class TestExperiments(unittest.TestCase):
             event_queue=self.event_queue,
             server_span=self.mock_span,
             context_name="test",
+            event_constructor=self.event_constructor,
         )
         self.assertEqual(self.event_queue.put.call_count, 0)
         experiments.variant("test", user=self.user)
