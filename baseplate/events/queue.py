@@ -18,6 +18,7 @@ from __future__ import unicode_literals
 
 import calendar
 import json
+import logging
 import time
 import uuid
 
@@ -168,6 +169,19 @@ def serialize_v2_event(event):
 
     """
     return Serializer.serialize(_V2_PROTOCOL_FACTORY, event)
+
+
+class EventLogger(object):
+    def log(self, **kwargs):
+        raise NotImplementedError
+
+
+class DebugLogger(EventLogger):
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def log(self, **kwargs):
+        self.logger.debug("Would send event: {}".format(kwargs))
 
 
 class EventQueue(ContextFactory):

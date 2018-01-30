@@ -8,9 +8,8 @@ import logging
 
 from .providers import parse_experiment
 from .. import config
-from .._compat import iteritems
 from ..context import ContextFactory
-from ..events import Event, EventTooLargeError, EventQueueFullError
+from ..events import DebugLogger
 from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
 
 
@@ -23,23 +22,23 @@ class ExperimentsContextFactory(ContextFactory):
     This factory will attach a new :py:class:`baseplate.experiments.Experiments`
     to an attribute on the :term:`context object`.
     """
-    def __init__(self, path, event_queue):
+    def __init__(self, path, event_logger=None):
         """ExperimentContextFactory constructor
 
         :param str path: Path to the experiment config file.
-        :param baseplate.events.EventQueue event_queue: Event queue used for
-            logging bucketing events to the event pipeline.  You can set this
-            to None to disable bucketing events entirely.
+        :param baseplate.events.EventLogger event_logger: The logger to use
+            to log experiment eligibility events. If not provided, a
+            baseplate.events.DebugLogger will be created and used.
         """
         self._filewatcher = FileWatcher(path, json.load)
-        self._event_queue = event_queue
+        self._event_logger = event_logger
 
     def make_object_for_context(self, name, server_span):
         return Experiments(
             config_watcher=self._filewatcher,
-            event_queue=self._event_queue,
             server_span=server_span,
             context_name=name,
+            event_logger=self._event_logger,
         )
 
 
@@ -53,13 +52,16 @@ class Experiments(object):
     active variant.
     """
 
-    def __init__(self, config_watcher, event_queue, server_span, context_name):
+    def __init__(self, config_watcher, server_span, context_name, event_logger=None):
         self._config_watcher = config_watcher
-        self._event_queue = event_queue
         self._span = server_span
         self._context_name = context_name
         self._already_bucketed = set()
         self._experiment_cache = {}
+        if event_logger:
+            self._event_logger = event_logger
+        else:
+            self._event_logger = DebugLogger()
 
     def _get_config(self, name):
         try:
@@ -134,12 +136,14 @@ class Experiments(object):
         :rtype: :py:class:`str`
         :return: Variant name if a variant is active, None otherwise.
         """
+
         experiment = self._get_experiment(name)
 
         if experiment is None:
             return None
 
         inputs = dict(kwargs)
+
         if user:
             if user.is_logged_in:
                 inputs["user_id"] = user.id
@@ -147,12 +151,14 @@ class Experiments(object):
             else:
                 inputs["user_id"] = user.loid
             inputs["logged_in"] = user.is_logged_in
+            inputs['cookie_created_timestamp'] = user.event_fields().get('cookie_created')
 
         span_name = "{}.{}".format(self._context_name, "variant")
         with self._span.make_child(span_name, local=True, component_name=name):
             variant = experiment.variant(**inputs)
 
         bucketing_id = experiment.get_unique_id(**inputs)
+
         do_log = True
 
         if not bucketing_id:
@@ -171,65 +177,17 @@ class Experiments(object):
 
         if do_log:
             assert bucketing_id
-            self._log_bucketing_event(experiment, variant, user,
-                                      extra_event_fields)
+            self._event_logger.log(
+                experiment=experiment,
+                variant=variant,
+                user_id=inputs.get('user_id'),
+                logged_in=inputs.get('logged_in'),
+                cookie_created_timestamp=inputs.get('cookie_created_timestamp'),
+                app_name=inputs.get('app_name'),
+            )
             self._already_bucketed.add(bucketing_id)
 
         return variant
-
-    def _log_bucketing_event(self, experiment, variant, user,
-                             extra_event_fields):
-        if not self._event_queue:
-            return
-
-        extra_event_fields = extra_event_fields or {}
-
-        event = Event("bucketing_events", "bucket")
-
-        context_fields = {}
-
-        if hasattr(self._span.context, "request_context"):
-            request_fields = self._span.context.request_context.event_fields()
-            context_fields.update(request_fields)
-
-        if user:
-            context_fields.update(user.event_fields())
-
-        if "user_logged_in" in context_fields:
-            context_fields["is_logged_out"] = not context_fields.pop("user_logged_in")
-
-        if "cookie_created" in context_fields:
-            context_fields["loid_created"] = context_fields.pop("cookie_created")
-
-        for field, value in iteritems(context_fields):
-            event.set_field(field, value)
-
-        for field, value in iteritems(extra_event_fields):
-            event.set_field(field, value)
-
-        event.set_field("variant", variant)
-        event.set_field("experiment_id", experiment.id)
-        event.set_field("experiment_name", experiment.name)
-        event.set_field("owner", experiment.owner)
-
-        version = getattr(experiment, "version", None)
-        if version:
-            event.set_field("version", version)
-
-        span_name = "{}.{}".format(self._context_name, "events")
-        with self._span.make_child(span_name) as child_span:
-            try:
-                self._event_queue.put(event)
-            except EventTooLargeError as exc:
-                logger.warning(
-                    "The event payload was too large for the event queue."
-                )
-                child_span.set_tag("error", True)
-                child_span.log("error.object", exc)
-            except EventQueueFullError as exc:
-                logger.warning("The event queue is full.")
-                child_span.set_tag("error", True)
-                child_span.log("error.object", exc)
 
 
 def experiments_client_from_config(app_config, event_queue):
