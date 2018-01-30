@@ -95,7 +95,11 @@ class BufferedTransport(object):
         # TODO: run-length compression
         metrics, self.buffer = self.buffer, []
         message = b"\n".join(metrics)
-        self.transport.send(message)
+        try:
+            self.transport.send(message)
+        except socket.error as e:
+            logger.error("BufferedTransport flush exception, length %d, %s",
+                len(message), e)
 
 
 class BaseClient(object):
