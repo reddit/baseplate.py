@@ -91,11 +91,14 @@ class BufferedTransport(object):
         self.buffer.append(serialized_metric)
 
     def flush(self):
-        # TODO: warn when buffer length reaches MTU
-        # TODO: run-length compression
         metrics, self.buffer = self.buffer, []
         message = b"\n".join(metrics)
-        self.transport.send(message)
+        try:
+            self.transport.send(message)
+        except socket.error as e:
+            logger.error("baseplate metrics batch too large: flush more often \
+                or reduce amount done in one request, length %d, %s",
+                len(message), e)
 
 
 class BaseClient(object):

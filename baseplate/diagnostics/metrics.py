@@ -39,13 +39,16 @@ class MetricsBaseplateObserver(BaseplateObserver):
 class MetricsServerSpanObserver(SpanObserver):
     def __init__(self, batch, server_span):
         self.batch = batch
-        self.timer = batch.timer("server." + server_span.name)
+        self.base_name = "server." + server_span.name
+        self.timer = batch.timer(self.base_name)
 
     def on_start(self):
         self.timer.start()
 
     def on_finish(self, exc_info):
         self.timer.stop()
+        suffix = "success" if not exc_info else "failure"
+        self.batch.counter(self.base_name + "." + suffix).increment()
         self.batch.flush()
 
     def on_child_span_created(self, span):
