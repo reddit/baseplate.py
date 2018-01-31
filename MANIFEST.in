@@ -1,2 +1,3 @@
 include bin/baseplate-*
 include baseplate/thrift/*.thrift
+include Makefile
