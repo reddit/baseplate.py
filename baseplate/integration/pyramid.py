@@ -24,7 +24,7 @@ An abbreviated example of it in use::
     prevent Baseplate from seeing the unhandled error and reporting it
     appropriately.
 
-    .. _exception view: https://docs.pylonsproject.org/projects/pyramid_cookbook/en/latest/pylons/exceptions.html#exception-views
+    .. _exception view: https://docs.pylonsproject.org/projects/pyramid_cookbook/en/latest/pylons/exceptions.html#exception-views  # noqa: E501
 
 """
 
@@ -214,7 +214,7 @@ def pshell_setup(env):
         [pshell]
         setup = baseplate.integration.pyramid:pshell_setup
 
-    See http://docs.pylonsproject.org/projects/pyramid/en/latest/narr/commandline.html#extending-the-shell
+    See http://docs.pylonsproject.org/projects/pyramid/en/latest/narr/commandline.html#extending-the-shell  # noqa: E501
 
     """
     env["request"].start_server_span("shell")

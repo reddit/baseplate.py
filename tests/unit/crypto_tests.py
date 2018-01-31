@@ -60,7 +60,8 @@ class SignatureTests(unittest.TestCase):
             self.signer.validate_signature(self.message, signature[2:])
 
     def test_invalid(self):
-        bad_signature = self.signer.make_signature(self.message + "bad", max_age=datetime.timedelta(seconds=30))
+        bad_signature = self.signer.make_signature(
+            self.message + "bad", max_age=datetime.timedelta(seconds=30))
 
         with self.assertRaises(crypto.IncorrectSignatureError):
             self.signer.validate_signature(self.message, bad_signature)

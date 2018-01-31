@@ -60,7 +60,8 @@ class ThriftConnectionPoolTests(unittest.TestCase):
             trans = TTransport.TFramedTransport(trans)
             return TBinaryProtocol.TBinaryProtocol(trans)
 
-        framed_pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT, protocol_factory=framed_protocol_factory)
+        framed_pool = thrift_pool.ThriftConnectionPool(
+            EXAMPLE_ENDPOINT, protocol_factory=framed_protocol_factory)
         trans = thrift_pool._make_transport(EXAMPLE_ENDPOINT)
         prot = framed_pool.protocol_factory(trans)
 
@@ -104,7 +105,8 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         mock_time.return_value = 200
 
         broken_trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
-        broken_trans.get_protocol_id.return_value = THeaderProtocol.THeaderProtocol.T_BINARY_PROTOCOL
+        broken_trans.get_protocol_id.return_value = \
+            THeaderProtocol.THeaderProtocol.T_BINARY_PROTOCOL
         broken_trans.open.side_effect = TTransport.TTransportException
 
         ok_trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
@@ -124,7 +126,8 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         mock_time.return_value = 200
 
         broken_trans = mock.Mock(spec=THeaderTransport.THeaderTransport)
-        broken_trans.get_protocol_id.return_value = THeaderProtocol.THeaderProtocol.T_BINARY_PROTOCOL
+        broken_trans.get_protocol_id.return_value = \
+            THeaderProtocol.THeaderProtocol.T_BINARY_PROTOCOL
         broken_trans.open.side_effect = TTransport.TTransportException
 
         mock_make_transport.side_effect = [broken_trans] * 3
