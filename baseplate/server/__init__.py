@@ -296,7 +296,7 @@ def _configure_http_service_shell(config_name, locs):
     exec ('from pylons import app_globals, config, request, response, '
           'session, tmpl_context, url') in locs
     exec ('from pylons.controllers.util import abort, redirect') in locs
-    exec 'from pylons.i18n import _, ungettext, N_' in locs
+    exec ('from pylons.i18n import _, ungettext, N_') in locs
     locs.pop('__builtins__', None)
 
     # Import all objects from the base module
