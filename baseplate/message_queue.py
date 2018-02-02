@@ -23,6 +23,24 @@ class TimedOutError(MessageQueueError):
             "Timed out waiting for the message queue.")
 
 
+# this wrapper-exception is here just to give the user a bit more of an idea
+# how to fix the error should they run into it since the base error message
+# is rather opaque.
+class InvalidParametersError(ValueError):
+    def __init__(self, inner):
+        super(InvalidParametersError, self).__init__(
+            "%s (check fs.mqueue.{msg_max,msgsize_max} sysctls?)" % inner)
+
+
+# this wrapper-exception is here just to give the user a bit more of an idea
+# how to fix the error should they run into it since the base error message
+# is rather opaque.
+class MessageQueueOSError(OSError):
+    def __init__(self, inner):
+        super(MessageQueueOSError, self).__init__(
+            "%s (check `ulimit -q`?)" % inner)
+
+
 class MessageQueue(object):
     """A gevent-friendly (but not required) inter process message queue.
 
@@ -36,13 +54,18 @@ class MessageQueue(object):
 
     """
     def __init__(self, name, max_messages, max_message_size):
-        self.queue = posix_ipc.MessageQueue(
-            name,
-            flags=posix_ipc.O_CREAT,
-            mode=0o0644,
-            max_messages=max_messages,
-            max_message_size=max_message_size,
-        )
+        try:
+            self.queue = posix_ipc.MessageQueue(
+                name,
+                flags=posix_ipc.O_CREAT,
+                mode=0o0644,
+                max_messages=max_messages,
+                max_message_size=max_message_size,
+            )
+        except ValueError as exc:
+            raise InvalidParametersError(exc)
+        except OSError as exc:
+            raise MessageQueueOSError(exc)
         self.queue.block = False
 
     def get(self, timeout=None):
