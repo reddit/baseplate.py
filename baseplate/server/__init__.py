@@ -249,6 +249,7 @@ def _configure_thrift_service_shell(config, locs):
         "The context for this shell instance's span")
     return banner
 
+
 def _configure_http_service_shell(config_name, locs):
     here_dir = os.getcwd()
 
