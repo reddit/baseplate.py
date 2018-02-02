@@ -14,6 +14,10 @@ import fcntl
 import importlib
 import logging
 import logging.config
+import os
+from paste.deploy import loadapp
+import paste.registry
+import pylons
 import signal
 import socket
 import sys
@@ -23,6 +27,7 @@ import warnings
 from . import einhorn, reloader
 from .._compat import configparser
 from ..config import Endpoint
+from ..integration.thrift import RequestContext
 
 
 logger = logging.getLogger(__name__)
@@ -197,3 +202,162 @@ def load_and_run_script():
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
     args.entrypoint(config.app)
+
+
+def load_app_and_run_shell():
+    """Launch a shell."""
+    # modified from r2.commands:ShellCommand, but with support for thrift
+    # services
+    parser = argparse.ArgumentParser(
+        description="Open a shell with app configuration loaded.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument("--debug", action="store_true", default=False,
+        help="enable extra-verbose debug logging")
+    parser.add_argument("--app-name", default="main", metavar="NAME",
+        help="name of app to load from config_file (default: main)")
+    parser.add_argument("config_file", type=argparse.FileType("r"),
+        help="path to a configuration file")
+
+    args = parser.parse_args(sys.argv[1:])
+    config = read_config(args.config_file, server_name=None, app_name=args.app_name)
+    configure_logging(config, args.debug)
+
+    locs = dict(__name__="pylons-admin")
+
+    is_http_service = pylons.config['pylons.package'] is not None
+    if is_http_service:
+        banner = _configure_http_service_shell(args.config_file.name, locs)
+    else:
+        banner = _configure_thrift_service_shell(config, locs)
+
+    _run_shell(sys.argv[1:], banner, locs)
+
+
+def _configure_thrift_service_shell(config, locs):
+    app = make_app(config.app)
+    locs['app'] = app
+
+    baseplate = app._event_handler.baseplate
+    span = baseplate.make_server_span(RequestContext(), 'shell')
+    locs['context'] = span.context
+    banner = "Available Objects:\n"
+    banner += "  %-10s -  %s\n" % ('app',
+        "This project's app instance")
+    banner += "  %-10s -  %s\n" % ('context',
+        "The context for this shell instance's span")
+    return banner
+
+def _configure_http_service_shell(config_name, locs):
+    here_dir = os.getcwd()
+
+    # Load locals and populate with objects for use in shell
+    sys.path.insert(0, here_dir)
+
+    # Load the wsgi app first so that everything is initialized right
+    wsgiapp = loadapp('config:{}'.format(config_name), relative_to=here_dir)
+    test_app = paste.fixture.TestApp(wsgiapp)
+
+    # Query the test app to setup the environment
+    tresponse = test_app.get('/_test_vars')
+    request_id = int(tresponse.body)
+
+    # Disable restoration during test_app requests
+    test_app.pre_request_hook = lambda self: \
+        paste.registry.restorer.restoration_end()
+    test_app.post_request_hook = lambda self: \
+        paste.registry.restorer.restoration_begin(request_id)
+
+    # Restore the state of the Pylons special objects
+    # (StackedObjectProxies)
+    paste.registry.restorer.restoration_begin(request_id)
+
+    # Determine the package name from the pylons.config object
+    pkg_name = pylons.config['pylons.package']
+
+    # Start the rest of our imports now that the app is loaded
+    if is_minimal_template(pkg_name, True):
+        model_module = None
+        helpers_module = pkg_name + '.helpers'
+        base_module = pkg_name + '.controllers'
+    else:
+        model_module = pkg_name + '.model'
+        helpers_module = pkg_name + '.lib.helpers'
+        base_module = pkg_name + '.lib.base'
+
+    if model_module and can_import(model_module):
+        locs['model'] = sys.modules[model_module]
+
+    if can_import(helpers_module):
+        locs['h'] = sys.modules[helpers_module]
+
+    exec ('from pylons import app_globals, config, request, response, '
+          'session, tmpl_context, url') in locs
+    exec ('from pylons.controllers.util import abort, redirect') in locs
+    exec 'from pylons.i18n import _, ungettext, N_' in locs
+    locs.pop('__builtins__', None)
+
+    # Import all objects from the base module
+    __import__(base_module)
+
+    base = sys.modules[base_module]
+    base_public = [__name for __name in dir(base) if not \
+                   __name.startswith('_') or __name == '_']
+    locs.update((name, getattr(base, name)) for name in base_public)
+    locs.update(dict(wsgiapp=wsgiapp, app=test_app))
+
+    mapper = tresponse.config.get('routes.map')
+    if mapper:
+        locs['mapper'] = mapper
+
+    make_server_span('reddit-shell')
+
+    banner = "  All objects from %s are available\n" % base_module
+    banner += "  Additional Objects:\n"
+    if mapper:
+        banner += "  %-10s -  %s\n" % ('mapper', 'Routes mapper object')
+    banner += "  %-10s -  %s\n" % ('wsgiapp',
+        "This project's WSGI App instance")
+    banner += "  %-10s -  %s\n" % ('app',
+        'paste.fixture wrapped around wsgiapp')
+
+    return banner
+
+
+def _run_shell(args, banner, locs):
+    try:
+        # try to use IPython if possible
+        try:
+            try:
+                # 1.0 <= ipython
+                from IPython.terminal.embed import InteractiveShellEmbed
+            except ImportError:
+                # 0.11 <= ipython < 1.0
+                from IPython.frontend.terminal.embed import InteractiveShellEmbed
+            shell = InteractiveShellEmbed(banner2=banner)
+        except ImportError:
+            # ipython < 0.11
+            from IPython.Shell import IPShellEmbed
+            shell = IPShellEmbed(argv=args)
+            shell.set_banner(shell.IP.BANNER + '\n\n' + banner)
+
+        try:
+            shell(local_ns=locs, global_ns={})
+        finally:
+            paste.registry.restorer.restoration_end()
+    except ImportError:
+        import code
+        py_prefix = sys.platform.startswith('java') and 'J' or 'P'
+        newbanner = "Pylons Interactive Shell\n%sython %s\n\n" % \
+            (py_prefix, sys.version)
+        banner = newbanner + banner
+        shell = code.InteractiveConsole(locals=locs)
+        try:
+            import readline
+        except ImportError:
+            pass
+        try:
+            shell.interact(banner)
+        finally:
+            paste.registry.restorer.restoration_end()
