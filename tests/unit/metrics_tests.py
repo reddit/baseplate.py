@@ -148,15 +148,50 @@ class ClientTests(unittest.TestCase):
 
 
 class BatchTests(unittest.TestCase):
-    @mock.patch("baseplate.metrics.BufferedTransport", autospec=True)
-    def test_context(self, MockBufferedTransport):
-        mock_buffer = MockBufferedTransport.return_value
-        mock_transport = mock.Mock(spec=metrics.NullTransport)
+    def setUp(self):
+        self.patcher = mock.patch("baseplate.metrics.BufferedTransport",
+                                  autospec=True)
+        self.mock_buffer = self.patcher.start().return_value
+        self.mock_transport = mock.Mock(spec=metrics.NullTransport)
 
-        batch = metrics.Batch(mock_transport, "namespace")
-        with batch as b:
-            self.assertEqual(b, batch)
-        self.assertTrue(mock_buffer.flush.called)
+        # encode is called here since metrics.Batch is designed to be instantiated
+        # by an instance of metrics.Client which encodes the namespace arg
+        self.batch = metrics.Batch(self.mock_transport, "namespace".encode("ascii"))
+
+    def test_context(self):
+        with self.batch as b:
+            self.assertEqual(b, self.batch)
+        self.assertTrue(self.mock_buffer.flush.called)
+
+    def test_make_counter(self):
+        batch_counter = self.batch.counter("some_counter")
+        self.assertIsInstance(batch_counter, metrics.BatchCounter)
+        expected_counter_name = b"namespace.some_counter"
+        self.assertEqual(batch_counter.name, expected_counter_name)
+        self.assertEqual(len(self.batch.counters), 1)
+        self.assertTrue(expected_counter_name in self.batch.counters)
+
+    def test_get_counter_twice(self):
+        counter_name = "some_counter"
+        batch_counter = self.batch.counter(counter_name)
+        self.assertIsInstance(batch_counter, metrics.BatchCounter)
+        expected_counter_name = b"namespace.some_counter"
+        self.assertEqual(batch_counter.name, expected_counter_name)
+
+        refetched_batch_counter = self.batch.counter(counter_name)
+        self.assertEqual(len(self.batch.counters), 1)
+        self.assertTrue(expected_counter_name in self.batch.counters)
+        self.assertEqual(refetched_batch_counter, batch_counter)
+
+    @mock.patch("baseplate.metrics.BatchCounter", autospec=True)
+    def test_counter_flush(self, MockBatchCounter):
+        with self.batch as b:
+            batch_counter = b.counter("some_counter")
+            batch_counter.increment()
+        self.assertTrue(batch_counter.send.called)
+
+    def tearDown(self):
+        self.patcher.stop()
 
 
 class TimerTests(unittest.TestCase):
@@ -239,6 +274,51 @@ class CounterTests(unittest.TestCase):
         self.assertEqual(self.transport.send.call_count, 2)
         self.assertEqual(self.transport.send.call_args,
             mock.call(b"example:-3|c"))
+
+
+class BatchCounterTests(unittest.TestCase):
+    def setUp(self):
+        self.transport = mock.Mock(spec=metrics.NullTransport)
+
+    def test_increment(self):
+        batch_counter = metrics.BatchCounter(self.transport, b"example")
+        batch_counter.increment()
+        self.assertEqual(len(batch_counter.packets), 1)
+        self.assertEqual(batch_counter.packets[1.0], 1)
+        self.assertFalse(self.transport.send.called)
+
+    def test_multiple_increments(self):
+        batch_counter = metrics.BatchCounter(self.transport, b"example")
+        batch_counter.increment()
+        self.assertFalse(self.transport.send.called)
+        batch_counter.increment()
+        self.assertEqual(batch_counter.packets[1.0], 2)
+        self.assertFalse(self.transport.send.called)
+
+    def test_send(self):
+        batch_counter = metrics.BatchCounter(self.transport, b"example")
+        batch_counter.increment()
+        batch_counter.increment(3)
+        self.assertEqual(batch_counter.packets[1.0], 4)
+        batch_counter.send()
+        self.assertEqual(self.transport.send.call_count, 1)
+        self.assertEqual(self.transport.send.call_args,
+            mock.call(b"example:4|c"))
+
+    def test_multiple_sample_rates(self):
+        batch_counter = metrics.BatchCounter(self.transport, b"example")
+        batch_counter.increment()
+        batch_counter.increment()
+        batch_counter.increment(sample_rate=0.5)
+        batch_counter.send()
+
+        self.assertEqual(len(batch_counter.packets), 2)
+        self.assertEqual(batch_counter.packets[1.0], 2)
+        self.assertEqual(batch_counter.packets[0.5], 1)
+        self.assertEqual(self.transport.send.call_count, 2)
+        expected_call_args = [mock.call(b"example:2|c",), mock.call(b"example:1|c|@0.5",)]
+        for expected in expected_call_args:
+            self.assertTrue(expected in self.transport.send.call_args_list)
 
 
 class GaugeTests(unittest.TestCase):

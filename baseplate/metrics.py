@@ -51,6 +51,8 @@ import logging
 import socket
 import time
 
+from collections import defaultdict
+
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +186,7 @@ class Batch(BaseClient):
     def __init__(self, transport, namespace):
         self.transport = BufferedTransport(transport)
         self.namespace = namespace
+        self.counters = {}
 
     def __enter__(self):
         return self
@@ -193,7 +196,27 @@ class Batch(BaseClient):
 
     def flush(self):
         """Immediately send the batched metrics."""
+        for name, counter in self.counters.items():
+            counter.send()
         self.transport.flush()
+
+    def counter(self, name):
+        """Return a BatchCounter with the given name.
+
+        The sample rate is currently up to your application to enforce.
+
+        :param str name: The name the counter should have.
+
+        :rtype: :py:class:`Counter`
+
+        """
+        counter_name = _metric_join(self.namespace, name.encode("ascii"))
+        batch_counter = self.counters.get(counter_name)
+        if batch_counter is None:
+            batch_counter = BatchCounter(self.transport, counter_name)
+            self.counters[counter_name] = batch_counter
+
+        return batch_counter
 
 
 class Timer(object):
@@ -256,16 +279,7 @@ class Counter(object):
         :param float sample_rate: What rate this counter is sampled at. [0-1].
 
         """
-        parts = [
-            self.name + (":{:g}".format(delta).encode()),
-            b"c",
-        ]
-
-        if sample_rate and sample_rate != 1.0:
-            parts.append("@{:g}".format(sample_rate).encode())
-
-        serialized = b"|".join(parts)
-        self.transport.send(serialized)
+        self.send(delta, sample_rate)
 
     def decrement(self, delta=1, sample_rate=1.0):
         """Decrement the counter.
@@ -274,6 +288,70 @@ class Counter(object):
 
         """
         self.increment(delta=-delta, sample_rate=sample_rate)
+
+    def send(self, delta, sample_rate):
+        """Send the counter to the backend.
+
+        :param float delta: The amount to increase the counter by.
+        :param float sample_rate: What rate this counter is sampled at. [0-1].
+
+        """
+        parts = [
+            self.name + (":{:g}".format(delta).encode()),
+            b"c",
+        ]
+
+        if sample_rate != 1.0:
+            parts.append("@{:g}".format(sample_rate).encode())
+
+        serialized = b"|".join(parts)
+        self.transport.send(serialized)
+
+
+class BatchCounter(Counter):
+    """Counter implementation that batches multiple increment calls.
+
+    A new entry in the :term:`packets` entry is created for each sample rate.
+    For example, if a counter is incremented multiple times with a sample
+    rate of 1.0, there will be one entry in :term:`packets`. If that counter
+    is implemented again with a sample rate of 0.5, there will be two entries
+    in :term:`packets`. Each packet has an associated delta value.
+
+    Example usage::
+        counter = BatchCounter(transport, "counter_name")
+        counter.increment()
+        do_something_else()
+        counter.increment()
+        counter.send()
+
+    The above example results in one packet indicating an increase of two
+    should be applied to "counter_name".
+    """
+    def __init__(self, transport, name):
+        self.transport = transport
+        self.name = name
+        self.packets = defaultdict(int)
+
+    def increment(self, delta=1, sample_rate=1.0):
+        """Increment the counter.
+
+        :param float delta: The amount to increase the counter by.
+        :param float sample_rate: What rate this counter is sampled at. [0-1].
+
+        """
+        self.packets[sample_rate] += delta
+
+    def decrement(self, delta=1, sample_rate=1.0):
+        """Decrement the counter.
+
+        This is equivalent to :py:meth:`increment` with delta negated.
+
+        """
+        self.increment(delta=-delta, sample_rate=sample_rate)
+
+    def send(self):
+        for sample_rate, delta in self.packets.items():
+            super(BatchCounter, self).send(delta, sample_rate)
 
 
 class Histogram(object):
