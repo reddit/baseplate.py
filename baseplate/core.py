@@ -592,8 +592,8 @@ class Baseplate(object):
         if not isinstance(tracing_client, TracingClient):
             warn_deprecated("Passing tracing configuration directly to "
                             "configure_tracing is deprecated in favor of "
-                            "using baseplate.make_tracing_client and passing "
-                            "the constructed client on.")
+                            "using baseplate.tracing_client_from_config and "
+                            "passing the constructed client on.")
             tracing_client = make_client(tracing_client, *args, **kwargs)
 
         self.register(TraceBaseplateObserver(tracing_client))

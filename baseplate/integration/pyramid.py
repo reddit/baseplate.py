@@ -20,11 +20,11 @@ An abbreviated example of it in use::
 .. warning::
 
     Because of how Baseplate instruments Pyramid, you should not make an
-    `exception view`_ that handles the base :py:exc:`Exception` as this will
-    prevent Baseplate from seeing the unhandled error and reporting it
-    appropriately.
+    `exception view`_ prevent Baseplate from seeing the unhandled error and
+    reporting it appropriately.
 
-    .. _exception view: https://docs.pylonsproject.org/projects/pyramid_cookbook/en/latest/pylons/exceptions.html#exception-views  # noqa: E501
+    .. _exception view: https://docs.pylonsproject.org/projects/pyramid_cookbook/\
+       en/latest/pylons/exceptions.html#exception-views
 
 """
 
@@ -214,7 +214,10 @@ def pshell_setup(env):
         [pshell]
         setup = baseplate.integration.pyramid:pshell_setup
 
-    See http://docs.pylonsproject.org/projects/pyramid/en/latest/narr/commandline.html#extending-the-shell  # noqa: E501
+    See the `Pyramid documentation`_.
+
+    .. _Pyramid documentation: http://docs.pylonsproject.org/projects/pyramid/en/latest/\
+       narr/commandline.html#extending-the-shell
 
     """
     env["request"].start_server_span("shell")
