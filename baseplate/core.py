@@ -237,6 +237,7 @@ _User = collections.namedtuple(
 _OAuthClient = collections.namedtuple(
     "_OAuthClient", ["authentication_token"])
 Session = collections.namedtuple("Session", ["id"])
+_Service = collections.namedtuple("_Service", ["authentication_token"])
 
 
 class User(_User):
@@ -356,6 +357,27 @@ class OAuthClient(_OAuthClient):
         return {
             "oauth_client_id": oauth_client_id,
         }
+
+
+class Service(_Service):
+    """Wrapper for the Service values in AuthenticationToken."""
+
+    @property
+    def name(self):
+        """Authenticated Service name.
+
+        :type: name string or None if context authentication is invalid
+        :raises: :py:class:`NoAuthenticationError` if there was no
+            authentication token, it was invalid, or the subject is not a
+            servce.
+
+        """
+        subject = self.authentication_token.subject
+        if not (subject and subject.startswith("service/")):
+            raise NoAuthenticationError
+
+        name = subject[len("service/"):]
+        return name
 
 
 class EdgeRequestContextFactory(object):
@@ -505,6 +527,11 @@ class EdgeRequestContext(object):
     def session(self):
         """:py:class:`~baseplate.core.Session` object for the current context"""
         return Session(id=self._t_request.session.id)
+
+    @cached_property
+    def service(self):
+        """:py:class:`~baseplate.core.Service` object for the current context"""
+        return Service(self.authentication_token)
 
     @cached_property
     def _t_request(self):  # pylint: disable=method-hidden
