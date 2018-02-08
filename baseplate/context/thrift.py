@@ -51,7 +51,7 @@ def _enumerate_service_methods(client):
 
     # python3 drops the concept of unbound methods, so they're just plain
     # functions and we have to account for that here. see:
-    # https://stackoverflow.com/questions/17019949/why-is-there-a-difference-between-inspect-ismethod-and-inspect-isfunction-from-p
+    # https://stackoverflow.com/questions/17019949/why-is-there-a-difference-between-inspect-ismethod-and-inspect-isfunction-from-p  # noqa: E501
     predicate = lambda x: inspect.isfunction(x) or inspect.ismethod(x)
 
     for base_cls in inspect.getmro(client):

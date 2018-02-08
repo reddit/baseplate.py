@@ -119,7 +119,9 @@ class PublisherTests(unittest.TestCase):
         headers = kwargs.get("headers", {})
         self.assertEqual(args[0], "https://test.local/v1")
         self.assertEqual(headers["Content-Type"], "application/json")
-        self.assertEqual(headers["X-Signature"], "key=TestKey, mac=7c46d56b99cd4cb05e08238c1d4c10a2f330795e9d7327f17cc66fd206bf1179")
+        self.assertEqual(
+            headers["X-Signature"],
+            "key=TestKey, mac=7c46d56b99cd4cb05e08238c1d4c10a2f330795e9d7327f17cc66fd206bf1179")
 
     @mock.patch("time.sleep")
     def test_publish_retry(self, mock_sleep):

@@ -25,7 +25,8 @@ extensions = [
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.4", "intersphinx/python.inv"),
-    "pyramid": ("http://docs.pylonsproject.org/projects/pyramid/en/1.5-branch", "intersphinx/pyramid.inv"),
+    "pyramid": ("http://docs.pylonsproject.org/projects/pyramid/en/1.5-branch",
+                "intersphinx/pyramid.inv"),
     "cassandra": ("https://datastax.github.io/python-driver/", "intersphinx/cassandra.inv"),
     "pymemcache": ("https://pymemcache.readthedocs.io/en/latest/", "intersphinx/pymemcache.inv"),
     "redis": ("https://redis-py.readthedocs.org/en/latest/", "intersphinx/redis.inv"),

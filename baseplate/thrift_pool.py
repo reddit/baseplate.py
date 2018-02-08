@@ -121,7 +121,8 @@ class ThriftConnectionPool(object):
 
     """
     # pylint: disable=too-many-arguments
-    def __init__(self, endpoint, size=10, max_age=120, timeout=1, max_retries=3, protocol_factory=THeaderProtocol.THeaderProtocol):
+    def __init__(self, endpoint, size=10, max_age=120, timeout=1, max_retries=3,
+                 protocol_factory=THeaderProtocol.THeaderProtocol):
         self.endpoint = endpoint
         self.max_age = max_age
         self.retry_policy = RetryPolicy.new(attempts=max_retries)
