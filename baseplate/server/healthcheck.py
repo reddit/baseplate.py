@@ -7,10 +7,10 @@ from __future__ import unicode_literals
 import argparse
 import socket
 import sys
-import urllib
 
 import requests
 
+from baseplate._compat import quote
 from baseplate.config import Endpoint
 from baseplate.requests import add_unix_socket_support
 from baseplate.thrift import BaseplateService
@@ -32,7 +32,7 @@ def check_http_service(endpoint):
         url = "http://{host}:{port}/health".format(
             host=endpoint.address.host, port=endpoint.address.port)
     elif endpoint.family == socket.AF_UNIX:
-        quoted_path = urllib.quote(endpoint.address, safe="")
+        quoted_path = quote(endpoint.address, safe="")
         url = "http+unix://{path}/health".format(path=quoted_path)
     else:
         raise ValueError("unrecognized socket family %r" % endpoint.family)
