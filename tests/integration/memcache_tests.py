@@ -11,8 +11,8 @@ try:
 except ImportError:
     raise unittest.SkipTest("pymemcache is not installed")
 
-from baseplate.context.memcache import MemcacheContextFactory
-from baseplate.core import Baseplate
+from baseplate.context.memcache import MemcacheContextFactory, MonitoredMemcacheConnection
+from baseplate.core import Baseplate, LocalSpan, ServerSpan
 
 from . import TestBaseplateObserver, skip_if_server_unavailable
 from .. import mock
@@ -57,3 +57,119 @@ class MemcacheIntegrationTests(unittest.TestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNotNone(span_observer.on_finish_exc_info)
+
+
+
+class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
+    def setUp(self):
+        self.mocked_pool = mock.Mock(server=("localhost", 11211))
+        self.context_name = "memcache"
+        self.server_span = mock.MagicMock(spec_set=ServerSpan)
+        self.local_span = mock.MagicMock(spec_set=LocalSpan)
+        self.local_span.__enter__.return_value = self.local_span
+        self.server_span.make_child.return_value = self.local_span
+        self.connection = MonitoredMemcacheConnection(
+            self.context_name, self.server_span, self.mocked_pool)
+
+        self.key = b"key"
+        self.value = b"value"
+        self.expire = 0
+        self.noreply = False
+
+    def test_close(self):
+        self.connection.close()
+        self.mocked_pool.close.assert_called_with()
+        self.assertEqual(self.local_span.set_tag.call_count, 1)
+
+    def test_set(self):
+        self.connection.set(self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.mocked_pool.set.assert_called_with(
+            self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 4)
+
+    def test_replace(self):
+        self.connection.replace(self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.mocked_pool.replace.assert_called_with(
+            self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 4)
+
+    def test_append(self):
+        self.connection.append(self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.mocked_pool.append.assert_called_with(
+            self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 4)
+
+    def test_prepend(self):
+        self.connection.prepend(self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.mocked_pool.prepend.assert_called_with(
+            self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 4)
+
+    def test_cas(self):
+        cas = b"cascas"
+        self.connection.cas(self.key, self.value, cas, expire=self.expire, noreply=self.noreply)
+        self.mocked_pool.cas.assert_called_with(
+            self.key, self.value, cas, expire=self.expire, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 5)
+
+    def test_get(self):
+        self.connection.get(self.key)
+        self.mocked_pool.get.assert_called_with(self.key)
+        self.assertEqual(self.local_span.set_tag.call_count, 2)
+
+    def test_gets(self):
+        self.connection.gets(self.key)
+        self.mocked_pool.gets.assert_called_with(self.key)
+        self.assertEqual(self.local_span.set_tag.call_count, 2)
+
+    def test_gets_many(self):
+        keys = [b"key1", b"key2"]
+        self.connection.gets_many(keys)
+        self.mocked_pool.gets_many.assert_called_with(keys)
+        self.assertEqual(self.local_span.set_tag.call_count, 3)
+
+    def test_delete(self):
+        self.connection.delete(self.key, noreply=self.noreply)
+        self.mocked_pool.delete.assert_called_with(self.key, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 3)
+
+    def test_delete_many(self):
+        keys = [b"key1", b"key2"]
+        self.connection.delete_many(keys, noreply=self.noreply)
+        self.mocked_pool.delete_many.assert_called_with(keys, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 4)
+
+    def test_add(self):
+        self.connection.add(self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.mocked_pool.add.assert_called_with(
+            self.key, self.value, expire=self.expire, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 4)
+
+    def test_incr(self):
+        value = 1
+        self.connection.incr(self.key, value, noreply=self.noreply)
+        self.mocked_pool.incr.assert_called_with( self.key, value, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 3)
+
+    def test_decr(self):
+        value = 1
+        self.connection.decr(self.key, value, noreply=self.noreply)
+        self.mocked_pool.decr.assert_called_with(self.key, value, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 3)
+
+    def test_touch(self):
+        self.connection.touch(self.key, expire=self.expire, noreply=self.noreply)
+        self.mocked_pool.touch.assert_called_with(
+            self.key, expire=self.expire, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 4)
+
+    def test_flush_all(self):
+        delay = 0
+        self.connection.flush_all(delay=delay, noreply=self.noreply)
+        self.mocked_pool.flush_all.assert_called_with(delay=delay, noreply=self.noreply)
+        self.assertEqual(self.local_span.set_tag.call_count, 3)
+
+    def test_quit(self):
+        self.connection.quit()
+        self.mocked_pool.quit.assert_called_with()
+        self.assertEqual(self.local_span.set_tag.call_count, 1)
