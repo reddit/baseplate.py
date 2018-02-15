@@ -21,20 +21,6 @@ def warn_deprecated(message):
     warnings.warn(message, DeprecationWarning, stacklevel=3)
 
 
-def to36(int_val):
-    """helper function to convert integers to base-36
-    """
-    alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
-    if int_val < 0:
-        raise ValueError
-    l = len(alphabet)
-    converted = []
-    while int_val != 0:
-        int_val, remainder = divmod(int_val, l)
-        converted.insert(0, alphabet[remainder])
-    return "".join(converted) or '0'
-
-
 # cached_property is a renamed copy of pyramid.decorator.reify
 # see debian/copyright for full license information
 class cached_property(object):

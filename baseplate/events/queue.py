@@ -170,6 +170,11 @@ def serialize_v2_event(event):
     return Serializer.serialize(_V2_PROTOCOL_FACTORY, event)
 
 
+class EventLogger(object):
+    def log(self, **kwargs):
+        pass
+
+
 class EventQueue(ContextFactory):
     """A queue to transfer events to the publisher.
 

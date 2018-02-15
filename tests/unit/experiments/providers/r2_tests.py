@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 
 from baseplate._compat import iteritems, long, range
 from baseplate.core import ServerSpan
-from baseplate.events import EventQueue
+from baseplate.events import EventLogger
 from baseplate.experiments import ExperimentsContextFactory
 from baseplate.experiments.providers import ISO_DATE_FMT, parse_experiment
 from baseplate.experiments.providers.r2 import R2Experiment
@@ -443,9 +443,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
 
     def setUp(self):
         super(TestSimulatedR2Experiments, self).setUp()
-        self.event_queue = mock.Mock(spec=EventQueue)
+        self.event_logger = mock.Mock(spec=EventLogger)
         self.mock_filewatcher = mock.Mock(spec=FileWatcher)
-        self.factory = ExperimentsContextFactory("path", self.event_queue)
+        self.factory = ExperimentsContextFactory("path", self.event_logger)
         self.factory._filewatcher = self.mock_filewatcher
 
     def get_experiment_client(self, name):

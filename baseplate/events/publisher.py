@@ -192,12 +192,14 @@ class BatchPublisher(object):
                 response.raise_for_status()
             except requests.HTTPError as exc:
                 self.metrics.counter("error.http").increment()
-                logger.exception("HTTP Request failed")
 
                 # we should crash if it's our fault
                 response = getattr(exc, "response", None)
                 if response is not None and response.status_code < 500:
+                    logger.exception("HTTP Request failed. Error: {}".format(response.text))
                     raise
+                else:
+                    logger.exception("HTTP Request failed.")
             except IOError:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")

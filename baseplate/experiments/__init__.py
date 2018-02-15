@@ -9,9 +9,8 @@ import logging
 from .providers import parse_experiment
 from .. import config
 from ..context import ContextFactory
-from ..events import EventTooLargeError, EventQueueFullError
+from ..events import EventLogger
 from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
-from .._utils import to36
 
 
 logger = logging.getLogger(__name__)
@@ -23,7 +22,7 @@ class ExperimentsContextFactory(ContextFactory):
     This factory will attach a new :py:class:`baseplate.experiments.Experiments`
     to an attribute on the :term:`context object`.
     """
-    def __init__(self, path, event_queue, event_constructor=None):
+    def __init__(self, path, event_logger=None):
         """ExperimentContextFactory constructor
 
         :param str path: Path to the experiment config file.
@@ -33,17 +32,21 @@ class ExperimentsContextFactory(ContextFactory):
             configured to use baseplate.events.serialize_v2_event
         """
         self._filewatcher = FileWatcher(path, json.load)
-        self._event_queue = event_queue
-        self._event_constructor = event_constructor
+        self._event_logger = event_logger
 
-    def make_object_for_context(self, name, server_span):
+    def make_object_for_context(self, name, server_span, event_logger=None):
         return Experiments(
             config_watcher=self._filewatcher,
-            event_queue=self._event_queue,
             server_span=server_span,
             context_name=name,
-            event_constructor=self._event_constructor,
+            event_logger=self._event_logger
         )
+
+
+class V2DebugLogger(EventLogger):
+    def log(self, **kwargs):
+        inputs = dict(kwargs)
+        logger.debug("logger output: {}".format(inputs))
 
 
 class Experiments(object):
@@ -56,14 +59,16 @@ class Experiments(object):
     active variant.
     """
 
-    def __init__(self, config_watcher, event_queue, server_span, context_name, event_constructor=None):
+    def __init__(self, config_watcher, server_span, context_name, event_logger=None):
         self._config_watcher = config_watcher
-        self._event_queue = event_queue
         self._span = server_span
         self._context_name = context_name
         self._already_bucketed = set()
         self._experiment_cache = {}
-        self._event_constructor = event_constructor
+        if event_logger:
+            self._event_logger = event_logger
+        else:
+            self._event_logger = V2DebugLogger()
 
     def _get_config(self, name):
         try:
@@ -139,35 +144,20 @@ class Experiments(object):
         :return: Variant name if a variant is active, None otherwise.
         """
 
+        inputs = dict(kwargs)
         experiment = self._get_experiment(name)
 
         if experiment is None:
             return None
 
-        inputs = dict(kwargs)
-
-        """ clean up user id. If not a baseplate user, we risk inconsistency."""
         if user:
             if user.is_logged_in:
                 inputs["user_id"] = user.id
                 inputs["user_roles"] = user.roles
-                inputs["logged_in"] = user.is_logged_in
             else:
                 inputs["user_id"] = user.loid
-                inputs["logged_in"] = False
-
-        #loid is numeric. Convert it to a base-36 string; Ideally, this will
-        #   be fixed before the caller sends it in, but this will catch
-        if isinstance(inputs.get("user_id"), int):
-            if (inputs.get("user_id") < 0):
-                logger.warning("unable to bucket user with invalid user_id < 0")
-                return None
-            inputs["user_id"] = to36(inputs["user_id"])
-
-        # if it's not already a fullname, let's make it one (and strip leading
-        #    zeroes while we're at it. And lowercase it to be safe.)
-        if inputs.get("user_id") and not inputs["user_id"].startswith("t2_"):
-            inputs["user_id"] = "t2_" + inputs["user_id"].lstrip("0").lower()
+            inputs["logged_in"] = user.is_logged_in
+            inputs['cookie_created_timestamp'] = user.event_fields().get('cookie_created')
 
         span_name = "{}.{}".format(self._context_name, "variant")
         with self._span.make_child(span_name, local=True, component_name=name):
@@ -193,76 +183,18 @@ class Experiments(object):
 
         if do_log:
             assert bucketing_id
-            self._log_bucketing_event(experiment, variant, user,
-                                      inputs)
+            if self._event_logger:
+                self._event_logger.log(
+                    experiment=experiment,
+                    variant=variant,
+                    user_id=inputs.get('user_id'),
+                    logged_in=inputs.get('logged_in'),
+                    cookie_created_timestamp=inputs.get('cookie_created_timestamp'),
+                    app_name='r2'
+                )
             self._already_bucketed.add(bucketing_id)
 
         return variant
-
-    def _log_bucketing_event(self, experiment, variant, user, extra_event_fields):
-
-        """ Logs a v2 bucketing event.
-
-            :param dict experiment: An experiment config dict.
-            :param string variant: The variant bucketed into
-            :param baseplate.core.User user: The user being bucketed. If this
-                is not provided, it is expected that the extra_event_fields
-                dict will contain the following information:
-                - user_id - fullname
-                - logged_in - boolean
-                - cookie_created_timestamp - epoch ms
-                - created_timestamp - epoch ms
-            :param dict extra_event_fields: addtional fields to be added. For
-                now, this expects and will process only the set of
-                user-related fields specified in the user parameter.
-        """
-
-        if not self._event_queue or not self._event_constructor:
-            logger.warning("missing event queue or bucketing constructor")
-            return
-
-        event_context_fields = {}
-
-        user_fields = {}
-
-        if user:
-            user_fields['user_id'] = user.event_fields().get("user_id")
-            user_fields['logged_in'] = user.event_fields().get("user_logged_in")
-            user_fields['cookie_created_timestamp'] = user.event_fields().get("cookie_created")
-        else:
-            user_fields['user_id'] = extra_event_fields.get("user_id")
-            user_fields['logged_in'] = extra_event_fields.get("logged_in")
-            user_fields['cookie_created_timestamp'] = extra_event_fields.get("cookie_created_timestamp")
-            user_fields['created_timestamp'] = extra_event_fields.get("created_timestamp")
-
-        event_context_fields['user'] = user_fields
-
-        experiment_fields = {}
-        experiment_fields['variant'] = variant
-        experiment_fields['id'] = getattr(experiment, "id", None)
-        experiment_fields['name'] = getattr(experiment, "name", None)
-        experiment_fields['owner'] = getattr(experiment, "owner", None)
-        experiment_fields['version'] = getattr(experiment, "version", None)
-
-        event_context_fields['experiment'] = experiment_fields
-
-        event = self._event_constructor(event_context_fields)
-
-        span_name = "{}.{}".format(self._context_name, "events")
-        with self._span.make_child(span_name) as child_span:
-            try:
-                serialized = self._event_queue.put(event)
-                print(serialized)
-            except EventTooLargeError as exc:
-                logger.warning(
-                    "The event payload was too large for the event queue."
-                )
-                child_span.set_tag("error", True)
-                child_span.log("error.object", exc)
-            except EventQueueFullError as exc:
-                logger.warning("The event queue is full.")
-                child_span.set_tag("error", True)
-                child_span.log("error.object", exc)
 
 
 def experiments_client_from_config(app_config, event_queue):
