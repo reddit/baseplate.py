@@ -9,7 +9,7 @@ import unittest
 from datetime import timedelta
 
 from baseplate.core import ServerSpan, User, AuthenticationToken
-from baseplate.events import EventQueue, EventLogger
+from baseplate.events import DebugLogger
 from baseplate.experiments import (
     Experiments,
     ExperimentsContextFactory,
@@ -26,7 +26,7 @@ class TestExperiments(unittest.TestCase):
 
     def setUp(self):
         super(TestExperiments, self).setUp()
-        self.event_logger = mock.Mock(spec=EventLogger)
+        self.event_logger = mock.Mock(spec=DebugLogger)
         self.mock_filewatcher = mock.Mock(spec=FileWatcher)
         self.mock_span = mock.MagicMock(spec=ServerSpan)
         self.mock_span.context = None
@@ -74,7 +74,7 @@ class TestExperiments(unittest.TestCase):
             return_value="active",
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
-            experiments.variant("test", user=self.user)
+            experiments.variant("test", user=self.user, app_name="r2")
             self.assertEqual(self.event_logger.log.call_count, 1)
         event_fields = self.event_logger.log.call_args[1]
         
@@ -122,7 +122,7 @@ class TestExperiments(unittest.TestCase):
             return_value="active",
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
-            experiments.variant("test", user_id="t2_2", logged_in=True)
+            experiments.variant("test", user_id="t2_2", app_name="r2", logged_in=True)
             self.assertEqual(self.event_logger.log.call_count, 1)
         event_fields = self.event_logger.log.call_args[1]
         
@@ -393,7 +393,7 @@ class TestExperiments(unittest.TestCase):
 
 class ExperimentsClientFromConfigTests(unittest.TestCase):
     def test_make_clients(self):
-        event_queue = mock.Mock(spec=EventQueue)
+        event_queue = mock.Mock(spec=DebugLogger)
         experiments = experiments_client_from_config({
             "experiments.path": "/tmp/test",
         }, event_queue)

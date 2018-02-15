@@ -9,7 +9,7 @@ import logging
 from .providers import parse_experiment
 from .. import config
 from ..context import ContextFactory
-from ..events import EventLogger
+from ..events import DebugLogger
 from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
 
 
@@ -26,27 +26,20 @@ class ExperimentsContextFactory(ContextFactory):
         """ExperimentContextFactory constructor
 
         :param str path: Path to the experiment config file.
-        :param baseplate.events.EventQueue event_queue: Event queue used for
-            logging bucketing events to the event pipeline.  You can set this
-            to None to disable bucketing events entirely. This queue should be
-            configured to use baseplate.events.serialize_v2_event
+        :param baseplate.events.EventLogger event_logger: The logger to use
+            to log experiment eligibility events. If not provided, a
+            baseplate.events.DebugLogger will be created and used.
         """
         self._filewatcher = FileWatcher(path, json.load)
         self._event_logger = event_logger
 
-    def make_object_for_context(self, name, server_span, event_logger=None):
+    def make_object_for_context(self, name, server_span):
         return Experiments(
             config_watcher=self._filewatcher,
             server_span=server_span,
             context_name=name,
-            event_logger=self._event_logger
+            event_logger=self._event_logger,
         )
-
-
-class V2DebugLogger(EventLogger):
-    def log(self, **kwargs):
-        inputs = dict(kwargs)
-        logger.debug("logger output: {}".format(inputs))
 
 
 class Experiments(object):
@@ -68,7 +61,7 @@ class Experiments(object):
         if event_logger:
             self._event_logger = event_logger
         else:
-            self._event_logger = V2DebugLogger()
+            self._event_logger = DebugLogger()
 
     def _get_config(self, name):
         try:
@@ -144,11 +137,12 @@ class Experiments(object):
         :return: Variant name if a variant is active, None otherwise.
         """
 
-        inputs = dict(kwargs)
         experiment = self._get_experiment(name)
 
         if experiment is None:
             return None
+
+        inputs = dict(kwargs)
 
         if user:
             if user.is_logged_in:
@@ -183,15 +177,14 @@ class Experiments(object):
 
         if do_log:
             assert bucketing_id
-            if self._event_logger:
-                self._event_logger.log(
-                    experiment=experiment,
-                    variant=variant,
-                    user_id=inputs.get('user_id'),
-                    logged_in=inputs.get('logged_in'),
-                    cookie_created_timestamp=inputs.get('cookie_created_timestamp'),
-                    app_name='r2'
-                )
+            self._event_logger.log(
+                experiment=experiment,
+                variant=variant,
+                user_id=inputs.get('user_id'),
+                logged_in=inputs.get('logged_in'),
+                cookie_created_timestamp=inputs.get('cookie_created_timestamp'),
+                app_name=inputs.get('app_name'),
+            )
             self._already_bucketed.add(bucketing_id)
 
         return variant

@@ -7,6 +7,7 @@ MAX_EVENT_SIZE = 102400
 MAX_QUEUE_SIZE = 10000
 
 from .queue import (
+    DebugLogger,
     Event,
     EventError,
     EventQueue,
@@ -19,6 +20,7 @@ from .queue import (
 )
 
 __all__ = [
+    "DebugLogger",
     "Event",
     "EventError",
     "EventQueue",
