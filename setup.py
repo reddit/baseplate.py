@@ -89,6 +89,7 @@ setup(
     scripts=[
         "bin/baseplate-serve{:d}".format(sys.version_info.major),
         "bin/baseplate-script{:d}".format(sys.version_info.major),
+        "bin/baseplate-shell",
     ],
 
     # the thrift compiler must be able to find baseplate.thrift to build
