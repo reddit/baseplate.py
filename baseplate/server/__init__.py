@@ -267,8 +267,4 @@ def load_and_run_tshell():
             (py_prefix, sys.version)
         banner = newbanner + banner
         shell = code.InteractiveConsole(locals=env)
-        try:
-            import readline
-        except ImportError:
-            pass
         shell.interact(banner)
