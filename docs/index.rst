@@ -37,6 +37,7 @@ separately from the rest of Baseplate.
    baseplate.experiments: Experiments framework <baseplate/experiments/index>
    baseplate.file_watcher: Read files from disk as they change <baseplate/file_watcher>
    baseplate.live_data: Tools for centralized data that updates near instantly <baseplate/live_data>
+   baseplate.lock: Locks in memcached or redis <baseplate/lock>
    baseplate.message_queue: POSIX IPC Message Queues <baseplate/message_queue>
    baseplate.metrics: Counters, timers, gauges, and histograms for statsd <baseplate/metrics>
    baseplate.random: Extensions to the standard library's random module <baseplate/random>
