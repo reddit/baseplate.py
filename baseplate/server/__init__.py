@@ -263,7 +263,7 @@ def load_and_run_tshell():
     except ImportError:
         import code
         py_prefix = sys.platform.startswith('java') and 'J' or 'P'
-        newbanner = "Pylons Interactive Shell\n%sython %s\n\n" % \
+        newbanner = "Baseplate Interactive Shell\n%sython %s\n\n" % \
             (py_prefix, sys.version)
         banner = newbanner + banner
         shell = code.InteractiveConsole(locals=env)
