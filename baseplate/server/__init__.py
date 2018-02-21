@@ -23,6 +23,7 @@ import warnings
 from . import einhorn, reloader
 from .._compat import configparser
 from ..config import Endpoint
+from ..integration.thrift import RequestContext
 
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ def parse_args(args):
 
 
 Configuration = collections.namedtuple(
-    "Configuration", ["filename", "server", "app", "has_logging_options"])
+    "Configuration", ["filename", "server", "app", "has_logging_options", "tshell"])
 
 
 def read_config(config_file, server_name, app_name):
@@ -66,12 +67,16 @@ def read_config(config_file, server_name, app_name):
                      if server_name else None)
     app_config = dict(parser.items("app:" + app_name))
     has_logging_config = parser.has_section("loggers")
+    tshell_config = None
+    if parser.has_section("tshell"):
+        tshell_config = dict(parser.items("tshell"))
 
     return Configuration(
         filename,
         server_config,
         app_config,
         has_logging_config,
+        tshell_config,
     )
 
 
@@ -197,3 +202,56 @@ def load_and_run_script():
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
     args.entrypoint(config.app)
+
+
+def load_and_run_tshell():
+    """Launch a shell for a thrift service."""
+    parser = argparse.ArgumentParser(
+        description="Open a shell for a Thrift service with app configuration loaded.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    parser.add_argument("--debug", action="store_true", default=False,
+        help="enable extra-verbose debug logging")
+    parser.add_argument("--app-name", default="main", metavar="NAME",
+        help="name of app to load from config_file (default: main)")
+    parser.add_argument("config_file", type=argparse.FileType("r"),
+        help="path to a configuration file")
+
+    args = parser.parse_args(sys.argv[1:])
+    config = read_config(args.config_file, server_name=None, app_name=args.app_name)
+    logging.basicConfig(level=logging.INFO)
+
+    env = dict()
+    env_banner = {
+        'app': "This project's app instance",
+        'context': "The context for this shell instance's span",
+    }
+
+    app = make_app(config.app)
+    env['app'] = app
+
+    baseplate = app._event_handler.baseplate
+    span = baseplate.make_server_span(RequestContext(), 'shell')
+    env['context'] = span.context
+
+    if config.tshell and 'setup' in config.tshell:
+        setup = _load_factory(config.tshell['setup'])
+        setup(env, env_banner)
+
+    # generate banner text
+    banner = "Available Objects:\n"
+    for var in sorted(env_banner.keys()):
+        banner += '\n  %-12s %s' % (var, env_banner[var])
+
+    try:
+        # try to use IPython if possible
+        from IPython.terminal.embed import InteractiveShellEmbed
+        shell = InteractiveShellEmbed(banner2=banner)
+        shell(local_ns=env, global_ns={})
+    except ImportError:
+        import code
+        newbanner = "Baseplate Interactive Shell\nPython {}\n\n".format(sys.version)
+        banner = newbanner + banner
+        shell = code.InteractiveConsole(locals=env)
+        shell.interact(banner)

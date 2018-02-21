@@ -57,6 +57,11 @@ in production and development.
    baseplate-healthcheck: Is your service alive? <cli/healthcheck>
    baseplate-serve: The application server <cli/serve>
    baseplate-script: Run backend scripts <cli/script>
+   baseplate-tshell: Begin an interactive shell for a Thrift service <cli/tshell>
+
+HTTP services can use Pyramid's pshell_ in order to get an interactive shell.
+
+.. _pshell: https://docs.pylonsproject.org/projects/pyramid/en/latest/pscripts/pshell.html
 
 Appendix
 --------
