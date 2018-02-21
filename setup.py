@@ -12,6 +12,7 @@ install_requires = [
     "requests",
     "posix_ipc",
     "pyjwt",
+    "python3-tz",
 ]
 
 tests_require = [
@@ -23,6 +24,7 @@ tests_require = [
 if not PY3:
     tests_require.append("mock")
     install_requires.append("enum34")
+    install_requires.append("python-tz")
 
 extras_require = {
     "gevent": [

@@ -34,6 +34,7 @@ class baseplate {
     'python3-requests',
     'python3-setuptools',
     'python3-sqlalchemy',
+    'python3-tz',
     'python3-webtest',
     'python-coverage',
     'python-cqlmapper',
@@ -50,6 +51,7 @@ class baseplate {
     'python-requests',
     'python-setuptools',
     'python-sqlalchemy',
+    'python-tz',
     'python-webtest',
 
     # sphinx
