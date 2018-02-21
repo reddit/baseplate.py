@@ -64,7 +64,6 @@ class TestFeatureFlag(unittest.TestCase):
         }
         experiments = Experiments(
             config_watcher=filewatcher,
-            event_queue=event_queue,
             server_span=span,
             context_name="test",
         )

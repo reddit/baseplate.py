@@ -7,22 +7,26 @@ MAX_EVENT_SIZE = 102400
 MAX_QUEUE_SIZE = 10000
 
 from .queue import (
+    DebugLogger,
     Event,
     EventError,
     EventQueue,
     EventQueueFullError,
     EventTooLargeError,
+    EventLogger,
     FieldKind,
     serialize_v1_event,
     serialize_v2_event,
 )
 
 __all__ = [
+    "DebugLogger",
     "Event",
     "EventError",
     "EventQueue",
     "EventQueueFullError",
     "EventTooLargeError",
+    "EventLogger",
     "FieldKind",
     "serialize_v1_event",
     "serialize_v2_event",
