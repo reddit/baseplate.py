@@ -63,6 +63,9 @@ class CassandraTests(unittest.TestCase):
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
         span_observer.assert_tag("statement", "SELECT * FROM system.local;")
+        span_observer.assert_tag("type", "select")
+        span_observer.assert_tag("keyspace", "system")
+        span_observer.assert_tag("table", "local")
 
     def test_error_in_query(self):
         with self.server_span:
@@ -88,6 +91,8 @@ class CassandraTests(unittest.TestCase):
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
         span_observer.assert_tag("statement", "SELECT * FROM system.local;")
+        span_observer.assert_tag("keyspace", "system")
+        span_observer.assert_tag("table", "local")
 
     def test_properties(self):
         with self.server_span:
