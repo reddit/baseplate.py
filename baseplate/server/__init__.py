@@ -67,7 +67,7 @@ def read_config(config_file, server_name, app_name):
                      if server_name else None)
     app_config = dict(parser.items("app:" + app_name))
     has_logging_config = parser.has_section("loggers")
-    tshell_config = dict()
+    tshell_config = None
     if parser.has_section("tshell"):
         tshell_config = dict(parser.items("tshell"))
 
@@ -220,7 +220,7 @@ def load_and_run_tshell():
 
     args = parser.parse_args(sys.argv[1:])
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
-    configure_logging(config, args.debug)
+    logging.basicConfig(level=logging.INFO)
 
     env = dict()
     env_banner = {
@@ -235,7 +235,7 @@ def load_and_run_tshell():
     span = baseplate.make_server_span(RequestContext(), 'shell')
     env['context'] = span.context
 
-    if 'setup' in config.tshell:
+    if config.tshell and 'setup' in config.tshell:
         setup = _load_factory(config.tshell['setup'])
         setup(env, env_banner)
 
@@ -246,25 +246,12 @@ def load_and_run_tshell():
 
     try:
         # try to use IPython if possible
-        try:
-            try:
-                # 1.0 <= ipython
-                from IPython.terminal.embed import InteractiveShellEmbed
-            except ImportError:
-                # 0.11 <= ipython < 1.0
-                from IPython.frontend.terminal.embed import InteractiveShellEmbed
-            shell = InteractiveShellEmbed(banner2=banner)
-        except ImportError:
-            # ipython < 0.11
-            from IPython.Shell import IPShellEmbed
-            shell = IPShellEmbed(argv=args)
-            shell.set_banner(shell.IP.BANNER + '\n\n' + banner)
+        from IPython.terminal.embed import InteractiveShellEmbed
+        shell = InteractiveShellEmbed(banner2=banner)
         shell(local_ns=env, global_ns={})
     except ImportError:
         import code
-        py_prefix = sys.platform.startswith('java') and 'J' or 'P'
-        newbanner = "Baseplate Interactive Shell\n%sython %s\n\n" % \
-            (py_prefix, sys.version)
+        newbanner = "Baseplate Interactive Shell\nPython {}\n\n".format(sys.version)
         banner = newbanner + banner
         shell = code.InteractiveConsole(locals=env)
         shell.interact(banner)
