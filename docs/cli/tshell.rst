@@ -14,9 +14,9 @@ This command requires the path to an INI-format configuration file to run.
 Just like with ``baseplate-serve``, the ``app:main`` section will be loaded by
 default. This can be overridden with the ``--app-name`` option.
 
-By default, the shell will have variables containing the app and the context
-exposed. Additional variables can be exposed by providing a ``setup`` function
-in the ``tshell`` section of the configuration file.
+By default, the shell will have variables containing the application and the
+context exposed. Additional variables can be exposed by providing a ``setup``
+function in the ``tshell`` section of the configuration file.
 
 Example
 -------
