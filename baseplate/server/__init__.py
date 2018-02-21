@@ -207,7 +207,7 @@ def load_and_run_script():
 def load_and_run_tshell():
     """Launch a shell for a thrift service."""
     parser = argparse.ArgumentParser(
-        description="Open a shell with app configuration loaded.",
+        description="Open a shell for a Thrift service with app configuration loaded.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 

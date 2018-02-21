@@ -1,10 +1,14 @@
 ``baseplate-tshell``
 ====================
 
-This command allows you to run an interactive Python shell with the application
-config and context loaded. The command is ``baseplate-tshell2`` or
-``baseplate-tshell3`` depending on which version of Python you would like to
-use.
+This command allows you to run an interactive Python shell for a Thrift service
+with the application config and context loaded. The command is
+``baseplate-tshell2`` or ``baseplate-tshell3`` depending on which version of
+Python you would like to use.
+
+HTTP services can use Pyramid's pshell_ in order to get an interactive shell.
+
+.. _pshell: https://docs.pylonsproject.org/projects/pyramid/en/latest/pscripts/pshell.html
 
 Command Line
 ------------
