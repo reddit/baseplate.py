@@ -39,6 +39,7 @@ before_install:
             python3-hvac \
             python3-jwt \
             python3-kazoo \
+            python3-kombu \
             python3-nose \
             python3-posix-ipc \
             python3-pymemcache \
@@ -58,6 +59,7 @@ before_install:
             python-hvac \
             python-jwt \
             python-kazoo \
+            python-kombu \
             python-mock \
             python-nose \
             python-posix-ipc \
