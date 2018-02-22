@@ -3,9 +3,9 @@
 
 .. automodule:: baseplate.ratelimit
 
-Assuming your project uses MemcacheContextFactory to attach a pymemcache client
-to the context object (or the request object for HTTP projects), you can
-increment a rate limit counter like::
+Assuming your project uses MemcacheContextFactory or RedisContextFactor to
+attach a cache client to the context object (or the request object for HTTP
+projects), you can increment a rate limit counter like::
 
     from baseplate import ratelimit
 
