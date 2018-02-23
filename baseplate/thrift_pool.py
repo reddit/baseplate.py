@@ -26,7 +26,7 @@ import time
 
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException
+from thrift.Thrift import TApplicationException, TException
 from thrift.transport import TSocket
 from thrift.transport.TTransport import TTransportException
 
@@ -193,28 +193,36 @@ class ThriftConnectionPool(object):
         """
         prot = self._acquire()
         try:
-            yield prot
+            try:
+                yield prot
+            except socket.timeout:
+                # thrift doesn't re-wrap socket timeout errors appropriately so
+                # we'll do it here for a saner exception hierarchy
+                raise TTransportException(
+                    type=TTransportException.TIMED_OUT,
+                    message="timed out interacting with socket",
+                )
+            except socket.error as exc:
+                raise TTransportException(
+                    type=TTransportException.UNKNOWN,
+                    message=str(exc),
+                )
         except (TApplicationException, TProtocolException, TTransportException):
             # these exceptions usually indicate something low-level went wrong,
             # so it's safest to just close this connection because we don't
-            # know what state it's in. the only other TException-derived errors
-            # should be application level errors which should be safe for the
+            # know what state it's in.
+            prot.trans.close()
+            raise
+        except TException as exc:
+            # the only other TException-derived errors are application level
+            # (expected) errors which should be safe for the connection.
+            # don't close the transport here!
+            raise
+        except:
+            # anything else coming out of thrift usually means parsing failed
+            # or something nastier. we'll just play it safe and close the
             # connection.
             prot.trans.close()
             raise
-        except socket.timeout:
-            # thrift doesn't re-wrap socket timeout errors appropriately so
-            # we'll do it here for a saner exception hierarchy
-            prot.trans.close()
-            raise TTransportException(
-                type=TTransportException.TIMED_OUT,
-                message="timed out interacting with socket",
-            )
-        except socket.error as exc:
-            prot.trans.close()
-            raise TTransportException(
-                type=TTransportException.UNKNOWN,
-                message=str(exc),
-            )
         finally:
             self._release(prot)
