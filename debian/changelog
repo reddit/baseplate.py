@@ -1,3 +1,16 @@
+baseplate (0.25.0) trusty; urgency=medium
+
+  * add new baseplate-tshell
+  * add failure counters to server spans
+  * fix crash when metrics packet too large
+  * add hints to message queue exception messages
+  * make experiment event logging pluggable
+  * add service property to edge request context
+  * fix unix domain socket healthcheck in python 3
+  * don't return crashed connections to thrift pool
+
+ -- Neil Williams <neil@reddit.com>  Tue, 27 Feb 2018 11:23:06 -0800
+
 baseplate (0.24.1) trusty; urgency=medium
 
   * Fix configparser referencing issue with Kubernetes auth
