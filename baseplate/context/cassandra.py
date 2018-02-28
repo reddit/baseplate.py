@@ -3,6 +3,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import re
+import six
+
 from cassandra.cluster import Cluster, _NOT_SET
 from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
 
@@ -130,9 +133,8 @@ class CassandraSessionAdapter(object):
 
     def execute_async(self, query, parameters=None, timeout=_NOT_SET):
         trace_name = "{}.{}".format(self.context_name, "execute")
-        span = self.server_span.make_child(trace_name)
+        span = self._get_span(trace_name, query)
         span.start()
-        # TODO: include custom payload
         if isinstance(query, string_types):
             span.set_tag("statement", query)
         elif isinstance(query, (SimpleStatement, PreparedStatement)):
@@ -150,6 +152,71 @@ class CassandraSessionAdapter(object):
 
     def prepare(self, query):
         trace_name = "{}.{}".format(self.context_name, "prepare")
-        with self.server_span.make_child(trace_name) as span:
-            span.set_tag("statement", query)
+        with self._get_span(trace_name, query):
             return self.session.prepare(query)
+
+    def _get_span(self, trace_name, query):
+        """Get trace span for query.
+
+        Metadata from the passed query is extracted and the created span is
+        tagged accordingly.
+
+        """
+        span = self.server_span.make_child(trace_name)
+        cql_str = None
+        if isinstance(query, string_types):
+            cql_str = query
+        elif isinstance(query, (SimpleStatement, PreparedStatement)):
+            cql_str = query.query_string
+        elif isinstance(query, BoundStatement):
+            cql_str = query.prepared_statement.query_string
+
+        # TODO: include custom payload
+        span.set_tag("statement", cql_str)
+        for key, value in CQLMetadataExtractor.extract(cql_str).items():
+            span.set_tag(key, value)
+
+        return span
+
+
+class CQLMetadataExtractor(object):
+    """Extract metadata from CQL statements.
+
+    """
+    _KEYSPACE_REGEX = r"((?P<kquote>[\"])|)(?P<keyspace>(?(kquote).{1,48}|[a-zA-Z_0-9]{1,48}))(?(kquote)\"|)(?(keyspace)\.|)"  # noqa
+    _TABLE_REGEX = r"((?P<tquote>[\"])|)(?P<table>(?(tquote).{1,48}|[a-zA-Z_0-9]{1,48}))(?(tquote)\"|)"  # noqa
+
+    CQL_KEYSPACE_TABLENAME_REGEX = r"({}|){}".format(_KEYSPACE_REGEX, _TABLE_REGEX)
+    FROM_STATEMENT_REGEX = r".* FROM {}.*".format(CQL_KEYSPACE_TABLENAME_REGEX)
+    INSERT_STATEMENT_REGEX = r"insert into {}.*".format(CQL_KEYSPACE_TABLENAME_REGEX)
+    UPDATE_STATEMENT_REGEX = r"update {}.*".format(CQL_KEYSPACE_TABLENAME_REGEX)
+    CQL_STATEMENT_EXTRACTORS = {
+        "select": re.compile(FROM_STATEMENT_REGEX, re.I),
+        "insert": re.compile(INSERT_STATEMENT_REGEX, re.I),
+        "update": re.compile(UPDATE_STATEMENT_REGEX, re.I),
+        "delete": re.compile(FROM_STATEMENT_REGEX, re.I),
+    }
+
+    _MATCHED_GROUP_WHITELIST = ("keyspace", "table")
+
+    @classmethod
+    def extract(cls, cql_str):
+        first_token = cql_str.split(" ")[0].lower()
+        statement_metadata = {"type": first_token}
+        try:
+            cql_regex = cls.CQL_STATEMENT_EXTRACTORS[first_token]
+        except KeyError:
+            # No extractors found for the first token.
+            pass
+        else:
+            matches = cql_regex.match(cql_str)
+            if matches is not None:
+                # Looping through matches to include only whitelisted values
+                matches_dict = matches.groupdict()
+                filtered_matches_dict = {k: matches_dict[k] for k in cls._MATCHED_GROUP_WHITELIST}
+                for k, v in six.iteritems(filtered_matches_dict):
+                    if v is None:
+                        continue
+                    statement_metadata[k] = v
+        finally:
+            return statement_metadata
