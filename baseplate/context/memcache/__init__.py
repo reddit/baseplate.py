@@ -107,31 +107,154 @@ class MonitoredMemcacheConnection(PooledClient):
         self.server_span = server_span
         self.pooled_client = pooled_client
 
-    #pylint: disable=no-self-argument
-    def monitored(fn_name):
-        def proxy_with_instrumentation(self, *a, **kw):
-            trace_name = "{}.{}".format(self.context_name, fn_name)
-            with self.server_span.make_child(trace_name):
-                method = getattr(self.pooled_client, fn_name)
-                return method(*a, **kw)
-        return proxy_with_instrumentation
+    def close(self):
+        with self._make_span("close"):
+            return self.pooled_client.close()
 
-    close = monitored('close')
-    set = monitored('set')
-    set_many = monitored('set_many')
-    replace = monitored('replace')
-    append = monitored('append')
-    prepend = monitored('prepend')
-    cas = monitored('cas')
-    get = monitored('get')
-    get_many = monitored('get_many')
-    gets_many = monitored('gets_many')
-    delete = monitored('delete')
-    delete_many = monitored('delete_many')
-    add = monitored('add')
-    incr = monitored('incr')
-    decr = monitored('decr')
-    touch = monitored('touch')
-    stats = monitored('stats')
-    flush_all = monitored('flush_all')
-    quit = monitored('quit')
+    def set(self, key, value, expire=0, noreply=None):
+        with self._make_span("set") as span:
+            span.set_tag("key", key)
+            span.set_tag("expire", expire)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.set(
+                key, value, expire=expire, noreply=noreply)
+
+    def set_many(self, values, expire=0, noreply=None):
+        with self._make_span("set_many") as span:
+            span.set_tag("key_count", len(values))
+            span.set_tag("keys", make_keys_str(values.keys()))
+            span.set_tag("expire", expire)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.set_many(
+                values, expire=expire, noreply=noreply)
+
+    def replace(self, key, value, expire=0, noreply=None):
+        with self._make_span("replace") as span:
+            span.set_tag("key", key)
+            span.set_tag("expire", expire)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.replace(
+                key, value, expire=expire, noreply=noreply)
+
+    def append(self, key, value, expire=0, noreply=None):
+        with self._make_span("append") as span:
+            span.set_tag("key", key)
+            span.set_tag("expire", expire)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.append(
+                key, value, expire=expire, noreply=noreply)
+
+    def prepend(self, key, value, expire=0, noreply=None):
+        with self._make_span("prepend") as span:
+            span.set_tag("key", key)
+            span.set_tag("expire", expire)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.prepend(
+                key, value, expire=expire, noreply=noreply)
+
+    def cas(self, key, value, cas, expire=0, noreply=None):
+        with self._make_span("cas") as span:
+            span.set_tag("key", key)
+            span.set_tag("cas", cas)
+            span.set_tag("expire", expire)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.cas(
+                key, value, cas, expire=expire, noreply=noreply)
+
+    def get(self, key, **kwargs):
+        with self._make_span("get") as span:
+            span.set_tag("key", key)
+            return self.pooled_client.get(key, **kwargs)
+
+    def get_many(self, keys):
+        with self._make_span("get_many") as span:
+            span.set_tag("key_count", len(keys))
+            span.set_tag("keys", make_keys_str(keys))
+            return self.pooled_client.get_many(keys)
+
+    def gets(self, key, **kwargs):
+        with self._make_span("gets") as span:
+            span.set_tag("key", key)
+            return self.pooled_client.gets(key, **kwargs)
+
+    def gets_many(self, keys):
+        with self._make_span("gets_many") as span:
+            span.set_tag("key_count", len(keys))
+            span.set_tag("keys", make_keys_str(keys))
+            return self.pooled_client.gets_many(keys)
+
+    def delete(self, key, noreply=None):
+        with self._make_span("delete") as span:
+            span.set_tag("key", key)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.delete(key, noreply=noreply)
+
+    def delete_many(self, keys, noreply=None):
+        with self._make_span("delete_many") as span:
+            span.set_tag("key_count", len(keys))
+            span.set_tag("noreply", noreply)
+            span.set_tag("keys", make_keys_str(keys))
+            return self.pooled_client.delete_many(keys, noreply=noreply)
+
+    def add(self, key, value, expire=0, noreply=None):
+        with self._make_span("add") as span:
+            span.set_tag("key", key)
+            span.set_tag("expire", expire)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.add(key, value, expire=expire, noreply=noreply)
+
+    def incr(self, key, value, noreply=False):
+        with self._make_span("incr") as span:
+            span.set_tag("key", key)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.incr(key, value, noreply=noreply)
+
+    def decr(self, key, value, noreply=False):
+        with self._make_span("decr") as span:
+            span.set_tag("key", key)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.decr(key, value, noreply=noreply)
+
+    def touch(self, key, expire=0, noreply=None):
+        with self._make_span("touch") as span:
+            span.set_tag("key", key)
+            span.set_tag("expire", expire)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.touch(key, expire=expire, noreply=noreply)
+
+    def stats(self, *args):
+        with self._make_span("stats"):
+            return self.pooled_client.stats(*args)
+
+    def flush_all(self, delay=0, noreply=None):
+        with self._make_span("flush_all") as span:
+            span.set_tag("delay", delay)
+            span.set_tag("noreply", noreply)
+            return self.pooled_client.flush_all(delay=delay, noreply=noreply)
+
+    def quit(self):
+        with self._make_span("quit"):
+            return self.pooled_client.quit()
+
+    def _make_span(self, method_name):
+        """Get a child span of the current server span.
+
+        The returned span is tagged with ``method_name`` and given a name
+        that corresponds to the current context name and called method.
+
+        """
+        trace_name = "{}.{}".format(self.context_name, method_name)
+        span = self.server_span.make_child(trace_name)
+        span.set_tag("method", method_name)
+        return span
+
+
+def make_keys_str(keys):
+    """Make a string representation of an iterable of keys.
+
+    """
+    keys_str = ','.join(x.decode("utf-8") for x in keys)
+    if len(keys_str) > 100:
+        return keys_str[:100] + "..."
+    else:
+        return keys_str
