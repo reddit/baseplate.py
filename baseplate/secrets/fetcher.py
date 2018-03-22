@@ -272,12 +272,45 @@ class VaultClient(object):
         return payload["data"], ttl_to_time(payload["lease_duration"])
 
 
+def fetch_secrets(cfg, client_factory):
+    logger.info("Fetching secrets.")
+    client = client_factory.get_client()
+    secrets = {}
+    soonest_expiration = client.token_expiration
+    for secret_name in cfg.secrets:
+        secrets[secret_name], expiration = client.get_secret(secret_name)
+        soonest_expiration = min(soonest_expiration, expiration)
+
+    with open(cfg.output.path + ".tmp", "w") as f:
+        os.fchown(f.fileno(), cfg.output.owner, cfg.output.group)
+        os.fchmod(f.fileno(), cfg.output.mode)
+
+        json.dump({
+            "secrets": secrets,
+            "vault": {
+                "token": client.token,
+                "url": cfg.vault.url,
+            },
+
+            # this is here to allow an upgrade path. the fetcher should
+            # be upgraded first followed by the application workers.
+            "vault_token": client.token,
+        }, f, indent=2, sort_keys=True)
+
+    # swap out the file contents atomically
+    os.rename(cfg.output.path + ".tmp", cfg.output.path)
+    logger.info("Secrets fetched.")
+    return soonest_expiration
+
+
 def main():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("config_file", type=argparse.FileType("r"),
         help="path to a configuration file")
     arg_parser.add_argument("--debug", default=False, action="store_true",
         help="enable debug logging")
+    arg_parser.add_argument("--once", default=False, action="store_true",
+        help="only run the fetcher once rather than as a daemon")
     args = arg_parser.parse_args()
 
     if args.debug:
@@ -314,38 +347,17 @@ def main():
     # pylint: disable=maybe-no-member
     client_factory = VaultClientFactory(cfg.vault.url, cfg.vault.role,
                                         cfg.vault.auth_type, cfg.vault.mount_point)
-    while True:
-        client = client_factory.get_client()
 
-        secrets = {}
-        soonest_expiration = client.token_expiration
-        for secret_name in cfg.secrets:
-            secrets[secret_name], expiration = client.get_secret(secret_name)
-            soonest_expiration = min(soonest_expiration, expiration)
-
-        with open(cfg.output.path + ".tmp", "w") as f:
-            os.fchown(f.fileno(), cfg.output.owner, cfg.output.group)
-            os.fchmod(f.fileno(), cfg.output.mode)
-
-            json.dump({
-                "secrets": secrets,
-                "vault": {
-                    "token": client.token,
-                    "url": cfg.vault.url,
-                },
-
-                # this is here to allow an upgrade path. the fetcher should
-                # be upgraded first followed by the application workers.
-                "vault_token": client.token,
-            }, f, indent=2, sort_keys=True)
-
-        # swap out the file contents atomically
-        os.rename(cfg.output.path + ".tmp", cfg.output.path)
-
-        time_til_expiration = soonest_expiration - datetime.datetime.utcnow()
-        time_to_sleep = time_til_expiration - VAULT_TOKEN_PREFETCH_TIME
-        time.sleep(max(int(time_to_sleep.total_seconds()), 1))
-
+    if args.once:
+        logger.info("Running secret fetcher once")
+        fetch_secrets(cfg, client_factory)
+    else:
+        logger.info("Running secret fetcher as a daemon")
+        while True:
+            soonest_expiration = fetch_secrets(cfg, client_factory)
+            time_til_expiration = soonest_expiration - datetime.datetime.utcnow()
+            time_to_sleep = time_til_expiration - VAULT_TOKEN_PREFETCH_TIME
+            time.sleep(max(int(time_to_sleep.total_seconds()), 1))
 
 if __name__ == "__main__":
     main()
