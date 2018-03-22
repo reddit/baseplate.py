@@ -283,9 +283,11 @@ def main():
     if args.debug:
         level = logging.DEBUG
     else:
-        level = logging.WARNING
-    logging.basicConfig(level=level)
+        level = logging.INFO
 
+    logging.basicConfig(
+        format='%(asctime)s:%(levelname)s:%(message)s',
+        level=level)
     parser = configparser.RawConfigParser()
     parser.readfp(args.config_file)
     fetcher_config = dict(parser.items("secret-fetcher"))
