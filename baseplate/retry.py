@@ -126,6 +126,7 @@ class ExponentialBackoffRetryPolicy(RetryPolicy):
                 if time_remaining:
                     delay = min(delay, time_remaining)
                     time_remaining -= delay
+
                 time.sleep(delay)
 
             yield time_remaining

@@ -1,5 +1,4 @@
 import argparse
-import collections
 import email.utils
 import gzip
 import hashlib
@@ -13,6 +12,10 @@ from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
 from .. import config, make_metrics_client
 from .. _compat import configparser, BytesIO
 from .. message_queue import MessageQueue, TimedOutError
+from .. _utils import (
+    Batch, BatchFull, RawJSONBatch,
+    SerializedBatch, TimeLimitedBatch,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -20,88 +23,18 @@ logger = logging.getLogger(__name__)
 
 # seconds to wait for the event collector
 POST_TIMEOUT = 3
+# seconds to wait between retries when the collector fails
+RETRY_DELAY = 2
 # maximum time (seconds) an event can sit around while we wait for more
 # messages to batch
 MAX_BATCH_AGE = 1
 # maximum size (in bytes) of a batch of events
 MAX_BATCH_SIZE = 500 * 1024
-# seconds to wait between retries when the collector fails
-RETRY_DELAY = 2
 
 
-SerializedBatch = collections.namedtuple("SerializedBatch", "count bytes")
-
-
-class BatchFull(Exception):
-    pass
-
-
-class Batch(object):
-    def add(self, item):
-        raise NotImplementedError
-
-    def serialize(self):
-        raise NotImplementedError
-
-    def reset(self):
-        raise NotImplementedError
-
-
-class TimeLimitedBatch(Batch):
-    def __init__(self, inner, max_age=MAX_BATCH_AGE):
-        self.batch = inner
-        self.batch_start = None
-        self.max_age = max_age
-
-    @property
-    def age(self):
-        if not self.batch_start:
-            return 0
-        return time.time() - self.batch_start
-
-    def add(self, item):
-        if self.age >= self.max_age:
-            raise BatchFull
-
-        self.batch.add(item)
-
-        if not self.batch_start:
-            self.batch_start = time.time()
-
-    def serialize(self):
-        return self.batch.serialize()
-
-    def reset(self):
-        self.batch.reset()
-        self.batch_start = None
-
-
-class V1Batch(Batch):
+class V1Batch(RawJSONBatch):
     def __init__(self, max_size=MAX_BATCH_SIZE):
-        self.max_size = max_size
-        self.reset()
-
-    def add(self, item):
-        if not item:
-            return
-
-        serialized_size = len(item) + 1  # the comma at the end
-
-        if self._size + serialized_size > self.max_size:
-            raise BatchFull
-
-        self._items.append(item)
-        self._size += serialized_size
-
-    def serialize(self):
-        return SerializedBatch(
-            count=len(self._items),
-            bytes=b"[" + b",".join(self._items) + b"]",
-        )
-
-    def reset(self):
-        self._items = []
-        self._size = 2  # the [] that wrap the json list
+        super(V1Batch, self).__init__(max_size)
 
 
 class V2Batch(Batch):
@@ -257,7 +190,7 @@ def publish_events():
 
     # pylint: disable=maybe-no-member
     serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()
-    batcher = TimeLimitedBatch(serializer)
+    batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
     publisher = BatchPublisher(metrics_client, cfg)
 
     while True:

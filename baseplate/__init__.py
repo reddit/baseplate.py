@@ -54,7 +54,9 @@ def tracing_client_from_config(raw_config, log_if_unconfigured=True):
     ``tracing.service_name``
         The name for the service this observer is registered to.
     ``tracing.endpoint`` (optional)
-        Destination to record span data.
+        (Deprecated in favor of the sidecar model.) Destination to record span data.
+    ``tracing.queue_name`` (optional)
+        Name of POSIX queue where spans are recorded
     ``tracing.max_span_queue_size`` (optional)
         Span processing queue limit.
     ``tracing.num_span_workers`` (optional)
@@ -79,6 +81,7 @@ def tracing_client_from_config(raw_config, log_if_unconfigured=True):
         "tracing": {
             "service_name": config.String,
             "endpoint": config.Optional(config.Endpoint),
+            "queue_name": config.Optional(config.String),
             "max_span_queue_size": config.Optional(
                 config.Integer, default=50000),
             "num_span_workers": config.Optional(config.Integer, default=5),
@@ -94,6 +97,7 @@ def tracing_client_from_config(raw_config, log_if_unconfigured=True):
     return tracing.make_client(
         service_name=cfg.tracing.service_name,
         tracing_endpoint=cfg.tracing.endpoint,
+        tracing_queue_name=cfg.tracing.queue_name,
         max_span_queue_size=cfg.tracing.max_span_queue_size,
         num_span_workers=cfg.tracing.num_span_workers,
         span_batch_interval=cfg.tracing.span_batch_interval.total_seconds(),
