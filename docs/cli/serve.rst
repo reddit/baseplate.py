@@ -2,8 +2,7 @@
 ===================
 
 Baseplate comes with a simple Gevent-based server for both Thrift and WSGI
-applications called ``baseplate-serve2`` or ``baseplate-serve3`` depending
-on which version of Python you would like to use.
+applications called ``baseplate-serve``.
 
 Configuration
 -------------
@@ -117,7 +116,7 @@ its command socket.
 An example command line::
 
    einhorn -m manual -n 4 --bind localhost:9190 \
-      baseplate-serve2 myapp.ini
+      baseplate-serve myapp.ini
 
 .. _Stripe's Einhorn socket manager: https://github.com/stripe/einhorn
 

@@ -13,11 +13,11 @@ service to check (``thrift`` or ``wsgi``) and the endpoint to connect to.
 
 For example, to check a Thrift-based service listening on port 9090::
 
-   baseplate-healthcheck2 thrift 127.0.0.1:9090
+   baseplate-healthcheck thrift 127.0.0.1:9090
 
 or a WSGI (HTTP) service listening on a UNIX domain socket::
 
-   baseplate-healthcheck2 wsgi /run/myservice.sock
+   baseplate-healthcheck wsgi /run/myservice.sock
 
 Results
 -------

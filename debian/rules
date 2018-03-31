@@ -5,6 +5,22 @@ export PYBUILD_NAME=baseplate
 %:
 	dh $@ --with python2,python3,sphinxdoc --buildsystem=pybuild
 
+PHONY: override_dh_python2
+override_dh_python2:
+	dh_python2
+	mv ./debian/python-baseplate/usr/bin/baseplate-serve ./debian/python-baseplate/usr/bin/baseplate-serve2
+	mv ./debian/python-baseplate/usr/bin/baseplate-script ./debian/python-baseplate/usr/bin/baseplate-script2
+	mv ./debian/python-baseplate/usr/bin/baseplate-tshell ./debian/python-baseplate/usr/bin/baseplate-tshell2
+	mv ./debian/python-baseplate/usr/bin/baseplate-healthcheck ./debian/python-baseplate/usr/bin/baseplate-healthcheck2
+
+.PHONY: override_dh_python3
+override_dh_python3:
+	dh_python3
+	mv ./debian/python3-baseplate/usr/bin/baseplate-serve ./debian/python3-baseplate/usr/bin/baseplate-serve3
+	mv ./debian/python3-baseplate/usr/bin/baseplate-script ./debian/python3-baseplate/usr/bin/baseplate-script3
+	mv ./debian/python3-baseplate/usr/bin/baseplate-tshell ./debian/python3-baseplate/usr/bin/baseplate-tshell3
+	mv ./debian/python3-baseplate/usr/bin/baseplate-healthcheck ./debian/python3-baseplate/usr/bin/baseplate-healthcheck3
+
 .PHONY: override_dh_auto_build
 override_dh_auto_build:
 	make thrift
