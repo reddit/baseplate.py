@@ -87,9 +87,10 @@ setup(
     tests_require=tests_require,
 
     scripts=[
-        "bin/baseplate-serve{:d}".format(sys.version_info.major),
-        "bin/baseplate-script{:d}".format(sys.version_info.major),
-        "bin/baseplate-tshell{:d}".format(sys.version_info.major),
+        "bin/baseplate-serve",
+        "bin/baseplate-script",
+        "bin/baseplate-tshell",
+        "bin/baseplate-healthcheck",
     ],
 
     # the thrift compiler must be able to find baseplate.thrift to build
@@ -103,11 +104,6 @@ setup(
     entry_points={
         "distutils.commands": [
             "build_thrift = baseplate.integration.thrift.command:BuildThriftCommand",
-        ],
-
-        "console_scripts": [
-            "baseplate-healthcheck{:d} = baseplate.server.healthcheck:run_healthchecks".format(
-                sys.version_info.major),
         ],
 
         "paste.app_factory": [
