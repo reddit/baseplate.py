@@ -3,8 +3,7 @@
 
 This command allows you to run a piece of Python code with the application
 config loaded similarly to `baseplate-serve`_. The command is
-``baseplate-script2`` or ``baseplate-script3`` depending on which version of
-Python you would like to use.
+``baseplate-script``.
 
 .. _baseplate-serve: serve.html
 
@@ -46,8 +45,8 @@ You can run the script with various configurations:
 
 .. code-block:: text
 
-   $ baseplate-script2 printer.ini printer:run
+   $ baseplate-script printer.ini printer:run
    Hello!
 
-   $ baseplate-script2 printer.ini --app-name=bizarro printer:run
+   $ baseplate-script printer.ini --app-name=bizarro printer:run
    !olleH
