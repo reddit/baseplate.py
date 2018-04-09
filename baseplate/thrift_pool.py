@@ -166,6 +166,8 @@ class ThriftConnectionPool(object):
 
             return prot
 
+        self.pool.put(None)
+
         raise TTransportException(
             type=TTransportException.NOT_OPEN,
             message="giving up after multiple attempts to connect",
