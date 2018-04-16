@@ -11,6 +11,7 @@ import requests
 from baseplate import config, metrics
 from baseplate._compat import BytesIO
 from baseplate.events import publisher
+from baseplate._utils import SerializedBatch
 
 from ... import mock
 
@@ -105,13 +106,13 @@ class PublisherTests(unittest.TestCase):
             self.metrics_client, self.config)
 
     def test_empty_batch(self):
-        self.publisher.publish(publisher.SerializedBatch(count=0, bytes=b''))
+        self.publisher.publish(SerializedBatch(count=0, bytes=b''))
         self.assertEqual(self.session.post.call_count, 0)
 
     def test_publish_success(self):
         events = b'[{"example": "value"}]'
 
-        self.publisher.publish(publisher.SerializedBatch(count=1, bytes=events))
+        self.publisher.publish(SerializedBatch(count=1, bytes=events))
 
         self.assertEqual(self.session.post.call_count, 1)
 
@@ -128,7 +129,7 @@ class PublisherTests(unittest.TestCase):
         self.session.post.side_effect = [requests.HTTPError(504), IOError, mock.Mock()]
         events = b'[{"example": "value"}]'
 
-        self.publisher.publish(publisher.SerializedBatch(count=1, bytes=events))
+        self.publisher.publish(SerializedBatch(count=1, bytes=events))
 
         self.assertEqual(mock_sleep.call_count, 2)
         self.assertEqual(self.session.post.call_count, 3)
@@ -140,7 +141,7 @@ class PublisherTests(unittest.TestCase):
         events = b'[{"example": "value"}]'
 
         with self.assertRaises(requests.HTTPError):
-            self.publisher.publish(publisher.SerializedBatch(count=1, bytes=events))
+            self.publisher.publish(SerializedBatch(count=1, bytes=events))
 
         self.assertEqual(mock_sleep.call_count, 0)
         self.assertEqual(self.session.post.call_count, 1)

@@ -16,12 +16,14 @@ from datetime import datetime
 import requests
 from requests.exceptions import RequestException
 
-from .._compat import queue
-from ..core import (
+from baseplate.message_queue import MessageQueue, TimedOutError
+from baseplate._compat import queue
+from baseplate.core import (
     BaseplateObserver,
     LocalSpan,
     SpanObserver,
 )
+from baseplate._utils import warn_deprecated
 
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,12 @@ FLAGS = {
 }
 
 
+# Max size for a string representation of a span when recorded to a POSIX queue
+MAX_SPAN_SIZE = 102400
+# Max number of spans iallowed in POSIX queue at one time
+MAX_QUEUE_SIZE = 10000
+
+
 def current_epoch_microseconds():
     """Return current UTC time since epoch in microseconds."""
     epoch_ts = datetime.utcfromtimestamp(0)
@@ -56,9 +64,9 @@ TracingClient = collections.namedtuple(
     "TracingClient", "service_name sample_rate recorder")
 
 
-def make_client(service_name, tracing_endpoint=None, max_span_queue_size=50000,
-                num_span_workers=5, span_batch_interval=0.5, num_conns=100,
-                sample_rate=0.1, log_if_unconfigured=True):
+def make_client(service_name, tracing_endpoint=None, tracing_queue_name=None,
+                max_span_queue_size=50000, num_span_workers=5, span_batch_interval=0.5,
+                num_conns=100, sample_rate=0.1, log_if_unconfigured=True):
     """Create and return a tracing client based on configuration options.
 
     This client can be used by the :py:class:`TraceBaseplateObserver`.
@@ -67,6 +75,7 @@ def make_client(service_name, tracing_endpoint=None, max_span_queue_size=50000,
         is registered to.
     :param baseplate.config.EndpointConfiguration tracing_endpoint: destination
         to record span data.
+    :param str tracing_queue_name: POSIX queue name for reporting spans.
     :param int num_conns: pool size for remote recorder connection pool.
     :param int max_span_queue_size: span processing queue limit.
     :param int num_span_workers: number of worker threads for span processing.
@@ -74,7 +83,11 @@ def make_client(service_name, tracing_endpoint=None, max_span_queue_size=50000,
     :param float sample_rate: percentage of unsampled requests to record traces
         for.
     """
-    if tracing_endpoint:
+    if tracing_queue_name:
+        logger.info("Recording spans to queue %s", tracing_queue_name)
+        recorder = SidecarRecorder(tracing_queue_name)
+    elif tracing_endpoint:
+        warn_deprecated("In-app trace publishing is deprecated in favor of the sidecar model.")
         remote_addr = '%s:%s' % tracing_endpoint.address
         logger.info("Recording spans to %s", remote_addr)
         recorder = RemoteRecorder(
@@ -494,3 +507,47 @@ class RemoteRecorder(BaseBatchRecorder):
             )
         except RequestException as e:
             self.logger.error("Error flushing spans: %s", e)
+
+
+class TraceTooLargeError(Exception):
+    pass
+
+
+class TraceQueueFullError(Exception):
+    pass
+
+
+MAX_SIDECAR_QUEUE_SIZE = 102400
+MAX_SIDECAR_MESSAGE_SIZE = 10000
+
+
+class SidecarRecorder(BaseBatchRecorder):
+    """Interface for recording spans to a POSIX message queue.
+
+    The SidecarRecorder serializes spans to a string representation before
+    adding them to the queue.
+    """
+    def __init__(self, queue_name):
+        self.queue = MessageQueue(
+            "/traces-" + queue_name,
+            max_messages=MAX_SIDECAR_QUEUE_SIZE,
+            max_message_size=MAX_SIDECAR_MESSAGE_SIZE,
+        )
+
+    def send(self, span):
+        # Don't raise exceptions from here. This is called in the
+        # request/response path and should finish cleanly.
+        serialized_str = json.dumps(span._serialize())
+        if len(serialized_str) > MAX_SIDECAR_MESSAGE_SIZE:
+            logger.error(
+                "Trace too big. Traces published to %s are not allowed to be larger "
+                "than %d bytes. Received trace is %d bytes. This can be caused by "
+                "an excess amount of tags or a large amount of child spans.",
+                self.queue.queue.name,
+                MAX_SIDECAR_MESSAGE_SIZE,
+                len(serialized_str),
+            )
+        try:
+            self.queue.put(serialized_str, timeout=0)
+        except TimedOutError:
+            logger.error("Trace queue %s is full. Is trace sidecar healthy?", self.queue.queue.name)
