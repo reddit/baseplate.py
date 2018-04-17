@@ -9,7 +9,7 @@ import time
 import requests
 
 from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
-from .. import config, make_metrics_client
+from .. import config, metrics_client_from_config
 from .. _compat import configparser, BytesIO
 from .. message_queue import MessageQueue, TimedOutError
 from .. _utils import (
@@ -180,7 +180,7 @@ def publish_events():
         },
     })
 
-    metrics_client = make_metrics_client(raw_config)
+    metrics_client = metrics_client_from_config(raw_config)
 
     event_queue = MessageQueue(
         "/events-" + args.queue_name,

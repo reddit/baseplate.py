@@ -15,9 +15,9 @@ Basic example usage:
 
 .. testcode::
 
-    from baseplate import make_metrics_client
+    from baseplate import metrics_client_from_config
 
-    client = make_metrics_client(app_config)
+    client = metrics_client_from_config(app_config)
     client.counter("events.connect").increment()
     client.gauge("workers").replace(4)
 
@@ -419,7 +419,7 @@ def make_client(namespace, endpoint):
     :return: A configured client.
     :rtype: :py:class:`baseplate.metrics.Client`
 
-    .. seealso:: :py:func:`baseplate.make_metrics_client`.
+    .. seealso:: :py:func:`baseplate.metrics_client_from_config`.
 
     """
 
