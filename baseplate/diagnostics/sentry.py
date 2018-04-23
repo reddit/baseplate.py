@@ -51,3 +51,15 @@ class SentryServerSpanObserver(ServerSpanObserver):
         if exc_info is not None:
             self.raven.captureException(exc_info=exc_info)
         self.raven.context.clear(deactivate=True)
+
+
+class SentryUnhandledErrorReporter(object):
+    """Hook into the Gevent hub and report errors outside request context."""
+
+    def __init__(self, hub, raven):
+        self.original_print_exception = getattr(hub, "print_exception")
+        self.raven = raven
+
+    def __call__(self, context, exc_type, value, tb):
+        self.raven.captureException((exc_type, value, tb))
+        self.original_print_exception(context, exc_type, value, tb)
