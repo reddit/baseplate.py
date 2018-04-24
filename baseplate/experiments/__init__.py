@@ -6,6 +6,8 @@ from __future__ import unicode_literals
 import json
 import logging
 
+from enum import Enum
+
 from .providers import parse_experiment
 from .. import config
 from ..context import ContextFactory
@@ -14,6 +16,11 @@ from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
 
 
 logger = logging.getLogger(__name__)
+
+
+class EventType(Enum):
+    EXPOSE = 'expose'
+    BUCKET = 'choose'
 
 
 class ExperimentsContextFactory(ContextFactory):
@@ -91,7 +98,7 @@ class Experiments(object):
         return self._experiment_cache[name]
 
     def get_all_experiment_names(self):
-        """Returns a list of all valid experiment names from the
+        """Return a list of all valid experiment names from the
         configuration file.
 
         :rtype: :py:class:`list`
@@ -103,7 +110,7 @@ class Experiments(object):
         return experiment_names
 
     def is_valid_experiment(self, name):
-        """Returns true if the provided experiment name is a valid
+        """Return true if the provided experiment name is a valid
         experiment.
 
         :param str name: Name of the experiment you want to check.
@@ -115,7 +122,7 @@ class Experiments(object):
         return self._get_experiment(name) is not None
 
     def variant(self, name, user=None, bucketing_event_override=None,
-                extra_event_fields=None, **kwargs):
+                **kwargs):
         """Which variant, if any, is active.
 
         If a variant is active, a bucketing event will be logged to the event
@@ -152,10 +159,9 @@ class Experiments(object):
             If set to None, no override will be applied.  Set to None by
             default.  Note that setting bucketing_event_override to True has no
             effect, it will behave the same as when it is set to None.
-        :param dict extra_event_fields: (Optional) Any extra fields you want to
-            add to the bucketing event.
         :param kwargs:  Arguments that will be passed to experiment.variant to
-            determine bucketing, targeting, and overrides.
+            determine bucketing, targeting, and overrides. These values will also
+            be passed to the logger.
 
         :rtype: :py:class:`str`
         :return: Variant name if a variant is active, None otherwise.
@@ -169,13 +175,7 @@ class Experiments(object):
         inputs = dict(kwargs)
 
         if user:
-            if user.is_logged_in:
-                inputs["user_id"] = user.id
-                inputs["user_roles"] = user.roles
-            else:
-                inputs["user_id"] = user.loid
-            inputs["logged_in"] = user.is_logged_in
-            inputs['cookie_created_timestamp'] = user.event_fields().get('cookie_created')
+            inputs.update(user.event_fields())
 
         span_name = "{}.{}".format(self._context_name, "variant")
         with self._span.make_child(span_name, local=True, component_name=name):
@@ -208,10 +208,46 @@ class Experiments(object):
                 logged_in=inputs.get('logged_in'),
                 cookie_created_timestamp=inputs.get('cookie_created_timestamp'),
                 app_name=inputs.get('app_name'),
+                event_type=EventType.BUCKET,
+                inputs=inputs,
             )
             self._already_bucketed.add(bucketing_id)
 
         return variant
+
+    def expose(self, experiment_name, variant_name, user=None, **kwargs):
+        """Log an event to indicate that a user has been exposed to an
+        experimental treatment.
+
+        :param str experiment_name: Name of the experiment that was exposed.
+        :param str variant_name: Name of the variant that was exposed.
+        :param baseplate.core.User user: (Optional) User object for the user
+            you want to check the experiment variant for. If unset, it is
+            expected that user_id and logged_in values will be set in the kwargs
+        :param kwargs: Additional arguments that will be passed to logger.
+
+        """
+
+        experiment = self._get_experiment(experiment_name)
+
+        if experiment is None:
+            return
+
+        inputs = dict(kwargs)
+
+        if user:
+            inputs.update(user.event_fields())
+
+        self._event_logger.log(
+            experiment=experiment,
+            variant=variant_name,
+            user_id=inputs.get('user_id'),
+            logged_in=inputs.get('logged_in'),
+            cookie_created_timestamp=inputs.get('cookie_created_timestamp'),
+            app_name=inputs.get('app_name'),
+            event_type=EventType.EXPOSE,
+            inputs=inputs,
+        )
 
 
 def experiments_client_from_config(app_config, event_logger):
@@ -225,11 +261,11 @@ def experiments_client_from_config(app_config, event_logger):
 
     :param dict raw_config: The application configuration which should have
         settings for the experiments client.
-    :param baseplate.events.EventQueue event_logger: The EventLogger to be used
+    :param baseplate.events.EventLogger event_logger: The EventLogger to be used
         to log bucketing events.
     :rtype: :py:class:`ExperimentsContextFactory`
 
-    """ 
+    """
     cfg = config.parse_config(app_config, {
         "experiments": {
             "path": config.Optional(config.String, default="/var/local/experiments.json"),

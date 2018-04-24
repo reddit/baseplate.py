@@ -299,8 +299,8 @@ class User(_User):
 
         return {
             "user_id": user_id,
-            "user_logged_in": self.is_logged_in,
-            "cookie_created": self.cookie_created_ms,
+            "logged_in": self.is_logged_in,
+            "cookie_created_timestamp": self.cookie_created_ms,
         }
 
 
