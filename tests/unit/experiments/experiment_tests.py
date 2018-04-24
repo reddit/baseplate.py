@@ -393,8 +393,8 @@ class TestExperiments(unittest.TestCase):
 
 class ExperimentsClientFromConfigTests(unittest.TestCase):
     def test_make_clients(self):
-        event_queue = mock.Mock(spec=DebugLogger)
+        event_logger = mock.Mock(spec=DebugLogger)
         experiments = experiments_client_from_config({
             "experiments.path": "/tmp/test",
-        }, event_queue)
+        }, event_logger)
         self.assertIsInstance(experiments, ExperimentsContextFactory)
