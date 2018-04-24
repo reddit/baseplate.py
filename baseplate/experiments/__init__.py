@@ -90,6 +90,30 @@ class Experiments(object):
             self._experiment_cache[name] = experiment
         return self._experiment_cache[name]
 
+    def get_all_experiment_names(self):
+        """Returns a list of all valid experiment names from the
+        configuration file.
+
+        :rtype: :py:class:`list`
+        :return: List of all valid experiment names.
+        """
+        config = self._config_watcher.get_data()
+        experiment_names = list(config.keys())
+
+        return experiment_names
+
+    def is_valid_experiment(self, name):
+        """Returns true if the provided experiment name is a valid
+        experiment.
+
+        :param str name: Name of the experiment you want to check.
+
+        :rtype: :py:class:`bool`
+        :return: Whether or not a particular experiment is valid.
+        """
+
+        return self._get_experiment(name) is not None
+
     def variant(self, name, user=None, bucketing_event_override=None,
                 extra_event_fields=None, **kwargs):
         """Which variant, if any, is active.

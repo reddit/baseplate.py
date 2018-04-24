@@ -211,6 +211,91 @@ class TestExperiments(unittest.TestCase):
                                 bucketing_event_override=True)
             self.assertEqual(self.event_logger.log.call_count, 1)
 
+    def test_is_valid_experiment(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "variants": {
+                        "active": 10,
+                        "control_1": 10,
+                        "control_2": 10,
+                    }
+                }
+            }
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            server_span=self.mock_span,
+            context_name="test",
+            event_logger=self.event_logger,
+        )
+        with mock.patch(
+            "baseplate.experiments.providers.r2.R2Experiment.variant",
+        ) as p:
+            p.return_value="active"
+            is_valid = experiments.is_valid_experiment("test")
+            self.assertEqual(is_valid, True)
+
+            is_valid = experiments.is_valid_experiment("test2")
+            self.assertEqual(is_valid, False)
+
+    def test_get_all_experiment_names(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "variants": {
+                        "active": 10,
+                        "control_1": 10,
+                        "control_2": 10,
+                    }
+                }
+            },
+            "test2": {
+                "id": 1,
+                "name": "test",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "variants": {
+                        "active": 10,
+                        "control_1": 10,
+                        "control_2": 10,
+                    }
+                }
+            }
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            server_span=self.mock_span,
+            context_name="test",
+            event_logger=self.event_logger,
+        )
+        with mock.patch(
+            "baseplate.experiments.providers.r2.R2Experiment.variant",
+        ) as p:
+            p.return_value="active"
+            experiment_names = experiments.get_all_experiment_names()
+            self.assertEqual(len(experiment_names), 2)
+            self.assertEqual("test" in experiment_names, True)
+            self.assertEqual("test2" in experiment_names, True)
+
     def test_that_bucketing_events_are_not_sent_with_override_false(self):
         """Don't send events when override is False"""
         self.mock_filewatcher.get_data.return_value = {
