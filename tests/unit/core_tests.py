@@ -336,8 +336,8 @@ class EdgeRequestContextTests(unittest.TestCase):
             request_context.event_fields(),
             {
                 "user_id": self.LOID_ID,
-                "user_logged_in": False,
-                "cookie_created": self.LOID_CREATED_MS,
+                "logged_in": False,
+                "cookie_created_timestamp": self.LOID_CREATED_MS,
                 "session_id": self.SESSION_ID,
                 "oauth_client_id": None,
             },
@@ -360,8 +360,8 @@ class EdgeRequestContextTests(unittest.TestCase):
             request_context.event_fields(),
             {
                 "user_id": "t2_example",
-                "user_logged_in": True,
-                "cookie_created": self.LOID_CREATED_MS,
+                "logged_in": True,
+                "cookie_created_timestamp": self.LOID_CREATED_MS,
                 "session_id": self.SESSION_ID,
                 "oauth_client_id": None,
             },
@@ -388,8 +388,8 @@ class EdgeRequestContextTests(unittest.TestCase):
             request_context.event_fields(),
             {
                 "user_id": self.LOID_ID,
-                "user_logged_in": False,
-                "cookie_created": self.LOID_CREATED_MS,
+                "logged_in": False,
+                "cookie_created_timestamp": self.LOID_CREATED_MS,
                 "session_id": self.SESSION_ID,
                 "oauth_client_id": None,
             },
