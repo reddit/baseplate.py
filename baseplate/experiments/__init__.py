@@ -190,7 +190,7 @@ class Experiments(object):
         return variant
 
 
-def experiments_client_from_config(app_config, event_queue):
+def experiments_client_from_config(app_config, event_logger):
     """Configure and return an :py:class:`ExperimentsContextFactory` object.
 
     This expects one configuration option:
@@ -201,15 +201,15 @@ def experiments_client_from_config(app_config, event_queue):
 
     :param dict raw_config: The application configuration which should have
         settings for the experiments client.
-    :param baseplate.events.EventQueue event_queue: The EventQueue to be used
+    :param baseplate.events.EventQueue event_logger: The EventLogger to be used
         to log bucketing events.
     :rtype: :py:class:`ExperimentsContextFactory`
 
-    """
+    """ 
     cfg = config.parse_config(app_config, {
         "experiments": {
             "path": config.Optional(config.String, default="/var/local/experiments.json"),
         },
     })
     # pylint: disable=maybe-no-member
-    return ExperimentsContextFactory(cfg.experiments.path, event_queue)
+    return ExperimentsContextFactory(cfg.experiments.path, event_logger)
