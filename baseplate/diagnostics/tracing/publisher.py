@@ -8,6 +8,7 @@ from baseplate import config, metrics_client_from_config
 from baseplate._compat import configparser
 from baseplate.message_queue import MessageQueue, TimedOutError
 from baseplate.retry import RetryPolicy
+from baseplate._compat import urlparse
 from baseplate._utils import BatchFull, RawJSONBatch, TimeLimitedBatch
 
 
@@ -25,9 +26,6 @@ MAX_BATCH_AGE = 1
 # maximum number of retries when publishing traces
 RETRY_LIMIT_DEFAULT = 10
 
-ZIPKIN_API_VERSION_DEFAULT = "v1"
-ZIPKIN_SCHEME_DEFAULT = "http"
-
 
 class MaxRetriesError(Exception):
     pass
@@ -44,16 +42,15 @@ class ZipkinPublisher(object):
             zipkin_api_url,
             metrics_client,
             post_timeout=POST_TIMEOUT_DEFAULT,
-            zipkin_api_version=ZIPKIN_API_VERSION_DEFAULT,
-            zipkin_scheme=ZIPKIN_SCHEME_DEFAULT,
             retry_limit=RETRY_LIMIT_DEFAULT,
             num_conns=5):
 
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns,
                                                 pool_maxsize=num_conns)
+        parsed_url = urlparse(zipkin_api_url)
         self.session = requests.Session()
-        self.session.mount("{}://".format(zipkin_scheme), adapter)
-        self.endpoint = "{}/spans".format(zipkin_api_url.rstrip('/'), zipkin_api_version)
+        self.session.mount("{}://".format(parsed_url.scheme), adapter)
+        self.endpoint = "{}/spans".format(zipkin_api_url)
         self.metrics = metrics_client
         self.post_timeout = post_timeout
         self.retry_limit = retry_limit
@@ -126,14 +123,12 @@ def publish_traces():
     config_parser = configparser.RawConfigParser()
     config_parser.readfp(args.config_file)
 
-    publisher_raw_cfg = dict(config_parser.items("tracing-publisher:" + args.queue_name))
+    publisher_raw_cfg = dict(config_parser.items("trace-publisher:" + args.queue_name))
     publisher_cfg = config.parse_config(publisher_raw_cfg, {
         "zipkin_api_url": config.Endpoint,
         "post_timeout": config.Optional(config.Integer, POST_TIMEOUT_DEFAULT),
         "max_batch_size": config.Optional(config.Integer, MAX_BATCH_SIZE_DEFAULT),
         "retry_limit": config.Optional(config.Integer, RETRY_LIMIT_DEFAULT),
-        "zipkin_api_version": config.Optional(config.String, ZIPKIN_API_VERSION_DEFAULT),
-        "zipkin_scheme": config.Optional(config.String, ZIPKIN_SCHEME_DEFAULT),
     })
 
     trace_queue = MessageQueue(
@@ -150,8 +145,6 @@ def publish_traces():
         publisher_cfg.zipkin_api_url.address,
         metrics_client,
         post_timeout=publisher_cfg.post_timeout,
-        zipkin_api_version=publisher_cfg.zipkin_api_version,
-        zipkin_scheme=publisher_cfg.zipkin_scheme,
     )
 
     while True:

@@ -19,10 +19,15 @@ class ZipkinPublisherTest(unittest.TestCase):
     def setUp(self, mock_Session):
         self.session = mock_Session.return_value
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
+        self.zipkin_api_url = "http://test.local/api/v2"
         self.publisher = publisher.ZipkinPublisher(
-            'test.local',
+            self.zipkin_api_url,
             self.metrics_client,
         )
+
+    def test_initialization(self):
+        self.assertEqual(self.publisher.endpoint, "{}/spans".format(self.zipkin_api_url))
+        self.publisher.session.mount.assert_called_with("http://", mock.ANY)
 
     def test_empty_batch(self):
         self.publisher.publish(SerializedBatch(count=0, bytes=b""))
