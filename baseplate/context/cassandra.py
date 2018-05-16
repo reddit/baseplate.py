@@ -59,9 +59,11 @@ class CassandraContextFactory(ContextFactory):
     """
     def __init__(self, session):
         self.session = session
+        self.prepared_statements = {}
 
     def make_object_for_context(self, name, server_span):
-        return CassandraSessionAdapter(name, server_span, self.session)
+        return CassandraSessionAdapter(name, server_span, self.session,
+                                       self.prepared_statements)
 
 
 class CQLMapperContextFactory(CassandraContextFactory):
@@ -100,10 +102,11 @@ def _on_execute_failed(exc, span):
 
 
 class CassandraSessionAdapter(object):
-    def __init__(self, context_name, server_span, session):
+    def __init__(self, context_name, server_span, session, prepared_statements):
         self.context_name = context_name
         self.server_span = server_span
         self.session = session
+        self.prepared_statements = prepared_statements
 
     @property
     def cluster(self):
@@ -148,8 +151,27 @@ class CassandraSessionAdapter(object):
         future.add_errback(_on_execute_failed, span)
         return future
 
-    def prepare(self, query):
+    def prepare(self, query, cache=True):
+        """Prepares a CQL statement.
+
+        :param bool cache: If set to True (default), prepared statements will be
+        automatically cached and reused. The cache is keyed on the text of the
+        statement. Set to False if you don't want your prepared statements
+        cached, which might be advisable if you have a very high-cardinality
+        query set. Prepared statements are cached indefinitely, so be wary of
+        memory usage.
+        """
+
+        if cache:
+            try:
+                return self.prepared_statements[query]
+            except KeyError:
+                pass
+
         trace_name = "{}.{}".format(self.context_name, "prepare")
         with self.server_span.make_child(trace_name) as span:
             span.set_tag("statement", query)
-            return self.session.prepare(query)
+            prepared = self.session.prepare(query)
+            if cache:
+                self.prepared_statements[query] = prepared
+            return prepared
