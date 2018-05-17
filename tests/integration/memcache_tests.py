@@ -11,7 +11,8 @@ try:
 except ImportError:
     raise unittest.SkipTest("pymemcache is not installed")
 
-from baseplate.context.memcache import MemcacheContextFactory, MonitoredMemcacheConnection
+from baseplate.context.memcache import (MemcacheContextFactory,
+    MonitoredMemcacheConnection, make_keys_str)
 from baseplate.core import Baseplate, LocalSpan, ServerSpan
 
 from . import TestBaseplateObserver, skip_if_server_unavailable
@@ -57,7 +58,6 @@ class MemcacheIntegrationTests(unittest.TestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNotNone(span_observer.on_finish_exc_info)
-
 
 
 class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
@@ -173,3 +173,15 @@ class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
         self.connection.quit()
         self.mocked_pool.quit.assert_called_with()
         self.assertEqual(self.local_span.set_tag.call_count, 1)
+
+
+class MakeKeysStrTests(unittest.TestCase):
+    def test_bytes(self):
+        expected_string = "key_1,key_2"
+        keys = [b"key_1", b"key_2"]
+        self.assertEqual(expected_string, make_keys_str(keys))
+
+    def test_str(self):
+        expected_string = "key_1,key_2"
+        keys = ["key_1", "key_2"]
+        self.assertEqual(expected_string, make_keys_str(keys))
