@@ -1,3 +1,21 @@
+baseplate (0.26.0) trusty; urgency=medium
+
+  * Add details to memcache tracing spans (#160).
+  * Update logging in secret_fetcher.
+  * Allow you to run the secret fetcher only once.
+  * Update baseplate scripts to not be version specific.
+  * Move span publishing to sidecar (#173).
+  * Fix r2 experiment bucketing.
+  * Fix parameter name from event_queue to event_logger.
+  * Add functions to check experiments and get all names.
+  * Add experiment exposure support.
+  * Add baseplate.context.kombu and baseplate.queue_consumer.
+  * Ensure that connection failures do not deplete ThriftConnectionPools.
+    (#172)
+  * Automatically cache prepared cassandra statements.
+
+ -- Jason Harvey <jason@reddit.com>  Thu, 17 May 2018 09:06:22 -0800
+
 baseplate (0.25.0) trusty; urgency=medium
 
   * add new baseplate-tshell
