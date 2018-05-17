@@ -253,7 +253,7 @@ def make_keys_str(keys):
     """Make a string representation of an iterable of keys.
 
     """
-    keys_str = ','.join(x.decode("utf-8") for x in keys)
+    keys_str = ",".join(x.decode("utf-8") if isinstance(x, bytes) else x for x in keys)
     if len(keys_str) > 100:
         return keys_str[:100] + "..."
     else:
