@@ -4,6 +4,7 @@ cassandra-driver
 enum34
 git+https://github.com/reddit/fbthrift.git@patch-queue/ubuntu/trusty#egg=thrift&subdirectory=thrift/lib/py/
 hvac
+kombu
 PyJWT
 posix_ipc
 pymemcache
