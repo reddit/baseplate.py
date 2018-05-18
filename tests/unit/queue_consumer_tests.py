@@ -6,6 +6,13 @@ from __future__ import unicode_literals
 import sys
 import unittest
 
+try:
+    import kombu
+except ImportError:
+    raise unittest.SkipTest("kombu is not installed")
+else:
+    del kombu
+
 from baseplate import queue_consumer
 
 from .. import mock
