@@ -14,7 +14,7 @@ $(THRIFT_BUILDDIR)/baseplate/thrift/baseplate.thrift_buildstamp: baseplate/thrif
 	@echo SPECIAL $< $@
 	mkdir -p $(THRIFT_BUILDDIR)/$<
 	$(THRIFT) $(THRIFT_OPTS) -out $(THRIFT_BUILDDIR)/$< $<
-	cp -r $(THRIFT_BUILDDIR)/$</baseplate/thrift/ baseplate/
+	cp -r $(THRIFT_BUILDDIR)/$</baseplate/thrift baseplate/
 	touch $@
 
 $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/test.thrift
