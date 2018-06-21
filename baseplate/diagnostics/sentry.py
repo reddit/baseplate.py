@@ -17,19 +17,25 @@ class SentryBaseplateObserver(BaseplateObserver):
     :param raven.Client client: A configured raven client.
 
     """
-    def __init__(self, raven):
+    def __init__(self, raven, ignore_exception_cls=None):
         self.raven = raven
+        self.ignore_exception_cls = ignore_exception_cls
 
     def on_server_span_created(self, context, server_span):
-        observer = SentryServerSpanObserver(self.raven, server_span)
+        observer = SentryServerSpanObserver(
+            self.raven,
+            server_span,
+            self.ignore_exception_cls,
+        )
         server_span.register(observer)
         context.sentry = self.raven
 
 
 class SentryServerSpanObserver(ServerSpanObserver):
-    def __init__(self, raven, server_span):
+    def __init__(self, raven, server_span, ignore_exception_cls=None):
         self.raven = raven
         self.server_span = server_span
+        self.ignore_exception_cls = ignore_exception_cls
 
     def on_start(self):
         self.raven.context.activate()
@@ -49,5 +55,8 @@ class SentryServerSpanObserver(ServerSpanObserver):
 
     def on_finish(self, exc_info=None):
         if exc_info is not None:
-            self.raven.captureException(exc_info=exc_info)
+            _, exc, _ = exc_info
+            if (self.ignore_exception_cls is None or
+                    not isinstance(exc, self.ignore_exception_cls)):
+                self.raven.captureException(exc_info=exc_info)
         self.raven.context.clear(deactivate=True)

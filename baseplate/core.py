@@ -625,7 +625,7 @@ class Baseplate(object):
 
         self.register(TraceBaseplateObserver(tracing_client))
 
-    def configure_error_reporting(self, client):
+    def configure_error_reporting(self, client, ignore_exception_cls=None):
         """Send reports for unexpected exceptions to the given client.
 
         This also adds a :py:class:`raven.Client` object to the ``sentry``
@@ -633,10 +633,12 @@ class Baseplate(object):
         application-specific events.
 
         :param raven.Client client: A configured raven client.
+        :param class ignore_exception_cls: If non-None, all exceptions with
+                                           matching class will be ignored.
 
         """
         from .diagnostics.sentry import SentryBaseplateObserver
-        self.register(SentryBaseplateObserver(client))
+        self.register(SentryBaseplateObserver(client, ignore_exception_cls))
 
     def add_to_context(self, name, context_factory):
         """Add an attribute to each request's context object.
