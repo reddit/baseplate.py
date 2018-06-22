@@ -11,6 +11,9 @@ from datetime import datetime
 from .feature_flag import FeatureFlag
 from .forced_variant import ForcedVariantExperiment
 from .r2 import R2Experiment
+from .single_variant import SingleVariantExperiment
+from .multi_variant import MultiVariantExperiment
+from .feature_rollout import FeatureRollout
 from ..._utils import warn_deprecated
 
 logger = logging.getLogger(__name__)
@@ -55,11 +58,15 @@ def parse_experiment(config):
     :return: A subclass of :py:class:`Experiment` for the given experiment
         type.
     """
-    experiment_type = config["type"].lower()
-    experiment_id = config["id"]
+    experiment_type = config.get("type")
+    if experiment_type:
+        experiment_type = experiment_type.lower()
+    experiment_id = config.get("id")
     assert isinstance(experiment_id, int)
-    name = config["name"]
+    name = config.get("name")
     owner = config.get("owner")
+    start_ts = config.get("start_ts")
+    stop_ts = config.get("stop_ts")
     if "start_ts" in config and "stop_ts" in config:
         start_ts = config["start_ts"]
         stop_ts = config["stop_ts"]
@@ -87,11 +94,12 @@ def parse_experiment(config):
         )
         version = None
     now = time.time()
-    if now < start_ts or now > stop_ts:
-        return ForcedVariantExperiment(None)
 
     enabled = config.get("enabled", True)
-    if not enabled:
+    if now < start_ts or now > stop_ts:
+        enabled = False
+
+    if not enabled and experiment_type in ["r2", "feature_flag"]:
         return ForcedVariantExperiment(None)
 
     experiment_config = config["experiment"]
@@ -119,6 +127,35 @@ def parse_experiment(config):
             version=version,
             config=experiment_config,
         )
+    elif experiment_type == "multi_variant":
+        return MultiVariantExperiment.from_dict(
+            id=experiment_id,
+            name=name,
+            owner=owner,
+            start_ts=start_ts,
+            stop_ts=stop_ts,
+            enabled=enabled,
+            config=experiment_config,
+        )
+    elif experiment_type == "single_variant":
+        return SingleVariantExperiment.from_dict(
+            id=experiment_id,
+            name=name,
+            owner=owner,
+            start_ts=start_ts,
+            stop_ts=stop_ts,
+            enabled=enabled,
+            config=experiment_config,
+        )
+    elif experiment_type == "feature_rollout":
+        return FeatureRollout.from_dict(
+            id=experiment_id,
+            name=name,
+            owner=owner,
+            start_ts=start_ts,
+            stop_ts=stop_ts,
+            enabled=enabled,
+            config=experiment_config)
     else:
         logger.warning(
             "Found an experiment <%s:%s> with an unknown experiment type <%s> "

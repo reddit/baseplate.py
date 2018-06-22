@@ -7,7 +7,8 @@ from .base import Experiment
 
 
 class ForcedVariantExperiment(Experiment):
-    """An experiment that always returns a specified variant.
+    """An experiment that always returns a specified variant. This experiment
+    type is deprecated, and will be removed in the future.
 
     Should not log bucketing events to the event pipeline.  Note that
     ForcedVariantExperiments are not directly configured, rather they are

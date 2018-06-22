@@ -7,7 +7,9 @@ from .r2 import R2Experiment
 
 
 class FeatureFlag(R2Experiment):
-    """An experiment with a single variant "active".
+    """An experiment with a single variant "active". This type of experiment
+    is deprecated and will be removed in the future. Use FeatureRollout
+    instead.
 
     Does not log bucketing events to the event pipeline.  Use this type of
     experiment if you just want to control access to a feature but do not want

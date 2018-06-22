@@ -98,12 +98,13 @@ class Experiments(object):
         return self._experiment_cache[name]
 
     def get_all_experiment_names(self):
-        """Return a list of all valid experiment names from the
+        """Returns a list of all valid experiment names from the
         configuration file.
 
         :rtype: :py:class:`list`
         :return: List of all valid experiment names.
         """
+
         config = self._config_watcher.get_data()
         experiment_names = list(config.keys())
 
