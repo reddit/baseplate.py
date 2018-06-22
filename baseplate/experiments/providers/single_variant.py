@@ -11,7 +11,7 @@ class SingleVariantExperiment(SimpleExperiment):
     This type of experiment allows the adjusting of variant sizes without
     bucketing expisting users.
 
-    Should log bucketing events to the event pipeline.
+    Does log bucketing events.
 
     The config dict is expected to have the following values:
 
@@ -19,8 +19,6 @@ class SingleVariantExperiment(SimpleExperiment):
           and 'size'. Name is the variant name, and size is the fraction of
           users to bucket into the corresponding variant. Sizes are expressed
           as a floating point value between 0 and 1.
-        * **targeting**: (Optional) Not presently used. Format TBD
-        * **overrides**: (Optional) Not presently used. Format TBD
         * **bucket_val**: (Optional) Name of the parameter you want to use for
           bucketing.  This value must be passed to the call to
           experiment.variant as a keyword argument.  Defaults to "user_id".
@@ -47,8 +45,8 @@ class SingleVariantExperiment(SimpleExperiment):
         super(SingleVariantExperiment, self)._validate_variants(variants)
 
         if len(variants) != 2:
-            raise ValueError("""Single Variant experiments expect only one
-                variant and one control.""")
+            raise ValueError("Single Variant experiments expect only one "
+                "variant and one control.")
 
     def _choose_variant(self, bucket):
         """Deterministically choose a percentage-based variant. Every call

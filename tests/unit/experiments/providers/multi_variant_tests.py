@@ -39,6 +39,7 @@ def get_users(num_users, logged_in=True):
         ))
     return users
 
+
 def generate_test_config():
     cfg = {
             "id": 1,
@@ -136,7 +137,6 @@ class TestMultiVariantExperiment(unittest.TestCase):
         self.assertEqual(variant_counts["control_1"], 100)
         self.assertEqual(variant_counts["control_2"], 100)
         self.assertEqual(variant_counts[None], 700)
-
 
     @unittest.skipIf(os.environ.get("CI") != "true",
                      "test takes too long to run for normal local iteration")

@@ -8,6 +8,7 @@ import math
 import os
 import time
 import unittest
+import copy
 
 from datetime import datetime, timedelta
 
@@ -222,7 +223,6 @@ class TestSimpleExperiment(unittest.TestCase):
             # into both buckets, and test will fail. 
             if bucket1 != bucket2:
                 bucketing_changed = True
-                
 
         self.assertTrue(bucketing_changed)
 
@@ -237,7 +237,6 @@ class TestSimpleExperiment(unittest.TestCase):
                                    msg='bucket: %s' % bucket)
 
     def test_variant_returns_none_if_out_of_time_window(self):
-        
         experiments_cfg = {
             "variants": [
                 {
@@ -361,8 +360,6 @@ class TestSimpleExperiment(unittest.TestCase):
         self.assertIsNot(variant_new_bucket_val, None)
 
     def test_change_shuffle_version_changes_bucketing(self):
-        import copy
-
         shuffle_version_1_cfg = {
             "variants": [
                 {

@@ -118,7 +118,6 @@ class TestFeatureRollout(unittest.TestCase):
         self.assertEqual(variant_counts["variant_1"], 100)
         self.assertEqual(variant_counts[None], 900)
 
-
     @unittest.skipIf(os.environ.get("CI") != "true",
                      "test takes too long to run for normal local iteration")
     def test_calculate_bucket(self):

@@ -12,28 +12,20 @@ class FeatureRollout(SimpleExperiment):
     at a slower pace. This is _not_ an 'experiment' in the conventional
     sense, as it has no control groups.
 
-    Should not log bucketing events.
+    Does not log bucketing events.
 
     The config dict is expected to have the following values:
 
-        * **variants**: dict mapping variant name to its size. Variant
-          sizes are expressed as a fraction of 1 (that is, .15 means 15%,
-          not 0.15%).
-        * **targeting**: (Optional) dict containing a targeting tree. This
-          determines the conditions required for a user to _potentially_
-          get bucketed. See <location of targeting classes> for an example
-        * **overrides**: (Optional) dict that maps variant names to a
-          a targeting dict for users to force into the specified variant.
-          If a user falls into multiple overrides, the first variant name
-          matched (in lexigraphical order) will be returned.
-          When determining the variant of an experiment, the
-          override parameters you want to use are passed in as keyword
-          arguments to the call to experiment.variant.
+        * **variants**: array of dicts, each containing the keys 'name'
+          and 'size'. Name is the variant name, and size is the fraction of
+          users to bucket into the corresponding variant. Sizes are expressed
+          as a floating point value between 0 and 1.
         * **bucket_val**: (Optional) Name of the parameter you want to use for
           bucketing.  This value must be passed to the call to
           experiment.variant as a keyword argument.  Defaults to "user_id".
         * **seed**: (Optional) Overrides the seed for this experiment.  If this
-          is not set, `id.name` is used as the seed.
+          is not set, a combination of the experiment name, id, and shuffle
+          version is used.
 
     """
 

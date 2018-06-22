@@ -98,7 +98,7 @@ class Experiments(object):
         return self._experiment_cache[name]
 
     def get_all_experiment_names(self):
-        """Returns a list of all valid experiment names from the
+        """Return a list of all valid experiment names from the
         configuration file.
 
         :rtype: :py:class:`list`
@@ -124,7 +124,7 @@ class Experiments(object):
 
     def variant(self, name, user=None, bucketing_event_override=None,
                 **kwargs):
-        """Which variant, if any, is active.
+        """Return which variant, if any, is active.
 
         If a variant is active, a bucketing event will be logged to the event
         pipeline unless any one of the following conditions are met:

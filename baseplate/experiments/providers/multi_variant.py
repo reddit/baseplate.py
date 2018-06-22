@@ -8,10 +8,10 @@ from .simple_experiment import SimpleExperiment
 class MultiVariantExperiment(SimpleExperiment):
     """Basic experiment, handling more than two variants (typically two
     controls, and multiple treatments).
-    This type of experiment does guarantee that changing the variant size
+    This type of experiment does not guarantee that changing the variant size
     will not rebucketing existing users.
 
-    Should log bucketing events to the event pipeline.
+    Does log bucketing events.
 
     The config dict is expected to have the following values:
 
@@ -19,8 +19,6 @@ class MultiVariantExperiment(SimpleExperiment):
           and 'size'. Name is the variant name, and size is the fraction of
           users to bucket into the corresponding variant. Sizes are expressed
           as a floating point value between 0 and 1.
-        * **targeting**: (Optional) Not presently used. Format TBD
-        * **overrides**: (Optional) Not presently used. Format TBD
         * **bucket_val**: (Optional) Name of the parameter you want to use for
           bucketing.  This value must be passed to the call to
           experiment.variant as a keyword argument.  Defaults to "user_id".
@@ -48,8 +46,8 @@ class MultiVariantExperiment(SimpleExperiment):
         super(MultiVariantExperiment, self)._validate_variants(variants)
 
         if len(variants) < 3:
-            raise ValueError("""MultiVariant experiments expect two controls
-                and at least one variant.""")
+            raise ValueError("MultiVariant experiments expect two controls "
+                "and at least one variant.")
 
     def _choose_variant(self, bucket):
         """Deterministically choose a percentage-based variant. Every call

@@ -107,8 +107,10 @@ class SimpleExperiment(Experiment):
         return None
 
     def _is_targeted(self, **kwargs):
-        """ Advanced targeting functionality to be supported in the future.
-        For now, everybody is targeted.
+        """Check if user/etc is targeted for this experiment.
+
+        Advanced targeting functionality to be supported in the future.
+        For now, return True.
         """
         return True
 
