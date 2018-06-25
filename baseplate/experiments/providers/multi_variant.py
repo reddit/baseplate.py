@@ -9,7 +9,7 @@ class MultiVariantExperiment(SimpleExperiment):
     """Basic experiment, handling more than two variants (typically two
     controls, and multiple treatments).
     This type of experiment does not guarantee that changing the variant size
-    will not rebucketing existing users.
+    will not rebucket existing users.
 
     Does log bucketing events.
 
@@ -51,7 +51,7 @@ class MultiVariantExperiment(SimpleExperiment):
 
     def _choose_variant(self, bucket):
         """Deterministically choose a percentage-based variant. Every call
-        with the same bucket and varaints will result in the same answer
+        with the same bucket and varaints will result in the same answer.
 
         :param bucket -- an integer bucket representation
         :param variants -- a dictionary of
@@ -60,10 +60,10 @@ class MultiVariantExperiment(SimpleExperiment):
                           any of the variants
         """
 
-        current_offset = 0.0
+        current_offset = 0
 
         for variant in self.variants:
-            current_offset += variant['size'] * self.num_buckets
+            current_offset += int(variant['size'] * self.num_buckets)
             if bucket < current_offset:
                 return variant['name']
 

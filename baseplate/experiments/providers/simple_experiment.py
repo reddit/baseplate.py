@@ -22,7 +22,7 @@ class SimpleExperiment(Experiment):
     def make_seed(self, seed_data):
         id = seed_data.get('id')
         name = seed_data.get('name')
-        version = seed_data.get('version')
+        version = seed_data.get('shuffle_version')
 
         return "{}.{}.{}".format(id, name, version)
 
@@ -44,7 +44,7 @@ class SimpleExperiment(Experiment):
 
         self.variants = config.get("variants", [])
 
-        seed_data = {"id": id, "name": name, "version": self.shuffle_version}
+        seed_data = {"id": id, "name": name, "shuffle_version": self.shuffle_version}
         self.seed = config.get("bucket_seed", self.make_seed(seed_data))
 
         self._validate_variants(self.variants)
@@ -67,10 +67,7 @@ class SimpleExperiment(Experiment):
     def variant(self, **kwargs):
         lower_kwargs = {k.lower(): v for k, v in iteritems(kwargs)}
 
-        current_ts = time.time()
-        if (not self.enabled
-                or current_ts < self.start_ts
-                or current_ts > self.stop_ts):
+        if not self._is_enabled():
             return None
 
         variant = self._check_overrides(**lower_kwargs)
@@ -115,7 +112,10 @@ class SimpleExperiment(Experiment):
         return True
 
     def _is_enabled(self, **kwargs):
-        return self.start_ts
+        current_ts = time.time()
+
+        return (self.enabled and current_ts >= self.start_ts
+                and current_ts < self.stop_ts)
 
     def _calculate_bucket(self, bucket_val):
         """Sort something into one of self.num_buckets buckets.

@@ -22,6 +22,15 @@ logger = logging.getLogger(__name__)
 ISO_DATE_FMT = "%Y-%m-%d"
 
 
+type_class_map = {
+    'r2': R2Experiment,
+    'feature_flag': FeatureFlag,
+    'single_variant': SingleVariantExperiment,
+    'multi_variant': MultiVariantExperiment,
+    'feature_rollout': FeatureRollout,
+}
+
+
 def parse_experiment(config):
     """Factory method that parses an experiment config dict and returns an
     appropriate Experiment class.
@@ -67,23 +76,21 @@ def parse_experiment(config):
     owner = config.get("owner")
     start_ts = config.get("start_ts")
     stop_ts = config.get("stop_ts")
-    if "start_ts" in config and "stop_ts" in config:
-        start_ts = config["start_ts"]
-        stop_ts = config["stop_ts"]
-    elif "expires" in config:
-        warn_deprecated(
-            "The 'expires' field is in experiment %s deprecated, you should "
-            "use 'start_ts' and 'stop_ts'." % name
-        )
-        start_ts = time.time()
-        expires = datetime.strptime(config["expires"], ISO_DATE_FMT)
-        epoch = datetime(1970, 1, 1)
-        stop_ts = (expires - epoch).total_seconds()
-    else:
-        raise ValueError(
-            "Invalid config for experiment %s, missing start_ts and/or "
-            "stop_ts." % name
-        )
+    if (start_ts is None or stop_ts is None):
+        if "expires" in config:
+            warn_deprecated(
+                "The 'expires' field is in experiment %s deprecated, you should "
+                "use 'start_ts' and 'stop_ts'." % name
+            )
+            start_ts = time.time()
+            expires = datetime.strptime(config["expires"], ISO_DATE_FMT)
+            epoch = datetime(1970, 1, 1)
+            stop_ts = (expires - epoch).total_seconds()
+        else:
+            raise ValueError(
+                "Invalid config for experiment %s, missing start_ts and/or "
+                "stop_ts." % name
+            )
 
     if "version" in config:
         version = config["version"]
@@ -93,6 +100,7 @@ def parse_experiment(config):
             "required in the future." % name
         )
         version = None
+
     now = time.time()
 
     enabled = config.get("enabled", True)
@@ -111,24 +119,19 @@ def parse_experiment(config):
         override = config.get("global_override")
         return ForcedVariantExperiment(override)
 
-    if experiment_type == "r2":
-        return R2Experiment.from_dict(
+    experiment_class = type_class_map.get(experiment_type, ForcedVariantExperiment)
+
+    if experiment_type in ['r2', 'feature_flag']:
+        return experiment_class.from_dict(
             id=experiment_id,
             name=name,
             owner=owner,
             version=version,
             config=experiment_config,
         )
-    elif experiment_type == "feature_flag":
-        return FeatureFlag.from_dict(
-            id=experiment_id,
-            name=name,
-            owner=owner,
-            version=version,
-            config=experiment_config,
-        )
-    elif experiment_type == "multi_variant":
-        return MultiVariantExperiment.from_dict(
+    elif experiment_type in ['single_variant', 'multi_variant',
+                             'feature_rollout']:
+        return experiment_class.from_dict(
             id=experiment_id,
             name=name,
             owner=owner,
@@ -137,25 +140,6 @@ def parse_experiment(config):
             enabled=enabled,
             config=experiment_config,
         )
-    elif experiment_type == "single_variant":
-        return SingleVariantExperiment.from_dict(
-            id=experiment_id,
-            name=name,
-            owner=owner,
-            start_ts=start_ts,
-            stop_ts=stop_ts,
-            enabled=enabled,
-            config=experiment_config,
-        )
-    elif experiment_type == "feature_rollout":
-        return FeatureRollout.from_dict(
-            id=experiment_id,
-            name=name,
-            owner=owner,
-            start_ts=start_ts,
-            stop_ts=stop_ts,
-            enabled=enabled,
-            config=experiment_config)
     else:
         logger.warning(
             "Found an experiment <%s:%s> with an unknown experiment type <%s> "

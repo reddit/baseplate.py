@@ -64,7 +64,7 @@ class FeatureRollout(SimpleExperiment):
                           any of the variants
         """
 
-        if bucket < self.variants[0]['size'] * self.num_buckets:
+        if bucket < int(self.variants[0]['size'] * self.num_buckets):
             return self.variants[0]['name']
 
         return None
