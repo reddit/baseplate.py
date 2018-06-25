@@ -4,6 +4,8 @@ __pycache__
 
 .coverage
 
+.vagrant
+
 baseplate.egg-info
 build/
 dist/
