@@ -27,19 +27,6 @@ class SingleVariantExperiment(SimpleExperiment):
           version is used.
     """
 
-    @classmethod
-    def from_dict(cls, id, name, owner, start_ts, stop_ts, config,
-                  enabled=True, **kwargs):
-        return cls(
-            id=id,
-            name=name,
-            owner=owner,
-            start_ts=start_ts,
-            stop_ts=stop_ts,
-            enabled=enabled,
-            config=config,
-        )
-
     def _validate_variants(self, variants):
 
         super(SingleVariantExperiment, self)._validate_variants(variants)
@@ -53,8 +40,6 @@ class SingleVariantExperiment(SimpleExperiment):
         with the same bucket and varaints will result in the same answer
 
         :param bucket -- an integer bucket representation
-        :param variants -- a dictionary of
-                           <string:variant name>:<float:percentage> pairs.
         :return string -- the variant name, or None if bucket doesn't fall into
                           any of the variants
         """

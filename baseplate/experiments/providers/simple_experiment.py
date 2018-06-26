@@ -45,12 +45,27 @@ class SimpleExperiment(Experiment):
         self.variants = config.get("variants", [])
 
         seed_data = {"id": id, "name": name, "shuffle_version": self.shuffle_version}
-        self.seed = config.get("bucket_seed", self.make_seed(seed_data))
+        self._seed = config.get("bucket_seed", self.make_seed(seed_data))
 
         self._validate_variants(self.variants)
 
-    def _get_seed(self):
-        return self.seed
+    @classmethod
+    def from_dict(cls, id, name, owner, start_ts, stop_ts, config,
+                  enabled=True, **kwargs):
+
+        return cls(
+            id=id,
+            name=name,
+            owner=owner,
+            start_ts=start_ts,
+            stop_ts=stop_ts,
+            enabled=enabled,
+            config=config,
+        )
+
+    @property
+    def seed(self):
+        return self._seed
 
     def get_unique_id(self, **kwargs):
         if kwargs.get(self.bucket_val):
