@@ -172,9 +172,9 @@ class TestFeatureRollout(unittest.TestCase):
             self.assertEqual(bucket1, experiment._calculate_bucket(fullname))
 
             current_seed = experiment.seed
-            experiment.seed = "new_test_seed"
+            experiment._seed = "new_test_seed"
             bucket2 = experiment._calculate_bucket(fullname)
-            experiment.seed = current_seed
+            experiment._seed = current_seed
             # check that the bucketing changed at some point. Can't compare
             # bucket1 to bucket2 inline because sometimes the user will fall
             # into both buckets, and test will fail
