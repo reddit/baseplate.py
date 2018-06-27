@@ -62,7 +62,7 @@ def create_simple_experiment():
         "shuffle_version":1
     }
 
-    experiment = SimpleExperiment(
+    experiment = SimpleExperiment.from_dict(
         id="1",
         name="test_experiment_name",
         owner="somebody",
@@ -97,7 +97,7 @@ class TestSimpleExperiment(unittest.TestCase):
             "bucket_seed": "some new seed",
         }
 
-        seeded_experiment = SimpleExperiment(
+        seeded_experiment = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",
@@ -130,7 +130,7 @@ class TestSimpleExperiment(unittest.TestCase):
             "shuffle_version":1
         }
 
-        experiment = SimpleExperiment(
+        experiment = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",
@@ -189,7 +189,7 @@ class TestSimpleExperiment(unittest.TestCase):
             "bucket_seed": "some_new_seed",
         }
 
-        experiment = SimpleExperiment(
+        experiment = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",
@@ -251,7 +251,7 @@ class TestSimpleExperiment(unittest.TestCase):
             "experiment_version":1,
         }
 
-        experiment_valid = SimpleExperiment(
+        experiment_valid = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",
@@ -260,7 +260,7 @@ class TestSimpleExperiment(unittest.TestCase):
             config=experiments_cfg,
         )
 
-        experiment_expired = SimpleExperiment(
+        experiment_expired = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",
@@ -269,7 +269,7 @@ class TestSimpleExperiment(unittest.TestCase):
             config=experiments_cfg,
         )
 
-        experiment_not_started = SimpleExperiment(
+        experiment_not_started = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",
@@ -312,7 +312,7 @@ class TestSimpleExperiment(unittest.TestCase):
             "bucket_val":"new_bucket_val",
         }
 
-        experiment = SimpleExperiment(
+        experiment = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",
@@ -341,7 +341,7 @@ class TestSimpleExperiment(unittest.TestCase):
             "bucket_val":"new_bucket_val"
         }
 
-        experiment = SimpleExperiment(
+        experiment = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",
@@ -375,7 +375,7 @@ class TestSimpleExperiment(unittest.TestCase):
             "shuffle_version":1,
         }
 
-        experiment_version_1 = SimpleExperiment(
+        experiment_version_1 = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",
@@ -387,7 +387,7 @@ class TestSimpleExperiment(unittest.TestCase):
         shuffle_version_2_cfg = copy.deepcopy(shuffle_version_1_cfg)
         shuffle_version_2_cfg['shuffle_version'] = 2
 
-        experiment_version_2 = SimpleExperiment(
+        experiment_version_2 = SimpleExperiment.from_dict(
             id="1",
             name="test_experiment_name",
             owner="somebody",

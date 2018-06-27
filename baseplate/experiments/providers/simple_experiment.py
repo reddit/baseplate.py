@@ -27,7 +27,34 @@ class SimpleExperiment(Experiment):
         return "{}.{}.{}".format(id, name, version)
 
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
-                 enabled=True, **kwargs):
+                 experiment_version, shuffle_version, variants,
+                 bucket_seed, bucket_val, enabled=True, **kwargs):
+        """
+        :param int id -- the experiment id. This should be unique.
+        :param string name -- the human-readable name of the experiment.
+        :param string owner -- who is responsible for this experiement.
+        :param timestamp start_ts -- when this experiment is due to start.
+            Variant requests prior to this time will return None
+        :param timestamp stop_ts -- when this experiment is due to end.
+            Variant requests after this time will return None.
+        :param dict config -- the configuration for this experiment.
+        :param int experiment_version -- which version of this experiment is
+            being used. This value should increment with each successive change
+            to the experimental configuration
+        :param int shuffle_version -- distinct from the experiment version, this
+            value is used in constructing the default bucketing seed value (if not
+            provided). When this value changes, rebucketing will occur.
+        :param list variants -- the list of variants for this experiment. This should
+            be provided as an array of dicts, each containing the keys 'name'
+          and 'size'. Name is the variant name, and size is the fraction of
+          users to bucket into the corresponding variant. Sizes are expressed
+          as a floating point value between 0 and 1.
+        :param bucket_seed -- if provided, this provides the seed for determining
+            which bucket a variant request lands in. Providing a consistent
+            bucket_seed will ensure a user is bucketed consistently.
+        :param bool enabled -- whether or not this experiment is enabled.
+            disabling an experiment means all variant calls will return None
+        """
 
         self.id = id
         self.name = name
@@ -38,20 +65,31 @@ class SimpleExperiment(Experiment):
         self.stop_ts = stop_ts
         self.enabled = enabled
 
-        self.bucket_val = config.get("bucket_val", "user_id")
-        self.version = config.get("experiment_version")
-        self.shuffle_version = config.get("shuffle_version")
+        self.bucket_val = bucket_val
+        self.version = experiment_version
+        self.shuffle_version = shuffle_version
+        self.experiment_version = experiment_version
 
-        self.variants = config.get("variants", [])
+        if not self.experiment_version:
+            raise ValueError('Experiment version must be provided.')
+
+        self.variants = variants
 
         seed_data = {"id": id, "name": name, "shuffle_version": self.shuffle_version}
-        self._seed = config.get("bucket_seed", self.make_seed(seed_data))
+        self._seed = bucket_seed or self.make_seed(seed_data)
 
         self._validate_variants(self.variants)
 
     @classmethod
     def from_dict(cls, id, name, owner, start_ts, stop_ts, config,
                   enabled=True, **kwargs):
+        bucket_val = config.get("bucket_val", "user_id")
+        version = config.get("experiment_version")
+        shuffle_version = config.get("shuffle_version")
+
+        variants = config.get("variants", [])
+
+        bucket_seed = config.get("bucket_seed")
 
         return cls(
             id=id,
@@ -61,6 +99,11 @@ class SimpleExperiment(Experiment):
             stop_ts=stop_ts,
             enabled=enabled,
             config=config,
+            experiment_version=version,
+            shuffle_version=shuffle_version,
+            variants=variants,
+            bucket_seed=bucket_seed,
+            bucket_val=bucket_val,
         )
 
     @property
@@ -152,14 +195,14 @@ class SimpleExperiment(Experiment):
             For example, ensure that variant percentages do not add to more than 100%.
         """
 
+        if variants is None:
+            raise ValueError('Sum of all variants is greater than 100%')
+
         total_size = 0.0
         for variant in variants:
             total_size += variant.get('size')
         if total_size > 1.0:
             raise ValueError('Sum of all variants is greater than 100%')
-
-        if not self.version:
-            raise ValueError('Experiment version must be provided.')
 
     def _choose_variant(self, bucket):
         raise NotImplementedError
