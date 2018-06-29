@@ -11,9 +11,8 @@ from datetime import datetime
 from .feature_flag import FeatureFlag
 from .forced_variant import ForcedVariantExperiment
 from .r2 import R2Experiment
-from .single_variant import SingleVariantExperiment
-from .multi_variant import MultiVariantExperiment
-from .feature_rollout import FeatureRollout
+from .simple_experiment import SimpleExperiment
+
 from ..._utils import warn_deprecated
 
 logger = logging.getLogger(__name__)
@@ -22,13 +21,17 @@ logger = logging.getLogger(__name__)
 ISO_DATE_FMT = "%Y-%m-%d"
 
 
-type_class_map = {
+legacy_type_class_map = {
     'r2': R2Experiment,
     'feature_flag': FeatureFlag,
-    'single_variant': SingleVariantExperiment,
-    'multi_variant': MultiVariantExperiment,
-    'feature_rollout': FeatureRollout,
 }
+
+
+simple_type_class_list = [
+    'single_variant',
+    'multi_variant',
+    'feature_rollout',
+]
 
 
 def parse_experiment(config):
@@ -71,7 +74,8 @@ def parse_experiment(config):
     if experiment_type:
         experiment_type = experiment_type.lower()
     experiment_id = config.get("id")
-    assert isinstance(experiment_id, int)
+    if not isinstance(experiment_id, int):
+        raise KeyError("Integer id must be provided for experiment.")
     name = config.get("name")
     owner = config.get("owner")
     start_ts = config.get("start_ts")
@@ -119,9 +123,8 @@ def parse_experiment(config):
         override = config.get("global_override")
         return ForcedVariantExperiment(override)
 
-    experiment_class = type_class_map.get(experiment_type, ForcedVariantExperiment)
-
-    if experiment_type in ['r2', 'feature_flag']:
+    if experiment_type in legacy_type_class_map.keys():
+        experiment_class = legacy_type_class_map.get(experiment_type)
         return experiment_class.from_dict(
             id=experiment_id,
             name=name,
@@ -129,9 +132,8 @@ def parse_experiment(config):
             version=version,
             config=experiment_config,
         )
-    elif experiment_type in ['single_variant', 'multi_variant',
-                             'feature_rollout']:
-        return experiment_class.from_dict(
+    elif experiment_type in simple_type_class_list:
+        return SimpleExperiment.from_dict(
             id=experiment_id,
             name=name,
             owner=owner,
@@ -139,6 +141,7 @@ def parse_experiment(config):
             stop_ts=stop_ts,
             enabled=enabled,
             config=experiment_config,
+            variant_type=experiment_type,
         )
     else:
         logger.warning(

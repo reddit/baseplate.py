@@ -14,9 +14,10 @@ logger = logging.getLogger(__name__)
 
 
 class R2Experiment(Experiment):
-    """A "legacy", r2-style experiment. This experiment type is deprecated,
-    and will be removed in the future. Use one of SingleVariant or
-    MultiVariant instead.
+    """.. deprecated:: 0.27
+    Use SingleVariant or MultiVariant instead.
+
+    A "legacy", r2-style experiment.
 
     Should log bucketing events to the event pipeline.
 

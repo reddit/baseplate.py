@@ -46,32 +46,38 @@ def choose_variants_override(self, **kwargs):
     return "fake_variant"
 
 
-def create_simple_experiment():
-    experiments_cfg = {
-        "variants": [
-            {
-                "name":"variant_1",
-                "size":0.1,
-            },
-            {
-                "name":"variant_2",
-                "size":0.1,
-            },
-        ],
-        "experiment_version":1,
-        "shuffle_version":1
+def get_simple_config():
+    cfg = {
+        "id": 1,
+        "name": "test_experiment",
+        "owner": "test",
+        "type": "single_variant",
+        "version": "1",
+        "start_ts": time.time() - THIRTY_DAYS,
+        "stop_ts": time.time() + THIRTY_DAYS,
+        "enabled": True,
+        "experiment": {
+            "variants": [
+                {
+                    "name":"variant_1",
+                    "size":0.1,
+                },
+                {
+                    "name":"variant_2",
+                    "size":0.1,
+                },
+            ],
+            "experiment_version":1,
+        }
     }
+    return cfg
 
-    experiment = SimpleExperiment.from_dict(
-        id="1",
-        name="test_experiment_name",
-        owner="somebody",
-        start_ts=time.time() - THIRTY_DAYS,
-        stop_ts=time.time() + THIRTY_DAYS,
-        config=experiments_cfg,
-    )
 
-    experiment._choose_variant = choose_variants_override
+def create_simple_experiment():
+    cfg = get_simple_config()
+
+    experiment = parse_experiment(cfg)
+
     return experiment
 
 
@@ -80,31 +86,35 @@ class TestSimpleExperiment(unittest.TestCase):
     def test_calculate_bucket_value(self):
         experiment = create_simple_experiment()
         experiment.num_buckets = 1000
-        self.assertEqual(experiment._calculate_bucket("t2_1"), long(311))
-        
+        self.assertEqual(experiment._calculate_bucket("t2_1"), long(867))
+
         seeded_cfg = {
-            "variants": [
-                {
-                    "name":"variant_1",
-                    "size":0.1,
-                },
-                {
-                    "name":"variant_2",
-                    "size":0.1,
-                },
-            ],
-            "experiment_version":1,
-            "bucket_seed": "some new seed",
+            "id": 1,
+            "name": "test_experiment",
+            "owner": "test",
+            "type": "single_variant",
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
+            "enabled": True,
+            "experiment": {
+                "variants": [
+                    {
+                        "name":"variant_1",
+                        "size":0.1,
+                    },
+                    {
+                        "name":"variant_2",
+                        "size":0.1,
+                    },
+                ],
+                "experiment_version":1,
+                "shuffle_version":1,
+                "bucket_seed": "some new seed",
+            }
         }
 
-        seeded_experiment = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() - THIRTY_DAYS,
-            stop_ts=time.time() + THIRTY_DAYS,
-            config=seeded_cfg,
-        )
+        seeded_experiment = parse_experiment(seeded_cfg)
 
         self.assertNotEqual(seeded_experiment.seed, experiment.seed)
         self.assertIsNot(seeded_experiment.seed, None)
@@ -113,34 +123,6 @@ class TestSimpleExperiment(unittest.TestCase):
             seeded_experiment._calculate_bucket("t2_1"),
             long(924),
         )
-
-    def test_choose_variant_throws(self):
-        experiments_cfg = {
-            "variants": [
-                {
-                    "name":"variant_1",
-                    "size":0.1,
-                },
-                {
-                    "name":"variant_2",
-                    "size":0.1,
-                },
-            ],
-            "experiment_version":1,
-            "shuffle_version":1
-        }
-
-        experiment = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() - THIRTY_DAYS,
-            stop_ts=time.time() + THIRTY_DAYS,
-            config=experiments_cfg,
-        )
-
-        with self.assertRaises(NotImplementedError):
-            experiment.variant(user_id="t2_1")
 
     @unittest.skipIf(os.environ.get("CI") != "true",
                      "test takes too long to run for normal local iteration")
@@ -175,28 +157,32 @@ class TestSimpleExperiment(unittest.TestCase):
                      "test takes too long to run for normal local iteration")
     def test_calculate_bucket_with_seed(self):
         seeded_cfg = {
-            "variants": [
-                {
-                    "name":"variant_1",
-                    "size":0.1,
-                },
-                {
-                    "name":"variant_2",
-                    "size":0.1,
-                },
-            ],
-            "experiment_version":1,
-            "bucket_seed": "some_new_seed",
+            "id": 1,
+            "name": "test_experiment",
+            "owner": "test",
+            "type": "single_variant",
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
+            "enabled": True,
+            "experiment": {
+                "variants": [
+                    {
+                        "name":"variant_1",
+                        "size":0.1,
+                    },
+                    {
+                        "name":"variant_2",
+                        "size":0.1,
+                    },
+                ],
+                "experiment_version":1,
+                "shuffle_version":1,
+                "bucket_seed": "some new seed",
+            }
         }
 
-        experiment = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() - THIRTY_DAYS,
-            stop_ts=time.time() + THIRTY_DAYS,
-            config=seeded_cfg,
-        )
+        seeded_experiment = parse_experiment(seeded_cfg)
 
         # Give ourselves enough users that we can get some reasonable amount of
         # precision when checking amounts per bucket.
@@ -237,48 +223,17 @@ class TestSimpleExperiment(unittest.TestCase):
                                    msg='bucket: %s' % bucket)
 
     def test_variant_returns_none_if_out_of_time_window(self):
-        experiments_cfg = {
-            "variants": [
-                {
-                    "name":"variant_1",
-                    "size":0.5,
-                },
-                {
-                    "name":"variant_2",
-                    "size":0.5,
-                },
-            ],
-            "experiment_version":1,
-        }
-
-        experiment_valid = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() - THIRTY_DAYS,
-            stop_ts=time.time() + THIRTY_DAYS,
-            config=experiments_cfg,
-        )
-
-        experiment_expired = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() - THIRTY_DAYS,
-            stop_ts=time.time() - FIVE_DAYS,
-            config=experiments_cfg,
-        )
-
-        experiment_not_started = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() + FIVE_DAYS,
-            stop_ts=time.time() + THIRTY_DAYS,
-            config=experiments_cfg,
-        )
-
+        valid_cfg = get_simple_config()
+        experiment_valid = parse_experiment(valid_cfg)
         experiment_valid._choose_variant = choose_variants_override
+
+        expired_cfg = get_simple_config()
+        expired_cfg['stop_ts'] = time.time() - FIVE_DAYS
+        experiment_expired = parse_experiment(expired_cfg)
+
+        experiment_not_started_cfg = get_simple_config()
+        experiment_not_started_cfg['start_ts'] = time.time() + FIVE_DAYS
+        experiment_not_started = parse_experiment(experiment_not_started_cfg)
 
         variant_valid = experiment_valid.variant(user_id="t2_1")
         variant_expired = experiment_expired.variant(user_id="t2_1")
@@ -297,59 +252,40 @@ class TestSimpleExperiment(unittest.TestCase):
         self.assertIs(none_user_id_provided_variant, None)
 
     def test_experiment_disabled(self):
-        experiments_cfg = {
-            "variants": [
-                {
-                    "name":"variant_1",
-                    "size":0.1,
-                },
-                {
-                    "name":"variant_2",
-                    "size":0.1,
-                },
-            ],
-            "experiment_version":1,
-            "bucket_val":"new_bucket_val",
-        }
+        experiments_cfg = get_simple_config()
+        experiments_cfg['experiment']['enabled'] = False
 
-        experiment = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() - THIRTY_DAYS,
-            stop_ts=time.time() + THIRTY_DAYS,
-            enabled=False,
-            config=experiments_cfg,
-        )
+        experiment = parse_experiment(experiments_cfg)
 
         variant = experiment.variant(user_id="t2_1")
         self.assertIs(variant, None)
 
     def test_bucket_val(self):
-        experiments_cfg = {
-            "variants": [
-                {
-                    "name":"variant_1",
-                    "size":0.5,
-                },
-                {
-                    "name":"variant_2",
-                    "size":0.5,
-                },
-            ],
-            "experiment_version":1,
-            "bucket_val":"new_bucket_val"
+        cfg = {"id": 1,
+            "name": "test_experiment",
+            "owner": "test",
+            "type": "single_variant",
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
+            "enabled": True,
+            "experiment": {
+                "variants": [
+                    {
+                        "name":"variant_1",
+                        "size":0.5,
+                    },
+                    {
+                        "name":"variant_2",
+                        "size":0.5,
+                    },
+                ],
+                "experiment_version":1,
+                "bucket_val":"new_bucket_val",
+            }
         }
 
-        experiment = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() - THIRTY_DAYS,
-            stop_ts=time.time() + THIRTY_DAYS,
-            enabled=True,
-            config=experiments_cfg,
-        )
+        experiment = parse_experiment(cfg)
 
         experiment._choose_variant = choose_variants_override
 
@@ -360,41 +296,13 @@ class TestSimpleExperiment(unittest.TestCase):
         self.assertIsNot(variant_new_bucket_val, None)
 
     def test_change_shuffle_version_changes_bucketing(self):
-        shuffle_version_1_cfg = {
-            "variants": [
-                {
-                    "name":"variant_1",
-                    "size":0.1,
-                },
-                {
-                    "name":"variant_2",
-                    "size":0.1,
-                },
-            ],
-            "experiment_version":1,
-            "shuffle_version":1,
-        }
+        cfg = get_simple_config()
+        experiment_version_1 = parse_experiment(cfg)
 
-        experiment_version_1 = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() - THIRTY_DAYS,
-            stop_ts=time.time() + THIRTY_DAYS,
-            config=shuffle_version_1_cfg,
-        )
+        shuffle_cfg = get_simple_config()
+        shuffle_cfg['experiment']['shuffle_version'] = 2
 
-        shuffle_version_2_cfg = copy.deepcopy(shuffle_version_1_cfg)
-        shuffle_version_2_cfg['shuffle_version'] = 2
-
-        experiment_version_2 = SimpleExperiment.from_dict(
-            id="1",
-            name="test_experiment_name",
-            owner="somebody",
-            start_ts=time.time() - THIRTY_DAYS,
-            stop_ts=time.time() + THIRTY_DAYS,
-            config=shuffle_version_2_cfg,
-        )
+        experiment_version_2 = parse_experiment(shuffle_cfg)
 
         # Give ourselves enough users that we can get some reasonable amount of
         # precision when checking amounts per bucket.

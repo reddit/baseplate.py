@@ -10,14 +10,21 @@ import time
 from .base import Experiment
 from ..._compat import long, iteritems
 
+from .variant_sets.single_variant_set import SingleVariantSet
+from .variant_sets.multi_variant_set import MultiVariantSet
+from .variant_sets.rollout_variant_set import RolloutVariantSet
 
 logger = logging.getLogger(__name__)
 
 
+variant_type_map = {
+    'single_variant': SingleVariantSet,
+    'multi_variant': MultiVariantSet,
+    'feature_rollout': RolloutVariantSet,
+}
+
+
 class SimpleExperiment(Experiment):
-    """Base class for simple experiments. Note that this class shares a lot of
-    code from the r2.py class, which is slated for deprecation and removal.
-    """
 
     def make_seed(self, seed_data):
         id = seed_data.get('id')
@@ -27,7 +34,7 @@ class SimpleExperiment(Experiment):
         return "{}.{}.{}".format(id, name, version)
 
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
-                 experiment_version, shuffle_version, variants,
+                 experiment_version, shuffle_version, variant_set,
                  bucket_seed, bucket_val, enabled=True, **kwargs):
         """
         :param int id -- the experiment id. This should be unique.
@@ -73,21 +80,26 @@ class SimpleExperiment(Experiment):
         if not self.experiment_version:
             raise ValueError('Experiment version must be provided.')
 
-        self.variants = variants
+        self.variant_set = variant_set
 
         seed_data = {"id": id, "name": name, "shuffle_version": self.shuffle_version}
         self._seed = bucket_seed or self.make_seed(seed_data)
 
-        self._validate_variants(self.variants)
-
     @classmethod
     def from_dict(cls, id, name, owner, start_ts, stop_ts, config,
-                  enabled=True, **kwargs):
+                  variant_type, enabled=True, **kwargs):
         bucket_val = config.get("bucket_val", "user_id")
         version = config.get("experiment_version")
         shuffle_version = config.get("shuffle_version")
 
         variants = config.get("variants", [])
+
+        variant_type_cls = variant_type_map.get(variant_type)
+
+        if variant_type_cls is None:
+            raise ValueError('Invalid experiment type: {}'.format(variant_type))
+
+        variant_set = variant_type_cls(variants)
 
         bucket_seed = config.get("bucket_seed")
 
@@ -101,7 +113,7 @@ class SimpleExperiment(Experiment):
             config=config,
             experiment_version=version,
             shuffle_version=shuffle_version,
-            variants=variants,
+            variant_set=variant_set,
             bucket_seed=bucket_seed,
             bucket_val=bucket_val,
         )
@@ -128,10 +140,6 @@ class SimpleExperiment(Experiment):
         if not self._is_enabled():
             return None
 
-        variant = self._check_overrides(**lower_kwargs)
-        if variant is not None and variant in self.variants:
-            return variant
-
         if self.bucket_val not in lower_kwargs:
             logger.info(
                 "Must specify %s in call to variant for experiment %s.",
@@ -139,6 +147,7 @@ class SimpleExperiment(Experiment):
                 self.name,
             )
             return None
+
         if lower_kwargs[self.bucket_val] is None:
             logger.info(
                 "Cannot choose a variant for bucket value %s = %s "
@@ -149,25 +158,8 @@ class SimpleExperiment(Experiment):
             )
             return None
 
-        if not self._is_targeted(**lower_kwargs):
-            return None
-
         bucket = self._calculate_bucket(lower_kwargs[self.bucket_val])
         return self._choose_variant(bucket)
-
-    def _check_overrides(self, **kwargs):
-        """Check if any of the kwargs override the variant. Functionality
-        to be built in the future. For now, overrides are not supported.
-        """
-        return None
-
-    def _is_targeted(self, **kwargs):
-        """Check if user/etc is targeted for this experiment.
-
-        Advanced targeting functionality to be supported in the future.
-        For now, return True.
-        """
-        return True
 
     def _is_enabled(self, **kwargs):
         current_ts = time.time()
@@ -190,19 +182,5 @@ class SimpleExperiment(Experiment):
         bucket = long(hashed.hexdigest(), 16) % self.num_buckets
         return bucket
 
-    def _validate_variants(self, variants):
-        """ Validate that the variants, as provided, are valid for this type of experiment.
-            For example, ensure that variant percentages do not add to more than 100%.
-        """
-
-        if variants is None:
-            raise ValueError('Sum of all variants is greater than 100%')
-
-        total_size = 0.0
-        for variant in variants:
-            total_size += variant.get('size')
-        if total_size > 1.0:
-            raise ValueError('Sum of all variants is greater than 100%')
-
     def _choose_variant(self, bucket):
-        raise NotImplementedError
+        return self.variant_set.choose_variant(bucket)
