@@ -180,6 +180,31 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_finish.called)
         self.assertTrue(self.context_init_event_subscriber.called)
 
+    def test_b3_trace_headers(self):
+        self.test_app.get("/example", headers={
+            "X-B3-TraceId": "1234",
+            "X-B3-ParentSpanId": "2345",
+            "X-B3-SpanId": "3456",
+            "X-B3-Sampled": "1",
+            "X-B3-Flags": "1",
+        })
+
+        self.assertEqual(self.observer.on_server_span_created.call_count, 1)
+
+        context, server_span = self.observer.on_server_span_created.call_args[0]
+        self.assertEqual(server_span.trace_id, 1234)
+        self.assertEqual(server_span.parent_id, 2345)
+        self.assertEqual(server_span.id, 3456)
+        self.assertEqual(server_span.sampled, True)
+        self.assertEqual(server_span.flags, 1)
+
+        with self.assertRaises(NoAuthenticationError):
+            context.request_context.user.id
+
+        self.assertTrue(self.server_observer.on_start.called)
+        self.assertTrue(self.server_observer.on_finish.called)
+        self.assertTrue(self.context_init_event_subscriber.called)
+
     def test_edge_request_headers(self):
         self.test_app.get("/example", headers={
             "X-Trace": "1234",
