@@ -178,11 +178,11 @@ class TestSimpleExperiment(unittest.TestCase):
                 ],
                 "experiment_version":1,
                 "shuffle_version":1,
-                "bucket_seed": "some new seed",
+                "bucket_seed": "some_new_seed",
             }
         }
 
-        seeded_experiment = parse_experiment(seeded_cfg)
+        experiment = parse_experiment(seeded_cfg)
 
         # Give ourselves enough users that we can get some reasonable amount of
         # precision when checking amounts per bucket.
