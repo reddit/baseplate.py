@@ -34,7 +34,7 @@ def create_multi_variant_set():
     return MultiVariantSet(cfg)
 
 
-class TestSingleVariantSet(unittest.TestCase):
+class TestMultiVariantSet(unittest.TestCase):
 
     def test_validation_passes(self):
         variant_set = create_multi_variant_set()
