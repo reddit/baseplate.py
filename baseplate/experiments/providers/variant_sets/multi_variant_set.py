@@ -2,8 +2,21 @@ from .base import VariantSet
 
 
 class MultiVariantSet(VariantSet):
+    """ Variant Set designed to handle more than two total treatments.
+
+    MultiVariantSets are not designed to support changes in variant sizes without
+    rebucketing.
+    """
 
     def __init__(self, variants, num_buckets=1000):
+        """ :param variants -- array of dicts, each containing the keys 'name'
+            and 'size'. Name is the variant name, and size is the fraction of
+            users to bucket into the corresponding variant. Sizes are expressed
+            as a floating point value between 0 and 1.
+        :param num_buckets -- the number of potential buckets that can be
+            passed in for a variant call. Defaults to 1000, which means maximum
+            granularity of 0.1% for bucketing
+        """
         self._validate_variants(variants)
         self.variants = variants
         self.num_buckets = num_buckets
@@ -34,8 +47,8 @@ class MultiVariantSet(VariantSet):
             raise ValueError('Sum of all variants is greater than 100%')
 
     def choose_variant(self, bucket):
-        """Deterministically choose a percentage-based variant. Every call
-        with the same bucket and varaints will result in the same answer.
+        """Deterministically choose a variant. Every call with the same bucket
+        on one instance will result in the same answer
 
         :param bucket -- an integer bucket representation
         :return string -- the variant name, or None if bucket doesn't fall into

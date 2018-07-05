@@ -1,6 +1,6 @@
 
 
-class VariantSet:
+class VariantSet(object):
     """ Base interface for variant sets """
 
     def __contains__(self, item):
@@ -10,7 +10,4 @@ class VariantSet:
         raise NotImplementedError
 
     def choose_variant(self, bucket):
-        raise NotImplementedError
-
-    def validate_variants(self):
         raise NotImplementedError

@@ -35,7 +35,8 @@ class SimpleExperiment(Experiment):
 
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
                  experiment_version, shuffle_version, variant_set,
-                 bucket_seed, bucket_val, enabled=True, **kwargs):
+                 bucket_seed, bucket_val, enabled=True, log_bucketing=True,
+                 num_buckets=1000, **kwargs):
         """
         :param int id -- the experiment id. This should be unique.
         :param string name -- the human-readable name of the experiment.
@@ -61,12 +62,17 @@ class SimpleExperiment(Experiment):
             bucket_seed will ensure a user is bucketed consistently.
         :param bool enabled -- whether or not this experiment is enabled.
             disabling an experiment means all variant calls will return None
+        :param bool log_bucketing -- whether or not to log bucketing events
+        :param int num_buckets -- how many available buckets there are for
+            bucketing requests. This should match the num_buckets in the
+            provided VariantSet. The default value is 1000, which provides
+            a potential variant granularity of 0.1%
         """
 
         self.id = id
         self.name = name
         self.owner = owner
-        self.num_buckets = 1000
+        self.num_buckets = num_buckets
 
         self.start_ts = start_ts
         self.stop_ts = stop_ts
@@ -76,6 +82,8 @@ class SimpleExperiment(Experiment):
         self.version = experiment_version
         self.shuffle_version = shuffle_version
         self.experiment_version = experiment_version
+
+        self._log_bucketing = log_bucketing
 
         if not self.experiment_version:
             raise ValueError('Experiment version must be provided.')
@@ -91,6 +99,7 @@ class SimpleExperiment(Experiment):
         bucket_val = config.get("bucket_val", "user_id")
         version = config.get("experiment_version")
         shuffle_version = config.get("shuffle_version")
+        num_buckets = config.get("num_buckets", 1000)
 
         variants = config.get("variants", [])
 
@@ -99,7 +108,9 @@ class SimpleExperiment(Experiment):
         if variant_type_cls is None:
             raise ValueError('Invalid experiment type: {}'.format(variant_type))
 
-        variant_set = variant_type_cls(variants)
+        variant_set = variant_type_cls(variants, num_buckets=num_buckets)
+
+        log_bucketing = config.get("log_bucketing", True)
 
         bucket_seed = config.get("bucket_seed")
 
@@ -116,6 +127,8 @@ class SimpleExperiment(Experiment):
             variant_set=variant_set,
             bucket_seed=bucket_seed,
             bucket_val=bucket_val,
+            num_buckets=num_buckets,
+            log_bucketing=log_bucketing,
         )
 
     @property
@@ -132,7 +145,7 @@ class SimpleExperiment(Experiment):
 
     def should_log_bucketing(self):
         """ Default to true. Override if logging of eligibility events not required. """
-        return True
+        return self._log_bucketing
 
     def variant(self, **kwargs):
         lower_kwargs = {k.lower(): v for k, v in iteritems(kwargs)}

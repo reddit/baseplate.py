@@ -123,8 +123,8 @@ def parse_experiment(config):
         override = config.get("global_override")
         return ForcedVariantExperiment(override)
 
-    if experiment_type in legacy_type_class_map.keys():
-        experiment_class = legacy_type_class_map.get(experiment_type)
+    if experiment_type in legacy_type_class_map:
+        experiment_class = legacy_type_class_map[experiment_type]
         return experiment_class.from_dict(
             id=experiment_id,
             name=name,
