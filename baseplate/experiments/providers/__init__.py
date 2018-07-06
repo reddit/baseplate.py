@@ -27,11 +27,11 @@ legacy_type_class_map = {
 }
 
 
-simple_type_class_list = [
+simple_type_class_list = frozenset([
     'single_variant',
     'multi_variant',
     'feature_rollout',
-]
+])
 
 
 def parse_experiment(config):

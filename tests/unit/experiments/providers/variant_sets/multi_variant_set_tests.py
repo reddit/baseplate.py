@@ -16,7 +16,7 @@ from baseplate.experiments.providers.variant_sets.multi_variant_set import Multi
 logger = logging.getLogger(__name__)
 
 
-NUM_BUCKETS_DEF = 1000
+NUM_BUCKETS_DEFAULT = 1000
 NUM_BUCKETS_ODD = 1037
 
 
@@ -31,7 +31,7 @@ def generate_variant_config():
 
 def create_multi_variant_set():
     cfg = generate_variant_config()
-    return MultiVariantSet(cfg)
+    return MultiVariantSet(variants=cfg, num_buckets=NUM_BUCKETS_DEFAULT)
 
 
 class TestMultiVariantSet(unittest.TestCase):
@@ -77,7 +77,7 @@ class TestMultiVariantSet(unittest.TestCase):
             None: 0,
         }
 
-        for bucket in range(0,NUM_BUCKETS_DEF):
+        for bucket in range(0, NUM_BUCKETS_DEFAULT):
             variant = variant_set.choose_variant(bucket)
             variant_counts[variant] += 1
 
@@ -85,6 +85,36 @@ class TestMultiVariantSet(unittest.TestCase):
 
         for variant_count in variant_counts.values():
             self.assertEqual(variant_count, 250)
+
+    def test_distribution_single_bucket(self):
+        cfg = [
+            {"name": "variant_1", "size": 0.001},
+            {"name": "variant_2", "size": 0},
+            {"name": "variant_3", "size": 0},
+        ]
+
+        variant_set = MultiVariantSet(
+            variants=cfg, 
+            num_buckets=NUM_BUCKETS_DEFAULT
+        )
+
+        variant_counts = {
+            "variant_1": 0,
+            "variant_2": 0,
+            "variant_3": 0,
+            None: 0,
+        }
+
+        for bucket in range(0, NUM_BUCKETS_DEFAULT):
+            variant = variant_set.choose_variant(bucket)
+            variant_counts[variant] += 1
+
+        self.assertEqual(len(variant_counts), 4)
+
+        self.assertEqual(variant_counts['variant_1'], 1)
+        self.assertEqual(variant_counts['variant_2'], 0)
+        self.assertEqual(variant_counts['variant_3'], 0)
+        self.assertEqual(variant_counts[None], 999)
 
     def test_distribution_def_odd(self):
         variant_cfg = generate_variant_config()

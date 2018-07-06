@@ -16,7 +16,7 @@ from baseplate.experiments.providers.variant_sets.rollout_variant_set import Rol
 logger = logging.getLogger(__name__)
 
 
-NUM_BUCKETS_DEF = 1000
+NUM_BUCKETS_DEFAULT = 1000
 NUM_BUCKETS_ODD = 1037
 
 
@@ -29,7 +29,7 @@ def generate_variant_config():
 
 def create_rollout_variant_set():
     cfg = generate_variant_config()
-    return RolloutVariantSet(cfg)
+    return RolloutVariantSet(variants=cfg, num_buckets=NUM_BUCKETS_DEFAULT)
 
 
 class TestRolloutVariantSet(unittest.TestCase):
@@ -74,7 +74,7 @@ class TestRolloutVariantSet(unittest.TestCase):
             None: 0,
         }
 
-        for bucket in range(0,NUM_BUCKETS_DEF):
+        for bucket in range(0,NUM_BUCKETS_DEFAULT):
             variant = variant_set.choose_variant(bucket)
             variant_counts[variant] += 1
 
@@ -82,6 +82,30 @@ class TestRolloutVariantSet(unittest.TestCase):
 
         self.assertEqual(variant_counts['variant_1'], 250)
         self.assertEqual(variant_counts[None], 750)
+
+    def test_distribution_single_bucket(self):
+        cfg = [
+            {"name": "variant_1", "size": 0.001},
+        ]
+
+        variant_set = RolloutVariantSet(
+            variants=cfg, 
+            num_buckets=NUM_BUCKETS_DEFAULT
+        )
+
+        variant_counts = {
+            "variant_1": 0,
+            None: 0,
+        }
+
+        for bucket in range(0, NUM_BUCKETS_DEFAULT):
+            variant = variant_set.choose_variant(bucket)
+            variant_counts[variant] += 1
+
+        self.assertEqual(len(variant_counts), 2)
+
+        self.assertEqual(variant_counts['variant_1'], 1)
+        self.assertEqual(variant_counts[None], 999)
 
     def test_distribution_def_odd(self):
         variant_cfg = [

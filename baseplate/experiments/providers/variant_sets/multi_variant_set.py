@@ -9,17 +9,17 @@ class MultiVariantSet(VariantSet):
     """
 
     def __init__(self, variants, num_buckets=1000):
-        """ :param variants -- array of dicts, each containing the keys 'name'
+        """ :param list variants: Array of dicts, each containing the keys 'name'
             and 'size'. Name is the variant name, and size is the fraction of
             users to bucket into the corresponding variant. Sizes are expressed
             as a floating point value between 0 and 1.
-        :param num_buckets -- the number of potential buckets that can be
+        :param int num_buckets: The number of potential buckets that can be
             passed in for a variant call. Defaults to 1000, which means maximum
             granularity of 0.1% for bucketing
         """
+        self.num_buckets = num_buckets
         self._validate_variants(variants)
         self.variants = variants
-        self.num_buckets = num_buckets
 
     def __contains__(self, item):
         for variant in self.variants:
@@ -41,9 +41,9 @@ class MultiVariantSet(VariantSet):
         for variant in variants:
             if variant.get('size') is None:
                 raise ValueError('Variant size not provided: {}'.format(variants))
-            total_size += variant.get('size')
+            total_size += int(variant.get('size') * self.num_buckets)
 
-        if total_size > 1.0:
+        if total_size > self.num_buckets:
             raise ValueError('Sum of all variants is greater than 100%')
 
     def choose_variant(self, bucket):

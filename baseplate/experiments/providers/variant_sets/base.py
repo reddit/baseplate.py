@@ -1,7 +1,12 @@
 
 
 class VariantSet(object):
-    """ Base interface for variant sets """
+    """ Base interface for variant sets.
+
+    A VariantSet contains a set of experimental variants, as well as
+    their distributions. It is used by experiments to track which
+    variant a check is meant to return.
+    """
 
     def __contains__(self, item):
         """Return true if the variant name provided exists

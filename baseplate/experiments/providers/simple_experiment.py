@@ -26,47 +26,43 @@ variant_type_map = {
 
 class SimpleExperiment(Experiment):
 
-    def make_seed(self, seed_data):
-        id = seed_data.get('id')
-        name = seed_data.get('name')
-        version = seed_data.get('shuffle_version')
-
-        return "{}.{}.{}".format(id, name, version)
-
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
                  experiment_version, shuffle_version, variant_set,
                  bucket_seed, bucket_val, enabled=True, log_bucketing=True,
-                 num_buckets=1000, **kwargs):
+                 num_buckets=1000):
         """
-        :param int id -- the experiment id. This should be unique.
-        :param string name -- the human-readable name of the experiment.
-        :param string owner -- who is responsible for this experiement.
-        :param timestamp start_ts -- when this experiment is due to start.
-            Variant requests prior to this time will return None
-        :param timestamp stop_ts -- when this experiment is due to end.
-            Variant requests after this time will return None.
-        :param dict config -- the configuration for this experiment.
-        :param int experiment_version -- which version of this experiment is
+        :param int id: The experiment id. This should be unique.
+        :param string name: The human-readable name of the experiment.
+        :param string owner: Who is responsible for this experiement.
+        :param int start_ts: When this experiment is due to start.
+            Variant requests prior to this time will return None. Expects
+            timestamp in seconds.
+        :param int stop_ts: When this experiment is due to end.
+            Variant requests after this time will return None. Expects
+            timestamp in seconds.
+        :param dict config: The configuration for this experiment.
+        :param int experiment_version: Which version of this experiment is
             being used. This value should increment with each successive change
-            to the experimental configuration
-        :param int shuffle_version -- distinct from the experiment version, this
+            to the experimental configuration.
+        :param int shuffle_version: Distinct from the experiment version, this
             value is used in constructing the default bucketing seed value (if not
             provided). When this value changes, rebucketing will occur.
-        :param list variants -- the list of variants for this experiment. This should
+        :param list variants: The list of variants for this experiment. This should
             be provided as an array of dicts, each containing the keys 'name'
-          and 'size'. Name is the variant name, and size is the fraction of
-          users to bucket into the corresponding variant. Sizes are expressed
-          as a floating point value between 0 and 1.
-        :param bucket_seed -- if provided, this provides the seed for determining
+            and 'size'. Name is the variant name, and size is the fraction of
+            users to bucket into the corresponding variant. Sizes are expressed
+            as a floating point value between 0 and 1.
+        :param str bucket_seed: If provided, this provides the seed for determining
             which bucket a variant request lands in. Providing a consistent
-            bucket_seed will ensure a user is bucketed consistently.
-        :param bool enabled -- whether or not this experiment is enabled.
-            disabling an experiment means all variant calls will return None
-        :param bool log_bucketing -- whether or not to log bucketing events
-        :param int num_buckets -- how many available buckets there are for
+            bucket_seed will ensure a user is bucketed consistently. Calls to
+            the variant method will return consisten results for any given seed.
+        :param bool enabled: Whether or not this experiment is enabled.
+            disabling an experiment means all variant calls will return None.
+        :param bool log_bucketing: Whether or not to log bucketing events.
+        :param int num_buckets: How many available buckets there are for
             bucketing requests. This should match the num_buckets in the
             provided VariantSet. The default value is 1000, which provides
-            a potential variant granularity of 0.1%
+            a potential variant granularity of 0.1%.
         """
 
         self.id = id
@@ -90,12 +86,13 @@ class SimpleExperiment(Experiment):
 
         self.variant_set = variant_set
 
-        seed_data = {"id": id, "name": name, "shuffle_version": self.shuffle_version}
-        self._seed = bucket_seed or self.make_seed(seed_data)
+        self._seed = bucket_seed
+        if self._seed is None:
+            self._seed = "{}.{}.{}".format(id, name, shuffle_version)
 
     @classmethod
     def from_dict(cls, id, name, owner, start_ts, stop_ts, config,
-                  variant_type, enabled=True, **kwargs):
+                  variant_type, enabled=True):
         bucket_val = config.get("bucket_val", "user_id")
         version = config.get("experiment_version")
         shuffle_version = config.get("shuffle_version")
@@ -144,14 +141,15 @@ class SimpleExperiment(Experiment):
             return None
 
     def should_log_bucketing(self):
-        """ Default to true. Override if logging of eligibility events not required. """
+        """ Whether or not this experiment should log bucketing events.
+        """
         return self._log_bucketing
 
     def variant(self, **kwargs):
-        lower_kwargs = {k.lower(): v for k, v in iteritems(kwargs)}
-
         if not self._is_enabled():
             return None
+
+        lower_kwargs = {k.lower(): v for k, v in iteritems(kwargs)}
 
         if self.bucket_val not in lower_kwargs:
             logger.info(
@@ -177,8 +175,7 @@ class SimpleExperiment(Experiment):
     def _is_enabled(self, **kwargs):
         current_ts = time.time()
 
-        return (self.enabled and current_ts >= self.start_ts
-                and current_ts < self.stop_ts)
+        return (self.enabled and self.start_ts <= current_ts < self.stop_ts)
 
     def _calculate_bucket(self, bucket_val):
         """Sort something into one of self.num_buckets buckets.

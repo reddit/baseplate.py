@@ -222,10 +222,11 @@ class TestSimpleExperiment(unittest.TestCase):
             self.assertAlmostEqual(percent_equal, 1.0, delta=.10,
                                    msg='bucket: %s' % bucket)
 
-    def test_variant_returns_none_if_out_of_time_window(self):
+    @mock.patch('baseplate.experiments.providers.simple_experiment.SimpleExperiment._choose_variant')
+    def test_variant_returns_none_if_out_of_time_window(self, choose_variant_mock):
+        choose_variant_mock.return_value = 'fake_variant'
         valid_cfg = get_simple_config()
         experiment_valid = parse_experiment(valid_cfg)
-        experiment_valid._choose_variant = choose_variants_override
 
         expired_cfg = get_simple_config()
         expired_cfg['stop_ts'] = time.time() - FIVE_DAYS
@@ -252,16 +253,40 @@ class TestSimpleExperiment(unittest.TestCase):
         self.assertIs(none_user_id_provided_variant, None)
 
     def test_experiment_disabled(self):
-        experiments_cfg = get_simple_config()
-        experiments_cfg['experiment']['enabled'] = False
+        experiments_cfg = {
+            "id": 1,
+            "name": "test_experiment",
+            "owner": "test",
+            "type": "single_variant",
+            "version": "1",
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
+            "enabled": False,
+            "experiment": {
+                "variants": [
+                    {
+                        "name":"variant_1",
+                        "size":0.5,
+                    },
+                    {
+                        "name":"variant_2",
+                        "size":0.5,
+                    },
+                ],
+                "experiment_version":1,
+            }
+        }
 
         experiment = parse_experiment(experiments_cfg)
 
         variant = experiment.variant(user_id="t2_1")
         self.assertIs(variant, None)
 
-    def test_bucket_val(self):
-        cfg = {"id": 1,
+    @mock.patch('baseplate.experiments.providers.simple_experiment.SimpleExperiment._choose_variant')
+    def test_bucket_val(self, choose_variant_mock):
+        choose_variant_mock.return_value = 'fake_variant'
+        cfg = {
+            "id": 1,
             "name": "test_experiment",
             "owner": "test",
             "type": "single_variant",
