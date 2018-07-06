@@ -13,17 +13,19 @@ class SingleVariantSet(VariantSet):
     """
 
     def __init__(self, variants, num_buckets=1000):
-        """ :param variants -- array of dicts, each containing the keys 'name'
+        """ :param list variants: array of dicts, each containing the keys 'name'
             and 'size'. Name is the variant name, and size is the fraction of
             users to bucket into the corresponding variant. Sizes are expressed
             as a floating point value between 0 and 1.
-        :param num_buckets -- the number of potential buckets that can be
+        :param int num_buckets: the number of potential buckets that can be
             passed in for a variant call. Defaults to 1000, which means maximum
             granularity of 0.1% for bucketing
         """
-        self._validate_variants(variants)
+
         self.variants = variants
         self.num_buckets = num_buckets
+
+        self._validate_variants()
 
     def __contains__(self, item):
         if (self.variants[0].get('name') == item
@@ -32,19 +34,19 @@ class SingleVariantSet(VariantSet):
 
         return False
 
-    def _validate_variants(self, variants):
+    def _validate_variants(self):
 
-        if variants is None:
+        if self.variants is None:
             raise ValueError('No variants provided')
 
-        if len(variants) != 2:
+        if len(self.variants) != 2:
             raise ValueError("Single Variant experiments expect only one "
                 "variant and one control.")
 
-        if variants[0].get('size') is None or variants[1].get('size') is None:
-            raise ValueError('Variant size not provided: {}'.format(variants))
+        if self.variants[0].get('size') is None or self.variants[1].get('size') is None:
+            raise ValueError('Variant size not provided: {}'.format(self.variants))
 
-        total_size = variants[0].get('size') + variants[1].get('size')
+        total_size = self.variants[0].get('size') + self.variants[1].get('size')
 
         if total_size < 0.0 or total_size > 1.0:
             raise ValueError('Sum of all variants must be between 0 and 1.')
@@ -53,8 +55,8 @@ class SingleVariantSet(VariantSet):
         """Deterministically choose a variant. Every call with the same bucket
         on one instance will result in the same answer
 
-        :param bucket -- an integer bucket representation
-        :return string -- the variant name, or None if bucket doesn't fall into
+        :param int bucket: an integer bucket representation
+        :return string: the variant name, or None if bucket doesn't fall into
                           any of the variants
         """
 

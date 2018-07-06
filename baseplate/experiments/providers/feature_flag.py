@@ -8,7 +8,7 @@ from .r2 import R2Experiment
 
 class FeatureFlag(R2Experiment):
     """.. deprecated:: 0.27
-    Use FeatureRollout instead.
+    Use SimpleExperiment with RolloutVariantSet instead.
 
     An experiment with a single variant "active".
 

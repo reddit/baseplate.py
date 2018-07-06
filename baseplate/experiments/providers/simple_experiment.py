@@ -180,13 +180,13 @@ class SimpleExperiment(Experiment):
     def _calculate_bucket(self, bucket_val):
         """Sort something into one of self.num_buckets buckets.
 
-        :param bucket_val -- a string used for shifting the deterministic bucketing
+        :param string bucket_val: a string used for shifting the deterministic bucketing
                        algorithm.  In most cases, this will be an Account's
                        _fullname.
-        :return int -- a bucket, 0 <= bucket < self.num_buckets
+        :return int: a bucket, 0 <= bucket < self.num_buckets
         """
         # Mix the experiment seed with the bucket_val so the same users don't
-        # get bucketed into the same bucket for each experiment.
+        # get placed into the same bucket for each experiment.
         seed_bytes = ("%s%s" % (self.seed, bucket_val)).encode()
         hashed = hashlib.sha1(seed_bytes)
         bucket = long(hashed.hexdigest(), 16) % self.num_buckets

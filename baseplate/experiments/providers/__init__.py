@@ -111,7 +111,7 @@ def parse_experiment(config):
     if now < start_ts or now > stop_ts:
         enabled = False
 
-    if not enabled and experiment_type in ["r2", "feature_flag"]:
+    if not enabled and experiment_type in legacy_type_class_map:
         return ForcedVariantExperiment(None)
 
     experiment_config = config["experiment"]

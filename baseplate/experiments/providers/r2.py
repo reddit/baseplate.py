@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class R2Experiment(Experiment):
     """.. deprecated:: 0.27
-    Use SingleVariant or MultiVariant instead.
+    Use SimpleExperiment with SingleVariantSet or MultiVariantSet instead.
 
     A "legacy", r2-style experiment.
 

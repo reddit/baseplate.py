@@ -18,8 +18,9 @@ class MultiVariantSet(VariantSet):
             granularity of 0.1% for bucketing
         """
         self.num_buckets = num_buckets
-        self._validate_variants(variants)
         self.variants = variants
+
+        self._validate_variants()
 
     def __contains__(self, item):
         for variant in self.variants:
@@ -28,19 +29,19 @@ class MultiVariantSet(VariantSet):
 
         return False
 
-    def _validate_variants(self, variants):
+    def _validate_variants(self):
 
-        if variants is None:
+        if self.variants is None:
             raise ValueError('No variants provided')
 
-        if len(variants) < 3:
+        if len(self.variants) < 3:
             raise ValueError("MultiVariant experiments expect three or "
                 "more variants.")
 
         total_size = 0.0
-        for variant in variants:
+        for variant in self.variants:
             if variant.get('size') is None:
-                raise ValueError('Variant size not provided: {}'.format(variants))
+                raise ValueError('Variant size not provided: {}'.format(self.variants))
             total_size += int(variant.get('size') * self.num_buckets)
 
         if total_size > self.num_buckets:
@@ -50,8 +51,8 @@ class MultiVariantSet(VariantSet):
         """Deterministically choose a variant. Every call with the same bucket
         on one instance will result in the same answer
 
-        :param bucket -- an integer bucket representation
-        :return string -- the variant name, or None if bucket doesn't fall into
+        :param string bucket: an integer bucket representation
+        :return string: the variant name, or None if bucket doesn't fall into
                           any of the variants
         """
 

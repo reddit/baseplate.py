@@ -5,7 +5,7 @@ class VariantSet(object):
 
     A VariantSet contains a set of experimental variants, as well as
     their distributions. It is used by experiments to track which
-    variant a check is meant to return.
+    bucket a variant is assigned to.
     """
 
     def __contains__(self, item):
