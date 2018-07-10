@@ -27,7 +27,7 @@ variant_type_map = {
 class SimpleExperiment(Experiment):
     """A basic experiment choosing from a set of variants.
 
-        Simple experiments are meant to be used in conjuntion with a
+        Simple experiments are meant to be used in conjunction with a
         VariantSet. This class serves as the replacement for the legacy
         r2 and feature_flag providers.
     """
