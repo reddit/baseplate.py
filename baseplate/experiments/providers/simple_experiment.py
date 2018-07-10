@@ -10,9 +10,9 @@ import time
 from .base import Experiment
 from ..._compat import long, iteritems
 
-from .variant_sets.single_variant_set import SingleVariantSet
-from .variant_sets.multi_variant_set import MultiVariantSet
-from .variant_sets.rollout_variant_set import RolloutVariantSet
+from ..variant_sets.single_variant_set import SingleVariantSet
+from ..variant_sets.multi_variant_set import MultiVariantSet
+from ..variant_sets.rollout_variant_set import RolloutVariantSet
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,12 @@ variant_type_map = {
 
 
 class SimpleExperiment(Experiment):
+    """A basic experiment choosing from a set of variants.
+
+        Simple experiments are meant to be used in conjuntion with a
+        VariantSet. This class serves as the replacement for the legacy
+        r2 and feature_flag providers.
+    """
 
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
                  experiment_version, shuffle_version, variant_set,

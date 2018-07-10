@@ -75,15 +75,15 @@ def parse_experiment(config):
         experiment_type = experiment_type.lower()
     experiment_id = config.get("id")
     if not isinstance(experiment_id, int):
-        raise KeyError("Integer id must be provided for experiment.")
+        raise TypeError("Integer id must be provided for experiment.")
     name = config.get("name")
     owner = config.get("owner")
     start_ts = config.get("start_ts")
     stop_ts = config.get("stop_ts")
-    if (start_ts is None or stop_ts is None):
+    if start_ts is None or stop_ts is None:
         if "expires" in config:
             warn_deprecated(
-                "The 'expires' field is in experiment %s deprecated, you should "
+                "The 'expires' field in experiment %s is deprecated, you should "
                 "use 'start_ts' and 'stop_ts'." % name
             )
             start_ts = time.time()

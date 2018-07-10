@@ -11,7 +11,7 @@ import unittest
 from datetime import timedelta
 
 from baseplate._compat import range
-from baseplate.experiments.providers.variant_sets.single_variant_set import SingleVariantSet
+from baseplate.experiments.variant_sets.single_variant_set import SingleVariantSet
 
 logger = logging.getLogger(__name__)
 

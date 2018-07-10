@@ -46,7 +46,7 @@ class RolloutVariantSet(VariantSet):
 
     def choose_variant(self, bucket):
         """Deterministically choose a percentage-based variant. Every call
-        with the same bucket and varaints will result in the same answer.
+        with the same bucket and variants will result in the same answer.
 
         :param string bucket: an integer bucket representation
         :return string: the variant name, or None if bucket doesn't fall into

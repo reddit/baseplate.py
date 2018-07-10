@@ -38,7 +38,7 @@ class MultiVariantSet(VariantSet):
             raise ValueError("MultiVariant experiments expect three or "
                 "more variants.")
 
-        total_size = 0.0
+        total_size = 0
         for variant in self.variants:
             if variant.get('size') is None:
                 raise ValueError('Variant size not provided: {}'.format(self.variants))
