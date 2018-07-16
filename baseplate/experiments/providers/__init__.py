@@ -11,12 +11,27 @@ from datetime import datetime
 from .feature_flag import FeatureFlag
 from .forced_variant import ForcedVariantExperiment
 from .r2 import R2Experiment
+from .simple_experiment import SimpleExperiment
+
 from ..._utils import warn_deprecated
 
 logger = logging.getLogger(__name__)
 
 
 ISO_DATE_FMT = "%Y-%m-%d"
+
+
+legacy_type_class_map = {
+    'r2': R2Experiment,
+    'feature_flag': FeatureFlag,
+}
+
+
+simple_type_class_list = frozenset([
+    'single_variant',
+    'multi_variant',
+    'feature_rollout',
+])
 
 
 def parse_experiment(config):
@@ -55,28 +70,31 @@ def parse_experiment(config):
     :return: A subclass of :py:class:`Experiment` for the given experiment
         type.
     """
-    experiment_type = config["type"].lower()
-    experiment_id = config["id"]
-    assert isinstance(experiment_id, int)
-    name = config["name"]
+    experiment_type = config.get("type")
+    if experiment_type:
+        experiment_type = experiment_type.lower()
+    experiment_id = config.get("id")
+    if not isinstance(experiment_id, int):
+        raise TypeError("Integer id must be provided for experiment.")
+    name = config.get("name")
     owner = config.get("owner")
-    if "start_ts" in config and "stop_ts" in config:
-        start_ts = config["start_ts"]
-        stop_ts = config["stop_ts"]
-    elif "expires" in config:
-        warn_deprecated(
-            "The 'expires' field is in experiment %s deprecated, you should "
-            "use 'start_ts' and 'stop_ts'." % name
-        )
-        start_ts = time.time()
-        expires = datetime.strptime(config["expires"], ISO_DATE_FMT)
-        epoch = datetime(1970, 1, 1)
-        stop_ts = (expires - epoch).total_seconds()
-    else:
-        raise ValueError(
-            "Invalid config for experiment %s, missing start_ts and/or "
-            "stop_ts." % name
-        )
+    start_ts = config.get("start_ts")
+    stop_ts = config.get("stop_ts")
+    if start_ts is None or stop_ts is None:
+        if "expires" in config:
+            warn_deprecated(
+                "The 'expires' field in experiment %s is deprecated, you should "
+                "use 'start_ts' and 'stop_ts'." % name
+            )
+            start_ts = time.time()
+            expires = datetime.strptime(config["expires"], ISO_DATE_FMT)
+            epoch = datetime(1970, 1, 1)
+            stop_ts = (expires - epoch).total_seconds()
+        else:
+            raise ValueError(
+                "Invalid config for experiment %s, missing start_ts and/or "
+                "stop_ts." % name
+            )
 
     if "version" in config:
         version = config["version"]
@@ -86,12 +104,14 @@ def parse_experiment(config):
             "required in the future." % name
         )
         version = None
+
     now = time.time()
-    if now < start_ts or now > stop_ts:
-        return ForcedVariantExperiment(None)
 
     enabled = config.get("enabled", True)
-    if not enabled:
+    if now < start_ts or now > stop_ts:
+        enabled = False
+
+    if not enabled and experiment_type in legacy_type_class_map:
         return ForcedVariantExperiment(None)
 
     experiment_config = config["experiment"]
@@ -103,21 +123,25 @@ def parse_experiment(config):
         override = config.get("global_override")
         return ForcedVariantExperiment(override)
 
-    if experiment_type == "r2":
-        return R2Experiment.from_dict(
+    if experiment_type in legacy_type_class_map:
+        experiment_class = legacy_type_class_map[experiment_type]
+        return experiment_class.from_dict(
             id=experiment_id,
             name=name,
             owner=owner,
             version=version,
             config=experiment_config,
         )
-    elif experiment_type == "feature_flag":
-        return FeatureFlag.from_dict(
+    elif experiment_type in simple_type_class_list:
+        return SimpleExperiment.from_dict(
             id=experiment_id,
             name=name,
             owner=owner,
-            version=version,
+            start_ts=start_ts,
+            stop_ts=stop_ts,
+            enabled=enabled,
             config=experiment_config,
+            variant_type=experiment_type,
         )
     else:
         logger.warning(

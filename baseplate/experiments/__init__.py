@@ -104,6 +104,7 @@ class Experiments(object):
         :rtype: :py:class:`list`
         :return: List of all valid experiment names.
         """
+
         config = self._config_watcher.get_data()
         experiment_names = list(config.keys())
 
@@ -123,7 +124,7 @@ class Experiments(object):
 
     def variant(self, name, user=None, bucketing_event_override=None,
                 **kwargs):
-        """Which variant, if any, is active.
+        """Return which variant, if any, is active.
 
         If a variant is active, a bucketing event will be logged to the event
         pipeline unless any one of the following conditions are met:

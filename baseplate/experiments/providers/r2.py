@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 class R2Experiment(Experiment):
     """A "legacy", r2-style experiment.
 
+    .. deprecated:: 0.27
+       Use SimpleExperiment with SingleVariantSet or MultiVariantSet instead.
+
     Should log bucketing events to the event pipeline.
 
     Note that this style of experiment caps the size of your variants such
@@ -52,7 +55,6 @@ class R2Experiment(Experiment):
           "created" parameter. For example, if you are bucketing based on
           user_id, created would be set to the time when a User account was
           created or when an LoID cookie was generated.
-
     """
 
     def __init__(self, id, name, owner, variants, seed=None,

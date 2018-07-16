@@ -9,6 +9,9 @@ from .r2 import R2Experiment
 class FeatureFlag(R2Experiment):
     """An experiment with a single variant "active".
 
+    .. deprecated:: 0.27
+       Use SimpleExperiment with RolloutVariantSet instead.
+
     Does not log bucketing events to the event pipeline.  Use this type of
     experiment if you just want to control access to a feature but do not want
     to run an actual experiment.  Some examples for when you would want to use
@@ -44,7 +47,6 @@ class FeatureFlag(R2Experiment):
           "created" parameter. For example, if you are bucketing based on
           user_id, created would be set to the time when a User account was
           created or when an LoID cookie was generated.
-
     """
 
     @classmethod
