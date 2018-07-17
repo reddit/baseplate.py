@@ -17,6 +17,10 @@ from baseplate.diagnostics.metrics import (
 from ... import mock
 
 
+class TestException(Exception):
+    pass
+
+
 class ObserverTests(unittest.TestCase):
     def test_add_to_context(self):
         mock_client = mock.Mock(spec=Client)
@@ -78,6 +82,11 @@ class ClientSpanObserverTests(unittest.TestCase):
         observer.on_finish(exc_info=None)
         self.assertEqual(mock_timer.stop.call_count, 1)
         self.assertEqual(mock_counter.increment.call_count, 1)
+
+        mock_counter.reset_mock()
+        observer.on_log(name='error.object', payload=TestException())
+        self.assertEqual(mock_counter.increment.call_count, 1)
+        self.assertEqual(mock_batch.counter.call_args, mock.call("errors.TestException"))
 
 
 class LocalSpanObserverTests(unittest.TestCase):
