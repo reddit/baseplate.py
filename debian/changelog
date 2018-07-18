@@ -1,3 +1,13 @@
+baseplate (0.27.0) trusty; urgency=medium
+
+  * Add kombu to docs requirements.
+  * Skip queue_consumer_tests if kombu not present.
+  * Fix build on BSD.
+  * Support new experiment bucketing logic (#186).
+  * Stop error on bad config (#191).
+
+ -- Mike Doherty <mike@reddit.com>  Wed, 18 Jul 2018 22:10:39 +0000
+
 baseplate (0.26.0) trusty; urgency=medium
 
   * Add details to memcache tracing spans (#160).
