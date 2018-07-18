@@ -93,7 +93,11 @@ class Experiments(object):
             if not experiment_config:
                 experiment = None
             else:
-                experiment = parse_experiment(experiment_config)
+                try:
+                    experiment = parse_experiment(experiment_config)
+                except (ValueError, TypeError, KeyError) as err:
+                    logger.error("Invalid configuration for experiment {}: {}".format(name, err))
+                    return None
             self._experiment_cache[name] = experiment
         return self._experiment_cache[name]
 
@@ -168,11 +172,7 @@ class Experiments(object):
         :return: Variant name if a variant is active, None otherwise.
         """
 
-        try:
-            experiment = self._get_experiment(name)
-        except (ValueError, TypeError, KeyError) as err:
-            logger.error("Invalid configuration for experiment {}: {}".format(name, err))
-            return None
+        experiment = self._get_experiment(name)
 
         if experiment is None:
             return None
@@ -232,11 +232,8 @@ class Experiments(object):
         :param kwargs: Additional arguments that will be passed to logger.
 
         """
-        try:
-            experiment = self._get_experiment(experiment_name)
-        except (ValueError, TypeError, KeyError) as err:
-            logger.error("Invalid configuration for experiment {}: {}".format(experiment_name, err))
-            return None
+
+        experiment = self._get_experiment(experiment_name)
 
         if experiment is None:
             return
