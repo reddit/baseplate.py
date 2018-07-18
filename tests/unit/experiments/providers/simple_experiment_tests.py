@@ -18,6 +18,9 @@ from baseplate.events import EventLogger
 from baseplate.experiments import ExperimentsContextFactory
 from baseplate.experiments.providers import ISO_DATE_FMT, parse_experiment
 from baseplate.experiments.providers.simple_experiment import SimpleExperiment
+from baseplate.experiments.providers.simple_experiment import _generate_targeting
+from baseplate.experiments.targeting.base import Targeting
+from baseplate.experiments.targeting.tree_targeting import OverrideNode
 from baseplate.file_watcher import FileWatcher
 
 from .... import mock
@@ -79,6 +82,26 @@ def create_simple_experiment():
     experiment = parse_experiment(cfg)
 
     return experiment
+
+def get_targeting_config():
+    targeting_cfg = {
+        'ALL':[
+            {'ANY':[
+                {'EQ': {'field': 'is_mod', 'value': True}},
+                {'EQ': {'field': 'user_id', 'values':['t2_1','t2_2','t2_3','t2_4']}},
+            ]},
+            {'NOT': {
+                'EQ': {'field': 'is_pita', 'value': True}}},
+            {'EQ': {'field': 'is_logged_in', 'values': [True, False]}},
+            {'NOT': {
+                'EQ': {'field': 'subreddit_id', 'values': ['t5_1','t5_2']}}},
+            {'ALL':[
+                {'EQ':{'field':'random_numeric', 'values':[1,2,3,4,5]}},
+                {'EQ':{'field':'random_numeric', 'value':5}}
+            ]}
+        ]
+    }
+    return targeting_cfg
 
 
 class TestSimpleExperiment(unittest.TestCase):
@@ -354,3 +377,43 @@ class TestSimpleExperiment(unittest.TestCase):
                 break
 
         self.assertTrue(bucketing_changed)
+
+    def test_generate_targeting_valid_config(self):
+        targeting_cfg = get_targeting_config()
+
+        experiment_correct_targeting = _generate_targeting(targeting_cfg)
+        self.assertTrue(isinstance(experiment_correct_targeting, Targeting))
+
+        self.assertFalse(isinstance(experiment_correct_targeting, OverrideNode))
+
+    def test_generate_targeting_no_config(self):
+        targeting_cfg = None
+
+        experiment_correct_targeting = _generate_targeting(targeting_cfg)
+        self.assertTrue(isinstance(experiment_correct_targeting, Targeting))
+
+        self.assertTrue(isinstance(experiment_correct_targeting, OverrideNode))
+        self.assertTrue(experiment_correct_targeting.evaluate())
+
+    def test_generate_targeting_invalid_config(self):
+        targeting_cfg = get_targeting_config()
+        targeting_cfg['ALL'][0]['ANY'][0] = {'EQUAL': {'field': 'is_mod', 'value': True}}
+
+        experiment_correct_targeting = _generate_targeting(targeting_cfg)
+        self.assertTrue(isinstance(experiment_correct_targeting, Targeting))
+
+        self.assertTrue(isinstance(experiment_correct_targeting, OverrideNode))
+        self.assertFalse(experiment_correct_targeting.evaluate())
+
+    def test_targeting_in_config(self):
+        cfg = get_simple_config()
+        targeting_cfg = get_targeting_config()
+        cfg['experiment']['targeting'] = targeting_cfg
+
+        experiment_with_targeting = parse_experiment(cfg)
+
+        self.assertTrue(experiment_with_targeting.is_targeted(
+            is_mod=True,
+            is_logged_in=True,
+            random_numeric=5,
+        ))
