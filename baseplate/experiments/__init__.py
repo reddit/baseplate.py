@@ -95,7 +95,7 @@ class Experiments(object):
             else:
                 try:
                     experiment = parse_experiment(experiment_config)
-                except (ValueError, TypeError, KeyError) as err:
+                except Exception as err:
                     logger.error("Invalid configuration for experiment {}: {}".format(name, err))
                     return None
             self._experiment_cache[name] = experiment
