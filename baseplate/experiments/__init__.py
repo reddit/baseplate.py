@@ -93,7 +93,11 @@ class Experiments(object):
             if not experiment_config:
                 experiment = None
             else:
-                experiment = parse_experiment(experiment_config)
+                try:
+                    experiment = parse_experiment(experiment_config)
+                except Exception as err:
+                    logger.error("Invalid configuration for experiment {}: {}".format(name, err))
+                    return None
             self._experiment_cache[name] = experiment
         return self._experiment_cache[name]
 
