@@ -529,6 +529,88 @@ class TestExperiments(unittest.TestCase):
         experiments.variant("test", user=self.user)
         self.assertEqual(self.event_logger.log.call_count, 0)
 
+    def test_none_returned_on_variant_call_with_bad_id(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": "1",
+                "name": "test",
+                "owner": "test_owner",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "id": 1,
+                    "name": "test",
+                    "variants": {
+                        "active": 50,
+                        "control_1": 25,
+                        "control_2": 25,
+                    }
+                }
+            }
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            server_span=self.mock_span,
+            context_name="test",
+            event_logger=self.event_logger,
+        )
+        self.assertEqual(self.event_logger.log.call_count, 0)
+        variant = experiments.variant("test", user=self.user)
+        self.assertEqual(variant, None)
+
+    def test_none_returned_on_variant_call_with_no_times(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "owner": "test_owner",
+                "type": "r2",
+                "version": "1",
+                "experiment": {
+                    "id": 1,
+                    "name": "test",
+                    "variants": {
+                        "active": 50,
+                        "control_1": 25,
+                        "control_2": 25,
+                    }
+                }
+            }
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            server_span=self.mock_span,
+            context_name="test",
+            event_logger=self.event_logger,
+        )
+        self.assertEqual(self.event_logger.log.call_count, 0)
+        variant = experiments.variant("test", user=self.user)
+        self.assertEqual(variant, None)
+
+    def test_none_returned_on_variant_call_with_no_experiment(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "owner": "test_owner",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+            }
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            server_span=self.mock_span,
+            context_name="test",
+            event_logger=self.event_logger,
+        )
+        self.assertEqual(self.event_logger.log.call_count, 0)
+        variant = experiments.variant("test", user=self.user)
+        self.assertEqual(variant, None)
+
 
 class ExperimentsClientFromConfigTests(unittest.TestCase):
     def test_make_clients(self):

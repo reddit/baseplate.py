@@ -170,8 +170,8 @@ class Experiments(object):
 
         try:
             experiment = self._get_experiment(name)
-        except (ValueError, TypeError) as err:
-            logger.error("Invalid configiguration for experiment {}: {}".format(name, err))
+        except (ValueError, TypeError, KeyError) as err:
+            logger.error("Invalid configuration for experiment {}: {}".format(name, err))
             return None
 
         if experiment is None:
@@ -233,9 +233,9 @@ class Experiments(object):
 
         """
         try:
-            experiment = self._get_experiment(name)
-        except (ValueError, TypeError) as err:
-            logger.error("Invalid configiguration for experiment {}: {}".format(name, err))
+            experiment = self._get_experiment(experiment_name)
+        except (ValueError, TypeError, KeyError) as err:
+            logger.error("Invalid configuration for experiment {}: {}".format(experiment_name, err))
             return None
 
         if experiment is None:
