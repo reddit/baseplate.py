@@ -29,6 +29,15 @@ from thrift.Thrift import TProcessorEventHandler
 from ...core import TraceInfo
 
 
+TRACE_HEADER_NAMES = {
+    "trace_id": (b"Trace", b"B3-TraceId"),
+    "span_id": (b"Span", b"B3-SpanId"),
+    "parent_span_id": (b"Parent", b"B3-ParentSpanId"),
+    "sampled": (b"Sampled", b"B3-Sampled"),
+    "flags": (b"Flags", b"B3-Flags"),
+}
+
+
 class RequestContext(object):
     pass
 
@@ -56,21 +65,7 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
         trace_info = None
         headers = server_context.iprot.trans.get_headers()
         try:
-            sampled = headers.get(b"Sampled", None)
-            if sampled is not None:
-                sampled = True if sampled.decode('utf-8') == "1" else False
-            flags = headers.get(b"Flags", None)
-            if flags is not None:
-                flags = int(flags)
-
-            trace_info = TraceInfo.from_upstream(
-                trace_id=int(headers[b"Trace"]),
-                parent_id=int(headers[b"Parent"]),
-                span_id=int(headers[b"Span"]),
-                sampled=sampled,
-                flags=flags,
-            )
-
+            trace_info = self._get_trace_info(headers)
             edge_payload = headers.get(b"Edge-Request", None)
             if self.edge_context_factory:
                 edge_context = self.edge_context_factory.from_upstream(
@@ -115,3 +110,14 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
         handler_context.trace.finish(exc_info=sys.exc_info())
         handler_context.trace.is_finished = True
         self.logger.exception("Unexpected exception in %r.", fn_name)
+
+    def _get_trace_info(self, headers):
+        extracted_values = TraceInfo.extract_upstream_header_values(TRACE_HEADER_NAMES, headers)
+        flags = extracted_values.get("flags", None)
+        return TraceInfo.from_upstream(
+            int(extracted_values["trace_id"]),
+            int(extracted_values["parent_span_id"]),
+            int(extracted_values["span_id"]),
+            True if extracted_values["sampled"].decode("utf-8") == "1" else False,
+            int(flags) if flags is not None else None,
+        )
