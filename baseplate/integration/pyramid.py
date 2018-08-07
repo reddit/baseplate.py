@@ -42,6 +42,15 @@ from ..core import TraceInfo
 from ..server import make_app
 
 
+TRACE_HEADER_NAMES = {
+    "trace_id": ("X-Trace", "X-B3-TraceId"),
+    "span_id": ("X-Span", "X-B3-SpanId"),
+    "parent_span_id": ("X-Parent", "X-B3-ParentSpanId"),
+    "sampled": ("X-Sampled", "X-B3-Sampled"),
+    "flags": ("X-Flags", "X-B3-Flags"),
+}
+
+
 def _make_baseplate_tween(handler, registry):
     def baseplate_tween(request):
         try:
@@ -116,20 +125,7 @@ class BaseplateConfigurator(object):
         trace_info = None
         if self.trust_trace_headers:
             try:
-                sampled = request.headers.get("X-Sampled", None)
-                if sampled is not None:
-                    sampled = True if sampled == "1" else False
-                flags = request.headers.get("X-Flags", None)
-                if flags is not None:
-                    flags = int(flags)
-                trace_info = TraceInfo.from_upstream(
-                    trace_id=int(request.headers["X-Trace"]),
-                    parent_id=int(request.headers["X-Parent"]),
-                    span_id=int(request.headers["X-Span"]),
-                    sampled=sampled,
-                    flags=flags,
-                )
-
+                trace_info = self._get_trace_info(request.headers)
                 edge_payload = request.headers.get("X-Edge-Request", None)
                 if self.edge_context_factory:
                     edge_context = self.edge_context_factory.from_upstream(
@@ -155,6 +151,17 @@ class BaseplateConfigurator(object):
         )
         request.trace.start()
         request.registry.notify(ServerSpanInitialized(request))
+
+    def _get_trace_info(self, headers):
+        extracted_values = TraceInfo.extract_upstream_header_values(TRACE_HEADER_NAMES, headers)
+        flags = extracted_values.get("flags", None)
+        return TraceInfo.from_upstream(
+            int(extracted_values["trace_id"]),
+            int(extracted_values["parent_span_id"]),
+            int(extracted_values["span_id"]),
+            True if extracted_values["sampled"] == "1" else False,
+            int(flags) if flags is not None else None,
+        )
 
     def includeme(self, config):
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)

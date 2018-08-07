@@ -164,6 +164,39 @@ class ThriftTests(unittest.TestCase):
         self.assertEqual(self.server_observer.on_finish.call_count, 1)
         self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
 
+    def test_b3_trace_headers(self):
+        client_memory_trans = TMemoryBuffer()
+        client_prot = THeaderProtocol(client_memory_trans)
+        client_header_trans = client_prot.trans
+        client_header_trans.set_header("B3-TraceId", "1234")
+        client_header_trans.set_header("B3-ParentSpanId", "2345")
+        client_header_trans.set_header("B3-SpanId", "3456")
+        client_header_trans.set_header("B3-Sampled", "1")
+        client_header_trans.set_header("B3-Flags", "1")
+        client = TestService.Client(client_prot)
+        try:
+            client.example_simple()
+        except TTransportException:
+            pass  # we don't have a test response for the client
+        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
+
+        self.processor.process(self.iprot, self.oprot, self.server_context)
+        self.assertEqual(self.observer.on_server_span_created.call_count, 1)
+
+        context, server_span = self.observer.on_server_span_created.call_args[0]
+        self.assertEqual(server_span.trace_id, 1234)
+        self.assertEqual(server_span.parent_id, 2345)
+        self.assertEqual(server_span.id, 3456)
+        self.assertTrue(server_span.sampled)
+        self.assertEqual(server_span.flags, 1)
+
+        with self.assertRaises(NoAuthenticationError):
+            context.request_context.user.id
+
+        self.assertEqual(self.server_observer.on_start.call_count, 1)
+        self.assertEqual(self.server_observer.on_finish.call_count, 1)
+        self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
+
     def test_edge_request_headers(self):
         client_memory_trans = TMemoryBuffer()
         client_prot = THeaderProtocol(client_memory_trans)
