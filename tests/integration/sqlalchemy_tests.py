@@ -49,10 +49,23 @@ class SQLAlchemyEngineTests(unittest.TestCase):
 
     def test_simple_query(self):
         with self.server_span:
-            self.context.db.execute("SELECT * FROM test;")
+            self.server_span.context.db.execute("SELECT * FROM test;")
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
+        self.assertTrue(span_observer.on_start_called)
+        self.assertTrue(span_observer.on_finish_called)
+        self.assertIsNone(span_observer.on_finish_exc_info)
+        span_observer.assert_tag("statement", "SELECT * FROM test;")
+
+    def test_nested_local_span(self):
+        with self.server_span:
+            with self.server_span.make_child("local", local=True, component_name="example") as local:
+                local.context.db.execute("SELECT * FROM test;")
+
+        server_span_observer = self.baseplate_observer.get_only_child()
+        local_span_observer = server_span_observer.get_only_child()
+        span_observer = local_span_observer.get_only_child()
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
