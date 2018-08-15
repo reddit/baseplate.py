@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 import unittest
 
-from baseplate.context import ContextFactory, ContextObserver
+from baseplate.context import ContextFactory, ContextObserver, ContextSpanObserver
 from baseplate.core import (
     LocalSpan,
     Span,
@@ -34,7 +34,7 @@ class ContextObserverTests(unittest.TestCase):
         mock_local_span = mock.Mock(spec=LocalSpan)
         mock_local_span.component_name = 'test_component'
         mock_local_span.context = mock_context
-        observer = ContextObserver("some_attribute", mock_factory)
+        observer = ContextSpanObserver("some_attribute", mock_factory)
         observer.on_child_span_created(mock_local_span)
 
         self.assertEqual(mock_context.some_attribute,

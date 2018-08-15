@@ -26,6 +26,7 @@ from __future__ import unicode_literals
 from ..core import (
     BaseplateObserver,
     LocalSpan,
+    SpanObserver,
 )
 
 
@@ -52,6 +53,13 @@ class ContextObserver(BaseplateObserver):
     def on_server_span_created(self, context, server_span):
         context_attr = self.context_factory.make_object_for_context(self.name, server_span)
         setattr(context, self.name, context_attr)
+        server_span.register(ContextSpanObserver(self.name, self.context_factory))
+
+
+class ContextSpanObserver(SpanObserver):
+    def __init__(self, name, context_factory):
+        self.name = name
+        self.context_factory = context_factory
 
     def on_child_span_created(self, child_span):
         if isinstance(child_span, LocalSpan):
