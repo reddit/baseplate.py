@@ -14,6 +14,9 @@ from ..variant_sets.single_variant_set import SingleVariantSet
 from ..variant_sets.multi_variant_set import MultiVariantSet
 from ..variant_sets.rollout_variant_set import RolloutVariantSet
 
+from ..targeting.tree_targeting import create_targeting_tree
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -22,6 +25,22 @@ variant_type_map = {
     'multi_variant': MultiVariantSet,
     'feature_rollout': RolloutVariantSet,
 }
+
+
+def _generate_targeting(targeting_config):
+    """Generate the targeting tree for this experiment.
+
+    If no config is provided, then assume we want to target all. If an invalid
+    config is provided, then target none.
+    """
+    if targeting_config is None:
+        return create_targeting_tree({'OVERRIDE': True})
+
+    try:
+        return create_targeting_tree(targeting_config)
+    except Exception:
+        logger.error("Unable to create targeting tree. No targeting applied.")
+        return create_targeting_tree({'OVERRIDE': False})
 
 
 class SimpleExperiment(Experiment):
@@ -34,8 +53,8 @@ class SimpleExperiment(Experiment):
 
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
                  experiment_version, shuffle_version, variant_set,
-                 bucket_seed, bucket_val, enabled=True, log_bucketing=True,
-                 num_buckets=1000):
+                 bucket_seed, bucket_val, targeting, enabled=True,
+                 log_bucketing=True, num_buckets=1000):
         """
         :param int id: The experiment id. This should be unique.
         :param string name: The human-readable name of the experiment.
@@ -87,6 +106,8 @@ class SimpleExperiment(Experiment):
 
         self._log_bucketing = log_bucketing
 
+        self._targeting = targeting
+
         if not self.experiment_version:
             raise ValueError('Experiment version must be provided.')
 
@@ -117,6 +138,9 @@ class SimpleExperiment(Experiment):
 
         bucket_seed = config.get("bucket_seed")
 
+        targeting_config = config.get("targeting")
+        targeting = _generate_targeting(targeting_config)
+
         return cls(
             id=id,
             name=name,
@@ -132,6 +156,7 @@ class SimpleExperiment(Experiment):
             bucket_val=bucket_val,
             num_buckets=num_buckets,
             log_bucketing=log_bucketing,
+            targeting=targeting,
         )
 
     @property
@@ -150,6 +175,12 @@ class SimpleExperiment(Experiment):
         """ Whether or not this experiment should log bucketing events.
         """
         return self._log_bucketing
+
+    def is_targeted(self, **kwargs):
+        """Determine whether the provided kwargs match targeting parameters
+        for this experiment.
+        """
+        return self._targeting.evaluate(**kwargs)
 
     def variant(self, **kwargs):
         if not self._is_enabled():
@@ -173,6 +204,9 @@ class SimpleExperiment(Experiment):
                 lower_kwargs[self.bucket_val],
                 self.name,
             )
+            return None
+
+        if not self.is_targeted(**kwargs):
             return None
 
         bucket = self._calculate_bucket(lower_kwargs[self.bucket_val])
