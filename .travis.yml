@@ -84,3 +84,18 @@ script:
     - sphinx-build -M doctest docs/ build/
     - sphinx-build -M spelling docs/ build/
     - make lint
+
+jobs:
+  include:
+    - stage: PyPI Release
+      python: 3.4
+      script: echo "Deploying to PyPI"
+      deploy:
+        provider: pypi
+        install: skip
+        user: reddit
+        password:
+          secure: OeCJ+XpTicmSWTSXhCF62SWyXU+63PtdYYJEMdC0Yfttm9KFnwVvy7TZ0jCALk2+0Gw39ExdfZ5yMTEVkJY+rh98nFKAiVOX3q4X/avBCKV87p8Ju+jdGpeiirNBXNOM4qN25P+hPbI+BScmApw7dFE6eEPlHdcOwr8nxrcsmfh1NApFXiTagrpqVrV3/a9QnVSVTcbUgzWyfhLEQo+GDTyB0JnKvhMPaKOVUZ1QyoxCYkkrnDbCIH8xAMirCTqjRCHS4JW15QrmibAYOTSPhYz8Jjie9MVsNfQayxKEQwHjiE0+oQmSb8f9ZlY5qFwBAFYxRiNzF9R/baebyu07gNKBJO+NOMg33Wimfo7NtF6sJI/vXY0Wt0YByvvn6hg37Ko3W9PY6z6ZIPcanRidR5ws/w6ZZOseLaZM1VG/LnIcn9wlk5uCyGWxNW6Rkw19rKnObvUbRBTMTRRaFBhYcisodgz7T1ON2Jr0g4o5wIb6zJqwA74Dq1N0AatUXeNz1yD4CxOsXm5k3pk3OBtc0ddKr048gCMv17nUMDldauGRWwK18x0gYLCie1aaHpbZ15BRZ8KuPrr/QoVSXWSxAWacf5GQjE+tqfYJ97kMATRH1udfbQEYWyELihQvz7BV9pzW59vOt5p7P1Yu7W7ZVrpmg0IcIR9gjeEftYJTxAM=
+        distributions: "bdist_wheel"
+        on:
+          tags: true
