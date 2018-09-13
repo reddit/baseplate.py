@@ -53,8 +53,8 @@ class SimpleExperiment(Experiment):
 
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
                  experiment_version, shuffle_version, variant_set,
-                 bucket_seed, bucket_val, targeting, enabled=True,
-                 log_bucketing=True, num_buckets=1000):
+                 bucket_seed, bucket_val, targeting, overrides, 
+                 enabled=True, log_bucketing=True, num_buckets=1000):
         """
         :param int id: The experiment id. This should be unique.
         :param string name: The human-readable name of the experiment.
@@ -107,6 +107,7 @@ class SimpleExperiment(Experiment):
         self._log_bucketing = log_bucketing
 
         self._targeting = targeting
+        self._overrides = overrides
 
         if not self.experiment_version:
             raise ValueError('Experiment version must be provided.')
@@ -141,6 +142,13 @@ class SimpleExperiment(Experiment):
         targeting_config = config.get("targeting")
         targeting = _generate_targeting(targeting_config)
 
+        overrides = None
+        override_inputs = config.get("overrides")
+        if override_inputs and isinstance(override_inputs, dict):
+            overrides = {}
+            for variant, target in override_inputs:
+                overrides[variant] = _generate_targeting(target)
+
         return cls(
             id=id,
             name=name,
@@ -157,6 +165,7 @@ class SimpleExperiment(Experiment):
             num_buckets=num_buckets,
             log_bucketing=log_bucketing,
             targeting=targeting,
+            overrides=overrides,
         )
 
     @property
@@ -182,6 +191,13 @@ class SimpleExperiment(Experiment):
         """
         return self._targeting.evaluate(**kwargs)
 
+    def is_overridden(self, **kwargs):
+        for variant, targeting in self._overrides:
+            if targeting.evaluate(**kwargs):
+                return variant
+
+        return None
+
     def variant(self, **kwargs):
         if not self._is_enabled():
             return None
@@ -205,6 +221,10 @@ class SimpleExperiment(Experiment):
                 self.name,
             )
             return None
+
+        override = is_overridden(**kwargs):
+        if override:
+            return override
 
         if not self.is_targeted(**kwargs):
             return None
