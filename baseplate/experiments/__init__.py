@@ -215,6 +215,7 @@ class Experiments(object):
                 app_name=inputs.get('app_name'),
                 event_type=EventType.BUCKET,
                 inputs=inputs,
+                span=self._span,
             )
             self._already_bucketed.add(bucketing_id)
 
@@ -252,6 +253,7 @@ class Experiments(object):
             app_name=inputs.get('app_name'),
             event_type=EventType.EXPOSE,
             inputs=inputs,
+            span=self._span,
         )
 
 
