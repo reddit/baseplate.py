@@ -85,6 +85,7 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(event_fields["app_name"], "r2")
         self.assertEqual(event_fields["cookie_created_timestamp"], 10000)
         self.assertEqual(event_fields["event_type"], EventType.BUCKET)
+        self.assertNotEqual(event_fields["span"], None)
 
         self.assertEqual(getattr(event_fields["experiment"], "id"), 1)
         self.assertEqual(getattr(event_fields["experiment"], "name"), "test")
@@ -133,6 +134,7 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(event_fields["logged_in"], True)
         self.assertEqual(event_fields["app_name"], "r2")
         self.assertEqual(event_fields["event_type"], EventType.BUCKET)
+        self.assertNotEqual(event_fields["span"], None)
 
         self.assertEqual(getattr(event_fields["experiment"], "id"), 1)
         self.assertEqual(getattr(event_fields["experiment"], "name"), "test")
@@ -222,6 +224,7 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(event_fields["app_name"], "r2")
         self.assertEqual(event_fields["cookie_created_timestamp"], 10000)
         self.assertEqual(event_fields["event_type"], EventType.EXPOSE)
+        self.assertNotEqual(event_fields["span"], None)
 
         self.assertEqual(getattr(event_fields["experiment"], "id"), 1)
         self.assertEqual(getattr(event_fields["experiment"], "name"), "test")
