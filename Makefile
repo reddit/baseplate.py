@@ -1,7 +1,7 @@
 all: thrift
 
-THRIFT=thrift1
-THRIFT_OPTS=-strict -gen py:utf8strings,slots,new_style
+THRIFT=thrift
+THRIFT_OPTS=-strict -gen py:slots
 THRIFT_BUILDDIR=build/thrift
 THRIFT_SOURCE=baseplate/thrift/baseplate.thrift tests/integration/test.thrift
 THRIFT_BUILDSTAMPS=$(patsubst %,$(THRIFT_BUILDDIR)/%_buildstamp,$(THRIFT_SOURCE))

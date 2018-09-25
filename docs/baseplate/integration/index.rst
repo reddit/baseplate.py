@@ -11,7 +11,7 @@ Thrift
 
 .. automodule:: baseplate.integration.thrift
 
-.. autoclass:: baseplate.integration.thrift.BaseplateProcessorEventHandler
+.. autofunction:: baseplate.integration.thrift.baseplateify_processor
 
 
 Pyramid

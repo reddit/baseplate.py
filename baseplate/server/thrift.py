@@ -8,9 +8,8 @@ import signal
 from gevent.pool import Pool
 from gevent.server import StreamServer
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
-from thrift.server.TServer import TRpcConnectionContext
 from thrift.transport.TSocket import TSocket
-from thrift.transport.THeaderTransport import THeaderTransport
+from thrift.transport.THeaderTransport import THeaderClientType
 from thrift.transport.TTransport import (
     TTransportException, TBufferedTransportFactory)
 
@@ -22,10 +21,10 @@ class GeventServer(StreamServer):
         self.transport_factory = TBufferedTransportFactory()
         self.protocol_factory = THeaderProtocolFactory(
             # allow non-headerprotocol clients to talk with us
-            client_types=[
-                THeaderTransport.HEADERS_CLIENT_TYPE,
-                THeaderTransport.FRAMED_DEPRECATED,
-                THeaderTransport.UNFRAMED_DEPRECATED,
+            allowed_client_types=[
+                THeaderClientType.HEADERS,
+                THeaderClientType.FRAMED_BINARY,
+                THeaderClientType.UNFRAMED_BINARY,
             ],
         )
         super(GeventServer, self).__init__(*args, **kwargs)
@@ -43,11 +42,9 @@ class GeventServer(StreamServer):
         trans = self.transport_factory.getTransport(client)
         prot = self.protocol_factory.getProtocol(trans)
 
-        server_context = TRpcConnectionContext(client, prot, prot)
-
         try:
             while self.started:
-                self.processor.process(prot, prot, server_context)
+                self.processor.process(prot, prot)
         except TTransportException:
             pass
         finally:

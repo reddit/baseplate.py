@@ -14,7 +14,7 @@ from baseplate._compat import quote
 from baseplate.config import Endpoint
 from baseplate.requests import add_unix_socket_support
 from baseplate.thrift import BaseplateService
-from baseplate.thrift_pool import ThriftConnectionPool
+from baseplate.thrift.pool import ThriftConnectionPool
 
 
 TIMEOUT = 30  # seconds

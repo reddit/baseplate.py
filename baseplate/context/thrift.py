@@ -22,7 +22,7 @@ class ThriftContextFactory(ContextFactory):
     the connection pool and execute the RPC, automatically recording diagnostic
     information.
 
-    :param baseplate.thrift_pool.ThriftConnectionPool pool: The connection
+    :param baseplate.thrift.pool.ThriftConnectionPool pool: The connection
         pool.
     :param client_cls: The class object of a Thrift-generated client class,
         e.g. ``YourService.Client``.
@@ -96,14 +96,14 @@ class PooledClientProxy(object):
             try:
                 with self.server_span.make_child(trace_name) as span:
                     with self.pool.connection() as prot:
-                        prot.trans.set_header("Trace", str(span.trace_id))
-                        prot.trans.set_header("Parent", str(span.parent_id))
-                        prot.trans.set_header("Span", str(span.id))
+                        prot.trans.set_header(b"Trace", str(span.trace_id).encode())
+                        prot.trans.set_header(b"Parent", str(span.parent_id).encode())
+                        prot.trans.set_header(b"Span", str(span.id).encode())
                         if span.sampled is not None:
                             sampled = "1" if span.sampled else "0"
-                            prot.trans.set_header("Sampled", sampled)
+                            prot.trans.set_header(b"Sampled", sampled.encode())
                         if span.flags:
-                            prot.trans.set_header("Flags", str(span.flags))
+                            prot.trans.set_header(b"Flags", str(span.flags).encode())
 
                         try:
                             edge_context = span.context.raw_request_context
@@ -111,7 +111,7 @@ class PooledClientProxy(object):
                             edge_context = None
 
                         if edge_context:
-                            prot.trans.set_header("Edge-Request", edge_context)
+                            prot.trans.set_header(b"Edge-Request", edge_context)
 
                         client = self.client_cls(prot)
                         method = getattr(client, name)

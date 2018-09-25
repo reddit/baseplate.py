@@ -1,7 +1,7 @@
-``baseplate.thrift_pool``
+``baseplate.thrift.pool``
 =========================
 
-.. automodule:: baseplate.thrift_pool
+.. automodule:: baseplate.thrift.pool
 
 Configuration Parsing
 ---------------------

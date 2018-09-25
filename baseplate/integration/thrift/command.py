@@ -39,9 +39,9 @@ class BuildThriftCommand(Command):
 
             for thriftfile in glob.glob(os.path.join(package_dir, "*.thrift")):
                 subprocess.check_call([
-                    "thrift1",
+                    "thrift",
                     "-strict",
-                    "-gen", "py:utf8strings,slots,new_style",
+                    "-gen", "py:slots",
                     "-out", temp_dir,
                     "-I", os.path.dirname(baseplate.thrift.__file__),
                     thriftfile,
@@ -54,6 +54,20 @@ class BuildThriftCommand(Command):
                 output_package = os.path.join(package_dir, generated_module)
 
                 self.copy_tree(input_package, output_package)
+
+                # rewrite "from thriftname" to "from package.thriftname_thrift"
+                full_package_name = "%s.%s" % (package, generated_module)
+                for remote in glob.glob(os.path.join(output_package, "*-remote")):
+                    with open(remote) as f:
+                        lines = f.readlines()
+
+                    with open(remote, "w") as f:
+                        for line in lines:
+                            prefix = "from " + module_name
+                            if line.startswith(prefix):
+                                f.write("from " + full_package_name + line[len(prefix):])
+                            else:
+                                f.write(line)
 
 
 class ThriftBuildPyCommand(build_py):

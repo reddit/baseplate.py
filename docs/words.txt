@@ -5,6 +5,7 @@ backends
 backoff
 config
 deserialization
+deserialize
 Deserialize
 deserialized
 Einhorn
@@ -23,8 +24,8 @@ Memcache
 memcached
 OAuth
 Queing
-Redis
 Reddit
+Redis
 schemaless
 schemas
 serializable

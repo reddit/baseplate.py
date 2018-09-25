@@ -43,7 +43,8 @@ separately from the rest of Baseplate.
    baseplate.random: Extensions to the standard library's random module <baseplate/random>
    baseplate.retry: Policies for retrying operations <baseplate/retry>
    baseplate.secrets: Secure storage and access to secret tokens and credentials <baseplate/secrets>
-   baseplate.thrift_pool: A Thrift client connection pool <baseplate/thrift_pool>
+   baseplate.thrift.pool: A Thrift client connection pool <baseplate/thrift/pool>
+   baseplate.thrift.utils: Helpers for working with Thrift <baseplate/thrift/utils>
    baseplate.service_discovery: Integration with Synapse service discovery <baseplate/service_discovery>
 
 The CLI Toolkit
