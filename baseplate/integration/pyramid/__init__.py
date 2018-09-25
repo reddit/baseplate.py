@@ -168,6 +168,10 @@ class BaseplateConfigurator(object):
                 trust_headers=self.trust_trace_headers,
             )
 
+    def _on_application_created(self, event):
+        # attach the baseplate object to the application the server gets
+        event.app.baseplate = self.baseplate
+
     def _on_new_request(self, event):
         request = event.request
 
@@ -225,6 +229,7 @@ class BaseplateConfigurator(object):
 
     def includeme(self, config):
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
+        config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
 
         # Position of the tween is important. We need it to cover all code
         # that can written in the app. This means that it should be above
