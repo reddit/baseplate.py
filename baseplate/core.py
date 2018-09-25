@@ -625,6 +625,7 @@ class Baseplate(object):
     """
     def __init__(self):
         self.observers = []
+        self._metrics_client = None
 
     def register(self, observer):
         """Register an observer.
@@ -652,6 +653,7 @@ class Baseplate(object):
 
         """
         from .diagnostics.metrics import MetricsBaseplateObserver
+        self._metrics_client = metrics_client
         self.register(MetricsBaseplateObserver(metrics_client))
 
     def configure_tracing(self, tracing_client, *args, **kwargs):

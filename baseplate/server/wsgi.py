@@ -11,6 +11,7 @@ from gevent.pywsgi import WSGIServer
 
 from . import _load_factory
 from baseplate import config
+from baseplate.server.metrics import start_runtime_metrics_reporter
 
 try:
     # pylint: disable=no-name-in-module
@@ -57,4 +58,6 @@ def make_server(server_config, listener, app):
         **kwargs
     )
     server.stop_timeout = cfg.stop_timeout
+
+    start_runtime_metrics_reporter(app, pool)
     return server
