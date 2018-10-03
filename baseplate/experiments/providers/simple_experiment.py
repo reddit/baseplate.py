@@ -55,19 +55,18 @@ def _generate_overrides(override_config):
     """
 
     override_list = []
-    if override_config and isinstance(override_config, dict):
-        override_config = [override_config]
+
+    if not isinstance(override_config, list):
+        if override_config:
+            logger.error("Invalid override configuration. Skipping overrides.")
+            return None
 
     if override_config and isinstance(override_config, list):
         for override_entry in override_config:
-            if not isinstance(override_entry, dict):
+            if not isinstance(override_entry, dict) or len(override_entry) > 1:
                 logger.error("Invalid override configuration. Not applying override."
-                    "Expected dictionary: {}".format(override_entry))
+                    "Expected dictionary with single entry: {}".format(override_entry))
                 continue
-
-            if len(override_entry) > 1:
-                logger.warning("Multiple overrides in a single override entry. "
-                    "Execution order of overrides may not be consistent.")
 
             for treatment, targeting_tree_cfg in override_entry.items():
                 targeting_tree = _generate_targeting(targeting_tree_cfg)

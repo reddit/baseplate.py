@@ -458,34 +458,16 @@ class TestSimpleExperiment(unittest.TestCase):
             ('override_variant_1', EqualNode),
         ]
 
-        for i in range(4):
-            self.assertEqual(len(overrides[i]),1)
-            self.assertTrue(isinstance(
-                overrides[i][override_names_and_types[i][0]],
-                override_names_and_types[i][1]
-            ))
-
+        for i, override in enumerate(overrides):
+            self.assertEqual(len(overrides[i]), 1)
+            variant_name, override_type = override_names_and_types[i]
+            self.assertTrue(isinstance(override[variant_name], override_type))
 
     def test_construct_override_dict_input(self):
         cfg = get_dict_override_config()
         overrides = _generate_overrides(cfg)
 
-        override_names_and_types = [
-            ('override_variant_1', EqualNode),
-            ('override_variant_2', EqualNode),
-            ('override_variant_3', EqualNode),
-        ]
-
-        
-        for variant_name, node_type in override_names_and_types:
-            found_match = False
-            for node in overrides:
-                self.assertEqual(len(node),1)
-                if node.get(variant_name, None):
-                    found_match = True
-                    self.assertTrue(isinstance(node[variant_name], node_type))
-                    break;
-            self.assertTrue(found_match)
+        self.assertIs(overrides, None)
 
     def test_construct_invalid_override(self):
         cfg = get_simple_override_config()
@@ -499,12 +481,10 @@ class TestSimpleExperiment(unittest.TestCase):
             ('override_variant_1', EqualNode),
         ]
 
-        for i in range(4):
+        for i, override in enumerate(overrides):
             self.assertEqual(len(overrides[i]),1)
-            self.assertTrue(isinstance(
-                overrides[i][override_names_and_types[i][0]],
-                override_names_and_types[i][1]
-            ))
+            variant_name, override_type = override_names_and_types[i]
+            self.assertTrue(isinstance(override[variant_name], override_type))
 
         self.assertEqual(len(overrides),4)
 
@@ -519,12 +499,10 @@ class TestSimpleExperiment(unittest.TestCase):
             ('override_variant_1', EqualNode),
         ]
 
-        for i in range(3):
-            self.assertEqual(len(overrides[i]), 1)
-            self.assertTrue(isinstance(
-                overrides[i][override_names_and_types[i][0]],
-                override_names_and_types[i][1]
-            ))
+        for i, override in enumerate(overrides):
+            self.assertEqual(len(overrides[i]),1)
+            variant_name, override_type = override_names_and_types[i]
+            self.assertTrue(isinstance(override[variant_name], override_type))
 
         self.assertEqual(len(overrides), 3)
     
