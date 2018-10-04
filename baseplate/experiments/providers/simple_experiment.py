@@ -39,14 +39,8 @@ def _generate_overrides(override_config):
     across targeting trees. Each incoming variant request will check each
     targeting override in sequence until one is matched or none match.
 
-    If the override configuration does not contain a wrapping list (ie, it
-    is just a dictionary), then overrides will work, but override ordering
-    is not guaranteed. This means that if there is overlap between overrides
-    (ie, a particular user is eligible for two overrides), then the results
-    may not be consistent.
-
     In the event of an invalid override:
-    1) if a dict of variant : target is not provided, that list item will be
+    1) if a dict of {variant: target} is not provided, that list item will be
         ignored. All other overrides will still remain active.
     2) if the targeting object is invalid, the override will remain active,
         but will return false for all targeting
@@ -60,9 +54,8 @@ def _generate_overrides(override_config):
         return None
 
     if not isinstance(override_config, list):
-        if override_config:
-            logger.error("Invalid override configuration. Skipping overrides.")
-            return None
+        logger.error("Invalid override configuration. Skipping overrides.")
+        return None
 
     for override_entry in override_config:
         if not isinstance(override_entry, dict) or len(override_entry) > 1:
