@@ -56,21 +56,23 @@ def _generate_overrides(override_config):
 
     override_list = []
 
+    if not override_config:
+        return None
+
     if not isinstance(override_config, list):
         if override_config:
             logger.error("Invalid override configuration. Skipping overrides.")
             return None
 
-    if override_config and isinstance(override_config, list):
-        for override_entry in override_config:
-            if not isinstance(override_entry, dict) or len(override_entry) > 1:
-                logger.error("Invalid override configuration. Not applying override."
-                    "Expected dictionary with single entry: {}".format(override_entry))
-                continue
+    for override_entry in override_config:
+        if not isinstance(override_entry, dict) or len(override_entry) > 1:
+            logger.error("Invalid override configuration. Not applying override."
+                "Expected dictionary with single entry: {}".format(override_entry))
+            continue
 
-            for treatment, targeting_tree_cfg in override_entry.items():
-                targeting_tree = _generate_targeting(targeting_tree_cfg)
-                override_list.append({treatment: targeting_tree})
+        for treatment, targeting_tree_cfg in override_entry.items():
+            targeting_tree = _generate_targeting(targeting_tree_cfg)
+            override_list.append({treatment: targeting_tree})
 
     return override_list
 
@@ -225,20 +227,23 @@ class SimpleExperiment(Experiment):
             return None
 
     def should_log_bucketing(self):
-        """ Whether or not this experiment should log bucketing events.
+        """Whether or not this experiment should log bucketing events.
         """
         return self._log_bucketing
 
     def is_targeted(self, **kwargs):
-        """ Determine whether the provided kwargs match targeting parameters
+        """Determine whether the provided kwargs match targeting parameters
         for this experiment.
         """
         return self._targeting.evaluate(**kwargs)
 
     def get_override(self, **kwargs):
-        """ Determine whether the provided kwargs match targeting parameters
+        """Determine whether the provided kwargs match targeting parameters
         for forcing a particular variant.
         """
+        if not self._overrides:
+            return None
+
         for override_node in self._overrides:
             for variant, targeting in override_node.items():
                 if targeting.evaluate(**kwargs):
