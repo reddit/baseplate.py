@@ -1,3 +1,16 @@
+baseplate (0.28.0) trusty; urgency=medium
+
+  * 187 B3 headers support.
+  * Fix creation of context attributes on local spans.
+  * Rework SQLAlchemy instrumented client to not use threadlocals.
+  * Catch exceptions that happen outside server span context.
+  * Add targeting for SimpleExperiment.
+  * Automate PyPI release.
+  * Add span to output from experiment call.
+  * Add override support for SimpleExperiment.
+
+ -- Mike Doherty <mike@reddit.com>  Mon, 08 Oct 2018 20:26:10 +0000
+
 baseplate (0.27.0) trusty; urgency=medium
 
   * Add kombu to docs requirements.
