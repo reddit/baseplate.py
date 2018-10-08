@@ -27,6 +27,49 @@ variant_type_map = {
 }
 
 
+def _generate_overrides(override_config):
+    """Generate a dictionary of overrides.
+
+    The format of the override config is expected to be a list of dicts,
+    where each dict contains a single key (the treatment to assign) and value
+    (the targeting tree for that treatment).
+
+    This combination is used to ensure that the ordering of the overrides is
+    maintained, allowing consistent overriding for any overlapping area
+    across targeting trees. Each incoming variant request will check each
+    targeting override in sequence until one is matched or none match.
+
+    In the event of an invalid override:
+    1) if a dict of {variant: target} is not provided, that list item will be
+        ignored. All other overrides will still remain active.
+    2) if the targeting object is invalid, the override will remain active,
+        but will return false for all targeting
+
+    Multiple targets can be provided for a single variant.
+    """
+
+    override_list = []
+
+    if not override_config:
+        return None
+
+    if not isinstance(override_config, list):
+        logger.error("Invalid override configuration. Skipping overrides.")
+        return None
+
+    for override_entry in override_config:
+        if not isinstance(override_entry, dict) or len(override_entry) > 1:
+            logger.error("Invalid override configuration. Not applying override."
+                "Expected dictionary with single entry: {}".format(override_entry))
+            continue
+
+        for treatment, targeting_tree_cfg in override_entry.items():
+            targeting_tree = _generate_targeting(targeting_tree_cfg)
+            override_list.append({treatment: targeting_tree})
+
+    return override_list
+
+
 def _generate_targeting(targeting_config):
     """Generate the targeting tree for this experiment.
 
@@ -53,8 +96,8 @@ class SimpleExperiment(Experiment):
 
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
                  experiment_version, shuffle_version, variant_set,
-                 bucket_seed, bucket_val, targeting, enabled=True,
-                 log_bucketing=True, num_buckets=1000):
+                 bucket_seed, bucket_val, targeting, overrides,
+                 enabled=True, log_bucketing=True, num_buckets=1000):
         """
         :param int id: The experiment id. This should be unique.
         :param string name: The human-readable name of the experiment.
@@ -107,6 +150,7 @@ class SimpleExperiment(Experiment):
         self._log_bucketing = log_bucketing
 
         self._targeting = targeting
+        self._overrides = overrides
 
         if not self.experiment_version:
             raise ValueError('Experiment version must be provided.')
@@ -141,6 +185,9 @@ class SimpleExperiment(Experiment):
         targeting_config = config.get("targeting")
         targeting = _generate_targeting(targeting_config)
 
+        override_config = config.get("overrides")
+        overrides = _generate_overrides(override_config)
+
         return cls(
             id=id,
             name=name,
@@ -157,6 +204,7 @@ class SimpleExperiment(Experiment):
             num_buckets=num_buckets,
             log_bucketing=log_bucketing,
             targeting=targeting,
+            overrides=overrides,
         )
 
     @property
@@ -172,7 +220,7 @@ class SimpleExperiment(Experiment):
             return None
 
     def should_log_bucketing(self):
-        """ Whether or not this experiment should log bucketing events.
+        """Whether or not this experiment should log bucketing events.
         """
         return self._log_bucketing
 
@@ -181,6 +229,20 @@ class SimpleExperiment(Experiment):
         for this experiment.
         """
         return self._targeting.evaluate(**kwargs)
+
+    def get_override(self, **kwargs):
+        """Determine whether the provided kwargs match targeting parameters
+        for forcing a particular variant.
+        """
+        if not self._overrides:
+            return None
+
+        for override_node in self._overrides:
+            for variant, targeting in override_node.items():
+                if targeting.evaluate(**kwargs):
+                    return variant
+
+        return None
 
     def variant(self, **kwargs):
         if not self._is_enabled():
@@ -205,6 +267,10 @@ class SimpleExperiment(Experiment):
                 self.name,
             )
             return None
+
+        override = self.get_override(**kwargs)
+        if override:
+            return override
 
         if not self.is_targeted(**kwargs):
             return None

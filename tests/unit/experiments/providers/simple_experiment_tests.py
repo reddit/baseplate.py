@@ -18,9 +18,9 @@ from baseplate.events import EventLogger
 from baseplate.experiments import ExperimentsContextFactory
 from baseplate.experiments.providers import ISO_DATE_FMT, parse_experiment
 from baseplate.experiments.providers.simple_experiment import SimpleExperiment
-from baseplate.experiments.providers.simple_experiment import _generate_targeting
+from baseplate.experiments.providers.simple_experiment import _generate_targeting, _generate_overrides
 from baseplate.experiments.targeting.base import Targeting
-from baseplate.experiments.targeting.tree_targeting import OverrideNode
+from baseplate.experiments.targeting.tree_targeting import OverrideNode, EqualNode
 from baseplate.file_watcher import FileWatcher
 
 from .... import mock
@@ -63,14 +63,14 @@ def get_simple_config():
             "variants": [
                 {
                     "name":"variant_1",
-                    "size":0.1,
+                    "size": 0.1,
                 },
                 {
                     "name":"variant_2",
-                    "size":0.1,
+                    "size": 0.1,
                 },
             ],
-            "experiment_version":1,
+            "experiment_version": 1,
         }
     }
     return cfg
@@ -102,6 +102,33 @@ def get_targeting_config():
         ]
     }
     return targeting_cfg
+
+def get_simple_override_config():
+    override_config = [
+        {
+            'override_variant_1':{'EQ': {'field':'user_id', 'value':'t2_1'}}
+        },
+        {
+            'override_variant_2':{'EQ': {'field':'user_id', 'value':'t2_2'}}
+        },
+        {
+            'override_variant_3':{'EQ': {'field':'user_id', 'values':['t2_2', 't2_3']}},
+        },
+        {
+            'override_variant_1':{'EQ': {'field':'user_id', 'values':['t2_1', 't2_4']}},
+        }
+    ]
+
+    return override_config
+
+def get_dict_override_config():
+    override_config = {
+        'override_variant_1':{'EQ': {'field':'user_id', 'value':'t2_1'}},
+        'override_variant_2':{'EQ': {'field':'user_id', 'value':'t2_2'}},
+        'override_variant_3':{'EQ': {'field':'user_id', 'values':['t2_2', 't2_3']}},
+    }
+    
+    return override_config
 
 
 class TestSimpleExperiment(unittest.TestCase):
@@ -417,3 +444,126 @@ class TestSimpleExperiment(unittest.TestCase):
             is_logged_in=True,
             random_numeric=5,
         ))
+
+    def test_construct_override(self):
+        cfg = get_simple_override_config()
+        overrides = _generate_overrides(cfg)
+
+        self.assertEqual(len(overrides), 4)
+        
+        override_names_and_types = [
+            ('override_variant_1', EqualNode),
+            ('override_variant_2', EqualNode),
+            ('override_variant_3', EqualNode),
+            ('override_variant_1', EqualNode),
+        ]
+
+        for i, override in enumerate(overrides):
+            self.assertEqual(len(overrides[i]), 1)
+            variant_name, override_type = override_names_and_types[i]
+            self.assertTrue(isinstance(override[variant_name], override_type))
+
+    def test_construct_override_dict_input(self):
+        cfg = get_dict_override_config()
+        overrides = _generate_overrides(cfg)
+
+        self.assertIs(overrides, None)
+
+    def test_construct_invalid_override(self):
+        cfg = get_simple_override_config()
+        cfg[1]['override_variant_2'] = {'EQUAL': {'field':'user_id', 'value':'t2_1'}}
+        overrides = _generate_overrides(cfg)
+
+        override_names_and_types = [
+            ('override_variant_1', EqualNode),
+            ('override_variant_2', OverrideNode),
+            ('override_variant_3', EqualNode),
+            ('override_variant_1', EqualNode),
+        ]
+
+        for i, override in enumerate(overrides):
+            self.assertEqual(len(overrides[i]),1)
+            variant_name, override_type = override_names_and_types[i]
+            self.assertTrue(isinstance(override[variant_name], override_type))
+
+        self.assertEqual(len(overrides),4)
+
+    def test_construct_invalid_overrides(self):
+        cfg = get_simple_override_config()
+        cfg[0] = 'not a dictionary'
+        overrides = _generate_overrides(cfg)
+
+        override_names_and_types = [
+            ('override_variant_2', EqualNode),
+            ('override_variant_3', EqualNode),
+            ('override_variant_1', EqualNode),
+        ]
+
+        for i, override in enumerate(overrides):
+            self.assertEqual(len(overrides[i]),1)
+            variant_name, override_type = override_names_and_types[i]
+            self.assertTrue(isinstance(override[variant_name], override_type))
+
+        self.assertEqual(len(overrides), 3)
+    
+    def test_get_override(self):
+        exp_config = get_simple_config()
+        override_config = get_simple_override_config()
+        exp_config['experiment']['overrides'] = override_config
+
+        experiment_with_overrides = parse_experiment(exp_config)
+
+        self.assertEqual(
+            experiment_with_overrides.get_override(user_id='t2_1'),
+            'override_variant_1'
+        )
+
+        self.assertEqual(
+            experiment_with_overrides.get_override(user_id='t2_2'),
+            'override_variant_2'
+        )
+
+        self.assertEqual(
+            experiment_with_overrides.get_override(user_id='t2_3'),
+            'override_variant_3'
+        )
+
+        self.assertEqual(
+            experiment_with_overrides.get_override(user_id='t2_4'),
+            'override_variant_1'
+        )
+
+    @mock.patch('baseplate.experiments.providers.simple_experiment.SimpleExperiment._choose_variant')
+    def test_variant_call_with_overrides(self, choose_variant_mock):
+        choose_variant_mock.return_value = "mocked_variant"
+
+        exp_config = get_simple_config()
+        override_config = get_simple_override_config()
+        exp_config['experiment']['overrides'] = override_config
+
+        experiment_with_overrides = parse_experiment(exp_config)
+
+        self.assertEqual(
+            experiment_with_overrides.variant(user_id='t2_1'),
+            'override_variant_1'
+        )
+
+        self.assertEqual(
+            experiment_with_overrides.variant(user_id='t2_2'),
+            'override_variant_2'
+        )
+
+        self.assertEqual(
+            experiment_with_overrides.variant(user_id='t2_3'),
+            'override_variant_3'
+        )
+
+        self.assertEqual(
+            experiment_with_overrides.variant(user_id='t2_4'),
+            'override_variant_1'
+        )
+
+        self.assertEqual(
+            experiment_with_overrides.variant(user_id='t2_5'),
+            'mocked_variant'
+        )
