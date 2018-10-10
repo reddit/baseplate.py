@@ -231,7 +231,7 @@ def load_and_run_tshell():
     app = make_app(config.app)
     env['app'] = app
 
-    baseplate = app._event_handler.baseplate
+    baseplate = app.baseplate
     span = baseplate.make_server_span(RequestContext(), 'shell')
     env['context'] = span.context
 
