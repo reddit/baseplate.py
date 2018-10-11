@@ -114,7 +114,7 @@ def main():
     # pylint: disable=maybe-no-member
     nodes = cfg.nodes.values()
 
-    secrets = secrets_store_from_config(watcher_config)
+    secrets = secrets_store_from_config(watcher_config, timeout=30)
     zookeeper = zookeeper_client_from_config(
         secrets, watcher_config, read_only=True)
     zookeeper.start()
