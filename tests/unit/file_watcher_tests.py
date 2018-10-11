@@ -9,6 +9,7 @@ import tempfile
 import unittest
 
 from baseplate import file_watcher
+from baseplate.retry import RetryPolicy
 
 from .. import mock
 
@@ -96,3 +97,21 @@ class FileWatcherTests(unittest.TestCase):
 
             result = watcher.get_data()
             self.assertEqual(result, {"b": 3})
+
+    @mock.patch("baseplate.retry.RetryPolicy.new")
+    def test_timeout(self, mock_retry_factory):
+        with tempfile.NamedTemporaryFile() as watched_file:
+            watched_file.write(b"!")
+            watched_file.flush()
+            os.utime(watched_file.name, (1, 1))
+
+            mock_retry_policy = mock.MagicMock(spec=RetryPolicy)
+            mock_retry_policy.__iter__ = mock.Mock(return_value=iter([3, 2, 1]))
+            mock_retry_factory.return_value = mock_retry_policy
+
+            with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
+                file_watcher.FileWatcher(
+                    watched_file.name,
+                    parser=json.load,
+                    timeout=3,
+                )

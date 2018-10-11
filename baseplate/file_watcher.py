@@ -37,6 +37,8 @@ from __future__ import unicode_literals
 import logging
 import os
 
+from baseplate.retry import RetryPolicy
+
 
 logger = logging.getLogger(__name__)
 
@@ -61,13 +63,33 @@ class FileWatcher(object):
     :param callable parser: A callable that takes an open file object, parses
         or otherwise interprets the file, and returns whatever data is
         meaningful.
+    :param float timeout: How long, in seconds, to block instantiation waiting
+        for the watched file to become available (defaults to not blocking).
 
     """
-    def __init__(self, path, parser):
+    def __init__(self, path, parser, timeout=None):
         self._path = path
         self._parser = parser
         self._mtime = 0
         self._data = _NOT_LOADED
+
+        if timeout is not None:
+            last_error = None
+            for _ in RetryPolicy.new(budget=timeout, backoff=0.01):
+                if self._data is not _NOT_LOADED:
+                    break
+
+                try:
+                    self.get_data()
+                except WatchedFileNotAvailableError as exc:
+                    last_error = exc
+                else:
+                    break
+
+                logging.warning("%s: file not yet available. sleeping.", path)
+            else:
+                raise WatchedFileNotAvailableError(self._path,
+                    "timed out. last error was: %s" % last_error.inner)
 
     def get_data(self):
         """Return the current contents of the file, parsed.

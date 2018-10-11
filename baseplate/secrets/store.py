@@ -116,8 +116,8 @@ class SecretsStore(ContextFactory):
 
     """
 
-    def __init__(self, path):
-        self._filewatcher = FileWatcher(path, json.load)
+    def __init__(self, path, timeout=None):
+        self._filewatcher = FileWatcher(path, json.load, timeout=timeout)
 
     def _get_data(self):
         try:
@@ -251,7 +251,7 @@ class SecretsStore(ContextFactory):
         return self
 
 
-def secrets_store_from_config(app_config):
+def secrets_store_from_config(app_config, timeout=None):
     """Configure and return a secrets store.
 
     This expects one configuration option:
@@ -261,6 +261,8 @@ def secrets_store_from_config(app_config):
 
     :param dict raw_config: The application configuration which should have
         settings for the secrets store.
+    :param float timeout: How long, in seconds, to block instantiation waiting
+        for the secrets data to become available (defaults to not blocking).
     :rtype: :py:class:`SecretsStore`
 
     """
@@ -270,4 +272,4 @@ def secrets_store_from_config(app_config):
         },
     })
     # pylint: disable=maybe-no-member
-    return SecretsStore(cfg.secrets.path)
+    return SecretsStore(cfg.secrets.path, timeout=timeout)
