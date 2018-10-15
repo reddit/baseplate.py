@@ -14,6 +14,8 @@ from thrift.transport.THeaderTransport import THeaderTransport
 from thrift.transport.TTransport import (
     TTransportException, TBufferedTransportFactory)
 
+from baseplate import config
+
 
 # pylint: disable=too-many-public-methods
 class GeventServer(StreamServer):
@@ -54,15 +56,17 @@ class GeventServer(StreamServer):
             trans.close()
 
 
-def make_server(config, listener, app):
-    max_concurrency = int(config.get("max_concurrency", 0)) or None
-    stop_timeout = int(config.get("stop_timeout", 0))
+def make_server(server_config, listener, app):
+    cfg = config.parse_config(server_config, {
+        "max_concurrency": config.Integer,
+        "stop_timeout": config.Optional(config.Integer, default=0),
+    })
 
-    pool = Pool(size=max_concurrency)
+    pool = Pool(size=cfg.max_concurrency)
     server = GeventServer(
         processor=app,
         listener=listener,
         spawn=pool,
     )
-    server.stop_timeout = stop_timeout
+    server.stop_timeout = cfg.stop_timeout
     return server
