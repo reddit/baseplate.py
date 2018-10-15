@@ -10,6 +10,7 @@ from gevent.pool import Pool
 from gevent.pywsgi import WSGIServer
 
 from . import _load_factory
+from baseplate import config
 
 try:
     # pylint: disable=no-name-in-module
@@ -28,21 +29,23 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
-def make_server(config, listener, app):
+def make_server(server_config, listener, app):
     """Make a gevent server for WSGI apps."""
-    max_concurrency = int(config.get("max_concurrency", 0)) or None
-    stop_timeout = int(config.get("stop_timeout", 0))
-    handler = config.get("handler", None)
+    cfg = config.parse_config(server_config, {
+        "handler": config.Optional(config.String, default=None),
+        "max_concurrency": config.Integer,
+        "stop_timeout": config.Optional(config.Integer, default=0),
+    })
 
-    pool = Pool(size=max_concurrency)
+    pool = Pool(size=cfg.max_concurrency)
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
 
     kwargs = {}
     if gevent.version_info[:2] >= (1, 1):  # error_log is new in 1.1
         kwargs["error_log"] = LoggingLogAdapter(logger, level=logging.ERROR)
 
-    if handler:
-        kwargs["handler_class"] = _load_factory(handler, default_name=None)
+    if cfg.handler:
+        kwargs["handler_class"] = _load_factory(cfg.handler, default_name=None)
 
     # pylint: disable=star-args
     server = WSGIServer(
@@ -52,5 +55,5 @@ def make_server(config, listener, app):
         log=log,
         **kwargs
     )
-    server.stop_timeout = stop_timeout
+    server.stop_timeout = cfg.stop_timeout
     return server
