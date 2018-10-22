@@ -65,7 +65,7 @@ class _ContextAwareHandler(object):
                 # this is an expected exception, as defined in the IDL
                 span.finish()
                 raise
-            except:
+            except Exception:
                 # the handler crashed!
                 span.finish(exc_info=sys.exc_info())
                 raise
