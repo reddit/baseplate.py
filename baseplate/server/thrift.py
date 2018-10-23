@@ -57,6 +57,7 @@ class GeventServer(StreamServer):
 
 
 def make_server(server_config, listener, app):
+    # pylint: disable=maybe-no-member
     cfg = config.parse_config(server_config, {
         "max_concurrency": config.Integer,
         "stop_timeout": config.Optional(config.Integer, default=0),

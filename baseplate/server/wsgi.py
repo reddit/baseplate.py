@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 def make_server(server_config, listener, app):
     """Make a gevent server for WSGI apps."""
+    # pylint: disable=maybe-no-member
     cfg = config.parse_config(server_config, {
         "handler": config.Optional(config.String, default=None),
         "max_concurrency": config.Integer,
