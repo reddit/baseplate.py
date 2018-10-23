@@ -6,6 +6,12 @@ class baseplate {
     notify  => Exec['update apt cache'],
   }
 
+  exec { 'add thrift12 ppa':
+    command => 'add-apt-repository -y ppa:reddit/thrift12',
+    unless  => 'apt-cache policy | grep reddit/thrift12',
+    notify  => Exec['update apt cache'],
+  }
+
   $packages = [
     # utilities
     'python',

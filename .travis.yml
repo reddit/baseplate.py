@@ -20,13 +20,14 @@ virtualenv:
 
 before_install:
     - sudo add-apt-repository -y ppa:reddit/ppa
+    - sudo add-apt-repository -y ppa:reddit/thrift12
     - echo "deb http://debian.datastax.com/community stable main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
     - sudo apt-key add puppet/modules/cassandra/files/repo_key
     - sudo apt-get update -q
     - >
         sudo apt-get install -y \
             cassandra=2.2.8 \
-            fbthrift-compiler \
+            thrift-compiler \
             make \
             pylint \
             python \
@@ -34,7 +35,7 @@ before_install:
             python3-cassandra \
             python3-coverage \
             python3-cqlmapper \
-            python3-fbthrift \
+            python3-thrift \
             python3-gevent \
             python3-hvac \
             python3-jwt \
@@ -53,7 +54,7 @@ before_install:
             python-cqlmapper \
             python-cryptography \
             python-enum34 \
-            python-fbthrift \
+            python-thrift \
             python-flake8 \
             python-gevent \
             python-hvac \
