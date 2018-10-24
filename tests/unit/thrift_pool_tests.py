@@ -6,9 +6,8 @@ from __future__ import unicode_literals
 import socket
 import unittest
 
-from baseplate import config
+from baseplate import config, thrift_pool
 from baseplate._compat import queue
-from baseplate.thrift import pool
 from thrift.Thrift import TException
 from thrift.transport import TTransport, THeaderTransport, TSocket
 from thrift.protocol import THeaderProtocol, TBinaryProtocol
@@ -24,14 +23,14 @@ class MakeTransportTests(unittest.TestCase):
     def test_inet(self):
         endpoint = config.EndpointConfiguration(
             socket.AF_INET, ("localhost", 1234))
-        socket_transport = pool._make_transport(endpoint)
+        socket_transport = thrift_pool._make_transport(endpoint)
 
         self.assertFalse(socket_transport._unix_socket)
 
     def test_unix(self):
         endpoint = config.EndpointConfiguration(
             socket.AF_UNIX, "/tmp/socket")
-        socket_transport = pool._make_transport(endpoint)
+        socket_transport = thrift_pool._make_transport(endpoint)
 
         self.assertTrue(socket_transport._unix_socket)
 
@@ -40,13 +39,13 @@ class MakeTransportTests(unittest.TestCase):
             socket.AF_UNSPEC, None)
 
         with self.assertRaises(Exception):
-            pool._make_transport(endpoint)
+            thrift_pool._make_transport(endpoint)
 
 
 class ThriftConnectionPoolTests(unittest.TestCase):
     def setUp(self):
         self.mock_queue = mock.Mock(spec=queue.Queue)
-        self.pool = pool.ThriftConnectionPool(EXAMPLE_ENDPOINT)
+        self.pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT)
         self.pool.pool = self.mock_queue
 
     def test_pool_empty_timeout(self):
@@ -61,9 +60,9 @@ class ThriftConnectionPoolTests(unittest.TestCase):
             trans = TTransport.TFramedTransport(trans)
             return TBinaryProtocol.TBinaryProtocol(trans)
 
-        framed_pool = pool.ThriftConnectionPool(
+        framed_pool = thrift_pool.ThriftConnectionPool(
             EXAMPLE_ENDPOINT, protocol_factory=framed_protocol_factory)
-        trans = pool._make_transport(EXAMPLE_ENDPOINT)
+        trans = thrift_pool._make_transport(EXAMPLE_ENDPOINT)
         prot = framed_pool.protocol_factory(trans)
 
         self.assertTrue(isinstance(prot, TBinaryProtocol.TBinaryProtocol))
@@ -80,7 +79,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
 
         self.assertEqual(prot, mock_prot)
 
-    @mock.patch("baseplate.thrift.pool._make_transport")
+    @mock.patch("baseplate.thrift_pool._make_transport")
     @mock.patch("time.time")
     def test_pool_closes_stale_connection(self, mock_time, mock_make_transport):
         stale_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
@@ -99,7 +98,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertTrue(stale_prot.trans.close.called)
         self.assertEqual(prot.trans._transport, fresh_trans)
 
-    @mock.patch("baseplate.thrift.pool._make_transport")
+    @mock.patch("baseplate.thrift_pool._make_transport")
     @mock.patch("time.time")
     def test_retry_on_failed_connect(self, mock_time, mock_make_transport):
         self.mock_queue.get.return_value = None
@@ -119,7 +118,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertEqual(prot.trans._transport, ok_trans)
         self.assertEqual(ok_trans.open.call_count, 1)
 
-    @mock.patch("baseplate.thrift.pool._make_transport")
+    @mock.patch("baseplate.thrift_pool._make_transport")
     @mock.patch("time.time")
     def test_max_retry_on_connect(self, mock_time, mock_make_transport):
         self.mock_queue.get.return_value = None

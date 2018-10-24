@@ -23,12 +23,12 @@ import time
 import uuid
 
 from enum import Enum
+from thrift import TSerialization
 from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
 from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
 from baseplate.context import ContextFactory
 from baseplate.message_queue import MessageQueue, TimedOutError
-from baseplate.thrift.utils import serialize_thrift
 from baseplate._utils import warn_deprecated
 
 
@@ -168,7 +168,7 @@ def serialize_v2_event(event):
     :param event: A Thrift struct from the event schemas.
 
     """
-    return serialize_thrift(_V2_PROTOCOL_FACTORY, event)
+    return TSerialization.serialize(event, _V2_PROTOCOL_FACTORY)
 
 
 class EventLogger(object):

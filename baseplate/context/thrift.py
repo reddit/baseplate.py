@@ -22,7 +22,7 @@ class ThriftContextFactory(ContextFactory):
     the connection pool and execute the RPC, automatically recording diagnostic
     information.
 
-    :param baseplate.thrift.pool.ThriftConnectionPool pool: The connection
+    :param baseplate.thrift_pool.ThriftConnectionPool pool: The connection
         pool.
     :param client_cls: The class object of a Thrift-generated client class,
         e.g. ``YourService.Client``.

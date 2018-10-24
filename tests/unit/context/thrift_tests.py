@@ -5,9 +5,9 @@ from __future__ import unicode_literals
 
 import unittest
 
-from baseplate import core
+from baseplate import core, thrift_pool
 from baseplate.context import thrift
-from baseplate.thrift import BaseplateService, pool
+from baseplate.thrift import BaseplateService
 
 from ... import mock
 
@@ -63,7 +63,7 @@ class PooledClientProxyTests(unittest.TestCase):
         def set_header_fn(key, value):
             self.outbound_headers[key] = value
 
-        self.mock_pool = mock.MagicMock(spec=pool.ThriftConnectionPool)
+        self.mock_pool = mock.MagicMock(spec=thrift_pool.ThriftConnectionPool)
         self.mock_pool.connection().__enter__().trans.set_header = set_header_fn
         self.mock_client_cls = mock.Mock(spec=BaseplateService.Client)
         self.mock_client = self.mock_client_cls.return_value
