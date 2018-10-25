@@ -11,8 +11,8 @@ Build-Depends: debhelper (>= 8),
                python-nose, python3-nose, python-mock,
                python-enum34,
                python-requests, python3-requests,
-               thrift-compiler >= 0.12.0,
-               python-pyramid, python-thrift >= 0.12.0, python3-thrift >= 0.12.0,
+               thrift-compiler (>=0.12.0),
+               python-pyramid, python-thrift (>=0.12.0), python3-thrift (>=0.12.0),
                python-posix-ipc, python3-posix-ipc,
                python-sqlalchemy, python3-sqlalchemy,
                python-jwt, python3-jwt,
@@ -23,18 +23,18 @@ X-Python3-Version: >= 3.4
 
 Package: python-baseplate
 Architecture: any
-Depends: thrift-compiler, python-thrift >= 0.12.0, ${python:Depends}, ${misc:Depends}
+Depends: thrift-compiler (>=0.12.0), python-thrift (>=0.12.0), ${python:Depends}, ${misc:Depends}
 Suggests: python-baseplate-doc
 Description: convenient service framework (Python 2)
 
 Package: python3-baseplate
 Architecture: any
-Depends: thrift-compiler, python3-thrift >= 0.12.0, ${python3:Depends}, ${misc:Depends}
+Depends: thrift-compiler (>=0.12.0), python3-thrift (>=0.12.0), ${python3:Depends}, ${misc:Depends}
 Suggests: python-baseplate-doc
 Description: convenient service framework (Python 3)
 
 Package: python-baseplate-doc
-Architecture: any
+Architecture: all
 Section: doc
 Depends: ${misc:Depends}, ${sphinxdoc:Depends}
 Description: convenient service framework - API documentation
