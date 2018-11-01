@@ -3,6 +3,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import threading
+
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
@@ -34,30 +36,34 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     """
     def __init__(self, engine):
-        self.engine = engine.execution_options()
-        event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
-        event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
-        event.listen(self.engine, "dbapi_error", self.on_dbapi_error)
+        self.engine = engine
+
+        # i'm not at all thrilled about this. is there another way to get
+        # request context into the event handlers without "global" state?
+        self.threadlocal = threading.local()
+
+        event.listen(engine, "before_cursor_execute", self.on_before_execute, retval=True)
+        event.listen(engine, "after_cursor_execute", self.on_after_execute)
+        event.listen(engine, "dbapi_error", self.on_dbapi_error)
 
     def make_object_for_context(self, name, server_span):
-        engine = self.engine.execution_options(
-            context_name=name,
-            server_span=server_span,
-        )
-        return engine
+        self.threadlocal.context_name = name
+        self.threadlocal.server_span = server_span
+        self.threadlocal.current_span = None
+        return self.engine
 
     # pylint: disable=unused-argument, too-many-arguments
     def on_before_execute(self, conn, cursor, statement, parameters, context, executemany):
         """Handle the engine's before_cursor_execute event."""
-        context_name = conn._execution_options["context_name"]
-        server_span = conn._execution_options["server_span"]
+        # http://docs.sqlalchemy.org/en/latest/orm/session_basics.html#is-the-session-thread-safe
+        assert self.threadlocal.current_span is None, \
+            "SQLAlchemy sessions cannot be used concurrently"
 
-        trace_name = "{}.{}".format(context_name, "execute")
-        span = server_span.make_child(trace_name)
+        trace_name = "{}.{}".format(self.threadlocal.context_name, "execute")
+        span = self.threadlocal.server_span.make_child(trace_name)
         span.set_tag("statement", statement)
         span.start()
-
-        conn.info["span"] = span
+        self.threadlocal.current_span = span
 
         # add a comment to the sql statement with the trace and span ids
         # this is useful for slow query logs and active query views
@@ -68,14 +74,14 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     # pylint: disable=unused-argument, too-many-arguments
     def on_after_execute(self, conn, cursor, statement, parameters, context, executemany):
         """Handle the event which happens after successful cursor execution."""
-        conn.info["span"].finish()
-        conn.info["span"] = None
+        self.threadlocal.current_span.finish()
+        self.threadlocal.current_span = None
 
     def on_dbapi_error(self, conn, cursor, statement, parameters, context, exception):
         """Handle the event which happens on exceptions during execution."""
         exc_info = (type(exception), exception, None)
-        conn.info["span"].finish(exc_info=exc_info)
-        conn.info["span"] = None
+        self.threadlocal.current_span.finish(exc_info=exc_info)
+        self.threadlocal.current_span = None
 
 
 class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
