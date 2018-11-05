@@ -182,9 +182,7 @@ class Experiments(object):
         if user:
             inputs.update(user.event_fields())
 
-        span_name = "{}.{}".format(self._context_name, "variant")
-        with self._span.make_child(span_name, local=True, component_name=name):
-            variant = experiment.variant(**inputs)
+        variant = experiment.variant(**inputs)
 
         bucketing_id = experiment.get_unique_id(**inputs)
 
