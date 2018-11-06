@@ -1,3 +1,9 @@
+baseplate (0.28.1) trusty; urgency=medium
+
+  * Remove local span on variant call
+
+ -- Mike Doherty <mike@reddit.com>  Tue, 06 Nov 2018 19:58:58 +0000
+
 baseplate (0.28.0) trusty; urgency=medium
 
   * 187 B3 headers support.
