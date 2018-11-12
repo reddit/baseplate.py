@@ -8,8 +8,8 @@ import logging
 import random
 
 import jwt
+from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
-from thrift.util import Serializer
 
 from .integration.wrapped_context import WrappedRequestContext
 from ._utils import warn_deprecated, cached_property
@@ -507,8 +507,8 @@ class EdgeRequestContextFactory(object):
             session=TSession(id=session_id),
             authentication_token=authentication_token,
         )
-        header = Serializer.serialize(
-            EdgeRequestContext._HEADER_PROTOCOL_FACTORY, t_request)
+        header = TSerialization.serialize(
+            t_request, EdgeRequestContext._HEADER_PROTOCOL_FACTORY)
 
         context = EdgeRequestContext(self.authn_token_validator, header)
         # Set the _t_request property so we can skip the deserialization step
@@ -602,10 +602,10 @@ class EdgeRequestContext(object):
         _t_request.session = TSession()
         if self._header:
             try:
-                Serializer.deserialize(
-                    self._HEADER_PROTOCOL_FACTORY,
-                    self._header,
+                TSerialization.deserialize(
                     _t_request,
+                    self._header,
+                    self._HEADER_PROTOCOL_FACTORY,
                 )
             except Exception:
                 logger.debug(

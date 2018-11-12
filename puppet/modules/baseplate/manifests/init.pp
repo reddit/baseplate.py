@@ -6,11 +6,17 @@ class baseplate {
     notify  => Exec['update apt cache'],
   }
 
+  exec { 'add thrift12 ppa':
+    command => 'add-apt-repository -y ppa:reddit/thrift12',
+    unless  => 'apt-cache policy | grep reddit/thrift12',
+    notify  => Exec['update apt cache'],
+  }
+
   $packages = [
     # utilities
     'python',
     'python3',
-    'fbthrift-compiler',
+    'thrift-compiler',
     'make',
     'pylint',
     'python-flake8',
@@ -19,7 +25,7 @@ class baseplate {
     'python3-cassandra',
     'python3-coverage',
     'python3-cqlmapper',
-    'python3-fbthrift',
+    'python3-thrift',
     'python3-gevent',
     'python3-hvac',
     'python3-jwt',
@@ -38,7 +44,7 @@ class baseplate {
     'python3-webtest',
     'python-coverage',
     'python-cqlmapper',
-    'python-fbthrift',
+    'python-thrift',
     'python-gevent',
     'python-hvac',
     'python-jwt',

@@ -1,7 +1,7 @@
 """Thrift integration for Baseplate.
 
-This module provides an implementation of :py:class:`TProcessorEventHandler`
-which integrates Baseplate's facilities into the Thrift request lifecycle.
+This module provides a wrapper for a :py:class:`TProcessor` which integrates
+Baseplate's facilities into the Thrift request lifecycle.
 
 An abbreviated example of it in use::
 
@@ -9,12 +9,8 @@ An abbreviated example of it in use::
         baseplate = Baseplate()
 
         handler = MyHandler()
-        processor = my_thrift.MyService.ContextProcessor(handler)
-
-        event_handler = BaseplateProcessorEventHandler(logger, baseplate)
-        processor.setEventHandler(event_handler)
-
-        return processor
+        processor = my_thrift.MyService.Processor(handler)
+        return baseplateify_processor(processor, baseplate)
 
 """
 from __future__ import absolute_import
@@ -24,7 +20,9 @@ from __future__ import unicode_literals
 
 import sys
 
-from thrift.Thrift import TProcessorEventHandler
+from thrift.Thrift import TException, TApplicationException
+from thrift.transport.TTransport import TTransportException
+from thrift.protocol.TProtocol import TProtocolException
 
 from ...core import TraceInfo
 
@@ -42,82 +40,103 @@ class RequestContext(object):
     pass
 
 
-# TODO: exceptions in the event handler cause the connection to be abruptly
-# closed with no diagnostics sent to the client. that should be more obvious.
-class BaseplateProcessorEventHandler(TProcessorEventHandler):
-    """Processor event handler for Baseplate.
+class _ContextAwareHandler(object):
+    def __init__(self, handler, context, logger):
+        self.handler = handler
+        self.context = context
+        self.logger = logger
 
-    :param logging.Logger logger: The logger to use for error and debug logging.
+    def __getattr__(self, fn_name):
+        def call_with_context(*args, **kwargs):
+            self.logger.debug("Handling: %r", fn_name)
+
+            handler_fn = getattr(self.handler, fn_name)
+
+            span = self.context.trace
+            span.start()
+            try:
+                result = handler_fn(self.context, *args, **kwargs)
+            except (TApplicationException, TProtocolException, TTransportException):
+                # these are subclasses of TException but aren't ones that
+                # should be expected in the protocol
+                span.finish(exc_info=sys.exc_info())
+                raise
+            except TException:
+                # this is an expected exception, as defined in the IDL
+                span.finish()
+                raise
+            except Exception:
+                # the handler crashed!
+                span.finish(exc_info=sys.exc_info())
+                raise
+            else:
+                # a normal result
+                span.finish()
+                return result
+        return call_with_context
+
+
+def _extract_trace_info(headers):
+    extracted_values = TraceInfo.extract_upstream_header_values(TRACE_HEADER_NAMES, headers)
+    flags = extracted_values.get("flags", None)
+    return TraceInfo.from_upstream(
+        int(extracted_values["trace_id"]),
+        int(extracted_values["parent_span_id"]),
+        int(extracted_values["span_id"]),
+        True if extracted_values["sampled"].decode("utf-8") == "1" else False,
+        int(flags) if flags is not None else None,
+    )
+
+
+def baseplateify_processor(processor, logger, baseplate, edge_context_factory=None):
+    """Wrap a Thrift Processor with Baseplate's span lifecycle.
+
+    :param thrift.Thrift.TProcessor processor: The service's processor to wrap.
+    :param logging.Logger logger: The logger to use for error and debug
+        logging.
     :param baseplate.core.Baseplate baseplate: The baseplate instance for your
         application.
     :param baseplate.core.EdgeRequestContextFactory edge_context_factory: A
         configured factory for handling edge request context.
 
     """
-    def __init__(self, logger, baseplate, edge_context_factory=None):
-        self.logger = logger
-        self.baseplate = baseplate
-        self.edge_context_factory = edge_context_factory
+    def make_processor_fn(fn_name, processor_fn):
+        def call_processor_with_span_context(self, seqid, iprot, oprot):
+            context = RequestContext()
 
-    def getHandlerContext(self, fn_name, server_context):
-        context = RequestContext()
+            headers = iprot.get_headers()
+            try:
+                trace_info = _extract_trace_info(headers)
+                edge_payload = headers.get(b"Edge-Request", None)
+                if edge_context_factory:
+                    edge_context = edge_context_factory.from_upstream(edge_payload)
+                    edge_context.attach_context(context)
+                else:
+                    # just attach the raw context so it gets passed on
+                    # downstream even if we don't know how to handle it.
+                    context.raw_request_context = edge_payload
+            except (KeyError, ValueError):
+                trace_info = None
 
-        trace_info = None
-        headers = server_context.iprot.trans.get_headers()
-        try:
-            trace_info = self._get_trace_info(headers)
-            edge_payload = headers.get(b"Edge-Request", None)
-            if self.edge_context_factory:
-                edge_context = self.edge_context_factory.from_upstream(
-                    edge_payload)
-                edge_context.attach_context(context)
-            else:
-                # just attach the raw context so it gets passed on
-                # downstream even if we don't know how to handle it.
-                context.raw_request_context = edge_payload
-        except (KeyError, ValueError):
-            pass
+            server_span = baseplate.make_server_span(
+                context,
+                name=fn_name,
+                trace_info=trace_info,
+            )
 
-        trace = self.baseplate.make_server_span(
-            context,
-            name=fn_name,
-            trace_info=trace_info,
-        )
+            context.headers = headers
+            context.trace = server_span
 
-        try:
-            peer_address, peer_port = server_context.getPeerName()
-        except AttributeError:
-            # the client transport is not a socket
-            pass
-        else:
-            trace.set_tag("peer.ipv4", peer_address)
-            trace.set_tag("peer.port", peer_port)
+            handler = processor._handler
+            context_aware_handler = _ContextAwareHandler(handler, context, logger)
+            context_aware_processor = processor.__class__(context_aware_handler)
+            return processor_fn(context_aware_processor, seqid, iprot, oprot)
+        return call_processor_with_span_context
 
-        context.headers = headers
-        context.trace = trace
-        return context
-
-    def postRead(self, handler_context, fn_name, args):
-        self.logger.debug("Handling: %r", fn_name)
-        handler_context.trace.start()
-
-    def handlerDone(self, handler_context, fn_name, result):
-        if not getattr(handler_context.trace, "is_finished", False):
-            # for unexpected exceptions, we call trace.finish() in handlerError
-            handler_context.trace.finish()
-
-    def handlerError(self, handler_context, fn_name, exception):
-        handler_context.trace.finish(exc_info=sys.exc_info())
-        handler_context.trace.is_finished = True
-        self.logger.exception("Unexpected exception in %r.", fn_name)
-
-    def _get_trace_info(self, headers):
-        extracted_values = TraceInfo.extract_upstream_header_values(TRACE_HEADER_NAMES, headers)
-        flags = extracted_values.get("flags", None)
-        return TraceInfo.from_upstream(
-            int(extracted_values["trace_id"]),
-            int(extracted_values["parent_span_id"]),
-            int(extracted_values["span_id"]),
-            True if extracted_values["sampled"].decode("utf-8") == "1" else False,
-            int(flags) if flags is not None else None,
-        )
+    instrumented_process_map = {}
+    for fn_name, processor_fn in processor._processMap.items():
+        context_aware_processor_fn = make_processor_fn(fn_name, processor_fn)
+        instrumented_process_map[fn_name] = context_aware_processor_fn
+    processor._processMap = instrumented_process_map
+    processor.baseplate = baseplate
+    return processor

@@ -56,7 +56,7 @@ class BuildPyCommand(setuptools.command.build_py.build_py):
             print("'make' not found.")
             exit(1)
 
-        if not find_executable('thrift1'):
+        if not find_executable('thrift'):
             print("Thrift compiler not found.")
             exit(1)
 

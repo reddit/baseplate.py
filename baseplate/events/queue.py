@@ -23,7 +23,7 @@ import time
 import uuid
 
 from enum import Enum
-from thrift.util import Serializer
+from thrift import TSerialization
 from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
 from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
@@ -168,7 +168,7 @@ def serialize_v2_event(event):
     :param event: A Thrift struct from the event schemas.
 
     """
-    return Serializer.serialize(_V2_PROTOCOL_FACTORY, event)
+    return TSerialization.serialize(event, _V2_PROTOCOL_FACTORY)
 
 
 class EventLogger(object):

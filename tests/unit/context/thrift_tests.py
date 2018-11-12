@@ -106,7 +106,7 @@ class PooledClientProxyTests(unittest.TestCase):
             self.mock_client_cls, self.mock_pool, self.mock_server_span, "namespace")
         proxy.one(mock.sentinel.first, mock.sentinel.second)
 
-        self.assertEqual(self.outbound_headers.get('Edge-Request'), 'edge_request_context')
+        self.assertEqual(self.outbound_headers.get(b'Edge-Request'), 'edge_request_context')
 
     @mock.patch("baseplate.context.thrift._enumerate_service_methods")
     def test_null_edge_request_headers_not_set(self, mock_enumerate):
@@ -119,4 +119,4 @@ class PooledClientProxyTests(unittest.TestCase):
             self.mock_client_cls, self.mock_pool, self.mock_server_span, "namespace")
         proxy.one(mock.sentinel.first, mock.sentinel.second)
 
-        self.assertNotIn('Edge-Request', self.outbound_headers)
+        self.assertNotIn(b'Edge-Request', self.outbound_headers)

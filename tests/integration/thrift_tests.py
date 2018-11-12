@@ -25,10 +25,9 @@ from baseplate.context.thrift import ThriftContextFactory
 from baseplate.file_watcher import FileWatcher
 from baseplate.secrets import store
 
-from baseplate.integration.thrift import BaseplateProcessorEventHandler
+from baseplate.integration.thrift import baseplateify_processor
 
-from thrift.protocol.THeaderProtocol import THeaderProtocol
-from thrift.server.TServer import TRpcConnectionContext
+from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
 from thrift.transport.TTransport import TMemoryBuffer, TTransportException
 
 from .test_thrift import TestService, ttypes
@@ -43,7 +42,7 @@ class UnexpectedException(Exception):
     pass
 
 
-class TestHandler(TestService.ContextIface):
+class TestHandler(TestService.Iface):
     def example_simple(self, context):
         return True
 
@@ -56,11 +55,8 @@ class TestHandler(TestService.ContextIface):
 
 class ThriftTests(unittest.TestCase):
     def setUp(self):
-        self.itrans = TMemoryBuffer()
-        self.iprot = THeaderProtocol(self.itrans)
-
         self.otrans = TMemoryBuffer()
-        self.oprot = THeaderProtocol(self.otrans)
+        self.oprot = THeaderProtocolFactory().getProtocol(self.otrans)
 
         self.observer = mock.Mock(spec=BaseplateObserver)
         self.server_observer = mock.Mock(spec=ServerSpanObserver)
@@ -71,8 +67,6 @@ class ThriftTests(unittest.TestCase):
         self.observer.on_server_span_created.side_effect = _register_mock
 
         self.logger = mock.Mock(spec=logging.Logger)
-        self.server_context = TRpcConnectionContext(
-            self.itrans, self.iprot, self.oprot)
 
         mock_filewatcher = mock.Mock(spec=FileWatcher)
         mock_filewatcher.get_data.return_value = {
@@ -95,30 +89,26 @@ class ThriftTests(unittest.TestCase):
 
         self.edge_context_factory = EdgeRequestContextFactory(self.secrets)
 
-        event_handler = BaseplateProcessorEventHandler(
-            self.logger,
-            baseplate,
-            edge_context_factory=self.edge_context_factory,
-        )
-
         handler = TestHandler()
-        self.processor = TestService.ContextProcessor(handler)
-        self.processor.setEventHandler(event_handler)
+        processor = TestService.Processor(handler)
+        self.processor = baseplateify_processor(
+            processor, self.logger, baseplate, self.edge_context_factory)
 
     @mock.patch("random.getrandbits")
     def test_no_trace_headers(self, getrandbits):
         getrandbits.return_value = 1234
 
         client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocol(client_memory_trans)
+        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
         client = TestService.Client(client_prot)
         try:
             client.example_simple()
-        except TTransportException:
+        except (TTransportException, EOFError):
             pass  # we don't have a test response for the client
-        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
-        self.processor.process(self.iprot, self.oprot, self.server_context)
+        itrans = TMemoryBuffer(client_memory_trans.getvalue())
+        iprot = THeaderProtocolFactory().getProtocol(itrans)
+        self.processor.process(iprot, self.oprot)
 
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
@@ -133,21 +123,22 @@ class ThriftTests(unittest.TestCase):
 
     def test_with_headers(self):
         client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocol(client_memory_trans)
+        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
         client_header_trans = client_prot.trans
-        client_header_trans.set_header("Trace", "1234")
-        client_header_trans.set_header("Parent", "2345")
-        client_header_trans.set_header("Span", "3456")
-        client_header_trans.set_header("Sampled", "1")
-        client_header_trans.set_header("Flags", "1")
+        client_header_trans.set_header(b"Trace", b"1234")
+        client_header_trans.set_header(b"Parent", b"2345")
+        client_header_trans.set_header(b"Span", b"3456")
+        client_header_trans.set_header(b"Sampled", b"1")
+        client_header_trans.set_header(b"Flags", b"1")
         client = TestService.Client(client_prot)
         try:
             client.example_simple()
-        except TTransportException:
+        except (TTransportException, EOFError):
             pass  # we don't have a test response for the client
-        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
-        self.processor.process(self.iprot, self.oprot, self.server_context)
+        itrans = TMemoryBuffer(client_memory_trans.getvalue())
+        iprot = THeaderProtocolFactory().getProtocol(itrans)
+        self.processor.process(iprot, self.oprot)
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
@@ -166,21 +157,22 @@ class ThriftTests(unittest.TestCase):
 
     def test_b3_trace_headers(self):
         client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocol(client_memory_trans)
+        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
         client_header_trans = client_prot.trans
-        client_header_trans.set_header("B3-TraceId", "1234")
-        client_header_trans.set_header("B3-ParentSpanId", "2345")
-        client_header_trans.set_header("B3-SpanId", "3456")
-        client_header_trans.set_header("B3-Sampled", "1")
-        client_header_trans.set_header("B3-Flags", "1")
+        client_header_trans.set_header(b"B3-TraceId", b"1234")
+        client_header_trans.set_header(b"B3-ParentSpanId", b"2345")
+        client_header_trans.set_header(b"B3-SpanId", b"3456")
+        client_header_trans.set_header(b"B3-Sampled", b"1")
+        client_header_trans.set_header(b"B3-Flags", b"1")
         client = TestService.Client(client_prot)
         try:
             client.example_simple()
-        except TTransportException:
+        except (TTransportException, EOFError):
             pass  # we don't have a test response for the client
-        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
-        self.processor.process(self.iprot, self.oprot, self.server_context)
+        itrans = TMemoryBuffer(client_memory_trans.getvalue())
+        iprot = THeaderProtocolFactory().getProtocol(itrans)
+        self.processor.process(iprot, self.oprot)
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
@@ -199,22 +191,23 @@ class ThriftTests(unittest.TestCase):
 
     def test_edge_request_headers(self):
         client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocol(client_memory_trans)
+        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
         client_header_trans = client_prot.trans
-        client_header_trans.set_header("Edge-Request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-        client_header_trans.set_header("Trace", "1234")
-        client_header_trans.set_header("Parent", "2345")
-        client_header_trans.set_header("Span", "3456")
-        client_header_trans.set_header("Sampled", "1")
-        client_header_trans.set_header("Flags", "1")
+        client_header_trans.set_header(b"Edge-Request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
+        client_header_trans.set_header(b"Trace", b"1234")
+        client_header_trans.set_header(b"Parent", b"2345")
+        client_header_trans.set_header(b"Span", b"3456")
+        client_header_trans.set_header(b"Sampled", b"1")
+        client_header_trans.set_header(b"Flags", b"1")
         client = TestService.Client(client_prot)
         try:
             client.example_simple()
-        except TTransportException:
+        except (TTransportException, EOFError):
             pass  # we don't have a test response for the client
-        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
-        self.processor.process(self.iprot, self.oprot, self.server_context)
+        itrans = TMemoryBuffer(client_memory_trans.getvalue())
+        iprot = THeaderProtocolFactory().getProtocol(itrans)
+        self.processor.process(iprot, self.oprot)
 
         context, _ = self.observer.on_server_span_created.call_args[0]
 
@@ -232,15 +225,16 @@ class ThriftTests(unittest.TestCase):
 
     def test_expected_exception_not_passed_to_server_span_finish(self):
         client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocol(client_memory_trans)
+        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
         client = TestService.Client(client_prot)
         try:
             client.example_throws(crash=False)
-        except TTransportException:
+        except (TTransportException, EOFError):
             pass  # we don't have a test response for the client
-        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
-        self.processor.process(self.iprot, self.oprot, self.server_context)
+        itrans = TMemoryBuffer(client_memory_trans.getvalue())
+        iprot = THeaderProtocolFactory().getProtocol(itrans)
+        self.processor.process(iprot, self.oprot)
 
         self.assertEqual(self.server_observer.on_start.call_count, 1)
         self.assertEqual(self.server_observer.on_finish.call_count, 1)
@@ -248,15 +242,16 @@ class ThriftTests(unittest.TestCase):
 
     def test_unexpected_exception_passed_to_server_span_finish(self):
         client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocol(client_memory_trans)
+        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
         client = TestService.Client(client_prot)
         try:
             client.example_throws(crash=True)
-        except TTransportException:
+        except (TTransportException, EOFError):
             pass  # we don't have a test response for the client
-        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
-        self.processor.process(self.iprot, self.oprot, self.server_context)
+        itrans = TMemoryBuffer(client_memory_trans.getvalue())
+        iprot = THeaderProtocolFactory().getProtocol(itrans)
+        self.processor.process(iprot, self.oprot)
 
         self.assertEqual(self.server_observer.on_start.call_count, 1)
         self.assertEqual(self.server_observer.on_finish.call_count, 1)
@@ -265,7 +260,7 @@ class ThriftTests(unittest.TestCase):
 
     def test_client_proxy_flow(self):
         client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocol(client_memory_trans)
+        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
 
         class Pool(object):
             @contextlib.contextmanager
@@ -287,11 +282,12 @@ class ThriftTests(unittest.TestCase):
         client = client_factory.make_object_for_context("test", span)
         try:
             client.example_simple()
-        except TTransportException:
+        except (TTransportException, EOFError):
             pass  # we don't have a test response for the client
-        self.itrans._readBuffer = StringIO(client_memory_trans.getvalue())
 
-        self.processor.process(self.iprot, self.oprot, self.server_context)
+        itrans = TMemoryBuffer(client_memory_trans.getvalue())
+        iprot = THeaderProtocolFactory().getProtocol(itrans)
+        self.processor.process(iprot, self.oprot)
 
         context, _ = self.observer.on_server_span_created.call_args[0]
 

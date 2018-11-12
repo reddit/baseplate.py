@@ -30,9 +30,9 @@ from thrift.Thrift import TApplicationException, TException
 from thrift.transport import TSocket
 from thrift.transport.TTransport import TTransportException
 
-from . import config
-from ._compat import queue
-from .retry import RetryPolicy
+from baseplate._compat import queue
+from baseplate import config
+from baseplate.retry import RetryPolicy
 
 
 logger = logging.getLogger(__name__)
@@ -112,9 +112,9 @@ class ThriftConnectionPool(object):
         RPC call can take before a TimeoutError is raised.
     :param int max_retries: The maximum number of times the pool will attempt
         to open a connection.
-    :param thrift.protocol.TProtocol.TProtocolBase protocol_factory: The
-        factory to use for creating protocols from transports. This is useful
-        for talking to services that don't support THeaderProtocol.
+    :param protocol_factory: The factory to use for creating protocols from
+        transports. This is useful for talking to services that don't support
+        THeaderProtocol.
 
     All exceptions raised by this class derive from
     :py:exc:`~thrift.transport.TTransport.TTransportException`.
@@ -122,7 +122,7 @@ class ThriftConnectionPool(object):
     """
     # pylint: disable=too-many-arguments
     def __init__(self, endpoint, size=10, max_age=120, timeout=1, max_retries=3,
-                 protocol_factory=THeaderProtocol.THeaderProtocol):
+                 protocol_factory=THeaderProtocol.THeaderProtocolFactory()):
         self.endpoint = endpoint
         self.max_age = max_age
         self.retry_policy = RetryPolicy.new(attempts=max_retries)
@@ -151,8 +151,8 @@ class ThriftConnectionPool(object):
                     prot = None
 
             trans = _make_transport(self.endpoint)
-            prot = self.protocol_factory(trans)
-            prot.trans.getTransport().setTimeout(self.timeout * 1000.)
+            trans.setTimeout(self.timeout * 1000.)
+            prot = self.protocol_factory.getProtocol(trans)
 
             try:
                 prot.trans.open()
