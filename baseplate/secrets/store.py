@@ -13,6 +13,7 @@ import logging
 from .. import config
 from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
 from ..context import ContextFactory
+from .._utils import cached_property
 
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -248,7 +249,20 @@ class SecretsStore(ContextFactory):
            baseplate.add_to_context("secrets", secrets)
 
         """
-        return self
+        return _CachingSecretsStore(self._filewatcher)
+
+
+class _CachingSecretsStore(SecretsStore):
+    """Lazily load and cache the parsed data until the server span ends."""
+    def __init__(self, filewatcher):
+        self._filewatcher = filewatcher
+
+    @cached_property
+    def _data(self):
+        return super(_CachingSecretsStore, self)._get_data()
+
+    def _get_data(self):
+        return self._data
 
 
 def secrets_store_from_config(app_config, timeout=None):
