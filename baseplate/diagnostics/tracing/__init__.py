@@ -479,7 +479,7 @@ class RemoteRecorder(BaseBatchRecorder):
                  num_conns=5,
                  num_workers=5,
                  max_queue_size=50000,
-                 max_span_batch=20,
+                 max_span_batch=100,
                  batch_wait_interval=0.5):
 
         super(RemoteRecorder, self).__init__(
