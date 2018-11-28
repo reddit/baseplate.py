@@ -88,15 +88,20 @@ class ServerSpanInitialized(BaseplateEvent):
 
 class BaseplateHeaderTrustHandler(object):
 
-    """Class used by BaseplateConfigurator to validate trace and edge context headers. Specifically 
+    """Class used by BaseplateConfigurator to validate trace and edge context headers. Specifically
     implements hmac validation for the trace headers.
 
     param bool trust_trace_headers: Whether to trust trace headers by default
     param bool trust_edge_context_header: Whether to trust the edge context header by default
-    param baseplate.secrets.SecretsStore secret_store: secret store which should contain a 
-        versioned secret at the path trace/hmac if doing hmac validation of the trace headers. Leave 
+    param baseplate.secrets.SecretsStore secret_store: secret store which should contain a
+        versioned secret at the path trace/hmac if doing hmac validation of the trace headers.
     """
-    def __init__(self, trust_trace_headers=False, trust_edge_context_header=False, secret_store=None):
+    def __init__(
+        self,
+        trust_trace_headers=False,
+        trust_edge_context_header=False,
+        secret_store=None
+    ):
         self.trust_trace_headers = trust_trace_headers
         self.trust_edge_context_header = trust_edge_context_header
         self.secret_store = secret_store
@@ -104,7 +109,10 @@ class BaseplateHeaderTrustHandler(object):
     def should_trust_trace_headers(self, request):
         if self.secret_store:
             secret = self.secret_store.get_versioned('secret/trace/hmac')
-            extracted_values = TraceInfo.extract_upstream_header_values(TRACE_HEADER_NAMES, request.headers)
+            extracted_values = TraceInfo.extract_upstream_header_values(
+                TRACE_HEADER_NAMES,
+                request.headers,
+            )
             if secret and 'X-Trace-Hmac' in request.headers and 'trace_id' in extracted_values:
                 return validate_signature(
                     secret,
@@ -112,9 +120,10 @@ class BaseplateHeaderTrustHandler(object):
                     request.headers['X-Trace-Hmac'],
                 )
         return self.trust_trace_headers
-    
+
     def should_trust_edge_context_header(self, request):
         return self.trust_edge_context_header
+
 
 # pylint: disable=abstract-class-not-used
 class BaseplateConfigurator(object):
@@ -132,7 +141,7 @@ class BaseplateConfigurator(object):
         which will be used to verify whether trace headers and the edge context
         header should be trusted. See BaseplateHeaderTrustHandler for details.
         Falls back to using the old behavior using trust_trace_headers.
-    :param baseplate.secrets.SecretsStore secret_store: secret store which 
+    :param baseplate.secrets.SecretsStore secret_store: secret store which
         will be used by the trust handler to get secrets used for hmac validation.
 
     .. warning::
@@ -172,7 +181,7 @@ class BaseplateConfigurator(object):
                 trace_info = self._get_trace_info(request.headers)
             except (KeyError, ValueError):
                 pass
-            
+
         if self.header_trust_handler.should_trust_edge_context_header(request):
             try:
                 edge_payload = request.headers.get("X-Edge-Request", None)
