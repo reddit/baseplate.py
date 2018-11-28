@@ -97,9 +97,24 @@ class BaseplateProcessorEventHandler(TProcessorEventHandler):
         context.trace = trace
         return context
 
+    def preRead(self, handler_context, fn_name, args):
+        self.logger.debug("Reading args for: %r", fn_name)
+        handler_context.serde_timer = handler_context.metrics.timer("thrift_serde.%s.read" % fn_name)
+        handler_context.serde_timer.start()
+
     def postRead(self, handler_context, fn_name, args):
         self.logger.debug("Handling: %r", fn_name)
         handler_context.trace.start()
+        handler_context.serde_timer.stop()
+
+    def preWrite(self, handler_context, fn_name, result):
+        self.logger.debug("Writing result for: %r", fn_name)
+        handler_context.serde_timer = handler_context.metrics.timer("thrift_serde.%s.write" % fn_name)
+        handler_context.serde_timer.start()
+
+    def postWrite(self, handler_context, fn_name, result):
+        self.logger.debug("Done: %r", fn_name)
+        handler_context.serde_timer.stop()
 
     def handlerDone(self, handler_context, fn_name, result):
         if not getattr(handler_context.trace, "is_finished", False):
