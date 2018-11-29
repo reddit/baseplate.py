@@ -344,6 +344,62 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
         self.assertIsInstance(captured_exc, UnexpectedException)
 
 
+class ThriftClientSpanTests(GeventPatchedTestCase):
+    def test_client_span_starts_and_stops(self):
+        """The client span should start/stop appropriately."""
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+        handler = Handler()
+
+        client_span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler) as server:
+            with baseplate_thrift_client(server.endpoint, client_span_observer) as context:
+                context.example_service.example()
+
+        client_span_observer.on_start.assert_called_once_with()
+        client_span_observer.on_finish.assert_called_once_with(None)
+
+    def test_expected_exception_not_passed_to_client_span_finish(self):
+        """If the server returns an expected exception, don't count it as failure."""
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise TestService.ExpectedException()
+        handler = Handler()
+
+        client_span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler) as server:
+            with baseplate_thrift_client(server.endpoint, client_span_observer) as context:
+                with self.assertRaises(TestService.ExpectedException):
+                    context.example_service.example()
+
+        client_span_observer.on_start.assert_called_once_with()
+        client_span_observer.on_finish.assert_called_once_with(None)
+
+    def test_unexpected_exception_passed_to_client_span_finish(self):
+        """If the server returns an unexpected exception, mark a failure."""
+
+        class UnexpectedException(Exception):
+            pass
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise UnexpectedException
+        handler = Handler()
+
+        client_span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler) as server:
+            with baseplate_thrift_client(server.endpoint, client_span_observer) as context:
+                with self.assertRaises(TApplicationException):
+                    context.example_service.example()
+
+        client_span_observer.on_start.assert_called_once_with()
+        self.assertEqual(client_span_observer.on_finish.call_count, 1)
+        _, captured_exc, _ = client_span_observer.on_finish.call_args[0][0]
+        self.assertIsInstance(captured_exc, TApplicationException)
+
+
 class ThriftEndToEndTests(GeventPatchedTestCase):
     def test_end_to_end(self):
         class Handler(TestService.Iface):

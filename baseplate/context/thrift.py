@@ -6,7 +6,10 @@ from __future__ import unicode_literals
 import contextlib
 import functools
 import inspect
+import sys
 
+from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import TApplicationException, TException
 from thrift.transport.TTransport import TTransportException
 
 from . import ContextFactory
@@ -93,32 +96,53 @@ class PooledClientProxy(object):
         last_error = None
 
         for _ in self.retry_policy:
+            span = self.server_span.make_child(trace_name)
+            span.start()
+
             try:
-                with self.server_span.make_child(trace_name) as span:
-                    with self.pool.connection() as prot:
-                        prot.trans.set_header(b"Trace", str(span.trace_id).encode())
-                        prot.trans.set_header(b"Parent", str(span.parent_id).encode())
-                        prot.trans.set_header(b"Span", str(span.id).encode())
-                        if span.sampled is not None:
-                            sampled = "1" if span.sampled else "0"
-                            prot.trans.set_header(b"Sampled", sampled.encode())
-                        if span.flags:
-                            prot.trans.set_header(b"Flags", str(span.flags).encode())
+                with self.pool.connection() as prot:
+                    prot.trans.set_header(b"Trace", str(span.trace_id).encode())
+                    prot.trans.set_header(b"Parent", str(span.parent_id).encode())
+                    prot.trans.set_header(b"Span", str(span.id).encode())
+                    if span.sampled is not None:
+                        sampled = "1" if span.sampled else "0"
+                        prot.trans.set_header(b"Sampled", sampled.encode())
+                    if span.flags:
+                        prot.trans.set_header(b"Flags", str(span.flags).encode())
 
-                        try:
-                            edge_context = span.context.raw_request_context
-                        except AttributeError:
-                            edge_context = None
+                    try:
+                        edge_context = span.context.raw_request_context
+                    except AttributeError:
+                        edge_context = None
 
-                        if edge_context:
-                            prot.trans.set_header(b"Edge-Request", edge_context)
+                    if edge_context:
+                        prot.trans.set_header(b"Edge-Request", edge_context)
 
-                        client = self.client_cls(prot)
-                        method = getattr(client, name)
-                        return method(*args, **kwargs)
+                    client = self.client_cls(prot)
+                    method = getattr(client, name)
+                    result = method(*args, **kwargs)
             except TTransportException as exc:
+                # the connection failed for some reason, retry if able
+                span.finish(exc_info=sys.exc_info())
                 last_error = exc
                 continue
+            except (TApplicationException, TProtocolException):
+                # these are subclasses of TException but aren't ones that
+                # should be expected in the protocol. this is an error!
+                span.finish(exc_info=sys.exc_info())
+                raise
+            except TException:
+                # this is an expected exception, as defined in the IDL
+                span.finish()
+                raise
+            except:
+                # something unexpected happened
+                span.finish(exc_info=sys.exc_info())
+                raise
+            else:
+                # a normal result
+                span.finish()
+                return result
 
         raise TTransportException(
             type=TTransportException.TIMED_OUT,

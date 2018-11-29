@@ -99,7 +99,7 @@ class PooledClientProxyTests(unittest.TestCase):
     def test_edge_request_headers(self, mock_enumerate):
         mock_enumerate.return_value = ["one", "two"]
 
-        child_span = self.mock_server_span.make_child().__enter__()
+        child_span = self.mock_server_span.make_child()
         child_span.context.raw_request_context = "edge_request_context"
 
         proxy = thrift.PooledClientProxy(
@@ -112,7 +112,7 @@ class PooledClientProxyTests(unittest.TestCase):
     def test_null_edge_request_headers_not_set(self, mock_enumerate):
         mock_enumerate.return_value = ["one", "two"]
 
-        child_span = self.mock_server_span.make_child().__enter__()
+        child_span = self.mock_server_span.make_child()
         child_span.context.raw_request_context = None
 
         proxy = thrift.PooledClientProxy(
