@@ -104,19 +104,30 @@ def configure_logging(config, debug):
 
 
 def make_listener(endpoint):
-    if einhorn.is_worker():
+    try:
         return einhorn.get_socket()
-    else:
-        sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
+    except (einhorn.NotEinhornWorker, IndexError):
+        # we're not under einhorn or it didn't bind any sockets for us
+        pass
 
-        # configure the socket to be auto-closed if we exec() e.g. on reload
-        flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFD)
-        fcntl.fcntl(sock.fileno(), fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+    sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
 
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(endpoint.address)
-        sock.listen(128)
-        return sock
+    # configure the socket to be auto-closed if we exec() e.g. on reload
+    flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFD)
+    fcntl.fcntl(sock.fileno(), fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+
+    # on linux, SO_REUSEPORT is supported for IPv4 and IPv6 but not other
+    # families. we prefer it when available because it more evenly spreads load
+    # among multiple processes sharing a port. (though it does have some
+    # downsides, specifically regarding behaviour during restarts)
+    socket_options = socket.SO_REUSEADDR
+    if endpoint.family in (socket.AF_INET, socket.AF_INET6):
+        socket_options |= socket.SO_REUSEPORT
+    sock.setsockopt(socket.SOL_SOCKET, socket_options, 1)
+
+    sock.bind(endpoint.address)
+    sock.listen(128)
+    return sock
 
 
 def _load_factory(url, default_name=None):
