@@ -4,31 +4,35 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import contextlib
+import jwt
 import logging
 import unittest
-import jwt
 
-try:
-    from io import BytesIO as StringIO
-except ImportError:
-    from cStringIO import StringIO
+import gevent
+import gevent.monkey
 
+from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
+from thrift.Thrift import TApplicationException
+from thrift.transport.TTransport import TMemoryBuffer, TTransportException
+
+from baseplate import config
 from baseplate.core import (
     Baseplate,
     BaseplateObserver,
     EdgeRequestContext,
     EdgeRequestContextFactory,
     NoAuthenticationError,
+    ServerSpan,
     ServerSpanObserver,
+    SpanObserver,
 )
 from baseplate.context.thrift import ThriftContextFactory
 from baseplate.file_watcher import FileWatcher
+from baseplate.integration.thrift import baseplateify_processor, RequestContext
 from baseplate.secrets import store
-
-from baseplate.integration.thrift import baseplateify_processor
-
-from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
-from thrift.transport.TTransport import TMemoryBuffer, TTransportException
+from baseplate.server import make_listener
+from baseplate.server.thrift import make_server
+from baseplate.thrift_pool import ThriftConnectionPool
 
 from .test_thrift import TestService, ttypes
 from .. import (
@@ -38,267 +42,332 @@ from .. import (
 )
 
 
-class UnexpectedException(Exception):
+cryptography_installed = True
+try:
+    import cryptography
+except:
+    cryptography_installed = False
+else:
+    del cryptography
+
+
+try:
+    from importlib import reload
+except ImportError:
     pass
 
 
-class TestHandler(TestService.Iface):
-    def example_simple(self, context):
-        return True
-
-    def example_throws(self, context, crash):
-        if crash:
-            raise UnexpectedException
-        else:
-            raise ttypes.ExpectedException
-
-
-class ThriftTests(unittest.TestCase):
-    def setUp(self):
-        self.otrans = TMemoryBuffer()
-        self.oprot = THeaderProtocolFactory().getProtocol(self.otrans)
-
-        self.observer = mock.Mock(spec=BaseplateObserver)
-        self.server_observer = mock.Mock(spec=ServerSpanObserver)
-
-        def _register_mock(context, server_span):
-            server_span.register(self.server_observer)
-
-        self.observer.on_server_span_created.side_effect = _register_mock
-
-        self.logger = mock.Mock(spec=logging.Logger)
-
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/authentication/public-key": {
-                    "type": "versioned",
-                    "current": AUTH_TOKEN_PUBLIC_KEY,
-                },
+def make_edge_context_factory():
+    mock_filewatcher = mock.Mock(spec=FileWatcher)
+    mock_filewatcher.get_data.return_value = {
+        "secrets": {
+            "secret/authentication/public-key": {
+                "type": "versioned",
+                "current": AUTH_TOKEN_PUBLIC_KEY,
             },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
+        },
+        "vault": {
+            "token": "test",
+            "url": "http://vault.example.com:8200/",
         }
-        self.secrets = store.SecretsStore("/secrets")
-        self.secrets._filewatcher = mock_filewatcher
+    }
+    secrets = store.SecretsStore("/secrets")
+    secrets._filewatcher = mock_filewatcher
+    return EdgeRequestContextFactory(secrets)
 
-        baseplate = Baseplate()
-        baseplate.register(self.observer)
 
-        self.edge_context_factory = EdgeRequestContextFactory(self.secrets)
+@contextlib.contextmanager
+def serve_thrift(handler, server_span_observer=None):
+    # create baseplate root
+    baseplate = Baseplate()
+    if server_span_observer:
+        class TestBaseplateObserver(BaseplateObserver):
+            def on_server_span_created(self, context, server_span):
+                server_span.register(server_span_observer)
+        baseplate.register(TestBaseplateObserver())
 
-        handler = TestHandler()
-        processor = TestService.Processor(handler)
-        self.processor = baseplateify_processor(
-            processor, self.logger, baseplate, self.edge_context_factory)
+    # set up the server's processor
+    logger = mock.Mock(spec=logging.Logger)
+    edge_context_factory = make_edge_context_factory()
+    processor = TestService.Processor(handler)
+    processor = baseplateify_processor(processor, logger, baseplate, edge_context_factory)
 
-    @mock.patch("random.getrandbits")
-    def test_no_trace_headers(self, getrandbits):
-        getrandbits.return_value = 1234
+    # bind a server socket on an available port
+    server_bind_endpoint = config.Endpoint("127.0.0.1:0")
+    listener = make_listener(server_bind_endpoint)
+    server = make_server({
+        "max_concurrency": "100",
+    }, listener, processor)
 
-        client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
-        client = TestService.Client(client_prot)
-        try:
-            client.example_simple()
-        except (TTransportException, EOFError):
-            pass  # we don't have a test response for the client
+    # figure out what port the server ended up on
+    server_address = listener.getsockname()
+    server_endpoint = config.EndpointConfiguration(
+        family=server_bind_endpoint.family, address=server_address)
+    server.endpoint = server_endpoint
 
-        itrans = TMemoryBuffer(client_memory_trans.getvalue())
-        iprot = THeaderProtocolFactory().getProtocol(itrans)
-        self.processor.process(iprot, self.oprot)
+    # run the server until our caller is done with it
+    server_greenlet = gevent.spawn(server.serve_forever)
+    try:
+        yield server
+    finally:
+        server_greenlet.kill()
 
-        self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, 1234)
-        self.assertEqual(server_span.parent_id, None)
-        self.assertEqual(server_span.id, 1234)
+@contextlib.contextmanager
+def raw_thrift_client(endpoint):
+    pool = ThriftConnectionPool(endpoint)
+    with pool.connection() as client_protocol:
+        yield TestService.Client(client_protocol)
 
-        self.assertEqual(self.server_observer.on_start.call_count, 1)
-        self.assertEqual(self.server_observer.on_finish.call_count, 1)
-        self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
 
-    def test_with_headers(self):
-        client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
-        client_header_trans = client_prot.trans
-        client_header_trans.set_header(b"Trace", b"1234")
-        client_header_trans.set_header(b"Parent", b"2345")
-        client_header_trans.set_header(b"Span", b"3456")
-        client_header_trans.set_header(b"Sampled", b"1")
-        client_header_trans.set_header(b"Flags", b"1")
-        client = TestService.Client(client_prot)
-        try:
-            client.example_simple()
-        except (TTransportException, EOFError):
-            pass  # we don't have a test response for the client
+@contextlib.contextmanager
+def baseplate_thrift_client(endpoint, client_span_observer=None):
+    pool = ThriftConnectionPool(endpoint)
 
-        itrans = TMemoryBuffer(client_memory_trans.getvalue())
-        iprot = THeaderProtocolFactory().getProtocol(itrans)
-        self.processor.process(iprot, self.oprot)
-        self.assertEqual(self.observer.on_server_span_created.call_count, 1)
+    context = RequestContext()
+    server_span = ServerSpan(
+        trace_id=1234,
+        parent_id=2345,
+        span_id=3456,
+        flags=4567,
+        sampled=1,
+        name="example_service.example",
+        context=context,
+    )
 
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, 1234)
-        self.assertEqual(server_span.parent_id, 2345)
-        self.assertEqual(server_span.id, 3456)
-        self.assertTrue(server_span.sampled)
-        self.assertEqual(server_span.flags, 1)
+    if client_span_observer:
+        class TestServerSpanObserver(ServerSpanObserver):
+            def on_child_span_created(self, span):
+                span.register(client_span_observer)
+        server_span.register(TestServerSpanObserver())
 
-        with self.assertRaises(NoAuthenticationError):
-            context.request_context.user.id
+    edge_context_factory = make_edge_context_factory()
+    edge_context = edge_context_factory.from_upstream(
+        SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
+    edge_context.attach_context(context)
 
-        self.assertEqual(self.server_observer.on_start.call_count, 1)
-        self.assertEqual(self.server_observer.on_finish.call_count, 1)
-        self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
+    context_factory = ThriftContextFactory(pool, TestService.Client)
+    client = context_factory.make_object_for_context("example_service", server_span)
+    setattr(context, "example_service", client)
 
-    def test_b3_trace_headers(self):
-        client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
-        client_header_trans = client_prot.trans
-        client_header_trans.set_header(b"B3-TraceId", b"1234")
-        client_header_trans.set_header(b"B3-ParentSpanId", b"2345")
-        client_header_trans.set_header(b"B3-SpanId", b"3456")
-        client_header_trans.set_header(b"B3-Sampled", b"1")
-        client_header_trans.set_header(b"B3-Flags", b"1")
-        client = TestService.Client(client_prot)
-        try:
-            client.example_simple()
-        except (TTransportException, EOFError):
-            pass  # we don't have a test response for the client
+    yield context
 
-        itrans = TMemoryBuffer(client_memory_trans.getvalue())
-        iprot = THeaderProtocolFactory().getProtocol(itrans)
-        self.processor.process(iprot, self.oprot)
-        self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, 1234)
-        self.assertEqual(server_span.parent_id, 2345)
-        self.assertEqual(server_span.id, 3456)
-        self.assertTrue(server_span.sampled)
-        self.assertEqual(server_span.flags, 1)
+class GeventPatchedTestCase(unittest.TestCase):
+    def setUp(self):
+        gevent.monkey.patch_socket()
 
-        with self.assertRaises(NoAuthenticationError):
-            context.request_context.user.id
+    def tearDown(self):
+        import socket
+        reload(socket)
 
-        self.assertEqual(self.server_observer.on_start.call_count, 1)
-        self.assertEqual(self.server_observer.on_finish.call_count, 1)
-        self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
 
-    def test_edge_request_headers(self):
-        client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
-        client_header_trans = client_prot.trans
-        client_header_trans.set_header(b"Edge-Request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-        client_header_trans.set_header(b"Trace", b"1234")
-        client_header_trans.set_header(b"Parent", b"2345")
-        client_header_trans.set_header(b"Span", b"3456")
-        client_header_trans.set_header(b"Sampled", b"1")
-        client_header_trans.set_header(b"Flags", b"1")
-        client = TestService.Client(client_prot)
-        try:
-            client.example_simple()
-        except (TTransportException, EOFError):
-            pass  # we don't have a test response for the client
+class ThriftTraceHeaderTests(GeventPatchedTestCase):
+    def test_no_headers(self):
+        """We should accept requests without headers and generate a trace."""
 
-        itrans = TMemoryBuffer(client_memory_trans.getvalue())
-        iprot = THeaderProtocolFactory().getProtocol(itrans)
-        self.processor.process(iprot, self.oprot)
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.server_span = None
 
-        context, _ = self.observer.on_server_span_created.call_args[0]
+            def example(self, context):
+                self.server_span = context.trace
+                return True
+        handler = Handler()
 
-        try:
-            self.assertEqual(context.request_context.user.id, "t2_example")
-            self.assertEqual(context.request_context.user.roles, set())
-            self.assertEqual(context.request_context.user.is_logged_in, True)
-            self.assertEqual(context.request_context.user.loid, "t2_deadbeef")
-            self.assertEqual(context.request_context.user.cookie_created_ms, 100000)
-            self.assertEqual(context.request_context.oauth_client.id, None)
-            self.assertFalse(context.request_context.oauth_client.is_type("third_party"))
-            self.assertEqual(context.request_context.session.id, "beefdead")
-        except jwt.exceptions.InvalidAlgorithmError:
-            raise unittest.SkipTest("cryptography is not installed")
+        with serve_thrift(handler) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                client_result = client.example()
+
+        self.assertIsNotNone(handler.server_span)
+        self.assertGreaterEqual(handler.server_span.id, 0)
+        self.assertTrue(client_result)
+
+    def test_header_propagation(self):
+        """If the client sends headers, we should set the trace up accordingly."""
+
+        trace_id = 1234
+        parent_id = 2345
+        span_id = 3456
+        flags = 4567
+        sampled = 1
+
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.server_span = None
+
+            def example(self, context):
+                self.server_span = context.trace
+                return True
+        handler = Handler()
+
+        with serve_thrift(handler) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"Trace", str(trace_id).encode())
+                transport.set_header(b"Parent", str(parent_id).encode())
+                transport.set_header(b"Span", str(span_id).encode())
+                transport.set_header(b"Flags", str(flags).encode())
+                transport.set_header(b"Sampled", str(sampled).encode())
+                client_result = client.example()
+
+        self.assertIsNotNone(handler.server_span)
+        self.assertEqual(handler.server_span.trace_id, trace_id)
+        self.assertEqual(handler.server_span.parent_id, parent_id)
+        self.assertEqual(handler.server_span.id, span_id)
+        self.assertEqual(handler.server_span.flags, flags)
+        self.assertEqual(handler.server_span.sampled, sampled)
+        self.assertTrue(client_result)
+
+    def test_b3_header_propagation(self):
+        """If the client sends B3-style headers, we should accept them."""
+
+        trace_id = 1234
+        parent_id = 2345
+        span_id = 3456
+        flags = 4567
+        sampled = 1
+
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.server_span = None
+
+            def example(self, context):
+                self.server_span = context.trace
+                return True
+        handler = Handler()
+
+        with serve_thrift(handler) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"B3-TraceId", str(trace_id).encode())
+                transport.set_header(b"B3-ParentSpanId", str(parent_id).encode())
+                transport.set_header(b"B3-SpanId", str(span_id).encode())
+                transport.set_header(b"B3-Flags", str(flags).encode())
+                transport.set_header(b"B3-Sampled", str(sampled).encode())
+                client_result = client.example()
+
+        self.assertIsNotNone(handler.server_span)
+        self.assertEqual(handler.server_span.trace_id, trace_id)
+        self.assertEqual(handler.server_span.parent_id, parent_id)
+        self.assertEqual(handler.server_span.id, span_id)
+        self.assertEqual(handler.server_span.flags, flags)
+        self.assertEqual(handler.server_span.sampled, sampled)
+        self.assertTrue(client_result)
+
+
+class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
+    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
+    def test_edge_request_context(self):
+        """If the client sends an edge-request header we should parse it."""
+
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.request_context = None
+
+            def example(self, context):
+                self.request_context = context.request_context
+                return True
+        handler = Handler()
+
+        with serve_thrift(handler) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"Edge-Request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
+                client_result = client.example()
+
+        self.assertIsNotNone(handler.request_context)
+        self.assertEqual(handler.request_context.user.id, "t2_example")
+        self.assertEqual(handler.request_context.user.roles, set())
+        self.assertEqual(handler.request_context.user.is_logged_in, True)
+        self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
+        self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
+        self.assertEqual(handler.request_context.oauth_client.id, None)
+        self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
+        self.assertEqual(handler.request_context.session.id, "beefdead")
+        self.assertTrue(client_result)
+
+
+class ThriftServerSpanTests(GeventPatchedTestCase):
+    def test_server_span_starts_and_stops(self):
+        """The server span should start/stop appropriately."""
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+        handler = Handler()
+
+        server_span_observer = mock.Mock(spec=ServerSpanObserver)
+        with serve_thrift(handler, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                client.example()
+
+        server_span_observer.on_start.assert_called_once_with()
+        server_span_observer.on_finish.assert_called_once_with(None)
 
     def test_expected_exception_not_passed_to_server_span_finish(self):
-        client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
-        client = TestService.Client(client_prot)
-        try:
-            client.example_throws(crash=False)
-        except (TTransportException, EOFError):
-            pass  # we don't have a test response for the client
+        """If the server returns an expected exception, don't count it as failure."""
 
-        itrans = TMemoryBuffer(client_memory_trans.getvalue())
-        iprot = THeaderProtocolFactory().getProtocol(itrans)
-        self.processor.process(iprot, self.oprot)
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise TestService.ExpectedException()
+        handler = Handler()
 
-        self.assertEqual(self.server_observer.on_start.call_count, 1)
-        self.assertEqual(self.server_observer.on_finish.call_count, 1)
-        self.assertEqual(self.server_observer.on_finish.call_args[0], (None,))
+        server_span_observer = mock.Mock(spec=ServerSpanObserver)
+        with serve_thrift(handler, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                with self.assertRaises(TestService.ExpectedException):
+                    client.example()
+
+        server_span_observer.on_start.assert_called_once_with()
+        server_span_observer.on_finish.assert_called_once_with(None)
 
     def test_unexpected_exception_passed_to_server_span_finish(self):
-        client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
-        client = TestService.Client(client_prot)
-        try:
-            client.example_throws(crash=True)
-        except (TTransportException, EOFError):
-            pass  # we don't have a test response for the client
+        """If the server returns an unexpected exception, mark a failure."""
 
-        itrans = TMemoryBuffer(client_memory_trans.getvalue())
-        iprot = THeaderProtocolFactory().getProtocol(itrans)
-        self.processor.process(iprot, self.oprot)
+        class UnexpectedException(Exception):
+            pass
 
-        self.assertEqual(self.server_observer.on_start.call_count, 1)
-        self.assertEqual(self.server_observer.on_finish.call_count, 1)
-        _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise UnexpectedException
+        handler = Handler()
+
+        server_span_observer = mock.Mock(spec=ServerSpanObserver)
+        with serve_thrift(handler, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                with self.assertRaises(TApplicationException):
+                    client.example()
+
+        server_span_observer.on_start.assert_called_once_with()
+        self.assertEqual(server_span_observer.on_finish.call_count, 1)
+        _, captured_exc, _ = server_span_observer.on_finish.call_args[0][0]
         self.assertIsInstance(captured_exc, UnexpectedException)
 
-    def test_client_proxy_flow(self):
-        client_memory_trans = TMemoryBuffer()
-        client_prot = THeaderProtocolFactory().getProtocol(client_memory_trans)
 
-        class Pool(object):
-            @contextlib.contextmanager
-            def connection(self):
-                yield client_prot
+class ThriftEndToEndTests(GeventPatchedTestCase):
+    def test_end_to_end(self):
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.request_context = None
 
-        client_factory = ThriftContextFactory(Pool(), TestService.Client)
-        span = mock.MagicMock()
-        child_span = span.make_child().__enter__()
-        child_span.trace_id = 1
-        child_span.parent_id = 1
-        child_span.id = 1
-        child_span.sampled = True
-        child_span.flags = None
+            def example(self, context):
+                self.request_context = context.request_context
+                return True
+        handler = Handler()
 
-        edge_context = self.edge_context_factory.from_upstream(
-            SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-        edge_context.attach_context(child_span.context)
-        client = client_factory.make_object_for_context("test", span)
-        try:
-            client.example_simple()
-        except (TTransportException, EOFError):
-            pass  # we don't have a test response for the client
-
-        itrans = TMemoryBuffer(client_memory_trans.getvalue())
-        iprot = THeaderProtocolFactory().getProtocol(itrans)
-        self.processor.process(iprot, self.oprot)
-
-        context, _ = self.observer.on_server_span_created.call_args[0]
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler) as server:
+            with baseplate_thrift_client(server.endpoint, span_observer) as context:
+                context.example_service.example()
 
         try:
-            self.assertEqual(context.request_context.user.id, "t2_example")
-            self.assertEqual(context.request_context.user.roles, set())
-            self.assertEqual(context.request_context.user.is_logged_in, True)
-            self.assertEqual(context.request_context.user.loid, "t2_deadbeef")
-            self.assertEqual(context.request_context.user.cookie_created_ms, 100000)
-            self.assertEqual(context.request_context.oauth_client.id, None)
-            self.assertFalse(context.request_context.oauth_client.is_type("third_party"))
-            self.assertEqual(context.request_context.session.id, "beefdead")
+            self.assertEqual(handler.request_context.user.id, "t2_example")
+            self.assertEqual(handler.request_context.user.roles, set())
+            self.assertEqual(handler.request_context.user.is_logged_in, True)
+            self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
+            self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
+            self.assertEqual(handler.request_context.oauth_client.id, None)
+            self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
+            self.assertEqual(handler.request_context.session.id, "beefdead")
         except jwt.exceptions.InvalidAlgorithmError:
             raise unittest.SkipTest("cryptography is not installed")
