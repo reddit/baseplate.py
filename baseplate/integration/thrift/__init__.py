@@ -107,16 +107,17 @@ def baseplateify_processor(processor, logger, baseplate, edge_context_factory=No
             headers = iprot.get_headers()
             try:
                 trace_info = _extract_trace_info(headers)
-                edge_payload = headers.get(b"Edge-Request", None)
-                if edge_context_factory:
-                    edge_context = edge_context_factory.from_upstream(edge_payload)
-                    edge_context.attach_context(context)
-                else:
-                    # just attach the raw context so it gets passed on
-                    # downstream even if we don't know how to handle it.
-                    context.raw_request_context = edge_payload
             except (KeyError, ValueError):
                 trace_info = None
+
+            edge_payload = headers.get(b"Edge-Request", None)
+            if edge_context_factory:
+                edge_context = edge_context_factory.from_upstream(edge_payload)
+                edge_context.attach_context(context)
+            else:
+                # just attach the raw context so it gets passed on
+                # downstream even if we don't know how to handle it.
+                context.raw_request_context = edge_payload
 
             server_span = baseplate.make_server_span(
                 context,
