@@ -154,12 +154,13 @@ class BaseplateConfigurator(object):
 
     def _get_trace_info(self, headers):
         extracted_values = TraceInfo.extract_upstream_header_values(TRACE_HEADER_NAMES, headers)
+        sampled = bool(extracted_values.get("sampled") == b"1")
         flags = extracted_values.get("flags", None)
         return TraceInfo.from_upstream(
             int(extracted_values["trace_id"]),
             int(extracted_values["parent_span_id"]),
             int(extracted_values["span_id"]),
-            True if extracted_values["sampled"] == "1" else False,
+            sampled,
             int(flags) if flags is not None else None,
         )
 

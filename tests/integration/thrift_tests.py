@@ -255,6 +255,39 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         self.assertEqual(handler.server_span.sampled, sampled)
         self.assertTrue(client_result)
 
+    def test_optional_headers_optional(self):
+        """Test that we accept traces from clients that don't include all headers."""
+
+        trace_id = 1234
+        parent_id = 2345
+        span_id = 3456
+
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.server_span = None
+
+            def example(self, context):
+                self.server_span = context.trace
+                return True
+        handler = Handler()
+
+        with serve_thrift(handler) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"Trace", str(trace_id).encode())
+                transport.set_header(b"Parent", str(parent_id).encode())
+                transport.set_header(b"Span", str(span_id).encode())
+                client_result = client.example()
+
+        self.assertIsNotNone(handler.server_span)
+        self.assertEqual(handler.server_span.trace_id, trace_id)
+        self.assertEqual(handler.server_span.parent_id, parent_id)
+        self.assertEqual(handler.server_span.id, span_id)
+        self.assertEqual(handler.server_span.flags, None)
+        self.assertEqual(handler.server_span.sampled, False)
+        self.assertTrue(client_result)
+
+
 
 class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
     @unittest.skipIf(not cryptography_installed, "cryptography not installed")
