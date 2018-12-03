@@ -41,6 +41,7 @@ import pyramid.tweens
 from ..core import TraceInfo
 from ..server import make_app
 from ..crypto import validate_signature
+from .._utils import warn_deprecated
 
 TRACE_HEADER_NAMES = {
     "trace_id": ("X-Trace", "X-B3-TraceId"),
@@ -86,43 +87,20 @@ class ServerSpanInitialized(BaseplateEvent):
     pass
 
 
-class BaseplateHeaderTrustHandler(object):
-
-    """Class used by BaseplateConfigurator to validate trace and edge context headers. Specifically
-    implements hmac validation for the trace headers.
-
-    param bool trust_trace_headers: Whether to trust trace headers by default
-    param bool trust_edge_context_header: Whether to trust the edge context header by default
-    param baseplate.secrets.SecretsStore secret_store: secret store which should contain a
-        versioned secret at the path trace/hmac if doing hmac validation of the trace headers.
+class HeaderTrustHandlerInterface(object):
+    """Class used by BaseplateConfigurator to validate headers.
     """
-    def __init__(
-        self,
-        trust_trace_headers=False,
-        trust_edge_context_header=False,
-        secret_store=None
-    ):
-        self.trust_trace_headers = trust_trace_headers
-        self.trust_edge_context_header = trust_edge_context_header
-        self.secret_store = secret_store
 
     def should_trust_trace_headers(self, request):
-        if self.secret_store:
-            secret = self.secret_store.get_versioned('secret/trace/hmac')
-            extracted_values = TraceInfo.extract_upstream_header_values(
-                TRACE_HEADER_NAMES,
-                request.headers,
-            )
-            if secret and 'X-Trace-Hmac' in request.headers and 'trace_id' in extracted_values:
-                return validate_signature(
-                    secret,
-                    extracted_values['trace_id'],
-                    request.headers['X-Trace-Hmac'],
-                )
-        return self.trust_trace_headers
+        raise NotImplementedError
 
-    def should_trust_edge_context_header(self, request):
-        return self.trust_edge_context_header
+
+class StaticTrustHandler(HeaderTrustHandlerInterface):
+    def __init__(self, trust_headers=False):
+        self.trust_headers = trust_headers
+
+    def should_trust_trace_headers(self, request):
+        return self.trust_headers
 
 
 # pylint: disable=abstract-class-not-used
@@ -137,12 +115,10 @@ class BaseplateConfigurator(object):
         will be generated for each request.
     :param baseplate.core.EdgeRequestContextFactory edge_context_factory: A
         configured factory for handling edge request context.
-    :param baseplate.integration.BaseplateHeaderTrustHandler header_trust_handler: An object
-        which will be used to verify whether trace headers and the edge context
-        header should be trusted. See BaseplateHeaderTrustHandler for details.
-        Falls back to using the old behavior using trust_trace_headers.
-    :param baseplate.secrets.SecretsStore secret_store: secret store which
-        will be used by the trust handler to get secrets used for hmac validation.
+    :param baseplate.integration.pyramid.HeaderTrustHandlerInterface header_trust_handler: 
+        An object which will be used to verify whether the headers for a request
+        should be trusted, for example for tracing. See StaticTrustHandler for
+        the default implementation.
 
     .. warning::
 
@@ -153,7 +129,7 @@ class BaseplateConfigurator(object):
     """
 
     def __init__(self, baseplate, trust_trace_headers=False,
-                 edge_context_factory=None, header_trust_handler=None, secret_store=None):
+                 edge_context_factory=None, header_trust_handler=None):
         self.baseplate = baseplate
         self.trust_trace_headers = trust_trace_headers
         self.edge_context_factory = edge_context_factory
@@ -161,11 +137,7 @@ class BaseplateConfigurator(object):
         if header_trust_handler:
             self.header_trust_handler = header_trust_handler
         else:
-            self.header_trust_handler = BaseplateHeaderTrustHandler(
-                trust_trace_headers=trust_trace_headers,
-                trust_edge_context_header=trust_trace_headers,
-                secret_store=secret_store,
-            )
+            self.header_trust_handler = StaticTrustHandler(trust_headers=trust_trace_headers)
 
     def _on_new_request(self, event):
         request = event.request
@@ -182,7 +154,7 @@ class BaseplateConfigurator(object):
             except (KeyError, ValueError):
                 pass
 
-        if self.header_trust_handler.should_trust_edge_context_header(request):
+        if self.header_trust_handler.should_trust_trace_headers(request):
             try:
                 edge_payload = request.headers.get("X-Edge-Request", None)
                 if self.edge_context_factory:
