@@ -4,18 +4,18 @@ import gzip
 import hashlib
 import hmac
 import logging
-import time
 
 import requests
 
 from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
 from .. import config, metrics_client_from_config
 from .. _compat import configparser, BytesIO
-from .. message_queue import MessageQueue, TimedOutError
 from .. _utils import (
     Batch, BatchFull, RawJSONBatch,
     SerializedBatch, TimeLimitedBatch,
 )
+from .. message_queue import MessageQueue, TimedOutError
+from .. retry import RetryPolicy
 
 
 logger = logging.getLogger(__name__)
@@ -23,13 +23,19 @@ logger = logging.getLogger(__name__)
 
 # seconds to wait for the event collector
 POST_TIMEOUT = 3
-# seconds to wait between retries when the collector fails
-RETRY_DELAY = 2
+# Base rate for expontential retry delay
+RETRY_BACKOFF = 2
+# Maximum wait for a message to be sent
+MAX_RETRY_TIME = 5 * 60
 # maximum time (seconds) an event can sit around while we wait for more
 # messages to batch
 MAX_BATCH_AGE = 1
 # maximum size (in bytes) of a batch of events
 MAX_BATCH_SIZE = 500 * 1024
+
+
+class MaxRetriesError(Exception):
+    pass
 
 
 class V1Batch(RawJSONBatch):
@@ -110,7 +116,7 @@ class BatchPublisher(object):
             "Content-Encoding": "gzip",
         }
 
-        while True:
+        for _ in RetryPolicy.new(budget=MAX_RETRY_TIME, backoff=RETRY_BACKOFF):
             try:
                 with self.metrics.timer("post"):
                     response = self.session.post(
@@ -140,7 +146,7 @@ class BatchPublisher(object):
                 self.metrics.counter("sent").increment(payload.count)
                 return
 
-            time.sleep(RETRY_DELAY)
+        raise MaxRetriesError('could not sent batch')
 
 
 SERIALIZER_BY_VERSION = {
