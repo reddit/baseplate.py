@@ -1,3 +1,9 @@
+baseplate (0.28.2) trusty; urgency=medium
+
+  * Fix bug where Sampled header was required for traces
+
+ -- Neil Williams <neil@reddit.com>  Mon, 03 Dec 2018 15:00:10 -0800
+
 baseplate (0.28.1) trusty; urgency=medium
 
   * Remove local span on variant call
