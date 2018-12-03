@@ -31,6 +31,7 @@ simple_type_class_list = frozenset([
     'single_variant',
     'multi_variant',
     'feature_rollout',
+    'range_variant',
 ])
 
 
