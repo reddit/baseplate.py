@@ -131,7 +131,7 @@ class BaseplateConfigurator(object):
                  edge_context_factory=None, header_trust_handler=None):
         self.baseplate = baseplate
         self.trust_trace_headers = bool(trust_trace_headers)
-        if self.trust_trace_headers is not None:
+        if trust_trace_headers is not None:
             warn_deprecated(
                 """setting trust_trace_headers is deprecated in favor of using
                 a header trust handler.
