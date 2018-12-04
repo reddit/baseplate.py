@@ -127,11 +127,11 @@ class BaseplateConfigurator(object):
 
     """
 
-    def __init__(self, baseplate, trust_trace_headers=False,
+    def __init__(self, baseplate, trust_trace_headers=None,
                  edge_context_factory=None, header_trust_handler=None):
         self.baseplate = baseplate
-        self.trust_trace_headers = trust_trace_headers
-        if self.trust_trace_headers:
+        self.trust_trace_headers = bool(trust_trace_headers)
+        if self.trust_trace_headers is not None:
             warn_deprecated(
                 """setting trust_trace_headers is deprecated in favor of using
                 a header trust handler.
@@ -142,7 +142,9 @@ class BaseplateConfigurator(object):
         if header_trust_handler:
             self.header_trust_handler = header_trust_handler
         else:
-            self.header_trust_handler = StaticTrustHandler(trust_headers=trust_trace_headers)
+            self.header_trust_handler = StaticTrustHandler(
+                trust_headers=self.trust_trace_headers,
+            )
 
     def _on_new_request(self, event):
         request = event.request
