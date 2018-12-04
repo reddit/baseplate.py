@@ -9,12 +9,12 @@ class vault {
   }
 
   exec { 'download vault zipfile':
-    command => '/usr/bin/curl -o /var/cache/vault.zip https://releases.hashicorp.com/vault/0.7.3/vault_0.7.3_linux_amd64.zip',
+    command => '/usr/bin/curl -o /var/cache/vault.zip https://releases.hashicorp.com/vault/1.0.0/vault_1.0.0_linux_amd64.zip',
     creates => '/var/cache/vault.zip',
   }
 
   exec { 'verify zipfile':
-    command => '/usr/bin/sha256sum /var/cache/vault.zip | /bin/grep 2822164d5dd347debae8b3370f73f9564a037fc18e9adcabca5907201e5aab45',
+    command => '/usr/bin/sha256sum /var/cache/vault.zip | /bin/grep 75afb647d2ebeb46aafbf147ed1f1b379f6b8c9f909550dc2d0976cf153e8aa6',
     require => Exec['download vault zipfile'],
   }
 

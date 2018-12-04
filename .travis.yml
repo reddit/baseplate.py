@@ -76,7 +76,7 @@ before_install:
             unzip \
             zookeeperd
     - sudo service cassandra start
-    - wget https://releases.hashicorp.com/vault/0.7.3/vault_0.7.3_linux_amd64.zip && unzip vault_0.7.3_linux_amd64.zip && ./vault server -dev -dev-root-token-id=b4c6f298-3f80-11e7-8b88-5254001e7ad3 &
+    - wget https://releases.hashicorp.com/vault/1.0.0/vault_1.0.0_linux_amd64.zip && unzip vault_1.0.0_linux_amd64.zip && ./vault server -dev -dev-root-token-id=b4c6f298-3f80-11e7-8b88-5254001e7ad3 &
     - sleep 10  # cassandra takes a while to start up
 
 script:
