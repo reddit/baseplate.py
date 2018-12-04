@@ -1,3 +1,9 @@
+baseplate (0.28.3) UNRELEASED; urgency=medium
+
+  * use SO_REUSEPORT when we bind our socket
+
+ -- Neil Williams <neil@reddit.com>  Tue, 04 Dec 2018 12:21:23 -0800
+
 baseplate (0.28.2) trusty; urgency=medium
 
   * Fix bug where Sampled header was required for traces
