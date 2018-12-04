@@ -1,4 +1,12 @@
-baseplate (0.28.3) UNRELEASED; urgency=medium
+baseplate (0.28.4) trusty; urgency=medium
+
+  * backport compatibility fixes to secret fetcher for vault 0.9+
+  * backport live data daemon startup race condition fix
+  * backport event publisher retry backoff patch
+
+ -- Neil Williams <neil@reddit.com>  Tue, 04 Dec 2018 15:55:34 -0800
+
+baseplate (0.28.3) trusty; urgency=medium
 
   * use SO_REUSEPORT when we bind our socket
 
