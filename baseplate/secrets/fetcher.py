@@ -65,6 +65,7 @@ import logging
 import os
 import posixpath
 import time
+import uuid
 
 import requests
 
@@ -90,6 +91,12 @@ def fetch_instance_identity():
     resp = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")
     resp.raise_for_status()
     return resp.text
+
+
+def generate_nonce():
+    """Return a string value suitable for use as a nonce."""
+    logger.debug("Generating a new nonce.")
+    return str(uuid.uuid4())
 
 
 def load_nonce():
@@ -205,14 +212,19 @@ class VaultClientFactory(object):
         """
         identity_document = fetch_instance_identity()
         nonce = load_nonce()
+        if not nonce:
+            # By generating our own nonce rather than relying on Vault to
+            # generate one for us, we can avoid vault logging the nonce value
+            # in plaintext audit logs.
+            # https://www.vaultproject.io/docs/auth/aws.html#client-nonce
+            nonce = generate_nonce()
+            store_nonce(nonce)
 
         login_data = {
             "role": self.role,
             "pkcs7": identity_document,
+            "nonce": nonce,
         }
-
-        if nonce:
-            login_data["nonce"] = nonce
 
         logger.debug("Obtaining Vault token via aws auth.")
         response = self.session.post(
@@ -221,7 +233,6 @@ class VaultClientFactory(object):
         )
         response.raise_for_status()
         auth = response.json()["auth"]
-        store_nonce(auth["metadata"]["nonce"])
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
     @staticmethod
