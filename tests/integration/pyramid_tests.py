@@ -271,8 +271,6 @@ class ConfiguratorTests(unittest.TestCase):
             "X-Trace": "1234",
             "X-Parent": "2345",
             "X-Span": "3456",
-            "X-Sampled": "1",
-            "X-Flags": "1",
         })
 
         context, server_span = self.observer.on_server_span_created.call_args[0]

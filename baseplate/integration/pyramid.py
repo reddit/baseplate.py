@@ -86,19 +86,53 @@ class ServerSpanInitialized(BaseplateEvent):
     pass
 
 
-class HeaderTrustHandlerInterface(object):
-    """Class used by BaseplateConfigurator to validate headers.
+class HeaderTrustHandler(object):
+    """Abstract class used by :py:class:`BaseplateConfigurator` to validate headers.
+    See :py:class:`StaticTrustHandler` for the default implementation.
     """
 
     def should_trust_trace_headers(self, request):
+        """ Whether baseplate should parse the trace headers from the inbound request
+
+        :param request pyramid.util.Request: The request
+
+        :returns bool: Whether baseplate should parse the trace headers from the inbound request.
+        """
+        raise NotImplementedError
+
+    def should_trust_edge_context_payload(self, request):
+        """ Whether baseplate should trust the edge context headers from the inbound request.
+
+        :param request pyramid.util.Request: The request
+
+        :returns bool: Whether baseplate should trust the inbound edge context headers
+        """
         raise NotImplementedError
 
 
-class StaticTrustHandler(HeaderTrustHandlerInterface):
+class StaticTrustHandler(HeaderTrustHandler):
+    """Default implementation for handling headers. This class is created
+    automatically by BaseplateConfigurator unless you supply your own HeaderTrustHandler
+
+    :param bool trust_headers:
+        Whether or not to trust trace and edge context headers from
+        inbound requests. This value will be returned by should_trust_trace_headers and
+        should_trust_edge_context_payload.
+
+    .. warning::
+
+        Do not set ``trust_headers`` to ``True`` unless you are sure your
+        application is only accessible by trusted sources (usually backend-only
+        services).
+    """
+
     def __init__(self, trust_headers=False):
         self.trust_headers = trust_headers
 
     def should_trust_trace_headers(self, request):
+        return self.trust_headers
+
+    def should_trust_edge_context_payload(self, request):
         return self.trust_headers
 
 
@@ -108,23 +142,12 @@ class BaseplateConfigurator(object):
 
     :param baseplate.core.Baseplate baseplate: The Baseplate instance for your
         application.
-    :param bool trust_trace_headers: (DEPRECATED) Should this application trust trace
-        headers from the client? If ``True``, trace headers in inbound requests
-        will be used for the server span. If ``False``, new random trace IDs
-        will be generated for each request.
     :param baseplate.core.EdgeRequestContextFactory edge_context_factory: A
         configured factory for handling edge request context.
-    :param baseplate.integration.pyramid.HeaderTrustHandlerInterface header_trust_handler:
-        An object which will be used to verify whether the headers for a request
-        should be trusted, for example for tracing. See StaticTrustHandler for
+    :param baseplate.integration.pyramid.HeaderTrustHandler header_trust_handler:
+        An object which will be used to verify whether baseplate should parse the request
+        context headers, for example trace ids. See StaticTrustHandler for
         the default implementation.
-
-    .. warning::
-
-        Do not set ``trust_trace_headers`` to ``True`` unless you are sure your
-        application is only accessible by trusted sources (usually backend-only
-        services).
-
     """
 
     def __init__(self, baseplate, trust_trace_headers=None,
@@ -133,9 +156,8 @@ class BaseplateConfigurator(object):
         self.trust_trace_headers = bool(trust_trace_headers)
         if trust_trace_headers is not None:
             warn_deprecated(
-                """setting trust_trace_headers is deprecated in favor of using
-                a header trust handler.
-                """
+                "setting trust_trace_headers is deprecated in favor of using"
+                "a header trust handler."
             )
         self.edge_context_factory = edge_context_factory
 
