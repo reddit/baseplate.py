@@ -26,8 +26,6 @@ try:
         ServerSpanInitialized,
     )
     from pyramid.config import Configurator
-    from baseplate.crypto import IncorrectSignatureError
-
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
@@ -267,7 +265,7 @@ class ConfiguratorTests(unittest.TestCase):
     @mock.patch("random.getrandbits")
     def test_distrust_headers(self, getrandbits):
         getrandbits.return_value = 1234
-        self.baseplate_configurator.header_trust_handler.trust_trace_headers = False
+        self.baseplate_configurator.header_trust_handler.trust_headers = False
 
         self.test_app.get("/example", headers={
             "X-Trace": "1234",
@@ -288,144 +286,3 @@ class ConfiguratorTests(unittest.TestCase):
         child_span = self.server_observer.on_child_span_created.call_args[0][0]
         context, server_span = self.observer.on_server_span_created.call_args[0]
         self.assertNotEqual(child_span.context, context)
-
-
-class ConfiguratorHeaderTrustTests(unittest.TestCase):
-    def setUp(self):
-        configurator = Configurator()
-        configurator.add_route("example", "/example", request_method="GET")
-        configurator.add_route("trace_context", "/trace_context", request_method="GET")
-
-        configurator.add_view(
-            example_application, route_name="example", renderer="json")
-
-        configurator.add_view(
-            local_tracing_within_context, route_name="trace_context", renderer="json")
-
-        configurator.add_view(
-            render_exception_view,
-            context=ControlFlowException,
-            renderer="json",
-        )
-
-        configurator.add_view(
-            render_bad_exception_view,
-            context=ControlFlowException2,
-            renderer="json",
-        )
-
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/trace/hmac": {
-                    "type": "versioned",
-                    "current": "asdfasdfasdfasdf",
-                },
-            },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
-        }
-        secrets = store.SecretsStore("/secrets")
-        secrets._filewatcher = mock_filewatcher
-
-        self.observer = mock.Mock(spec=BaseplateObserver)
-        self.server_observer = mock.Mock(spec=ServerSpanObserver)
-        def _register_mock(context, server_span):
-            server_span.register(self.server_observer)
-        self.observer.on_server_span_created.side_effect = _register_mock
-
-        self.baseplate = Baseplate()
-        self.baseplate.register(self.observer)
-        self.baseplate_configurator = BaseplateConfigurator(
-            self.baseplate,
-            edge_context_factory=EdgeRequestContextFactory(secrets),
-            secret_store=secrets
-        )
-        configurator.include(self.baseplate_configurator.includeme)
-        self.context_init_event_subscriber = mock.Mock()
-        configurator.add_subscriber(self.context_init_event_subscriber, ServerSpanInitialized)
-        app = configurator.make_wsgi_app()
-        self.test_app = webtest.TestApp(app)
-
-    def test_hmac_valid(self):
-        self.test_app.get("/trace_context", headers={
-            "X-Trace": "1234",
-            "X-Parent": "2345",
-            "X-Span": "3456",
-            "X-Sampled": "1",
-            "X-Flags": "1",
-            "X-Trace-Hmac": "AQAAGhb_W74hHERPhSUzrkHkgVF2YnPQ4XpLZkuNXxxfpIaGwblo"
-        })
-
-        self.assertEqual(self.server_observer.on_child_span_created.call_count, 1)
-        child_span = self.server_observer.on_child_span_created.call_args[0][0]
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-
-        self.assertEqual(server_span.trace_id, 1234)
-        self.assertEqual(child_span.parent_id, 3456)
-        self.assertEqual(server_span.id, 3456)
-        self.assertEqual(server_span.flags, 1)
-
-    def test_hmac_invalid(self):
-        with self.assertRaises(IncorrectSignatureError):
-            self.test_app.get("/example", headers={
-                "X-Trace": "1234",
-                "X-Parent": "2345",
-                "X-Span": "3456",
-                "X-Sampled": "1",
-                "X-Flags": "1",
-                "X-Trace-Hmac": "AQAAGhb_W74hHERPhSUzrkHkgVF2YnPQ4XpLZkuNXxxfpIaGwblP"
-            })
-        
-        self.assertEqual(self.observer.on_server_span_created.call_count, 0)
-        self.assertEqual(self.server_observer.on_child_span_created.call_count, 0)
-
-    def test_no_hmac(self):
-        self.test_app.get("/example", headers={
-            "X-Trace": "1234",
-            "X-Parent": "2345",
-            "X-Span": "3456",
-            "X-Sampled": "1",
-            "X-Flags": "1",
-        })
-
-        self.assertEqual(self.observer.on_server_span_created.call_count, 1)
-        self.assertEqual(self.server_observer.on_child_span_created.call_count, 0)
-
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertNotEqual(server_span.trace_id, 1234)
-        self.assertNotEqual(server_span.parent_id, 2345)
-        self.assertNotEqual(server_span.id, 3456)
-    
-    def test_no_hmac_trust_trace_fallback(self):
-        self.baseplate_configurator.header_trust_handler.trust_trace_headers = True
-        self.test_app.get("/example", headers={
-            "X-Trace": "1234",
-            "X-Parent": "2345",
-            "X-Span": "3456",
-            "X-Sampled": "1",
-            "X-Flags": "1",
-        })
-
-        self.assertEqual(self.observer.on_server_span_created.call_count, 1)
-        self.assertEqual(self.server_observer.on_child_span_created.call_count, 0)
-
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, 1234)
-        self.assertEqual(server_span.parent_id, 2345)
-        self.assertEqual(server_span.id, 3456)
-    
-    def test_hmac_invalid_for_trace(self):
-        with self.assertRaises(IncorrectSignatureError):
-            self.test_app.get("/example", headers={
-                "X-Trace": "1235",
-                "X-Parent": "2345",
-                "X-Span": "3456",
-                "X-Sampled": "1",
-                "X-Flags": "1",
-                "X-Trace-Hmac": "AQAAGhb_W74hHERPhSUzrkHkgVF2YnPQ4XpLZkuNXxxfpIaGwblo"
-            })
-
-        self.assertEqual(self.observer.on_server_span_created.call_count, 0)

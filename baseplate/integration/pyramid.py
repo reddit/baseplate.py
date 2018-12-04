@@ -40,7 +40,6 @@ import pyramid.tweens
 
 from ..core import TraceInfo
 from ..server import make_app
-from ..crypto import validate_signature
 from .._utils import warn_deprecated
 
 TRACE_HEADER_NAMES = {
@@ -109,13 +108,13 @@ class BaseplateConfigurator(object):
 
     :param baseplate.core.Baseplate baseplate: The Baseplate instance for your
         application.
-    :param bool trust_trace_headers: Should this application trust trace
+    :param bool trust_trace_headers: (DEPRECATED) Should this application trust trace
         headers from the client? If ``True``, trace headers in inbound requests
         will be used for the server span. If ``False``, new random trace IDs
         will be generated for each request.
     :param baseplate.core.EdgeRequestContextFactory edge_context_factory: A
         configured factory for handling edge request context.
-    :param baseplate.integration.pyramid.HeaderTrustHandlerInterface header_trust_handler: 
+    :param baseplate.integration.pyramid.HeaderTrustHandlerInterface header_trust_handler:
         An object which will be used to verify whether the headers for a request
         should be trusted, for example for tracing. See StaticTrustHandler for
         the default implementation.
@@ -132,6 +131,12 @@ class BaseplateConfigurator(object):
                  edge_context_factory=None, header_trust_handler=None):
         self.baseplate = baseplate
         self.trust_trace_headers = trust_trace_headers
+        if self.trust_trace_headers:
+            warn_deprecated(
+                """setting trust_trace_headers is deprecated in favor of using
+                a header trust handler.
+                """
+            )
         self.edge_context_factory = edge_context_factory
 
         if header_trust_handler:
