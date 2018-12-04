@@ -79,6 +79,12 @@ logger = logging.getLogger(__name__)
 K8S_SERVICE_ACCOUNT_TOKEN_FILE = "/var/run/secrets/kubernetes.io/serviceaccount/token"
 NONCE_FILENAME = "/var/local/vault.nonce"
 VAULT_TOKEN_PREFETCH_TIME = datetime.timedelta(seconds=60)
+REAUTHENTICATION_ERROR_MESSAGE = """
+Authenication failed! If this instance previously authenticated with a
+different nonce, a vault operator may need to remove the instance ID from the
+identity whitelist. See
+https://www.vaultproject.io/docs/auth/aws.html#client-nonce
+""".replace("\n", " ")
 
 
 def fetch_instance_identity():
@@ -231,6 +237,8 @@ class VaultClientFactory(object):
             urljoin(self.base_url, "v1/auth/%s/login" % self.mount_point),
             json=login_data,
         )
+        if response.status_code == 400:
+            logger.error(REAUTHENTICATION_ERROR_MESSAGE)
         response.raise_for_status()
         auth = response.json()["auth"]
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
