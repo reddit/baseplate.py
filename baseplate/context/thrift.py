@@ -146,6 +146,6 @@ class PooledClientProxy(object):
 
         raise TTransportException(
             type=TTransportException.TIMED_OUT,
-            message="retry policy exhausted while attempting operation, "
-                    "last error was: {}".format(last_error),
+            message="retry policy exhausted while attempting {}.{}, "
+                    "last error was: {}".format(self.namespace, name, last_error),
         )
