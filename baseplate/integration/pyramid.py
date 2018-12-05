@@ -183,7 +183,7 @@ class BaseplateConfigurator(object):
             except (KeyError, ValueError):
                 pass
 
-        if self.header_trust_handler.should_trust_trace_headers(request):
+        if self.header_trust_handler.should_trust_edge_context_payload(request):
             try:
                 edge_payload = request.headers.get("X-Edge-Request", None)
                 if self.edge_context_factory:
