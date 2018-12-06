@@ -157,7 +157,7 @@ class BaseplateConfigurator(object):
         if trust_trace_headers is not None:
             warn_deprecated(
                 "setting trust_trace_headers is deprecated in favor of using"
-                "a header trust handler."
+                " a header trust handler."
             )
         self.edge_context_factory = edge_context_factory
 
