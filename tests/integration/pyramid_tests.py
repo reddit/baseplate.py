@@ -265,7 +265,7 @@ class ConfiguratorTests(unittest.TestCase):
     @mock.patch("random.getrandbits")
     def test_distrust_headers(self, getrandbits):
         getrandbits.return_value = 1234
-        self.baseplate_configurator.trust_trace_headers = False
+        self.baseplate_configurator.header_trust_handler.trust_headers = False
 
         self.test_app.get("/example", headers={
             "X-Trace": "1234",

@@ -21,6 +21,12 @@ Pyramid
 
 .. autoclass:: baseplate.integration.pyramid.BaseplateConfigurator
 
+.. autoclass:: baseplate.integration.pyramid.HeaderTrustHandler
+    :members:
+
+.. autoclass:: baseplate.integration.pyramid.StaticTrustHandler
+    :members:
+
 Events
 ~~~~~~
 
