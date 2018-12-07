@@ -1,6 +1,7 @@
 branches:
     only:
         - master
+        - /^v\d+\.\d+(\.\d+)?$/
 
 sudo: required
 dist: trusty
