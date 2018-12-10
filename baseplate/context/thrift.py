@@ -1,10 +1,9 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
+#from __future__ import unicode_literals type() is finnicky about the class name
 
 import contextlib
-import functools
 import inspect
 
 from thrift.transport.TTransport import TTransportException
@@ -40,9 +39,17 @@ class ThriftContextFactory(ContextFactory):
     def __init__(self, pool, client_cls):
         self.pool = pool
         self.client_cls = client_cls
+        self.proxy_cls = type(
+            "PooledClientProxy",
+            (_PooledClientProxy,),
+            {
+                method_name: _build_thrift_proxy_method(method_name)
+                for method_name in _enumerate_service_methods(client_cls)
+            },
+        )
 
     def make_object_for_context(self, name, server_span):
-        return PooledClientProxy(self.client_cls, self.pool, server_span, name)
+        return self.proxy_cls(self.client_cls, self.pool, server_span, name)
 
 
 def _enumerate_service_methods(client):
@@ -63,7 +70,7 @@ def _enumerate_service_methods(client):
     assert ifaces_found > 0, "class is not a thrift client; it has no Iface"
 
 
-class PooledClientProxy(object):
+class _PooledClientProxy(object):
     """A proxy which acts like a thrift client but uses a connection pool."""
 
     # pylint: disable=too-many-arguments
@@ -74,13 +81,9 @@ class PooledClientProxy(object):
         self.namespace = namespace
         self.retry_policy = retry_policy or RetryPolicy.new(attempts=1)
 
-        for name in _enumerate_service_methods(client_cls):
-            setattr(self, name, functools.partial(
-                self._call_thrift_method, name))
-
     @contextlib.contextmanager
     def retrying(self, **policy):
-        yield PooledClientProxy(
+        yield self.__class__(
             self.client_cls,
             self.pool,
             self.server_span,
@@ -88,7 +91,9 @@ class PooledClientProxy(object):
             retry_policy=RetryPolicy.new(**policy),
         )
 
-    def _call_thrift_method(self, name, *args, **kwargs):
+
+def _build_thrift_proxy_method(name):
+    def _call_thrift_method(self, *args, **kwargs):
         trace_name = "{}.{}".format(self.namespace, name)
         last_error = None
 
@@ -125,3 +130,4 @@ class PooledClientProxy(object):
             message="retry policy exhausted while attempting operation, "
                     "last error was: {}".format(last_error),
         )
+    return _call_thrift_method
