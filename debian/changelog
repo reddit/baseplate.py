@@ -1,3 +1,9 @@
+baseplate (0.28.5) trusty; urgency=medium
+
+  * backport thrift pool efficiency improvement
+
+ -- Neil Williams <neil@reddit.com>  Mon, 10 Dec 2018 15:03:35 -0800
+
 baseplate (0.28.4) trusty; urgency=medium
 
   * backport compatibility fixes to secret fetcher for vault 0.9+
