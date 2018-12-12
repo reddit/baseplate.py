@@ -63,7 +63,7 @@ else:
         expected_len = len(expected)
         result = actual_len ^ expected_len
         if expected_len > 0:
-            for i in xrange(actual_len):
+            for i in range(actual_len):
                 result |= ord(actual[i]) ^ ord(expected[i % expected_len])
         return result == 0
 
@@ -90,6 +90,7 @@ class ExpiredSignatureError(SignatureError):
     at which the signature expired.
 
     """
+
     def __init__(self, expiration):
         self.expiration = expiration
         super(ExpiredSignatureError, self).__init__()
@@ -205,6 +206,7 @@ class MessageSigner(object):
     versioned secrets for new code.
 
     """
+
     def __init__(self, secret_key):
         warn_deprecated("MessageSigner is deprecated in favor of the top-level "
                         "make_signature and validate_signature functions which "
