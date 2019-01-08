@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
 import time
 import unittest
 
@@ -615,10 +616,22 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(variant, None)
 
 
+@mock.patch("baseplate.experiments.FileWatcher")
 class ExperimentsClientFromConfigTests(unittest.TestCase):
-    def test_make_clients(self):
+
+    def test_make_clients(self, file_watcher_mock):
         event_logger = mock.Mock(spec=DebugLogger)
         experiments = experiments_client_from_config({
             "experiments.path": "/tmp/test",
         }, event_logger)
         self.assertIsInstance(experiments, ExperimentsContextFactory)
+        file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=None)
+
+    def test_timeout(self, file_watcher_mock):
+        event_logger = mock.Mock(spec=DebugLogger)
+        experiments = experiments_client_from_config({
+            "experiments.path": "/tmp/test",
+            "experiments.timeout": "60 seconds",
+        }, event_logger)
+        self.assertIsInstance(experiments, ExperimentsContextFactory)
+        file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=60.0)
