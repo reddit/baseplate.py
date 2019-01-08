@@ -29,15 +29,18 @@ class ExperimentsContextFactory(ContextFactory):
     This factory will attach a new :py:class:`baseplate.experiments.Experiments`
     to an attribute on the :term:`context object`.
     """
-    def __init__(self, path, event_logger=None):
+    def __init__(self, path, event_logger=None, timeout=None):
         """ExperimentContextFactory constructor
 
         :param str path: Path to the experiment config file.
         :param baseplate.events.EventLogger event_logger: The logger to use
             to log experiment eligibility events. If not provided, a
             baseplate.events.DebugLogger will be created and used.
+        :param float timeout: How long, in seconds, to block instantiation
+            waiting for the watched experiments file to become available
+            (defaults to not blocking).
         """
-        self._filewatcher = FileWatcher(path, json.load)
+        self._filewatcher = FileWatcher(path, json.load, timeout=timeout)
         self._event_logger = event_logger
 
     def make_object_for_context(self, name, server_span):
@@ -274,7 +277,14 @@ def experiments_client_from_config(app_config, event_logger):
     cfg = config.parse_config(app_config, {
         "experiments": {
             "path": config.Optional(config.String, default="/var/local/experiments.json"),
+            "timeout": config.Optional(config.Timespan),
         },
     })
+
     # pylint: disable=maybe-no-member
-    return ExperimentsContextFactory(cfg.experiments.path, event_logger)
+    if cfg.experiments.timeout:
+        timeout = cfg.experiments.timeout.total_seconds()
+    else:
+        timeout = None
+
+    return ExperimentsContextFactory(cfg.experiments.path, event_logger, timeout=timeout)
