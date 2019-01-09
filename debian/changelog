@@ -1,3 +1,11 @@
+baseplate (0.28.6) trusty; urgency=medium
+
+  * backport secrets fetcher speedup
+  * backport better thrift exception logging
+  * backport experiments startup timeout
+
+ -- Neil Williams <neil@reddit.com>  Tue, 08 Jan 2019 16:10:50 -0800
+
 baseplate (0.28.5) trusty; urgency=medium
 
   * backport thrift pool efficiency improvement
