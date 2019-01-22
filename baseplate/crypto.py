@@ -59,6 +59,11 @@ else:
         function resistant to timing attacks.
 
         """
+
+        if type(actual) != type(expected):
+            warn_deprecated("Future versions of constant_time_compare require that both "
+                "parameters are of the same type.")
+
         actual_len = len(actual)
         expected_len = len(expected)
         result = actual_len ^ expected_len
