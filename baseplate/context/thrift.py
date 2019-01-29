@@ -46,8 +46,9 @@ class ThriftContextFactory(ContextFactory):
             "PooledClientProxy",
             (_PooledClientProxy,),
             {
-                method_name: _build_thrift_proxy_method(method_name)
-                for method_name in _enumerate_service_methods(client_cls)
+                fn_name: _build_thrift_proxy_method(fn_name)
+                for fn_name in _enumerate_service_methods(client_cls)
+                if not (fn_name.startswith('__') and fn_name.endswith('__'))
             },
         )
 
