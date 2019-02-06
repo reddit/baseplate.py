@@ -4,7 +4,11 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import logging
 import time
+
+
+logger = logging.getLogger(__name__)
 
 
 class RetryPolicy(object):
@@ -89,7 +93,12 @@ class MaximumAttemptsRetryPolicy(RetryPolicy):
     def yield_attempts(self):
         for i, remaining in enumerate(self.subpolicy):
             if i == self.attempts:
+                logger.error("Retry attempt budget of %d exhausted", self.attempts)
                 break
+
+            if i > 0:
+                logger.info("Attempting retry %d of %d", i, self.attempts)
+
             yield remaining
 
 
@@ -105,11 +114,16 @@ class TimeBudgetRetryPolicy(RetryPolicy):
 
         yield self.budget
 
-        for _ in self.subpolicy:
+        # starting enumeration with 1 because of yield above
+        for retry_attempt, _ in enumerate(self.subpolicy, start=1):
             elapsed = time.time() - start_time
             time_remaining = self.budget - elapsed
             if time_remaining <= 0:
+                logger.error("Retried %d times. Budget of %6.2f seconds exceeded",
+                             retry_attempt, self.budget)
                 break
+            logger.warn("%d retry attempt(s). %6.2f seconds remaining in budget",
+                        retry_attempt, time_remaining)
             yield time_remaining
 
 
@@ -127,6 +141,7 @@ class ExponentialBackoffRetryPolicy(RetryPolicy):
                     delay = min(delay, time_remaining)
                     time_remaining -= delay
 
+                logger.warn("Retry attempt %d, waiting %6.2f seconds", attempt, delay)
                 time.sleep(delay)
 
             yield time_remaining
