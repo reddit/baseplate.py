@@ -1,3 +1,10 @@
+baseplate (0.28.7) UNRELEASED; urgency=medium
+
+  * make decision to trust trace headers over HTTP pluggable
+  * add a useful CSRF policy for Pyramid
+
+ -- Neil Williams <neil@reddit.com>  Fri, 22 Feb 2019 10:06:36 -0800
+
 baseplate (0.28.6) trusty; urgency=medium
 
   * backport secrets fetcher speedup
