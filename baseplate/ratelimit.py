@@ -9,7 +9,7 @@ class RateLimitExceededException(Exception):
     pass
 
 
-class RateLimiter:
+class RateLimiter(object):
     """A class for rate limiting actions.
 
     :param `RateLimitCache` cache: The backend
@@ -23,8 +23,12 @@ class RateLimiter:
     """
 
     def __init__(self, cache, allowance=None, interval=None, key_prefix=''):
-        assert allowance >= 1, 'minimum allowance is 1'
-        assert interval >= 1, 'minimum interval is 1'
+        if allowance < 1:
+            raise ValueError('minimum allowance is 1')
+        if interval < 1:
+            raise ValueError('minimum interval is 1')
+        if not isinstance(cache, RateLimitCache):
+            raise ValueError('cache must be an instance of RateLimitCache')
 
         self.cache = cache
         self.key_prefix = key_prefix
@@ -47,7 +51,7 @@ class RateLimiter:
             raise RateLimitExceededException('Rate limit exceeded.')
 
 
-class RateLimitCache:
+class RateLimitCache(object):
     """An interface for rate limit backends to implement.
 
     :param str key: The name of the rate limit bucket to consume from.
