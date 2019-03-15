@@ -22,6 +22,12 @@ rate limiter with::
 Classes
 -------
 
+.. autoclass:: baseplate.ratelimit.MemcacheRateLimitCache
+  :members:
+
+.. autoclass:: baseplate.ratelimit.RedisLimitCache
+  :members:
+
 .. autoclass:: baseplate.ratelimit.RateLimiter
    :members:
 

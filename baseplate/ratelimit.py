@@ -12,8 +12,8 @@ class RateLimitExceededException(Exception):
 class RateLimiter(object):
     """A class for rate limiting actions.
 
-    :param `RateLimitCache` cache: The backend
-        to use for storing rate limit counters.
+    :param `RateLimitCache` cache: The backend to use for storing rate limit
+        counters.
     :param int allowance: The maximum allowance allowed per key.
     :param int interval: The interval (in seconds) to reset allowances.
     :param str key_prefix: A prefix to add to keys during rate limiting.
@@ -95,6 +95,37 @@ class RedisRateLimitCache(RateLimitCache):
             pipe.expire(key, time=ttl)
             responses = pipe.execute()
         count = responses[0]
+        return count <= allowance
+
+
+class MemcacheRateLimitCache(RateLimitCache):
+    """A Memcache-backed cache for rate limiting.
+
+    :param memcache_client: An instance of
+        :py:class:`baseplate.context.memcache.MonitoredMemcacheConnection`.
+
+    """
+
+    def __init__(self, memcache_client):
+        self.memcache_client = memcache_client
+
+    def consume(self, key, amount, allowance, interval):
+        """Consume the given `amount` from the allowance for the given `key`.
+
+        This will return true if the `key` remains below the `allowance`
+        after consuming the given `amount`.
+
+        :param str key: The name of the rate limit bucket to consume from.
+        :param int amount: The amount to consume from the rate limit bucket.
+        :param int allowance: The maximum allowance for the rate limit bucket.
+        :param int interval: The interval to reset the allowance.
+
+        """
+        current_bucket = _get_current_bucket(interval)
+        key = key + current_bucket
+        ttl = interval * 2
+        self.memcache_client.add(key, 0, expire=ttl)
+        count = self.memcache_client.incr(key, 1)
         return count <= allowance
 
 
