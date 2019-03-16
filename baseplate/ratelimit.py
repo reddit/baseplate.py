@@ -2,11 +2,45 @@ from __future__ import division
 
 import time
 
+from .context import ContextFactory
+
 
 class RateLimitExceededException(Exception):
     """This exception gets raised whenever a rate limit is exceeded.
     """
     pass
+
+
+class RateLimiterContextFactory(ContextFactory):
+    """RateLimiter context factory
+
+    :param cache_context_factory: An instance of
+        :py:class:`baseplate.context.ContextFactory`.
+    :param ratelimit_cache_class: An instance of
+        :py:class:`baseplate.ratelimit.RateLimitCache`.
+    :param int allowance: The maximum allowance allowed per key.
+    :param int interval: The interval (in seconds) to reset allowances.
+    :param str key_prefix: A prefix to add to keys during rate limiting.
+        This is useful if you will have two different rate limiters that will
+        receive the same keys.
+
+    """
+
+    # TODO: This feels like a weird way of doing this
+    def __init__(self, cache_context_factory, ratelimit_cache_class,
+                 allowance=None, interval=None, key_prefix=''):
+        self.cache_context_factory = cache_context_factory
+        self.ratelimit_cache_class = ratelimit_cache_class
+        self.allowance = allowance
+        self.interval = interval
+        self.key_prefix = key_prefix
+
+    def make_object_for_context(self, name, server_span):
+        cache = self.cache_context_factory.make_object_for_context(
+            name, server_span)
+        ratelimit_cache = self.ratelimit_cache_class(cache)
+        return RateLimiter(ratelimit_cache, allowance=allowance,
+                           interval=interval, key_prefix=key_prefix)
 
 
 class RateLimiter(object):
