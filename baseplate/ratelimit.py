@@ -39,8 +39,8 @@ class RateLimiterContextFactory(ContextFactory):
         cache = self.cache_context_factory.make_object_for_context(
             name, server_span)
         ratelimit_cache = self.ratelimit_cache_class(cache)
-        return RateLimiter(ratelimit_cache, allowance=allowance,
-                           interval=interval, key_prefix=key_prefix)
+        return RateLimiter(ratelimit_cache, allowance=self.allowance,
+                           interval=self.interval, key_prefix=self.key_prefix)
 
 
 class RateLimiter(object):
