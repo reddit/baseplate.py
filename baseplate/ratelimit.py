@@ -56,7 +56,8 @@ class RateLimiter(object):
 
     """
 
-    def __init__(self, cache, allowance=None, interval=None, key_prefix=''):
+    def __init__(self, cache, allowance=None, interval=None,
+                 key_prefix='rl:'):
         if allowance < 1:
             raise ValueError('minimum allowance is 1')
         if interval < 1:
