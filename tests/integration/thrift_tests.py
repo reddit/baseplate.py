@@ -231,7 +231,6 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         class Handler(TestService.Iface):
             def __init__(self):
                 self.server_span = None
-
             def example(self, context):
                 self.server_span = context.trace
                 return True
@@ -245,6 +244,41 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
                 transport.set_header(b"B3-SpanId", str(span_id).encode())
                 transport.set_header(b"B3-Flags", str(flags).encode())
                 transport.set_header(b"B3-Sampled", str(sampled).encode())
+                client_result = client.example()
+
+        self.assertIsNotNone(handler.server_span)
+        self.assertEqual(handler.server_span.trace_id, trace_id)
+        self.assertEqual(handler.server_span.parent_id, parent_id)
+        self.assertEqual(handler.server_span.id, span_id)
+        self.assertEqual(handler.server_span.flags, flags)
+        self.assertEqual(handler.server_span.sampled, sampled)
+        self.assertTrue(client_result)
+
+    def test_b3_header_propagation_case_insensitive(self):
+        """Be case-insensitive to Trace headers."""
+
+        trace_id = 1234
+        parent_id = 2345
+        span_id = 3456
+        flags = 4567
+        sampled = 1
+
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.server_span = None
+            def example(self, context):
+                self.server_span = context.trace
+                return True
+        handler = Handler()
+
+        with serve_thrift(handler) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"b3-traceid", str(trace_id).encode())
+                transport.set_header(b"b3-parentspanid", str(parent_id).encode())
+                transport.set_header(b"b3-spanid", str(span_id).encode())
+                transport.set_header(b"b3-flags", str(flags).encode())
+                transport.set_header(b"b3-sampled", str(sampled).encode())
                 client_result = client.example()
 
         self.assertIsNotNone(handler.server_span)
@@ -307,6 +341,36 @@ class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
             with raw_thrift_client(server.endpoint) as client:
                 transport = client._oprot.trans
                 transport.set_header(b"Edge-Request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
+                client_result = client.example()
+
+        self.assertIsNotNone(handler.request_context)
+        self.assertEqual(handler.request_context.user.id, "t2_example")
+        self.assertEqual(handler.request_context.user.roles, set())
+        self.assertEqual(handler.request_context.user.is_logged_in, True)
+        self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
+        self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
+        self.assertEqual(handler.request_context.oauth_client.id, None)
+        self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
+        self.assertEqual(handler.request_context.session.id, "beefdead")
+        self.assertTrue(client_result)
+
+    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
+    def test_edge_request_context_case_insensitive(self):
+        """We should be case-insensitive to edge-request headers."""
+
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.request_context = None
+
+            def example(self, context):
+                self.request_context = context.request_context
+                return True
+        handler = Handler()
+
+        with serve_thrift(handler) as server:
+            with raw_thrift_client(server.endpoint) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"edge-request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
                 client_result = client.example()
 
         self.assertIsNotNone(handler.request_context)
