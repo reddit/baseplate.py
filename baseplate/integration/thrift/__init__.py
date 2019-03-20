@@ -20,6 +20,7 @@ from __future__ import unicode_literals
 
 import sys
 
+from requests.structures import CaseInsensitiveDict
 from thrift.Thrift import TException, TApplicationException
 from thrift.transport.TTransport import TTransportException
 from thrift.protocol.TProtocol import TProtocolException
@@ -105,7 +106,9 @@ def baseplateify_processor(processor, logger, baseplate, edge_context_factory=No
         def call_processor_with_span_context(self, seqid, iprot, oprot):
             context = RequestContext()
 
-            headers = iprot.get_headers()
+            # Allow case-insensitivity for THeader headers
+            headers = CaseInsensitiveDict(data=iprot.get_headers())
+
             try:
                 trace_info = _extract_trace_info(headers)
             except (KeyError, ValueError):
