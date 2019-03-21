@@ -28,7 +28,7 @@ class RateLimiterContextFactory(ContextFactory):
 
     # TODO: This feels like a weird way of doing this
     def __init__(self, cache_context_factory, ratelimit_cache_class,
-                 allowance=None, interval=None, key_prefix=''):
+                 allowance, interval, key_prefix=''):
         self.cache_context_factory = cache_context_factory
         self.ratelimit_cache_class = ratelimit_cache_class
         self.allowance = allowance
@@ -56,14 +56,13 @@ class RateLimiter(object):
 
     """
 
-    def __init__(self, cache, allowance=None, interval=None,
-                 key_prefix='rl:'):
+    def __init__(self, cache, allowance, interval, key_prefix='rl:'):
         if allowance < 1:
             raise ValueError('minimum allowance is 1')
         if interval < 1:
             raise ValueError('minimum interval is 1')
         if not isinstance(cache, RateLimitCache):
-            raise ValueError('cache must be an instance of RateLimitCache')
+            raise TypeError('cache must be an instance of RateLimitCache')
 
         self.cache = cache
         self.key_prefix = key_prefix
