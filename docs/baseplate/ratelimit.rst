@@ -3,33 +3,46 @@
 
 .. automodule:: baseplate.ratelimit
 
-Assuming your project uses RedisContextFactory to attach a cache client to the
-context object (or the request object for HTTP projects), you can create a
-rate limiter with::
+Configuring a rate limiter for your request context requires a context factory for the backend
+and a factory for the rate limiter itself::
 
-    from baseplate import ratelimit
+    redis_pool = pool_from_config(app_config)
+    backend_factory = RedisRateLimitBackendContextFactory(redis_pool)
+    ratelimiter_factory = RateLimiterContextFactory(backend_factory, allowance, interval)
+    baseplate.add_to_context('ratelimiter', ratelimiter_factory)
 
-    cache = ratelimit.RedisRateLimitCache(context.cache)
-    ratelimiter = ratelimit.RateLimiter(cache, allowance=1000, interval=60)
+The rate limiter can then be used during a request with::
 
     try:
-        ratelimiter.consume(context.request_context.user.id)
+        context.ratelimiter.consume(context.request_context.user.id)
         print('Ratelimit passed')
-    except ratelimit.RateLimitExceededException:
+    except RateLimitExceededException:
         print('Too many requests')
 
 
 Classes
 -------
 
-.. autoclass:: baseplate.ratelimit.MemcacheRateLimitCache
-  :members:
-
-.. autoclass:: baseplate.ratelimit.RedisLimitCache
-  :members:
-
 .. autoclass:: baseplate.ratelimit.RateLimiter
-   :members:
+  :members:
 
-.. autoclass:: baseplate.ratelimit.RedisRateLimitCache
+.. autoclass:: baseplate.ratelimit.RateLimiterContextFactory
+  :members:
+
+.. autoclass:: baseplate.ratelimit.RateLimitExceededException
+  :members:
+
+.. autoclass:: baseplate.ratelimit.RateLimitBackend
+  :members:
+
+.. autoclass:: baseplate.ratelimit.MemcacheRateLimitBackendContextFactory
+  :members:
+
+.. autoclass:: baseplate.ratelimit.MemcacheRateLimitBackend
+  :members:
+
+.. autoclass:: baseplate.ratelimit.RedisRateLimitBackendContextFactory
+  :members:
+
+.. autoclass:: baseplate.ratelimit.RedisRateLimitBackend
   :members:
