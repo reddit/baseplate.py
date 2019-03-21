@@ -24,8 +24,7 @@ class MockRateLimitCache(ratelimit.RateLimitCache):
 class RateLimiterTests(unittest.TestCase):
     def setUp(self):
         ratelimit_cache = MockRateLimitCache()
-        self.ratelimiter = ratelimit.RateLimiter(
-            ratelimit_cache, allowance=10, interval=60)
+        self.ratelimiter = ratelimit.RateLimiter(ratelimit_cache, 10, 60)
 
     def test_consume(self):
         self.ratelimiter.consume('user_12345')

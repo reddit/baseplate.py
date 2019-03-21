@@ -3,6 +3,16 @@ from __future__ import division
 import time
 
 from .context import ContextFactory
+# TODO: Fix these imports so that importing ratelimit doesn't require both
+# redis and pymemcache to be installed
+from .context.memcache import MonitoredMemcacheConnection
+from .context.redis import MonitoredRedisConnection
+
+
+# redis_pool = pool_from_config(app_config)
+# backend_factory = RedisRateLimitBackendContextFactory(redis_pool)
+# ratelimiter_factory = RateLimiterContextFactory(backend_factory, allowance, interval)
+# baseplate.add_to_context('ratelimiter', ratelimiter_factory)
 
 
 class RateLimitExceededException(Exception):
@@ -26,21 +36,16 @@ class RateLimiterContextFactory(ContextFactory):
 
     """
 
-    # TODO: This feels like a weird way of doing this
-    def __init__(self, cache_context_factory, ratelimit_cache_class,
-                 allowance, interval, key_prefix=''):
-        self.cache_context_factory = cache_context_factory
-        self.ratelimit_cache_class = ratelimit_cache_class
+    def __init__(self, backend_factory, allowance, interval, key_prefix=''):
+        self.backend_factory = backend_factory
         self.allowance = allowance
         self.interval = interval
         self.key_prefix = key_prefix
 
     def make_object_for_context(self, name, server_span):
-        cache = self.cache_context_factory.make_object_for_context(
-            name, server_span)
-        ratelimit_cache = self.ratelimit_cache_class(cache)
-        return RateLimiter(ratelimit_cache, allowance=self.allowance,
-                           interval=self.interval, key_prefix=self.key_prefix)
+        backend = self.backend_factory.make_object_for_context(name, server_span)
+        return RateLimiter(backend, self.allowance, self.interval,
+                           key_prefix=self.key_prefix)
 
 
 class RateLimiter(object):
@@ -56,15 +61,15 @@ class RateLimiter(object):
 
     """
 
-    def __init__(self, cache, allowance, interval, key_prefix='rl:'):
+    def __init__(self, backend, allowance, interval, key_prefix='rl:'):
         if allowance < 1:
             raise ValueError('minimum allowance is 1')
         if interval < 1:
             raise ValueError('minimum interval is 1')
-        if not isinstance(cache, RateLimitCache):
-            raise TypeError('cache must be an instance of RateLimitCache')
+        if not isinstance(backend, RateLimitCache):
+            raise TypeError('backend must be an instance of RateLimitCache')
 
-        self.cache = cache
+        self.backend = backend
         self.key_prefix = key_prefix
         self.allowance = allowance
         self.interval = interval
@@ -81,8 +86,26 @@ class RateLimiter(object):
 
         """
         key = self.key_prefix + key
-        if not self.cache.consume(key, amount, self.allowance, self.interval):
+        if not self.backend.consume(key, amount, self.allowance, self.interval):
             raise RateLimitExceededException('Rate limit exceeded.')
+
+
+class RedisRateLimitBackendContextFactory(ContextFactory):
+    def __init__(self, redis_pool):
+        self.redis_pool = redis_pool
+
+    def make_object_for_context(self, name, server_span):
+        redis = MonitoredRedisConnection(name, server_span, self.redis_pool)
+        return RedisRateLimitCache(redis)
+
+
+class MemcacheRateLimitBackendContextFactory(ContextFactory):
+    def __init__(self, memcache_pool):
+        self.memcache_pool = memcache_pool
+
+    def make_object_for_context(self, name, server_span):
+        memcache = MonitoredMemcacheConnection(name, server_span, self.memcache_pool)
+        return MemcacheRateLimitCache(memcache)
 
 
 class RateLimitCache(object):
@@ -97,6 +120,9 @@ class RateLimitCache(object):
     def consume(self, key, amount, max, bucket_size):
         raise NotImplementedError
 
+    def make_object_for_context(name, server_span):
+        raise NotImplementedError
+
 
 class RedisRateLimitCache(RateLimitCache):
     """A Redis-backed cache for rate limiting.
@@ -106,8 +132,8 @@ class RedisRateLimitCache(RateLimitCache):
 
     """
 
-    def __init__(self, redis_client):
-        self.redis_client = redis_client
+    def __init__(self, redis):
+        self.redis = redis
 
     def consume(self, key, amount, allowance, interval):
         """Consume the given `amount` from the allowance for the given `key`.
@@ -124,7 +150,7 @@ class RedisRateLimitCache(RateLimitCache):
         current_bucket = _get_current_bucket(interval)
         key = key + current_bucket
         ttl = interval * 2
-        with self.redis_client.pipeline('ratelimit') as pipe:
+        with self.redis.pipeline('ratelimit') as pipe:
             pipe.incr(key, amount)
             pipe.expire(key, time=ttl)
             responses = pipe.execute()
@@ -135,13 +161,13 @@ class RedisRateLimitCache(RateLimitCache):
 class MemcacheRateLimitCache(RateLimitCache):
     """A Memcache-backed cache for rate limiting.
 
-    :param memcache_client: An instance of
+    :param memcache: An instance of
         :py:class:`baseplate.context.memcache.MonitoredMemcacheConnection`.
 
     """
 
-    def __init__(self, memcache_client):
-        self.memcache_client = memcache_client
+    def __init__(self, memcache):
+        self.memcache = memcache
 
     def consume(self, key, amount, allowance, interval):
         """Consume the given `amount` from the allowance for the given `key`.
@@ -158,8 +184,8 @@ class MemcacheRateLimitCache(RateLimitCache):
         current_bucket = _get_current_bucket(interval)
         key = key + current_bucket
         ttl = interval * 2
-        self.memcache_client.add(key, 0, expire=ttl)
-        count = self.memcache_client.incr(key, 1)
+        self.memcache.add(key, 0, expire=ttl)
+        count = self.memcache.incr(key, 1)
         return count <= allowance
 
 
