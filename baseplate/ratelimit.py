@@ -194,7 +194,7 @@ class MemcacheRateLimitBackend(RateLimitBackend):
         key = key + current_bucket
         ttl = interval * 2
         self.memcache.add(key, 0, expire=ttl)
-        count = self.memcache.incr(key, 1)
+        count = self.memcache.incr(key, 1) or 0
         return count <= allowance
 
 
