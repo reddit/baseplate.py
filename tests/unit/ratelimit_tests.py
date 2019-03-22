@@ -6,13 +6,16 @@ from __future__ import unicode_literals
 import unittest
 
 from baseplate import ratelimit
+from baseplate.ratelimit.backends import RateLimitBackend
+from baseplate.ratelimit.backends.redis import RedisRateLimitBackend
+from baseplate.ratelimit.backends.memcache import MemcacheRateLimitBackend
 from pymemcache.client.base import PooledClient
 from redis import StrictRedis
 
 from .. import mock
 
 
-class MockRateLimitBackend(ratelimit.RateLimitBackend):
+class MockRateLimitBackend(RateLimitBackend):
     def __init__(self):
         self.counter = 0
 
@@ -40,7 +43,7 @@ class RedisRateLimitBackendTest(unittest.TestCase):
         redis = mock.create_autospec(StrictRedis)
         pipeline_context = redis.pipeline.return_value.__enter__.return_value
         pipeline_context.execute.return_value = [self.amount]
-        self.ratelimit_backend = ratelimit.RedisRateLimitBackend(redis)
+        self.ratelimit_backend = RedisRateLimitBackend(redis)
 
     def test_consume(self):
         self.assertTrue(self.ratelimit_backend.consume(
@@ -55,7 +58,7 @@ class MemcacheRateLimitBackendTest(unittest.TestCase):
         self.amount = 10
         memcache = mock.create_autospec(PooledClient)
         pipeline_context = memcache.incr.return_value = self.amount
-        self.ratelimit_backend = ratelimit.MemcacheRateLimitBackend(memcache)
+        self.ratelimit_backend = MemcacheRateLimitBackend(memcache)
 
     def test_consume(self):
         self.assertTrue(self.ratelimit_backend.consume(

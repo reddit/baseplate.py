@@ -32,17 +32,29 @@ Classes
 .. autoclass:: baseplate.ratelimit.RateLimitExceededException
   :members:
 
-.. autoclass:: baseplate.ratelimit.RateLimitBackend
+
+Backends
+--------
+
+.. autoclass:: baseplate.ratelimit.backends.RateLimitBackend
   :members:
 
-.. autoclass:: baseplate.ratelimit.MemcacheRateLimitBackendContextFactory
+
+Memcache
+^^^^^^^^
+
+.. autoclass:: baseplate.ratelimit.backends.memcache.MemcacheRateLimitBackendContextFactory
   :members:
 
-.. autoclass:: baseplate.ratelimit.MemcacheRateLimitBackend
+.. autoclass:: baseplate.ratelimit.backends.memcache.MemcacheRateLimitBackend
   :members:
 
-.. autoclass:: baseplate.ratelimit.RedisRateLimitBackendContextFactory
+
+Redis
+^^^^^
+
+.. autoclass:: baseplate.ratelimit.backends.redis.RedisRateLimitBackendContextFactory
   :members:
 
-.. autoclass:: baseplate.ratelimit.RedisRateLimitBackend
+.. autoclass:: baseplate.ratelimit.backends.redis.RedisRateLimitBackend
   :members:
