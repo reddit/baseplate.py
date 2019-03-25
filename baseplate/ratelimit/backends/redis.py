@@ -1,5 +1,9 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 from .base import RateLimitBackend
-from .base import _get_current_bucket
 from ...context import ContextFactory
 from ...context.redis import MonitoredRedisConnection
 
@@ -42,7 +46,7 @@ class RedisRateLimitBackend(RateLimitBackend):
         :param int interval: The interval to reset the allowance.
 
         """
-        current_bucket = _get_current_bucket(interval)
+        current_bucket = RateLimitBackend._get_current_bucket(interval)
         key = key + current_bucket
         ttl = interval * 2
         with self.redis.pipeline('ratelimit') as pipe:

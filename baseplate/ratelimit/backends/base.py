@@ -1,4 +1,7 @@
+from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
 
 import time
 
@@ -15,7 +18,7 @@ class RateLimitBackend(object):
     def consume(self, key, amount, max, bucket_size):
         raise NotImplementedError
 
-
-def _get_current_bucket(bucket_size):
-    current_timestamp_seconds = int(time.time())
-    return str(current_timestamp_seconds // bucket_size)
+    @staticmethod
+    def _get_current_bucket(bucket_size):
+        current_timestamp_seconds = int(time.time())
+        return str(current_timestamp_seconds // bucket_size)

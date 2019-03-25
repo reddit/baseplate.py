@@ -1,5 +1,9 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+from __future__ import unicode_literals
+
 from .base import RateLimitBackend
-from .base import _get_current_bucket
 from ...context import ContextFactory
 from ...context.memcache import MonitoredMemcacheConnection
 
@@ -43,9 +47,12 @@ class MemcacheRateLimitBackend(RateLimitBackend):
         :param int interval: The interval to reset the allowance.
 
         """
-        current_bucket = _get_current_bucket(interval)
+        current_bucket = RateLimitBackend._get_current_bucket(interval)
         key = key + current_bucket
         ttl = interval * 2
         self.memcache.add(key, 0, expire=ttl)
+        # `incr` will return None if we experience a delay after the prior
+        # `add` call that causes the ttl to expire. We default to `amount` in
+        # this case.
         count = self.memcache.incr(key, amount) or amount
         return count <= allowance
