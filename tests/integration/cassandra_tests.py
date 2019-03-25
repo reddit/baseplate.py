@@ -24,19 +24,6 @@ from .. import mock
 cassandra_endpoint = get_endpoint_or_skip_container("cassandra", 9042)
 
 
-def _wait_for_callbacks(span_observer):
-    # until it's fixed, paper over a race condition in span reporting to
-    # prevent intermittent test failures. see:
-    # https://github.com/reddit/baseplate/issues/100
-    for _ in range(10):
-        if span_observer.on_finish_called:
-            return
-        logging.info("sleeping to dodge race condition...")
-        time.sleep(0.01)
-    else:
-        logging.warning("gave up sleeping")
-
-
 class CassandraTests(unittest.TestCase):
     def setUp(self):
         cluster = Cluster([cassandra_endpoint.address.host], port=cassandra_endpoint.address.port)
@@ -58,7 +45,6 @@ class CassandraTests(unittest.TestCase):
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
-        _wait_for_callbacks(span_observer)
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
@@ -71,7 +57,6 @@ class CassandraTests(unittest.TestCase):
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
-        _wait_for_callbacks(span_observer)
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNotNone(span_observer.on_finish_exc_info)
@@ -83,7 +68,6 @@ class CassandraTests(unittest.TestCase):
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
-        _wait_for_callbacks(span_observer)
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
@@ -103,3 +87,71 @@ class CassandraTests(unittest.TestCase):
         with self.server_span:
             statement = self.context.cassandra.prepare("SELECT * FROM system.local;")
             self.context.cassandra.execute(statement)
+
+    def test_async_callback_fail(self):
+        # mock threading.Event so that Event.wait() returns immediately
+        event = mock.patch('baseplate.context.cassandra.Event')
+        event.start()
+        self.addCleanup(event.stop)
+
+        # mock the on_execute_complete callback to be slow
+        def on_execute_complete(result, span, event):
+            import time
+            time.sleep(0.005)
+            span.finish()
+            event.set()
+
+        on_execute_complete = mock.patch(
+            'baseplate.context.cassandra._on_execute_complete', side_effect=on_execute_complete)
+        on_execute_complete.start()
+        self.addCleanup(on_execute_complete.stop)
+
+        with self.server_span:
+            future = self.context.cassandra.execute_async("SELECT * FROM system.local;")
+            future.result()
+
+        server_span_observer = self.baseplate_observer.get_only_child()
+        span_observer = server_span_observer.get_only_child()
+        self.assertFalse(span_observer.on_finish_called)
+
+    def test_async_callback_pass(self):
+        # mock the on_execute_complete callback to be slow
+        def on_execute_complete(result, span, event):
+            import time
+            time.sleep(0.005)
+            span.finish()
+            event.set()
+
+        on_execute_complete = mock.patch(
+            'baseplate.context.cassandra._on_execute_complete', side_effect=on_execute_complete)
+        on_execute_complete.start()
+        self.addCleanup(on_execute_complete.stop)
+
+        with self.server_span:
+            future = self.context.cassandra.execute_async("SELECT * FROM system.local;")
+            future.result()
+
+        server_span_observer = self.baseplate_observer.get_only_child()
+        span_observer = server_span_observer.get_only_child()
+        self.assertTrue(span_observer.on_finish_called)
+
+    def test_async_callback_too_slow(self):
+        # mock the on_execute_complete callback to be slow
+        def on_execute_complete(result, span, event):
+            import time
+            time.sleep(0.02)
+            span.finish()
+            event.set()
+
+        on_execute_complete = mock.patch(
+            'baseplate.context.cassandra._on_execute_complete', side_effect=on_execute_complete)
+        on_execute_complete.start()
+        self.addCleanup(on_execute_complete.stop)
+
+        with self.server_span:
+            future = self.context.cassandra.execute_async("SELECT * FROM system.local;")
+            future.result()
+
+        server_span_observer = self.baseplate_observer.get_only_child()
+        span_observer = server_span_observer.get_only_child()
+        self.assertFalse(span_observer.on_finish_called)

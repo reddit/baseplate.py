@@ -3,6 +3,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import logging
+from threading import Event
+
 # pylint: disable=no-name-in-module
 from cassandra.cluster import Cluster, _NOT_SET
 # pylint: disable=no-name-in-module
@@ -11,6 +14,9 @@ from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
 from . import ContextFactory
 from .. import config
 from .._compat import string_types
+
+
+logger = logging.getLogger(__name__)
 
 
 def cluster_from_config(app_config, prefix="cassandra.", **kwargs):
@@ -92,15 +98,56 @@ class CQLMapperContextFactory(CassandraContextFactory):
         return cqlmapper.connection.Connection(session_adapter)
 
 
-def _on_execute_complete(_, span):
+class WaitForCallbackResponseFuture(object):
+    """Wrap the ResponseFuture to ensure callbacks have completed.
+
+    This fixes a race condition where the server span can complete before
+    the callback has closed out the child span.
+
+    """
+
+    def __init__(self, span, future, callback_fn, callback_args, errback_fn, errback_args):
+        self.callback_event = Event()
+
+        future.add_callback(callback_fn, callback_args, self.callback_event)
+        future.add_errback(errback_fn, errback_args, self.callback_event)
+
+        self.future = future
+
+    def result(self):
+        exc = None
+
+        try:
+            result = self.future.result()
+        except Exception as e:
+            exc = e
+
+        # wait for either _on_execute_complete or _on_execute_failed to run
+        wait_result = self.callback_event.wait(timeout=0.01)
+        if not wait_result:
+            logger.warning("Cassandra metrics callback took too long. Some metrics may be lost.")
+
+        if exc:
+            raise exc   # pylint: disable=E0702
+
+        return result
+
+
+def _on_execute_complete(result, span, event):
     # TODO: tag with anything from the result set?
     # TODO: tag with any returned warnings
-    span.finish()
+    try:
+        span.finish()
+    finally:
+        event.set()
 
 
-def _on_execute_failed(exc, span):
-    exc_info = (type(exc), exc, None)
-    span.finish(exc_info=exc_info)
+def _on_execute_failed(exc, span, event):
+    try:
+        exc_info = (type(exc), exc, None)
+        span.finish(exc_info=exc_info)
+    finally:
+        event.set()
 
 
 class CassandraSessionAdapter(object):
@@ -149,8 +196,14 @@ class CassandraSessionAdapter(object):
             parameters=parameters,
             timeout=timeout,
         )
-        future.add_callback(_on_execute_complete, span)
-        future.add_errback(_on_execute_failed, span)
+        future = WaitForCallbackResponseFuture(
+            span=span,
+            future=future,
+            callback_fn=_on_execute_complete,
+            callback_args=span,
+            errback_fn=_on_execute_failed,
+            errback_args=span,
+        )
         return future
 
     def prepare(self, query, cache=True):
