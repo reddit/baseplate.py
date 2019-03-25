@@ -9,9 +9,3 @@ __pycache__
 baseplate.egg-info
 build/
 dist/
-
-baseplate/thrift/__init__.py
-baseplate/thrift/BaseplateService.py
-baseplate/thrift/BaseplateService-remote
-baseplate/thrift/ttypes.py
-baseplate/thrift/constants.py

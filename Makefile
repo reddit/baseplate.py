@@ -11,17 +11,17 @@ thrift: $(THRIFT_BUILDSTAMPS)
 # we use a python namespace which causes a whole bunch of extra nested
 # directories that we want to get rid of
 $(THRIFT_BUILDDIR)/baseplate/thrift/baseplate.thrift_buildstamp: baseplate/thrift/baseplate.thrift
-	@echo SPECIAL $< $@
 	mkdir -p $(THRIFT_BUILDDIR)/$<
 	$(THRIFT) $(THRIFT_OPTS) -out $(THRIFT_BUILDDIR)/$< $<
 	cp -r $(THRIFT_BUILDDIR)/$</baseplate/thrift baseplate/
+	rm -f baseplate/thrift/BaseplateService-remote
 	touch $@
 
 $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/test.thrift
-	@echo SPECIAL $< $@
 	mkdir -p $(THRIFT_BUILDDIR)/$<
 	$(THRIFT) $(THRIFT_OPTS) -out $(THRIFT_BUILDDIR)/$< $<
 	cp -r $(THRIFT_BUILDDIR)/$</test tests/integration/test_thrift
+	rm -f tests/integration/test_thrift/TestService-remote
 	touch $@
 
 docs:
@@ -30,7 +30,7 @@ docs:
 spelling:
 	sphinx-build -M spelling docs/ build/
 
-tests: thrift
+tests:
 	nosetests -v
 	nosetests3 -v
 	sphinx-build -M doctest docs/ build/

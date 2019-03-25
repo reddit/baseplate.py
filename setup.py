@@ -1,8 +1,5 @@
 import sys
 
-import setuptools.command.build_py
-import subprocess
-from distutils.spawn import find_executable
 from setuptools import setup, find_packages
 
 
@@ -43,29 +40,6 @@ extras_require = {
         "alabaster",
     ],
 }
-
-
-class BuildPyCommand(setuptools.command.build_py.build_py):
-    """Custom build command for packaging."""
-
-    def _make_thrift(self):
-        """Generate Baseplate Thrift definitions.
-        """
-        # Verify build dependencies are installed.
-        if not find_executable('make'):
-            print("'make' not found.")
-            exit(1)
-
-        if not find_executable('thrift'):
-            print("Thrift compiler not found.")
-            exit(1)
-
-        make_cmd = ['/usr/bin/make', 'thrift']
-        subprocess.check_call(make_cmd)
-
-    def run(self):
-        self._make_thrift()
-        setuptools.command.build_py.build_py.run(self)
 
 
 setup(
@@ -121,7 +95,4 @@ setup(
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Application Frameworks",
     ],
-    cmdclass={
-        'build_py': BuildPyCommand,
-    },
 )
