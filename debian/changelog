@@ -1,3 +1,59 @@
+baseplate (0.29.0) trusty; urgency=medium
+
+  * >>> move from fbthrift to apache thrift <<<
+  * don't report expected thrift exceptions as errors in counters
+  * add concurrency monitoring gauges sent periodically
+  * allow thrift header parsing to parse some but not all headers
+  * make max_concurrency setting required for servers
+  * add type warning to constant_time_compare shim
+
+baseplate (0.28.7) trusty; urgency=medium
+
+  * make decision to trust trace headers over HTTP pluggable
+  * add a useful CSRF policy for Pyramid
+
+ -- Neil Williams <neil@reddit.com>  Fri, 22 Feb 2019 10:06:36 -0800
+
+baseplate (0.28.6) trusty; urgency=medium
+
+  * backport secrets fetcher speedup
+  * backport better thrift exception logging
+  * backport experiments startup timeout
+
+ -- Neil Williams <neil@reddit.com>  Tue, 08 Jan 2019 16:10:50 -0800
+
+baseplate (0.28.5) trusty; urgency=medium
+
+  * backport thrift pool efficiency improvement
+
+ -- Neil Williams <neil@reddit.com>  Mon, 10 Dec 2018 15:03:35 -0800
+
+baseplate (0.28.4) trusty; urgency=medium
+
+  * backport compatibility fixes to secret fetcher for vault 0.9+
+  * backport live data daemon startup race condition fix
+  * backport event publisher retry backoff patch
+
+ -- Neil Williams <neil@reddit.com>  Tue, 04 Dec 2018 15:55:34 -0800
+
+baseplate (0.28.3) trusty; urgency=medium
+
+  * use SO_REUSEPORT when we bind our socket
+
+ -- Neil Williams <neil@reddit.com>  Tue, 04 Dec 2018 12:21:23 -0800
+
+baseplate (0.28.2) trusty; urgency=medium
+
+  * Fix bug where Sampled header was required for traces
+
+ -- Neil Williams <neil@reddit.com>  Mon, 03 Dec 2018 15:00:10 -0800
+
+baseplate (0.28.1) trusty; urgency=medium
+
+  * Remove local span on variant call
+
+ -- Mike Doherty <mike@reddit.com>  Tue, 06 Nov 2018 19:58:58 +0000
+
 baseplate (0.28.0) trusty; urgency=medium
 
   * 187 B3 headers support.
