@@ -3,7 +3,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from time import sleep
 import unittest
+from uuid import uuid4
 
 from baseplate.core import Baseplate
 from baseplate.ratelimit import RateLimiterContextFactory, RateLimitExceededException
@@ -26,55 +28,50 @@ skip_if_server_unavailable("redis", 6379)
 skip_if_server_unavailable("memcached", 11211)
 
 
-# TODO: Mock _get_current_bucket to avoid flakey tests
-# TODO: Test bucket resets
+class RateLimiterBackendTests(object):
+    def setUp(self):
+        self.allowance = 10
+        self.interval = 1
+        ratelimiter_factory = RateLimiterContextFactory(
+            self.backend_factory, self.allowance, self.interval)
+
+        self.baseplate_observer = TestBaseplateObserver()
+
+        baseplate = Baseplate()
+        baseplate.register(self.baseplate_observer)
+        baseplate.add_to_context("ratelimiter", ratelimiter_factory)
+
+        self.context = mock.Mock()
+        self.server_span = baseplate.make_server_span(self.context, "test")
+
+    def test_ratelimiter_consume(self):
+        user_id = str(uuid4())
+        with self.server_span:
+            self.context.ratelimiter.consume(user_id, amount=self.allowance)
+
+    def test_ratelimiter_exceeded(self):
+        user_id = str(uuid4())
+        with self.server_span:
+            with self.assertRaises(RateLimitExceededException):
+                self.context.ratelimiter.consume(user_id, amount=self.allowance + 1)
+
+    def test_ratelimiter_resets(self):
+        user_id = str(uuid4())
+        with self.server_span:
+            self.context.ratelimiter.consume(user_id, amount=self.allowance)
+            sleep(self.interval)
+            self.context.ratelimiter.consume(user_id, amount=self.allowance)
 
 
-class RedisRateLimitBackendTests(unittest.TestCase):
+class RedisRateLimitBackendTests(RateLimiterBackendTests, unittest.TestCase):
     def setUp(self):
         pool = ConnectionPool(host="localhost")
-        backend_factory = RedisRateLimitBackendContextFactory(pool)
-        self.allowance = 10
-        interval = 60
-        ratelimiter_factory = RateLimiterContextFactory(
-            backend_factory, allowance, interval)
-
-        self.baseplate_observer = TestBaseplateObserver()
-
-        baseplate = Baseplate()
-        baseplate.register(self.baseplate_observer)
-        baseplate.add_to_context("ratelimiter", ratelimiter_factory)
-
-        self.context = mock.Mock()
-        self.server_span = baseplate.make_server_span(self.context, "test")
-
-    def test_redis_ratelimiter(self):
-        with self.server_span:
-            self.context.ratelimiter.consume('user_foo', amount=self.allowance)
-            with self.assertRaises(RateLimitExceededException):
-                self.context.ratelimiter.consume('user_foo')
+        self.backend_factory = RedisRateLimitBackendContextFactory(pool)
+        super(RedisRateLimitBackendTests, self).setUp()
 
 
-class MemcacheRateLimitBackendTests(unittest.TestCase):
+class MemcacheRateLimitBackendTests(RateLimiterBackendTests, unittest.TestCase):
     def setUp(self):
         pool = PooledClient(server=("localhost", 11211))
-        backend_factory = MemcacheRateLimitBackendContextFactory(pool)
-        self.allowance = 10
-        interval = 60
-        ratelimiter_factory = RateLimiterContextFactory(
-            backend_factory, allowance, interval)
-
-        self.baseplate_observer = TestBaseplateObserver()
-
-        baseplate = Baseplate()
-        baseplate.register(self.baseplate_observer)
-        baseplate.add_to_context("ratelimiter", ratelimiter_factory)
-
-        self.context = mock.Mock()
-        self.server_span = baseplate.make_server_span(self.context, "test")
-
-    def test_memcache_ratelimiter(self):
-        with self.server_span:
-            self.context.ratelimiter.consume('user_foo', amount=self.allowance)
-            with self.assertRaises(RateLimitExceededException):
-                self.context.ratelimiter.consume('user_foo')
+        self.backend_factory = MemcacheRateLimitBackendContextFactory(pool)
+        super(MemcacheRateLimitBackendTests, self).setUp()
