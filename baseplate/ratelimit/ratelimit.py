@@ -28,6 +28,13 @@ class RateLimiterContextFactory(ContextFactory):
     """
 
     def __init__(self, backend_factory, allowance, interval, key_prefix=''):
+        if allowance < 1:
+            raise ValueError('minimum allowance is 1')
+        if interval < 1:
+            raise ValueError('minimum interval is 1')
+        if not isinstance(backend_factory, ContextFactory):
+            raise TypeError('backend_factory must be an instance of ContextFactory')
+
         self.backend_factory = backend_factory
         self.allowance = allowance
         self.interval = interval
