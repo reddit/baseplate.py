@@ -27,6 +27,7 @@ import sys
 from thrift.Thrift import TProcessorEventHandler
 
 from ...core import TraceInfo
+from baseplate.integration import _LazyAttributesMixin
 
 
 TRACE_HEADER_NAMES = {
@@ -38,7 +39,7 @@ TRACE_HEADER_NAMES = {
 }
 
 
-class RequestContext(object):
+class RequestContext(_LazyAttributesMixin):
     pass
 
 

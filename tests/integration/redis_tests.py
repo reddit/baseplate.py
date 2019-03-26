@@ -20,6 +20,7 @@ from .. import mock
 
 from baseplate.context.redis import MessageQueue
 from baseplate.message_queue import TimedOutError
+from baseplate.integration.thrift import RequestContext
 
 
 skip_if_server_unavailable("redis", 6379)
@@ -36,7 +37,7 @@ class RedisIntegrationTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("redis", factory)
 
-        self.context = mock.Mock()
+        self.context = RequestContext()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple_command(self):

@@ -51,8 +51,9 @@ class ContextObserver(BaseplateObserver):
         self.context_factory = context_factory
 
     def on_server_span_created(self, context, server_span):
-        context_attr = self.context_factory.make_object_for_context(self.name, server_span)
-        setattr(context, self.name, context_attr)
+        def context_attr(_self):
+            return self.context_factory.make_object_for_context(self.name, server_span)
+        context.add_lazy_attribute(self.name, context_attr)
         server_span.register(ContextSpanObserver(self.name, self.context_factory))
 
 

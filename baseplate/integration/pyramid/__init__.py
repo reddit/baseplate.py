@@ -37,7 +37,9 @@ import sys
 
 import pyramid.events
 import pyramid.tweens
+from pyramid.request import Request
 
+from baseplate.integration import _LazyAttributesMixin
 from ...core import TraceInfo
 from ...server import make_app
 from ..._utils import warn_deprecated
@@ -65,6 +67,13 @@ def _make_baseplate_tween(handler, registry):
                 request.trace.finish()
         return response
     return baseplate_tween
+
+
+class BaseplatePyramidRequest(Request, _LazyAttributesMixin):
+
+    def __init__(self, *args, **kwargs):
+        super(BaseplatePyramidRequest, self).__init__(*args, **kwargs)
+        _LazyAttributesMixin.__init__(self)
 
 
 class BaseplateEvent(object):
@@ -252,6 +261,11 @@ class BaseplateConfigurator(object):
         def start_server_span(*args, **kwargs):
             return self._start_server_span(*args, **kwargs)
         config.add_request_method(start_server_span, "start_server_span")
+
+        # Register our own request class. This allows us to define interfaces
+        # on the request objects that will be consistent across thrift and
+        # http services
+        config.set_request_factory(BaseplatePyramidRequest)
 
 
 def paste_make_app(_, **local_config):
