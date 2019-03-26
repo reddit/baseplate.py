@@ -56,7 +56,7 @@ class RedisRateLimitBackend(RateLimitBackend):
 
         """
         current_bucket = _get_current_bucket(interval)
-        key = prefix + key + current_bucket
+        key = self.prefix + key + current_bucket
         ttl = interval * 2
         with self.redis.pipeline('ratelimit') as pipe:
             pipe.incr(key, amount)
