@@ -36,6 +36,7 @@ from __future__ import unicode_literals
 
 import logging
 import os
+import sys
 
 from baseplate.retry import RetryPolicy
 
@@ -59,6 +60,29 @@ class WatchedFileNotAvailableError(Exception):
 class FileWatcher(object):
     """Watch a file and load its data when it changes.
 
+    You may pass in additional kwargs to the FileWatcher constructor and those
+    will be passed to the underlying call to `open` when the file is read.  This
+    is only supported in Python 3.  Passing in "open_options" in Python 2 will
+    raise an Exception.
+
+    Supported keys:
+
+    * ``buffering``: an optional integer used to set the buffering policy.
+    * ``encoding``: the name of the encoding used to decode or encode the file.
+    * ``errors``: an optional string that specifies how encoding and decoding
+        errors are to be handled.
+    * ``newline``: controls how universal newlines mode works (it only applies
+        to text mode).
+    * ``opener``: Only supported if your python version is >= 3.3. A custom
+        opener can be used by passing a callable as opener. The underlying file
+        descriptor for the file object is then obtained by calling opener with
+        (file, flags). opener must return an open file descriptor (passing
+        os.open as opener results in functionality similar to passing None).
+
+    The keys "file", "mode", and "closefd" are not supported.  Full details of
+    the supported and unsupported keys can be found on the [official Python
+    documentation](https://docs.python.org/3/library/functions.html#open).
+
     :param str path: Full path to a file to watch.
     :param callable parser: A callable that takes an open file object, parses
         or otherwise interprets the file, and returns whatever data is
@@ -67,11 +91,25 @@ class FileWatcher(object):
         for the watched file to become available (defaults to not blocking).
 
     """
-    def __init__(self, path, parser, timeout=None):
+    def __init__(self, path, parser, timeout=None, **open_options):
+        if sys.version_info.major < 3 and open_options:
+            raise TypeError(
+                "'buffering' is the only supported open_options keyword "
+                "argument for FileWatcher() in Python 2"
+            )
+
+        if "file" in open_options:
+            raise TypeError("'file' is an invalid keyword argument for FileWatcher()")
+        if "mode" in open_options:
+            raise TypeError("'mode' is an invalid keyword argument for FileWatcher()")
+        if "closefd" in open_options:
+            raise TypeError("'closefd' is an invalid keyword argument for FileWatcher()")
+
         self._path = path
         self._parser = parser
         self._mtime = 0
         self._data = _NOT_LOADED
+        self._open_options = open_options
 
         if timeout is not None:
             last_error = None
@@ -115,7 +153,7 @@ class FileWatcher(object):
         if self._mtime < current_mtime:
             logger.debug("Loading %s.", self._path)
             try:
-                with open(self._path, "r") as f:
+                with open(self._path, "r", **self._open_options) as f:
                     self._data = self._parser(f)
             except Exception as exc:
                 if self._data is _NOT_LOADED:
