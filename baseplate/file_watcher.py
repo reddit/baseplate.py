@@ -73,15 +73,17 @@ class FileWatcher(object):
         errors are to be handled.
     * ``newline``: controls how universal newlines mode works (it only applies
         to text mode).
-    * ``opener``: Only supported if your python version is >= 3.3. A custom
+    * ``opener``: only supported if your python version is >= 3.3. A custom
         opener can be used by passing a callable as opener. The underlying file
         descriptor for the file object is then obtained by calling opener with
         (file, flags). opener must return an open file descriptor (passing
         os.open as opener results in functionality similar to passing None).
 
-    The keys "file", "mode", and "closefd" are not supported.  Full details of
-    the supported and unsupported keys can be found on the [official Python
-    documentation](https://docs.python.org/3/library/functions.html#open).
+    The keys `file`, `mode`, and `closefd` are not supported.  Full details of
+    the supported and unsupported keys can be found on the `official Python documentation`_.
+
+    .. _official Python documentation:
+        https://docs.python.org/3/library/functions.html#open
 
     :param str path: Full path to a file to watch.
     :param callable parser: A callable that takes an open file object, parses
