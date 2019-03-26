@@ -3,7 +3,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from .base import RateLimitBackend
+from baseplate.ratelimit.backends import RateLimitBackend
+from baseplate.ratelimit.backends import _get_current_bucket
 from ...context import ContextFactory
 from ...context.memcache import MonitoredMemcacheConnection
 
@@ -13,15 +14,19 @@ class MemcacheRateLimitBackendContextFactory(ContextFactory):
 
     :param memcache_pool: An instance of
         :py:class:`~pymemcache.client.base.PooledClient`
+    :param str prefix: A prefix to add to keys during rate limiting.
+        This is useful if you will have two different rate limiters that will
+        receive the same keys.
 
     """
 
-    def __init__(self, memcache_pool):
+    def __init__(self, memcache_pool, prefix='rl:'):
         self.memcache_pool = memcache_pool
+        self.prefix = prefix
 
     def make_object_for_context(self, name, server_span):
         memcache = MonitoredMemcacheConnection(name, server_span, self.memcache_pool)
-        return MemcacheRateLimitBackend(memcache)
+        return MemcacheRateLimitBackend(memcache, prefix=self.prefix)
 
 
 class MemcacheRateLimitBackend(RateLimitBackend):
@@ -29,11 +34,15 @@ class MemcacheRateLimitBackend(RateLimitBackend):
 
     :param memcache: An instance of
         :py:class:`baseplate.context.memcache.MonitoredMemcacheConnection`.
+    :param str prefix: A prefix to add to keys during rate limiting.
+        This is useful if you will have two different rate limiters that will
+        receive the same keys.
 
     """
 
-    def __init__(self, memcache):
+    def __init__(self, memcache, prefix='rl:'):
         self.memcache = memcache
+        self.prefix = prefix
 
     def consume(self, key, amount, allowance, interval):
         """Consume the given `amount` from the allowance for the given `key`.
@@ -47,8 +56,8 @@ class MemcacheRateLimitBackend(RateLimitBackend):
         :param int interval: The interval to reset the allowance.
 
         """
-        current_bucket = RateLimitBackend._get_current_bucket(interval)
-        key = key + current_bucket
+        current_bucket = _get_current_bucket(interval)
+        key = self.prefix + key + current_bucket
         ttl = interval * 2
         self.memcache.add(key, 0, expire=ttl)
         # `incr` will return None if we experience a delay after the prior

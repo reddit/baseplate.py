@@ -4,6 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from .base import RateLimitBackend
+from .base import _get_current_bucket
 from ...context import ContextFactory
 from ...context.redis import MonitoredRedisConnection
 
@@ -12,15 +13,19 @@ class RedisRateLimitBackendContextFactory(ContextFactory):
     """RedisRateLimitBackend context factory
 
     :param redis_pool: An instance of :py:class:`redis.ConnectionPool`
+    :param str prefix: A prefix to add to keys during rate limiting.
+        This is useful if you will have two different rate limiters that will
+        receive the same keys.
 
     """
 
-    def __init__(self, redis_pool):
+    def __init__(self, redis_pool, prefix='rl:'):
         self.redis_pool = redis_pool
+        self.prefix = prefix
 
     def make_object_for_context(self, name, server_span):
         redis = MonitoredRedisConnection(name, server_span, self.redis_pool)
-        return RedisRateLimitBackend(redis)
+        return RedisRateLimitBackend(redis, prefix=self.prefix)
 
 
 class RedisRateLimitBackend(RateLimitBackend):
@@ -28,11 +33,15 @@ class RedisRateLimitBackend(RateLimitBackend):
 
     :param redis: An instance of
         :py:class:`baseplate.context.redis.MonitoredRedisConnection`.
+    :param str prefix: A prefix to add to keys during rate limiting.
+        This is useful if you will have two different rate limiters that will
+        receive the same keys.
 
     """
 
-    def __init__(self, redis):
+    def __init__(self, redis, prefix='rl:'):
         self.redis = redis
+        self.prefix = prefix
 
     def consume(self, key, amount, allowance, interval):
         """Consume the given `amount` from the allowance for the given `key`.
@@ -46,8 +55,8 @@ class RedisRateLimitBackend(RateLimitBackend):
         :param int interval: The interval to reset the allowance.
 
         """
-        current_bucket = RateLimitBackend._get_current_bucket(interval)
-        key = key + current_bucket
+        current_bucket = _get_current_bucket(interval)
+        key = prefix + key + current_bucket
         ttl = interval * 2
         with self.redis.pipeline('ratelimit') as pipe:
             pipe.incr(key, amount)
