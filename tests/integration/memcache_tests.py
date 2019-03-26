@@ -14,6 +14,7 @@ except ImportError:
 from baseplate.context.memcache import (MemcacheContextFactory,
     MonitoredMemcacheConnection, make_keys_str)
 from baseplate.core import Baseplate, LocalSpan, ServerSpan
+from baseplate.integration.thrift import RequestContext
 
 from . import TestBaseplateObserver, skip_if_server_unavailable
 from .. import mock
@@ -33,7 +34,7 @@ class MemcacheIntegrationTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("memcache", factory)
 
-        self.context = mock.Mock()
+        self.context = RequestContext()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple(self):

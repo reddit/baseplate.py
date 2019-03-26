@@ -16,6 +16,7 @@ except ImportError:
 
 from baseplate.context.cassandra import CassandraContextFactory
 from baseplate.core import Baseplate
+from baseplate.integration.thrift import RequestContext
 
 from . import TestBaseplateObserver, skip_if_server_unavailable
 from .. import mock
@@ -49,7 +50,7 @@ class CassandraTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("cassandra", factory)
 
-        self.context = mock.Mock()
+        self.context = RequestContext()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple_query(self):

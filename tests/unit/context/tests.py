@@ -11,6 +11,7 @@ from baseplate.core import (
     Span,
 )
 from baseplate.integration import WrappedRequestContext
+from baseplate.integration.thrift import RequestContext
 
 from ... import mock
 
@@ -18,7 +19,7 @@ from ... import mock
 class ContextObserverTests(unittest.TestCase):
     def test_add_to_context(self):
         mock_factory = mock.Mock(spec=ContextFactory)
-        mock_context = mock.Mock()
+        mock_context = RequestContext()
         mock_span = mock.Mock(spec=Span)
 
         observer = ContextObserver("some_attribute", mock_factory)
