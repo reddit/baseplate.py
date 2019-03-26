@@ -174,7 +174,7 @@ class TestSimpleExperiment(unittest.TestCase):
             long(924),
         )
 
-    @unittest.skipIf(os.environ.get("CI") != "true",
+    @unittest.skipIf("CI" not in os.environ,
                      "test takes too long to run for normal local iteration")
     def test_calculate_bucket(self):
         experiment = create_simple_experiment()
@@ -203,7 +203,7 @@ class TestSimpleExperiment(unittest.TestCase):
             self.assertAlmostEqual(percent_equal, 1.0, delta=.10,
                                    msg='bucket: %s' % bucket)
 
-    @unittest.skipIf(os.environ.get("CI") != "true",
+    @unittest.skipIf("CI" not in os.environ,
                      "test takes too long to run for normal local iteration")
     def test_calculate_bucket_with_seed(self):
         seeded_cfg = {

@@ -17,11 +17,11 @@ except ImportError:
 from baseplate.context.cassandra import CassandraContextFactory
 from baseplate.core import Baseplate
 
-from . import TestBaseplateObserver, skip_if_server_unavailable
+from . import TestBaseplateObserver, get_endpoint_or_skip_container
 from .. import mock
 
 
-skip_if_server_unavailable("cassandra", 9042)
+cassandra_endpoint = get_endpoint_or_skip_container("cassandra", 9042)
 
 
 def _wait_for_callbacks(span_observer):
@@ -39,7 +39,7 @@ def _wait_for_callbacks(span_observer):
 
 class CassandraTests(unittest.TestCase):
     def setUp(self):
-        cluster = Cluster(["localhost"])
+        cluster = Cluster([cassandra_endpoint.address.host], port=cassandra_endpoint.address.port)
         session = cluster.connect("system")
         factory = CassandraContextFactory(session)
 

@@ -17,5 +17,5 @@ including:
 
 Read the `full docs <https://baseplate.readthedocs.io/en/stable/>`__.
 
-.. |Build Status| image:: https://travis-ci.org/reddit/baseplate.svg?branch=master
-   :target: https://travis-ci.org/reddit/baseplate
+.. |Build Status| image:: https://cloud.drone.io/api/badges/reddit/baseplate.py/status.svg
+   :target: https://cloud.drone.io/reddit/baseplate.py

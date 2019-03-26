@@ -1,46 +1,4 @@
-import sys
-
 from setuptools import setup, find_packages
-
-
-PY3 = (sys.version_info.major == 3)
-
-install_requires = [
-    "requests",
-    "posix_ipc",
-    "pyjwt",
-]
-
-tests_require = [
-    "nose",
-    "coverage",
-    "webtest",
-]
-
-if not PY3:
-    tests_require.append("mock")
-    install_requires.append("enum34")
-
-extras_require = {
-    "gevent": [
-        "gevent",
-    ],
-
-    "thrift": [
-        "thrift",
-    ],
-
-    "pyramid": [
-        "pyramid",
-    ],
-
-    "docs": [
-        "sphinx",
-        "sphinxcontrib-spelling",
-        "alabaster",
-    ],
-}
-
 
 setup(
     name="baseplate",
@@ -54,11 +12,12 @@ setup(
 
     packages=find_packages(exclude=["tests", "tests.*"]),
 
-    install_requires=install_requires,
-    extras_require=extras_require,
-
-    test_suite="tests",
-    tests_require=tests_require,
+    install_requires=[
+        "enum34; python_version <= '3.4'",
+        "posix_ipc",
+        "pyjwt",
+        "requests",
+    ],
 
     scripts=[
         "bin/baseplate-serve",
@@ -92,6 +51,8 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Application Frameworks",
     ],

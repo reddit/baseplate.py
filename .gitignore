@@ -3,8 +3,7 @@
 __pycache__
 
 .coverage
-
-.vagrant
+.tox
 
 baseplate.egg-info
 build/

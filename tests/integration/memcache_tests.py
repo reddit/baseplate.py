@@ -15,16 +15,16 @@ from baseplate.context.memcache import (MemcacheContextFactory,
     MonitoredMemcacheConnection, make_keys_str)
 from baseplate.core import Baseplate, LocalSpan, ServerSpan
 
-from . import TestBaseplateObserver, skip_if_server_unavailable
+from . import TestBaseplateObserver, get_endpoint_or_skip_container
 from .. import mock
 
 
-skip_if_server_unavailable("memcached", 11211)
+memcached_endpoint = get_endpoint_or_skip_container("memcached", 11211)
 
 
 class MemcacheIntegrationTests(unittest.TestCase):
     def setUp(self):
-        pool = PooledClient(server=("localhost", 11211))
+        pool = PooledClient(server=memcached_endpoint.address)
         factory = MemcacheContextFactory(pool)
 
         self.baseplate_observer = TestBaseplateObserver()
@@ -62,7 +62,7 @@ class MemcacheIntegrationTests(unittest.TestCase):
 
 class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
     def setUp(self):
-        self.mocked_pool = mock.Mock(server=("localhost", 11211))
+        self.mocked_pool = mock.Mock(server=memcached_endpoint.address)
         self.context_name = "memcache"
         self.server_span = mock.MagicMock(spec_set=ServerSpan)
         self.local_span = mock.MagicMock(spec_set=LocalSpan)

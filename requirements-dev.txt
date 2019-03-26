@@ -1,0 +1,8 @@
+# this is a comprehensive listing of all requirements useful for development
+-r requirements-docs.txt
+-r requirements-lint.txt
+-r requirements-test.txt
+filelock==3.0.10
+toml==0.10.0
+tox==3.7.0
+virtualenv==16.2.0

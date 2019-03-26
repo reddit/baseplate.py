@@ -18,10 +18,11 @@ from baseplate.live_data.writer import (
     write_file_to_zookeeper,
 )
 
-from .. import skip_if_server_unavailable
+from .. import get_endpoint_or_skip_container
 from ... import mock
 
-skip_if_server_unavailable("zookeeper", 2181)
+
+zookeeper_endpoint = get_endpoint_or_skip_container("zookeeper", 2181)
 
 
 TEST_NODE_PATH = "/writer-test"
@@ -29,7 +30,7 @@ TEST_NODE_PATH = "/writer-test"
 
 class LiveDataWriterTests(unittest.TestCase):
     def setUp(self):
-        self.zookeeper = KazooClient(hosts="localhost:2181")
+        self.zookeeper = KazooClient(hosts="%s:%d" % zookeeper_endpoint.address)
         self.zookeeper.start()
 
         try:

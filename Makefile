@@ -27,13 +27,8 @@ $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/t
 docs:
 	sphinx-build -M html docs/ build/
 
-spelling:
-	sphinx-build -M spelling docs/ build/
-
-tests:
-	nosetests -v
-	nosetests3 -v
-	sphinx-build -M doctest docs/ build/
+test:
+	tox
 
 lint:
 	flake8 baseplate/

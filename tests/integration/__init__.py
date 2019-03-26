@@ -1,25 +1,35 @@
+import os
 import socket
 import unittest
 
+from baseplate.config import Endpoint
 from baseplate.core import BaseplateObserver, SpanObserver
 
 
-def skip_if_server_unavailable(name, port):
-    """Raise SkipTest if the given server is not available.
+def get_endpoint_or_skip_container(name, default_port):
+    """Find a test server of the given type or raise SkipTest.
 
     This is useful for running tests in environments where we can't launch
     servers.
 
+    If an environment variable like BASEPLATE_MEMCACHED_ADDR is present, that will
+    override the default of localhost:{default_port}.
+
     """
 
+    address = os.environ.get("BASEPLATE_%s_ADDR" % name.upper(), "localhost:%d" % default_port)
+    endpoint = Endpoint(address)
+
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
         sock.settimeout(.1)
-        sock.connect(("localhost", port))
+        sock.connect(endpoint.address)
     except socket.error:
-        raise unittest.SkipTest("local %s does not appear available" % name)
+        raise unittest.SkipTest("could not find %s server for integration tests" % name)
     else:
         sock.close()
+
+    return endpoint
 
 
 class TestSpanObserver(SpanObserver):

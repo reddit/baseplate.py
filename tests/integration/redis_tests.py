@@ -15,19 +15,20 @@ except ImportError:
 from baseplate.context.redis import RedisContextFactory
 from baseplate.core import Baseplate
 
-from . import TestBaseplateObserver, skip_if_server_unavailable
+from . import TestBaseplateObserver, get_endpoint_or_skip_container
 from .. import mock
 
 from baseplate.context.redis import MessageQueue
 from baseplate.message_queue import TimedOutError
 
 
-skip_if_server_unavailable("redis", 6379)
+redis_endpoint = get_endpoint_or_skip_container("redis", 6379)
 
 
 class RedisIntegrationTests(unittest.TestCase):
     def setUp(self):
-        pool = redis.ConnectionPool(host="localhost")
+        pool = redis.ConnectionPool(host=redis_endpoint.address.host,
+                                    port=redis_endpoint.address.port)
         factory = RedisContextFactory(pool)
 
         self.baseplate_observer = TestBaseplateObserver()
@@ -79,7 +80,8 @@ class RedisMessageQueueTests(unittest.TestCase):
     qname = "redisTestQueue"
 
     def setUp(self):
-        self.pool = redis.ConnectionPool(host="localhost")
+        self.pool = redis.ConnectionPool(host=redis_endpoint.address.host,
+                                         port=redis_endpoint.address.port)
 
     def test_put_get(self):
         message_queue = MessageQueue(self.qname, self.pool)

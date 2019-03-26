@@ -13,17 +13,17 @@ except ImportError:
 from baseplate.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.secrets import SecretsStore
 
-from .. import skip_if_server_unavailable
+from .. import get_endpoint_or_skip_container
 from ... import mock
 
-skip_if_server_unavailable("zookeeper", 2181)
+zookeeper_endpoint = get_endpoint_or_skip_container("zookeeper", 2181)
 
 
 class ZooKeeperTests(unittest.TestCase):
     def test_create_client_no_secrets(self):
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(secrets, {
-            "zookeeper.hosts": "localhost:2181",
+            "zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address,
         })
 
         client.start()
@@ -38,7 +38,7 @@ class ZooKeeperTests(unittest.TestCase):
         secrets.get_simple.return_value = b"myzkuser:hunter2"
 
         client = zookeeper_client_from_config(secrets, {
-            "zookeeper.hosts": "localhost:2181",
+            "zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address,
             "zookeeper.credentials": "secret/zk-user",
         })
 

@@ -1,0 +1,59 @@
+# these are the requirements to run the full test suite.
+#
+# this is used inside CI and tox, so we don't need anything useful outside the
+# direct test environment like tox itself.
+amqp==2.3.2
+asn1crypto==0.24.0
+atomicwrites==1.3.0
+attrs==18.2.0
+beautifulsoup4==4.6.3
+cassandra-driver==3.17.0
+certifi==2019.3.9
+cffi==1.11.5
+chardet==3.0.4
+coverage==4.5.2
+cqlmapper==0.1.0
+cryptography==2.4.2
+enum34==1.1.6; python_version <= '2.7'
+funcsigs==1.0.2; python_version <= '2.7'
+futures==3.2.0; python_version <= '2.7'
+gevent==1.4.0
+greenlet==0.4.15
+hupper==1.0
+hvac==0.2.17
+idna==2.8
+ipaddress==1.0.22; python_version <= '2.7'
+kazoo==2.5.0
+kombu==4.2.0
+mock==2.0.0; python_version <= '2.7'
+more-itertools==5.0.0
+nose==1.3.7
+PasteDeploy==1.5.2
+pathlib2==2.3.3; python_version < '3.6'
+pbr==5.1.2; python_version <= '2.7'
+plaster==1.0
+plaster-pastedeploy==0.4.2
+pluggy==0.8.0
+posix-ipc==1.0.4
+py==1.7.0
+pycparser==2.19
+PyJWT==1.6.3
+pymemcache==1.3.2
+pyramid==1.9.1
+raven==6.10.0
+redis==2.10.6
+repoze.lru==0.7
+requests==2.21.0
+scandir==1.9.0; python_version < '3.5'
+six==1.12.0
+SQLAlchemy==1.3.0
+thrift==0.12.1
+translationstring==1.3
+urllib3==1.24.1
+venusian==1.1.0
+vine==1.1.4
+waitress==1.1.0
+WebOb==1.8.4
+WebTest==2.0.32
+zope.deprecation==4.4.0
+zope.interface==4.4.3

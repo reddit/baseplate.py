@@ -14,18 +14,18 @@ from baseplate.context.hvac import hvac_factory_from_config
 from baseplate.secrets import SecretsStore
 from baseplate.core import Baseplate
 
-from . import TestBaseplateObserver, skip_if_server_unavailable
+from . import TestBaseplateObserver, get_endpoint_or_skip_container
 from .. import mock
 
 
-skip_if_server_unavailable("vault", 8200)
+vault_endpoint = get_endpoint_or_skip_container("vault", 8200)
 
 
 class HvacTests(unittest.TestCase):
     def setUp(self):
         app_config = {}
         secrets_store = mock.Mock(spec=SecretsStore)
-        secrets_store.get_vault_url.return_value = "http://localhost:8200/"
+        secrets_store.get_vault_url.return_value = "http://%s:%d/" % vault_endpoint.address
         secrets_store.get_vault_token.return_value = "b4c6f298-3f80-11e7-8b88-5254001e7ad3"
 
         factory = hvac_factory_from_config(app_config, secrets_store)
