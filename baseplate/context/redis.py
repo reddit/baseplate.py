@@ -98,6 +98,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         super(MonitoredRedisConnection, self).__init__(
             connection_pool=connection_pool)
 
+    # pylint: disable=arguments-differ
     def execute_command(self, command, *args, **kwargs):
         trace_name = "{}.{}".format(self.context_name, command)
 

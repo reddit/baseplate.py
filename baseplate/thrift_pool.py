@@ -220,7 +220,7 @@ class ThriftConnectionPool(object):
             # (expected) errors which should be safe for the connection.
             # don't close the transport here!
             raise
-        except:
+        except:  # noqa: E722
             # anything else coming out of thrift usually means parsing failed
             # or something nastier. we'll just play it safe and close the
             # connection.

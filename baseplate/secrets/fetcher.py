@@ -378,5 +378,6 @@ def main():
             time_to_sleep = time_til_expiration - VAULT_TOKEN_PREFETCH_TIME
             time.sleep(max(int(time_to_sleep.total_seconds()), 1))
 
+
 if __name__ == "__main__":
     main()

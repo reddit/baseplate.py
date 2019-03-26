@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-#from __future__ import unicode_literals type() is finnicky about the class name
+# from __future__ import unicode_literals type() is finnicky about the class name
 
 import contextlib
 import inspect
@@ -63,7 +63,8 @@ def _enumerate_service_methods(client):
     # python3 drops the concept of unbound methods, so they're just plain
     # functions and we have to account for that here. see:
     # https://stackoverflow.com/questions/17019949/why-is-there-a-difference-between-inspect-ismethod-and-inspect-isfunction-from-p  # noqa: E501
-    predicate = lambda x: inspect.isfunction(x) or inspect.ismethod(x)
+    def predicate(x):
+        return inspect.isfunction(x) or inspect.ismethod(x)
 
     for base_cls in inspect.getmro(client):
         if base_cls.__name__ == "Iface":
@@ -141,7 +142,7 @@ def _build_thrift_proxy_method(name):
                 # this is an expected exception, as defined in the IDL
                 span.finish()
                 raise
-            except:
+            except:  # noqa: E722
                 # something unexpected happened
                 span.finish(exc_info=sys.exc_info())
                 raise

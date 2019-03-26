@@ -109,6 +109,7 @@ class InstrumentedHvacClient(hvac.Client):
             span.set_tag("http.method", method.upper())
             span.set_tag("http.url", url)
 
+            # pylint: disable=no-member
             response = super(InstrumentedHvacClient, self)._Client__request(
                 method=method, url=url, **kwargs)
 

@@ -1,5 +1,12 @@
 import logging
 
+from datetime import timedelta
+
+from zope.interface import implementer
+
+from ...crypto import make_signature, SignatureError, validate_signature
+
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -11,12 +18,6 @@ except ImportError:
         "of pyramid >= 1.9"
     )
     raise
-
-from datetime import timedelta
-
-from zope.interface import implementer
-
-from ...crypto import make_signature, SignatureError, validate_signature
 
 
 def _make_csrf_token_payload(version, account_id):

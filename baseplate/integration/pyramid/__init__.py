@@ -55,7 +55,7 @@ def _make_baseplate_tween(handler, registry):
     def baseplate_tween(request):
         try:
             response = handler(request)
-        except:
+        except:  # noqa: E722
             if hasattr(request, "trace"):
                 request.trace.finish(exc_info=sys.exc_info())
             raise
@@ -136,7 +136,6 @@ class StaticTrustHandler(HeaderTrustHandler):
         return self.trust_headers
 
 
-# pylint: disable=abstract-class-not-used
 class BaseplateConfigurator(object):
     """Config extension to integrate Baseplate into Pyramid.
 

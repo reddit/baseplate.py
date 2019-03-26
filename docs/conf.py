@@ -1,4 +1,4 @@
- # sphinx docs config
+# sphinx docs config
 #
 # This file is execfile()d with the current directory set to its
 # containing dir.

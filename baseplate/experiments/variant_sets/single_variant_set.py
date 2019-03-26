@@ -28,8 +28,7 @@ class SingleVariantSet(VariantSet):
         self._validate_variants()
 
     def __contains__(self, item):
-        if (self.variants[0].get('name') == item
-                or self.variants[1].get('name') == item):
+        if self.variants[0].get('name') == item or self.variants[1].get('name') == item:
             return True
 
         return False
@@ -62,8 +61,7 @@ class SingleVariantSet(VariantSet):
 
         if bucket < int(self.variants[0]["size"] * self.num_buckets):
             return self.variants[0]["name"]
-        elif bucket >= (self.num_buckets
-                - int(self.variants[1]["size"] * self.num_buckets)):
+        elif bucket >= self.num_buckets - int(self.variants[1]["size"] * self.num_buckets):
             return self.variants[1]["name"]
 
         return None

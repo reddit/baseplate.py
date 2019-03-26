@@ -68,7 +68,7 @@ else:
         expected_len = len(expected)
         result = actual_len ^ expected_len
         if expected_len > 0:
-            for i in xrange(actual_len):
+            for i in xrange(actual_len):  # noqa: F821 pylint: disable=undefined-variable
                 result |= ord(actual[i]) ^ ord(expected[i % expected_len])
         return result == 0
 

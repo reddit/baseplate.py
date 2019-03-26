@@ -186,7 +186,7 @@ class TraceInfo(_TraceInfo):
             if not values:
                 continue
             elif not all(value == values[0] for value in values):
-                raise ValueError("Conflicting values found for %s header(s)".format(header_names))
+                raise ValueError("Conflicting values found for {} header(s)".format(header_names))
             else:
                 # All the values are the same
                 extracted_values[name] = values[0]

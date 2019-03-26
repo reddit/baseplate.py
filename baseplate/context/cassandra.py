@@ -3,7 +3,9 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+# pylint: disable=no-name-in-module
 from cassandra.cluster import Cluster, _NOT_SET
+# pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
 
 from . import ContextFactory

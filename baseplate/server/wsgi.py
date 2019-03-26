@@ -49,7 +49,6 @@ def make_server(server_config, listener, app):
     if cfg.handler:
         kwargs["handler_class"] = _load_factory(cfg.handler, default_name=None)
 
-    # pylint: disable=star-args
     server = WSGIServer(
         listener,
         application=app,

@@ -40,10 +40,10 @@ class EqualNode(Targeting):
         if len(input_node) != 2:
             raise ValueError("EqualNode expects exactly two fields.")
 
-        if not 'field' in input_node:
+        if 'field' not in input_node:
             raise ValueError("EqualNode expects input key 'field'.")
 
-        if not 'value' in input_node and not 'values' in input_node:
+        if 'value' not in input_node and 'values' not in input_node:
             raise ValueError("EqualNode expects input key 'value' or 'values'.")
 
         self._accepted_key = input_node.get('field').lower()
