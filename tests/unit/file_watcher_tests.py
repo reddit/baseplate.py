@@ -137,7 +137,7 @@ class Py2FileWatcherTests(unittest.TestCase):
 @unittest.skipIf(sys.version_info.major < 3, "Skipping Python 3 only tests.")
 class Py3FileWatcherTests(unittest.TestCase):
 
-    def test_p3_known_unsupported_open_options(self):
+    def test_known_unsupported_open_options(self):
         mock_parser = mock.Mock()
         with self.assertRaises(TypeError):
             file_watcher.FileWatcher("/does_not_exist", mock_parser, file="/foo/does_not_exist")

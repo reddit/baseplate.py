@@ -94,8 +94,8 @@ class FileWatcher(object):
     def __init__(self, path, parser, timeout=None, **open_options):
         if sys.version_info.major < 3 and open_options:
             raise TypeError(
-                "'buffering' is the only supported open_options keyword "
-                "argument for FileWatcher() in Python 2"
+                "'open_options' keyword argument for FileWatcher() are not "
+                "supported in Python 2"
             )
 
         if "file" in open_options:
