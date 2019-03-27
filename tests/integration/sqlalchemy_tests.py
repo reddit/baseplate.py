@@ -18,7 +18,6 @@ from baseplate.context.sqlalchemy import (
 )
 from baseplate.core import Baseplate
 from baseplate.integration.thrift import RequestContext
-from baseplate.integration.pyramid import BaseplatePyramidRequest
 
 from . import TestBaseplateObserver
 from .. import mock
@@ -97,7 +96,7 @@ class SQLAlchemySessionTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("db", factory)
 
-        self.context = BaseplatePyramidRequest({})
+        self.context = RequestContext()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple_session(self):
