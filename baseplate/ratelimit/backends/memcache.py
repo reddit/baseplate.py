@@ -6,7 +6,7 @@ from __future__ import unicode_literals
 from baseplate.ratelimit.backends import RateLimitBackend
 from baseplate.ratelimit.backends import _get_current_bucket
 from ...context import ContextFactory
-from ...context.memcache import MonitoredMemcacheConnection
+from ...context.memcache import MemcacheContextFactory
 
 
 class MemcacheRateLimitBackendContextFactory(ContextFactory):
@@ -21,11 +21,11 @@ class MemcacheRateLimitBackendContextFactory(ContextFactory):
     """
 
     def __init__(self, memcache_pool, prefix='rl:'):
-        self.memcache_pool = memcache_pool
+        self.memcache_context_factory = MemcacheContextFactory(memcache_pool)
         self.prefix = prefix
 
     def make_object_for_context(self, name, server_span):
-        memcache = MonitoredMemcacheConnection(name, server_span, self.memcache_pool)
+        memcache = self.memcache_context_factory.make_object_for_context(name, server_span)
         return MemcacheRateLimitBackend(memcache, prefix=self.prefix)
 
 

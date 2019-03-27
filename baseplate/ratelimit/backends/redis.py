@@ -3,10 +3,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from .base import RateLimitBackend
-from .base import _get_current_bucket
+from baseplate.ratelimit.backends import RateLimitBackend
+from baseplate.ratelimit.backends import _get_current_bucket
 from ...context import ContextFactory
-from ...context.redis import MonitoredRedisConnection
+from ...context.redis import RedisContextFactory
 
 
 class RedisRateLimitBackendContextFactory(ContextFactory):
@@ -20,11 +20,11 @@ class RedisRateLimitBackendContextFactory(ContextFactory):
     """
 
     def __init__(self, redis_pool, prefix='rl:'):
-        self.redis_pool = redis_pool
+        self.redis_context_factory = RedisContextFactory(redis_pool)
         self.prefix = prefix
 
     def make_object_for_context(self, name, server_span):
-        redis = MonitoredRedisConnection(name, server_span, self.redis_pool)
+        redis = self.redis_context_factory.make_object_for_context(name, server_span)
         return RedisRateLimitBackend(redis, prefix=self.prefix)
 
 
