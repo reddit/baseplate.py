@@ -137,6 +137,10 @@ class FileWatcherTests(unittest.TestCase):
                 data = watcher.get_data()
             open_mock.assert_called_once_with(watched_file.name, "r+b")
 
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=lambda f: f.read(), binary=True)
+            self.assertEqual(watcher.get_data(), b"foo")
+
     def test_text_mode(self):
         parser = lambda f: f.read().decode()
         with tempfile.NamedTemporaryFile() as watched_file:
@@ -150,6 +154,10 @@ class FileWatcherTests(unittest.TestCase):
             with mock.patch.object(builtins, "open", mock.mock_open(read_data="foo"), create=True) as open_mock:
                 data = watcher.get_data()
             open_mock.assert_called_once_with(watched_file.name, "r")
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=lambda f: f.read(), binary=False)
+            self.assertEqual(watcher.get_data(), "foo")
 
 
 @unittest.skipIf(sys.version_info.major >= 3, "Skipping Python 2 only tests")
