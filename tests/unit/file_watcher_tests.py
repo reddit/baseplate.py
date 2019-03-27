@@ -12,6 +12,7 @@ import unittest
 
 from baseplate import file_watcher
 from baseplate.retry import RetryPolicy
+from baseplate._compat import builtins
 
 from .. import mock
 
@@ -118,74 +119,69 @@ class FileWatcherTests(unittest.TestCase):
                     timeout=3,
                 )
 
+    def test_binary_mode(self):
+        parser = lambda f: f.read().decode()
+        with tempfile.NamedTemporaryFile() as watched_file:
+            watched_file.write(b"foo")
+            watched_file.flush()
+            os.utime(watched_file.name, (1, 1))
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=lambda f: f.read(), binary=True)
+
+            # mock.mock_open does not appear to work with binary read_data, you
+            # end up getting the following error:
+            # TypeError: 'str' does not support the buffer interface
+            # So all we are really checking is the arguments passed to `open`.
+            with mock.patch.object(builtins, "open", mock.mock_open(read_data="foo"), create=True) as open_mock:
+                data = watcher.get_data()
+            open_mock.assert_called_once_with(watched_file.name, "r+b")
+
+    def test_text_mode(self):
+        parser = lambda f: f.read().decode()
+        with tempfile.NamedTemporaryFile() as watched_file:
+            watched_file.write(b"foo")
+            watched_file.flush()
+            os.utime(watched_file.name, (1, 1))
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=lambda f: f.read(), binary=False)
+
+            with mock.patch.object(builtins, "open", mock.mock_open(read_data="foo"), create=True) as open_mock:
+                data = watcher.get_data()
+            open_mock.assert_called_once_with(watched_file.name, "r")
+
 
 @unittest.skipIf(sys.version_info.major >= 3, "Skipping Python 2 only tests")
 class Py2FileWatcherTests(unittest.TestCase):
 
-    def test_open_options_not_supported(self):
+    def test_encoding_option_not_supported(self):
         mock_parser = mock.Mock()
         with self.assertRaises(TypeError):
-            file_watcher.FileWatcher("/does_not_exist", mock_parser, buffering=1)
+            file_watcher.FileWatcher("/does_not_exist", mock_parser, encoding='utf-8')
+
+    def test_newline_option_not_supported(self):
+        mock_parser = mock.Mock()
         with self.assertRaises(TypeError):
-            file_watcher.FileWatcher("/does_not_exist", mock_parser, file="/foo/does_not_exist")
-        with self.assertRaises(TypeError):
-            file_watcher.FileWatcher("/does_not_exist", mock_parser, mode="w")
-        with self.assertRaises(TypeError):
-            file_watcher.FileWatcher("/does_not_exist", mock_parser, closefd=False)
+            file_watcher.FileWatcher("/does_not_exist", mock_parser, newline='utf-8')
 
 
 @unittest.skipIf(sys.version_info.major < 3, "Skipping Python 3 only tests.")
 class Py3FileWatcherTests(unittest.TestCase):
 
-    def test_known_unsupported_open_options(self):
+    def test_cant_set_encoding_and_binary(self):
         mock_parser = mock.Mock()
         with self.assertRaises(TypeError):
-            file_watcher.FileWatcher("/does_not_exist", mock_parser, file="/foo/does_not_exist")
+            file_watcher.FileWatcher(
+                "/does_not_exist", mock_parser, binary=True, encoding="utf-8")
+
+    def test_cant_set_newline_and_binary(self):
+        mock_parser = mock.Mock()
         with self.assertRaises(TypeError):
-            file_watcher.FileWatcher("/does_not_exist", mock_parser, mode="w")
-        with self.assertRaises(TypeError):
-            file_watcher.FileWatcher("/does_not_exist", mock_parser, closefd=False)
+            file_watcher.FileWatcher(
+                "/does_not_exist", mock_parser, binary=True, newline="\n")
 
-    def test_unknown_unsupported_open_options(self):
-        # If an open_options key is not supported but is not one of the "open"
-        # arguments that we do not explicitly not support, then the error will
-        # not be raised until we first try to open the file.
-        with tempfile.NamedTemporaryFile() as watched_file:
-            watched_file.write(b"hello!")
-            watched_file.flush()
-            os.utime(watched_file.name, (1, 1))
-            watcher = file_watcher.FileWatcher(
-                watched_file.name, parser=lambda x: x.read(), foo="bar")
-
-            with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
-                result = watcher.get_data()
-
-    def test_open_options_buffering(self):
-        with tempfile.NamedTemporaryFile() as watched_file:
-            watched_file.write(b"A\nB\nC\nD")
-            watched_file.flush()
-            os.utime(watched_file.name, (1, 1))
-
-            # buffering = 0 is only supported in binary mode which FileWatcher
-            # does not use.
-            watcher = file_watcher.FileWatcher(
-                watched_file.name, parser=lambda x: x.read(), buffering=0)
-            with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
-                result = watcher.get_data()
-
-            watcher = file_watcher.FileWatcher(
-                watched_file.name, parser=lambda x: x.line_buffering)
-            self.assertFalse(watcher.get_data())
-
-            watcher = file_watcher.FileWatcher(
-                watched_file.name, parser=lambda x: x.line_buffering, buffering=1)
-            self.assertTrue(watcher.get_data())
-
-            watcher = file_watcher.FileWatcher(
-                watched_file.name, parser=lambda x: x.line_buffering, buffering=2)
-            self.assertFalse(watcher.get_data())
-
-    def test_open_options_encoding(self):
+    def test_encoding_option(self):
         file_path = os.path.abspath('data/file_watcher_tests.json')
 
         watcher = file_watcher.FileWatcher(
@@ -198,39 +194,7 @@ class Py3FileWatcherTests(unittest.TestCase):
         result = watcher.get_data()
         self.assertEqual(result, {"a": "☃️"})
 
-    def test_open_options_errors(self):
-        file_path = os.path.abspath('data/file_watcher_tests.json')
-
-        watcher = file_watcher.FileWatcher(
-            file_path, parser=json.load, encoding='ascii', errors='ignore')
-        self.assertEqual(watcher.get_data(), {"a": ""})
-
-        watcher = file_watcher.FileWatcher(
-            file_path, parser=json.load, encoding='ascii', errors='replace')
-        self.assertEqual(watcher.get_data(), {"a": "������"})
-
-        watcher = file_watcher.FileWatcher(
-            file_path, parser=json.load, encoding='ascii', errors='surrogateescape')
-        self.assertEqual(watcher.get_data(), {"a": "\udce2\udc98\udc83\udcef\udcb8\udc8f"})
-
-        watcher = file_watcher.FileWatcher(
-            file_path, parser=json.load, encoding='ascii', errors='backslashreplace')
-        with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
-            watcher.get_data()
-
-        # Only supported when writing
-        watcher = file_watcher.FileWatcher(
-            file_path, parser=json.load, encoding='ascii', errors='xmlcharrefreplace')
-        with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
-            watcher.get_data()
-
-        # Only supported when writing
-        watcher = file_watcher.FileWatcher(
-            file_path, parser=json.load, encoding='ascii', errors='namereplace')
-        with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
-            watcher.get_data()
-
-    def test_open_options_newline(self):
+    def test_newline_option(self):
         parser = lambda f: f.readlines()
         with tempfile.NamedTemporaryFile() as watched_file:
             watched_file.write(b"A\nB\rC\r\nD")
@@ -260,23 +224,3 @@ class Py3FileWatcherTests(unittest.TestCase):
                 watched_file.name, parser=parser, newline='foo')
             with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
                 watcher.get_data()
-
-    @unittest.skipIf((sys.version_info.major, sys.version_info.minor) < (3, 3),
-                     "'opener' was not added as an option to 'open' until "
-                     "Python version 3.3")
-    def test_open_options_opener(self):
-        opener = mock.MagicMock()
-        opener.return_value = 1
-        parser = lambda f: 'foo'
-
-        with tempfile.NamedTemporaryFile() as watched_file:
-            watched_file.write(b"A\nB\rC\r\nD")
-            watched_file.flush()
-            os.utime(watched_file.name, (1, 1))
-
-            watcher = file_watcher.FileWatcher(
-                watched_file.name, parser=parser, opener=opener)
-            self.assertEqual(watcher.get_data(), "foo")
-
-            self.assertEqual(opener.call_count, 1)
-            self.assertEqual(opener.call_args[0][0], watched_file.name)
