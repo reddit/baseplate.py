@@ -20,12 +20,12 @@ try:
 except ImportError:
     raise unittest.SkipTest("redis-py is not installed")
 
-from . import TestBaseplateObserver, skip_if_server_unavailable
+from . import TestBaseplateObserver, get_endpoint_or_skip_container
 from .. import mock
 
 
-skip_if_server_unavailable("redis", 6379)
-skip_if_server_unavailable("memcached", 11211)
+redis_endpoint = get_endpoint_or_skip_container("redis", 6379)
+memcached_endpoint = get_endpoint_or_skip_container("memcached", 11211)
 
 
 class RateLimiterBackendTests(object):
@@ -65,13 +65,14 @@ class RateLimiterBackendTests(object):
 
 class RedisRateLimitBackendTests(RateLimiterBackendTests, unittest.TestCase):
     def setUp(self):
-        pool = ConnectionPool(host="localhost")
+        pool = ConnectionPool(host=redis_endpoint.address.host,
+                              port=redis_endpoint.address.port)
         self.backend_factory = RedisRateLimitBackendContextFactory(pool)
         super(RedisRateLimitBackendTests, self).setUp()
 
 
 class MemcacheRateLimitBackendTests(RateLimiterBackendTests, unittest.TestCase):
     def setUp(self):
-        pool = PooledClient(server=("localhost", 11211))
+        pool = PooledClient(server=memcached_endpoint.address)
         self.backend_factory = MemcacheRateLimitBackendContextFactory(pool)
         super(MemcacheRateLimitBackendTests, self).setUp()
