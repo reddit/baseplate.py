@@ -41,6 +41,7 @@ separately from the rest of Baseplate.
    baseplate.metrics: Counters, timers, gauges, and histograms for statsd <baseplate/metrics>
    baseplate.queue_consumer: Consume messages from a queue <baseplate/queue_consumer>
    baseplate.random: Extensions to the standard library's random module <baseplate/random>
+   baseplate.ratelimit: Ratelimit counters in memcached or redis <baseplate/ratelimit>
    baseplate.retry: Policies for retrying operations <baseplate/retry>
    baseplate.secrets: Secure storage and access to secret tokens and credentials <baseplate/secrets>
    baseplate.thrift_pool: A Thrift client connection pool <baseplate/thrift_pool>
