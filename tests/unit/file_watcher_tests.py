@@ -120,7 +120,6 @@ class FileWatcherTests(unittest.TestCase):
                 )
 
     def test_binary_mode(self):
-        parser = lambda f: f.read().decode()
         with tempfile.NamedTemporaryFile() as watched_file:
             watched_file.write(b"foo")
             watched_file.flush()
@@ -142,7 +141,6 @@ class FileWatcherTests(unittest.TestCase):
             self.assertEqual(watcher.get_data(), b"foo")
 
     def test_text_mode(self):
-        parser = lambda f: f.read().decode()
         with tempfile.NamedTemporaryFile() as watched_file:
             watched_file.write(b"foo")
             watched_file.flush()
