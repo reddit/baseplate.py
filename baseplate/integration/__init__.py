@@ -20,7 +20,7 @@ class _LazyAttributesMixin(object):
         try:
             lazy_fn = self._lazy_attributes[name]
         except KeyError:
-            return super(LazyAttributesMixin, self).__getattr__(name)
+            return super(_LazyAttributesMixin, self).__getattr__(name)
 
         prop_value = lazy_fn(self)
         setattr(self, name, prop_value)
