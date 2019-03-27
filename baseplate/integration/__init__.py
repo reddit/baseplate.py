@@ -12,7 +12,8 @@ class _LazyAttributesMixin(object):
        through `add_lazy_property`.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super(_LazyAttributesMixin, self).__init__(*args, **kwargs)
         self._lazy_attributes = {}
 
     # Called when an attribute is missing

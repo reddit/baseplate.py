@@ -38,9 +38,7 @@ TRACE_HEADER_NAMES = {
 
 
 class RequestContext(_LazyAttributesMixin):
-    def __init__(self):
-        super(RequestContext, self).__init__()
-        _LazyAttributesMixin.__init__(self)
+    pass
 
 
 class _ContextAwareHandler(object):

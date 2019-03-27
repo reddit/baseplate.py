@@ -70,6 +70,7 @@ def _make_baseplate_tween(handler, registry):
 
 
 class BaseplatePyramidRequest(Request, _LazyAttributesMixin):
+
     def __init__(self, *args, **kwargs):
         super(BaseplatePyramidRequest, self).__init__(*args, **kwargs)
         _LazyAttributesMixin.__init__(self)
