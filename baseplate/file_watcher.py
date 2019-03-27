@@ -36,6 +36,7 @@ from __future__ import unicode_literals
 
 import logging
 import os
+import sys
 
 from baseplate.retry import RetryPolicy
 
@@ -61,17 +62,55 @@ class FileWatcher(object):
 
     :param str path: Full path to a file to watch.
     :param callable parser: A callable that takes an open file object, parses
-        or otherwise interprets the file, and returns whatever data is
-        meaningful.
-    :param float timeout: How long, in seconds, to block instantiation waiting
-        for the watched file to become available (defaults to not blocking).
+        or otherwise interprets the file, and returns whatever data is meaningful.
+    :param float timeout: (Optional) How long, in seconds, to block instantiation
+        waiting for the watched file to become available (defaults to not blocking).
+    :param bool binary: (Optionaly) Should the file be opened in binary mode. If
+        `True` the file will be opened with the mode "rb", otherwise it will be
+        opened with the mode "r". (defaults to "r")
+    :param str encoding: (Optional) The name of the encoding used to decode
+        the file. The default encoding is platform dependent (whatever
+        locale.getpreferredencoding() returns), but any text encoding supported
+        by Python can be used.  This is not supported in Python 2 or if `binary`
+        is set to `True`.
+    :param str newline: (Optional) Controls how universal newlines mode works
+        (it only applies to text mode). It can be `None`, `''`, `'\n'`, `'\r'`,
+        and `'\r\n'`.  This is not supported in Python 2 or if `binary` is set
+        to `True`.
 
     """
-    def __init__(self, path, parser, timeout=None):
+    def __init__(self, path, parser, timeout=None, binary=False, encoding=None,
+                 newline=None):
+        if sys.version_info.major < 3 and encoding is not None:
+            raise TypeError("'encoding' keyword argument for FileWatcher() is "
+                            "not supported in Python 2")
+
+        if sys.version_info.major < 3 and newline is not None:
+            raise TypeError("'newline' keyword argument for FileWatcher() is "
+                            "not supported in Python 2")
+
+        if binary and encoding is not None:
+            raise TypeError("'encoding' is not supported in binary mode.")
+
+        if binary and newline is not None:
+            raise TypeError("'newline' is not supported in binary mode.")
+
         self._path = path
         self._parser = parser
         self._mtime = 0
         self._data = _NOT_LOADED
+        self._mode = "rb" if binary else "r"
+        # Since Python 2 does not support these kwargs, we store them as a dict
+        # that we `**` in the call to `open` in `get_data` so we do not have to
+        # call `open` in different ways depending on the Python version.  This
+        # can change if/when Python 2 support is dropped.
+        self._open_options = {}
+
+        if encoding:
+            self._open_options['encoding'] = encoding
+
+        if newline is not None:
+            self._open_options['newline'] = newline
 
         if timeout is not None:
             last_error = None
@@ -115,7 +154,7 @@ class FileWatcher(object):
         if self._mtime < current_mtime:
             logger.debug("Loading %s.", self._path)
             try:
-                with open(self._path, "r") as f:
+                with open(self._path, self._mode, **self._open_options) as f:
                     self._data = self._parser(f)
             except Exception as exc:
                 if self._data is _NOT_LOADED:

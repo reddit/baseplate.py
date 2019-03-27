@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -5,11 +6,13 @@ from __future__ import unicode_literals
 
 import json
 import os
+import sys
 import tempfile
 import unittest
 
 from baseplate import file_watcher
 from baseplate.retry import RetryPolicy
+from baseplate._compat import builtins
 
 from .. import mock
 
@@ -115,3 +118,115 @@ class FileWatcherTests(unittest.TestCase):
                     parser=json.load,
                     timeout=3,
                 )
+
+    def test_binary_mode(self):
+        with tempfile.NamedTemporaryFile() as watched_file:
+            watched_file.write(b"foo")
+            watched_file.flush()
+            os.utime(watched_file.name, (1, 1))
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=lambda f: f.read(), binary=True)
+
+            # mock.mock_open does not appear to work with binary read_data, you
+            # end up getting the following error:
+            # TypeError: 'str' does not support the buffer interface
+            # So all we are really checking is the arguments passed to `open`.
+            with mock.patch.object(builtins, "open", mock.mock_open(read_data="foo"), create=True) as open_mock:
+                data = watcher.get_data()
+            open_mock.assert_called_once_with(watched_file.name, "rb")
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=lambda f: f.read(), binary=True)
+            self.assertEqual(watcher.get_data(), b"foo")
+
+    def test_text_mode(self):
+        with tempfile.NamedTemporaryFile() as watched_file:
+            watched_file.write(b"foo")
+            watched_file.flush()
+            os.utime(watched_file.name, (1, 1))
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=lambda f: f.read(), binary=False)
+
+            with mock.patch.object(builtins, "open", mock.mock_open(read_data="foo"), create=True) as open_mock:
+                data = watcher.get_data()
+            open_mock.assert_called_once_with(watched_file.name, "r")
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=lambda f: f.read(), binary=False)
+            self.assertEqual(watcher.get_data(), "foo")
+
+
+@unittest.skipIf(sys.version_info.major >= 3, "Skipping Python 2 only tests")
+class Py2FileWatcherTests(unittest.TestCase):
+
+    def test_encoding_option_not_supported(self):
+        mock_parser = mock.Mock()
+        with self.assertRaises(TypeError):
+            file_watcher.FileWatcher("/does_not_exist", mock_parser, encoding='utf-8')
+
+    def test_newline_option_not_supported(self):
+        mock_parser = mock.Mock()
+        with self.assertRaises(TypeError):
+            file_watcher.FileWatcher("/does_not_exist", mock_parser, newline='utf-8')
+
+
+@unittest.skipIf(sys.version_info.major < 3, "Skipping Python 3 only tests.")
+class Py3FileWatcherTests(unittest.TestCase):
+
+    def test_cant_set_encoding_and_binary(self):
+        mock_parser = mock.Mock()
+        with self.assertRaises(TypeError):
+            file_watcher.FileWatcher(
+                "/does_not_exist", mock_parser, binary=True, encoding="utf-8")
+
+    def test_cant_set_newline_and_binary(self):
+        mock_parser = mock.Mock()
+        with self.assertRaises(TypeError):
+            file_watcher.FileWatcher(
+                "/does_not_exist", mock_parser, binary=True, newline="\n")
+
+    def test_encoding_option(self):
+        file_path = os.path.abspath('data/file_watcher_tests.json')
+
+        watcher = file_watcher.FileWatcher(
+            file_path, parser=json.load, encoding='ANSI_X3.4-1968')
+        with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
+            watcher.get_data()
+
+        watcher = file_watcher.FileWatcher(
+            file_path, parser=json.load, encoding='utf-8')
+        result = watcher.get_data()
+        self.assertEqual(result, {"a": "☃️"})
+
+    def test_newline_option(self):
+        parser = lambda f: f.readlines()
+        with tempfile.NamedTemporaryFile() as watched_file:
+            watched_file.write(b"A\nB\rC\r\nD")
+            watched_file.flush()
+            os.utime(watched_file.name, (1, 1))
+
+            watcher = file_watcher.FileWatcher(watched_file.name, parser=parser)
+            self.assertEqual(watcher.get_data(), ["A\n", "B\n", "C\n", "D"])
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=parser, newline='')
+            self.assertEqual(watcher.get_data(), ["A\n", "B\r", "C\r\n", "D"])
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=parser, newline='\n')
+            self.assertEqual(watcher.get_data(), ["A\n", "B\rC\r\n", "D"])
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=parser, newline='\r')
+            self.assertEqual(watcher.get_data(), ["A\nB\r", "C\r", "\nD"])
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=parser, newline='\r\n')
+            self.assertEqual(watcher.get_data(), ["A\nB\rC\r\n", "D"])
+
+            watcher = file_watcher.FileWatcher(
+                watched_file.name, parser=parser, newline='foo')
+            with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
+                watcher.get_data()
