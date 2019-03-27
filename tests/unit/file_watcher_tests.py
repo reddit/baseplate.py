@@ -134,7 +134,7 @@ class FileWatcherTests(unittest.TestCase):
             # So all we are really checking is the arguments passed to `open`.
             with mock.patch.object(builtins, "open", mock.mock_open(read_data="foo"), create=True) as open_mock:
                 data = watcher.get_data()
-            open_mock.assert_called_once_with(watched_file.name, "r+b")
+            open_mock.assert_called_once_with(watched_file.name, "rb")
 
             watcher = file_watcher.FileWatcher(
                 watched_file.name, parser=lambda f: f.read(), binary=True)

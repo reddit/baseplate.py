@@ -62,13 +62,11 @@ class FileWatcher(object):
 
     :param str path: Full path to a file to watch.
     :param callable parser: A callable that takes an open file object, parses
-        or otherwise interprets the file, and returns whatever data is
-        meaningful.
-    :param float timeout: (Optional) How long, in seconds, to block
-        instantiation waiting for the watched file to become available
-        (defaults to not blocking).
+        or otherwise interprets the file, and returns whatever data is meaningful.
+    :param float timeout: (Optional) How long, in seconds, to block instantiation
+        waiting for the watched file to become available (defaults to not blocking).
     :param bool binary: (Optionaly) Should the file be opened in binary mode. If
-        `True` the file will be opened with the mode "r+b", otherwise it will be
+        `True` the file will be opened with the mode "rb", otherwise it will be
         opened with the mode "r". (defaults to "r")
     :param str encoding: (Optional) The name of the encoding used to decode
         the file. The default encoding is platform dependent (whatever
@@ -84,16 +82,12 @@ class FileWatcher(object):
     def __init__(self, path, parser, timeout=None, binary=False, encoding=None,
                  newline=None):
         if sys.version_info.major < 3 and encoding is not None:
-            raise TypeError(
-                "'encoding' keyword argument for FileWatcher() is not "
-                "supported in Python 2"
-            )
+            raise TypeError("'encoding' keyword argument for FileWatcher() is "
+                            "not supported in Python 2")
 
         if sys.version_info.major < 3 and newline is not None:
-            raise TypeError(
-                "'newline' keyword argument for FileWatcher() is not "
-                "supported in Python 2"
-            )
+            raise TypeError("'newline' keyword argument for FileWatcher() is "
+                            "not supported in Python 2")
 
         if binary and encoding is not None:
             raise TypeError("'encoding' is not supported in binary mode.")
@@ -105,7 +99,7 @@ class FileWatcher(object):
         self._parser = parser
         self._mtime = 0
         self._data = _NOT_LOADED
-        self._mode = "r+b" if binary else "r"
+        self._mode = "rb" if binary else "r"
         # Since Python 2 does not support these kwargs, we store them as a dict
         # that we `**` in the call to `open` in `get_data` so we do not have to
         # call `open` in different ways depending on the Python version.  This
