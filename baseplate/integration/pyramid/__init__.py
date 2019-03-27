@@ -39,7 +39,7 @@ import pyramid.events
 import pyramid.tweens
 from pyramid.request import Request
 
-from ..mixins import LazyAttributesMixin
+from baseplate.integration import _LazyAttributesMixin
 from ...core import TraceInfo
 from ...server import make_app
 from ..._utils import warn_deprecated
@@ -69,10 +69,10 @@ def _make_baseplate_tween(handler, registry):
     return baseplate_tween
 
 
-class BaseplatePyramidRequest(Request, LazyAttributesMixin):
+class BaseplatePyramidRequest(Request, _LazyAttributesMixin):
     def __init__(self, *args, **kwargs):
         super(BaseplatePyramidRequest, self).__init__(*args, **kwargs)
-        self._lazy_attributes = {}
+        _LazyAttributesMixin.__init__(self)
 
 
 class BaseplateEvent(object):

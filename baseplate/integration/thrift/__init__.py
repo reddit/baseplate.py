@@ -25,7 +25,7 @@ from thrift.transport.TTransport import TTransportException
 from thrift.protocol.TProtocol import TProtocolException
 
 from ...core import TraceInfo
-from ..mixins import LazyAttributesMixin
+from baseplate.integration import _LazyAttributesMixin
 
 
 TRACE_HEADER_NAMES = {
@@ -40,7 +40,7 @@ TRACE_HEADER_NAMES = {
 class RequestContext(LazyAttributesMixin):
     def __init__(self):
         super(RequestContext, self).__init__()
-        self._lazy_attributes = {}
+        _LazyAttributesMixin.__init__(self)
 
 
 class _ContextAwareHandler(object):
