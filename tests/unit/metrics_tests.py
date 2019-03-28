@@ -234,6 +234,12 @@ class TimerTests(unittest.TestCase):
         self.assertEqual(self.transport.send.call_args,
             mock.call(b"example:3000|ms"))
 
+    def test_send(self):
+        timer = metrics.Timer(self.transport, b"example")
+        timer.send(3.14)
+        self.assertEqual(self.transport.send.call_count, 1)
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:3140|ms"))
+
 
 class CounterTests(unittest.TestCase):
     def setUp(self):
