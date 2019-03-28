@@ -66,19 +66,20 @@ class FileWatcher(object):
     :param float timeout: (Optional) How long, in seconds, to block instantiation
         waiting for the watched file to become available (defaults to not blocking).
     :param bool binary: (Optionaly) Should the file be opened in binary mode. If
-        `True` the file will be opened with the mode "rb", otherwise it will be
-        opened with the mode "r". (defaults to "r")
+        `True` the file will be opened with the mode `"rb"`, otherwise it will be
+        opened with the mode `"r"`. (defaults to `"r"`)
     :param str encoding: (Optional) The name of the encoding used to decode
         the file. The default encoding is platform dependent (whatever
         locale.getpreferredencoding() returns), but any text encoding supported
         by Python can be used.  This is not supported in Python 2 or if `binary`
         is set to `True`.
     :param str newline: (Optional) Controls how universal newlines mode works
-        (it only applies to text mode). It can be `None`, `''`, `'\n'`, `'\r'`,
-        and `'\r\n'`.  This is not supported in Python 2 or if `binary` is set
+        (it only applies to text mode). It can be `None`, `""`, `"\\n"`, `"\\r"`,
+        and `"\\r\\n"`.  This is not supported in Python 2 or if `binary` is set
         to `True`.
 
     """
+
     def __init__(self, path, parser, timeout=None, binary=False, encoding=None,
                  newline=None):
         if sys.version_info.major < 3 and encoding is not None:
