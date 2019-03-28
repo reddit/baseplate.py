@@ -252,11 +252,21 @@ class Timer(object):
         assert not self.stopped, "time already stopped"
 
         now = time.time()
-        elapsed = (now - self.start_time) * 1000.
-        serialized = self.name + (":{:g}|ms".format(elapsed).encode())
-        self.transport.send(serialized)
-
+        elapsed = now - self.start_time
+        self.send(elapsed)
         self.stopped = True
+
+    def send(self, elapsed):
+        """Directly send a timer value without having to stop/start.
+
+        This can be useful when the timing was managed elsewhere and we just
+        want to report the result.
+
+        :param elapsed float: The elapsed time in seconds to report.
+
+        """
+        serialized = self.name + (":{:g}|ms".format(elapsed * 1000.).encode())
+        self.transport.send(serialized)
 
     def __enter__(self):
         self.start()
