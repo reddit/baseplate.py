@@ -1,6 +1,3 @@
-import logging
-
-
 class WrappedRequestContext(object):
     """A class for wrapping request contexts to add custom attributes.
 
@@ -12,7 +9,6 @@ class WrappedRequestContext(object):
     """
     def __init__(self, context, trace=None):
         self.__dict__['_context'] = context
-        self.__dict__['logger'] = logging.getLogger(self.__class__.__name__)
 
     def __getattr__(self, attr):
         return getattr(self._context, attr)
