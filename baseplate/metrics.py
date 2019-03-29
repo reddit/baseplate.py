@@ -99,8 +99,13 @@ class BufferedTransport(object):
             self.transport.send(message)
         except socket.error as e:
             logger.error("baseplate metrics batch too large: flush more often \
-                or reduce amount done in one request, length %d, %s",
-                len(message), e)
+                or reduce amount done in one request, length %d, count %d, %s",
+                len(message), len(metrics), e)
+            counters = [
+                metric for metric in metrics if metric.split(b'|')[-1][0] == b'c'
+            ]
+            partial_message = b",".join(counters)
+            logger.exception("counters: %s", partial_message)
 
 
 class BaseClient(object):
