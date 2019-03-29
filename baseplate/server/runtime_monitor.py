@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import gc
 import logging
 import os
 import socket
@@ -54,6 +55,48 @@ class _BlockedGeventHubReporter(object):
             batch.timer("hub_blocked").send(time_blocked)
 
 
+class _GCStatsReporter(object):
+    def __init__(self):
+        try:
+            gc.get_stats
+        except AttributeError:
+            raise Exception("Python >=3.4 required")
+
+    def report(self, batch):
+        for generation, stats in enumerate(gc.get_stats()):
+            for name, value in stats.items():
+                batch.gauge("gc.gen{}.{}".format(generation, name)).replace(value)
+
+
+class _GCTimingReporter(object):
+    def __init__(self):
+        try:
+            gc.callbacks
+        except AttributeError:
+            raise Exception("Python >=3.3 required")
+
+        gc.callbacks.append(self._on_gc_event)
+
+        self.gc_durations = []
+        self.current_gc_start = None
+
+    def _on_gc_event(self, phase, info):
+        if phase == "start":
+            self.current_gc_start = time.time()
+        elif phase == "stop":
+            if self.current_gc_start:
+                elapsed = time.time() - self.current_gc_start
+                self.current_gc_start = None
+                self.gc_durations.append(elapsed)
+
+    def report(self, batch):
+        gc_durations = self.gc_durations
+        self.gc_durations = []
+
+        for gc_duration in gc_durations:
+            batch.timer("gc.elapsed").send(gc_duration)
+
+
 def _report_runtime_metrics_periodically(metrics_client, reporters):
     hostname = socket.gethostname()
     pid = os.getpid()
@@ -86,6 +129,10 @@ def start(server_config, application, pool):
         "monitoring": {
             "blocked_hub": config.Optional(config.Timespan, default=None),
             "concurrency": config.Optional(config.Boolean, default=True),
+            "gc": {
+                "stats": config.Optional(config.Boolean, default=True),
+                "timing": config.Optional(config.Boolean, default=False),
+            },
         },
     })
 
@@ -99,6 +146,18 @@ def start(server_config, application, pool):
             reporters.append(_BlockedGeventHubReporter(cfg.monitoring.blocked_hub.total_seconds()))
         except Exception as exc:
             logging.info("monitoring.blocked_hub disabled: %s", exc)
+
+    if cfg.monitoring.gc.stats:
+        try:
+            reporters.append(_GCStatsReporter())
+        except Exception as exc:
+            logging.info("monitoring.gc.stats disabled: %s", exc)
+
+    if cfg.monitoring.gc.timing:
+        try:
+            reporters.append(_GCTimingReporter())
+        except Exception as exc:
+            logging.info("monitoring.gc.timing disabled: %s", exc)
 
     thread = threading.Thread(
         name="Server Monitoring",
