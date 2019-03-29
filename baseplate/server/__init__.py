@@ -263,5 +263,14 @@ def load_and_run_tshell():
         import code
         newbanner = "Baseplate Interactive Shell\nPython {}\n\n".format(sys.version)
         banner = newbanner + banner
+
+        # import this just for its side-effects (of enabling nice keyboard
+        # movement while editing text)
+        try:
+            import readline
+            del readline
+        except ImportError:
+            pass
+
         shell = code.InteractiveConsole(locals=env)
         shell.interact(banner)
