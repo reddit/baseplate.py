@@ -257,8 +257,9 @@ def load_and_run_tshell():
     try:
         # try to use IPython if possible
         from IPython.terminal.embed import InteractiveShellEmbed
+        from IPython.core.interactiveshell import DummyMod
         shell = InteractiveShellEmbed(banner2=banner)
-        shell(local_ns=env, global_ns={})
+        shell(local_ns=env, module=DummyMod())
     except ImportError:
         import code
         newbanner = "Baseplate Interactive Shell\nPython {}\n\n".format(sys.version)
