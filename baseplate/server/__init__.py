@@ -237,11 +237,14 @@ def load_and_run_script():
     parser.add_argument(
         "entrypoint", type=_load_factory, help="function to call, e.g. module.path:fn_name"
     )
+    parser.add_argument(
+        'args', nargs=argparse.REMAINDER, help="arguments to pass along to the invoked script"
+    )
 
     args = parser.parse_args(sys.argv[1:])
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
-    args.entrypoint(config.app)
+    args.entrypoint(config.app, *args.args)
 
 
 def load_and_run_tshell():
