@@ -9,6 +9,7 @@ import configparser
 import fcntl
 import gc
 import importlib
+import inspect
 import logging.config
 import signal
 import socket
@@ -241,11 +242,45 @@ def load_and_run_script():
     parser.add_argument(
         "entrypoint", type=_load_factory, help="function to call, e.g. module.path:fn_name"
     )
+    parser.add_argument(
+        "args", nargs=argparse.REMAINDER, help="arguments to pass along to the invoked script"
+    )
 
     args = parser.parse_args(sys.argv[1:])
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
-    args.entrypoint(config.app)
+
+    if _fn_accepts_additional_args(args.entrypoint, args.args):
+        args.entrypoint(config.app, args.args)
+    else:
+        args.entrypoint(config.app)
+
+
+def _fn_accepts_additional_args(script_fn, fn_args):
+    additional_args_provided = len(fn_args) > 0
+    signature = inspect.signature(script_fn)
+
+    positional_arg_count = 0
+    allows_var_args = False
+    for param in signature.parameters.values():
+        if param.kind in {param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD}:
+            positional_arg_count += 1
+        elif param.kind == param.VAR_POSITIONAL:
+            allows_var_args = True
+
+    allows_additional_args = allows_var_args or positional_arg_count > 1
+
+    if positional_arg_count < 1 and not allows_var_args:
+        raise ValueError("script function accepts too few positional arguments")
+    if positional_arg_count > 2:
+        raise ValueError("script function accepts too many positional arguments")
+    if additional_args_provided and not allows_additional_args:
+        raise ValueError(
+            "script function does not accept additional arguments, "
+            "but additional arguments were provided"
+        )
+
+    return allows_additional_args
 
 
 def load_and_run_tshell():

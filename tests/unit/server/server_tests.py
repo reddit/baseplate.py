@@ -80,3 +80,60 @@ class LoadFactoryTests(unittest.TestCase):
 
         self.assertEqual(import_module.call_args, mock.call("package.module"))
         self.assertEqual(factory, import_module.return_value.default_name)
+
+
+class CheckFnSignatureTests(unittest.TestCase):
+    def test_no_args(self):
+        def foo():
+            pass
+
+        with self.assertRaises(ValueError):
+            server._fn_accepts_additional_args(foo, [])
+
+    def test_var_args(self):
+        def foo(*args):
+            pass
+
+        server._fn_accepts_additional_args(foo, [])
+        server._fn_accepts_additional_args(foo, ["arg1"])
+        server._fn_accepts_additional_args(foo, ["arg1", "arg2"])
+
+    def test_config_arg_only(self):
+        def foo(app_config):
+            pass
+
+        server._fn_accepts_additional_args(foo, [])
+        with self.assertRaises(ValueError):
+            server._fn_accepts_additional_args(foo, ["extra_arg"])
+
+    def test_config_arg_with_var_args(self):
+        def foo(app_config, *args):
+            pass
+
+        server._fn_accepts_additional_args(foo, [])
+        server._fn_accepts_additional_args(foo, ["arg1"])
+        server._fn_accepts_additional_args(foo, ["arg1", "arg2"])
+
+    def test_additional_args(self):
+        def foo(app_config, args):
+            pass
+
+        server._fn_accepts_additional_args(foo, [])
+        server._fn_accepts_additional_args(foo, ["arg1"])
+        server._fn_accepts_additional_args(foo, ["arg1", "arg2"])
+
+    def test_additional_args_with_var_args(self):
+        def foo(app_config, args, *extra):
+            pass
+
+        server._fn_accepts_additional_args(foo, [])
+        server._fn_accepts_additional_args(foo, ["arg1"])
+        server._fn_accepts_additional_args(foo, ["arg1", "arg2"])
+
+    def test_kwargs(self):
+        def foo(app_config, arg1, *, bar, **kwargs):
+            pass
+
+        server._fn_accepts_additional_args(foo, [])
+        server._fn_accepts_additional_args(foo, ["arg1", "arg2", "arg3"])
+        server._fn_accepts_additional_args(foo, ["arg1"])
