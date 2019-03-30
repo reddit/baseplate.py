@@ -35,6 +35,7 @@ from baseplate._utils import warn_deprecated
 # pylint: disable=pointless-string-statement,no-init
 class FieldKind(Enum):
     """Field kinds."""
+
     NORMAL = None
     """
     For fields normal fields with no hashing/indexing requirements.
@@ -55,6 +56,7 @@ class FieldKind(Enum):
 
 class Event(object):
     """An event."""
+
     # pylint: disable=invalid-name,redefined-builtin
     def __init__(self, topic, event_type, timestamp=None, id=None):
         self.topic = topic
@@ -77,7 +79,6 @@ class Event(object):
         :param str key: The name of the field.
 
         """
-
         return self.payload.get(key, None)
 
     def set_field(self, key, value, obfuscate=False, kind=FieldKind.NORMAL):
@@ -91,7 +92,6 @@ class Event(object):
             in when serialized.
 
         """
-
         # There's no need to send null/empty values, the collector will act
         # the same whether they're sent or not. Zeros are important though,
         # so we can't use a simple boolean truth check here.
@@ -129,11 +129,11 @@ class Event(object):
 
 class EventError(Exception):
     """Base class for event related exceptions."""
-    pass
 
 
 class EventTooLargeError(EventError):
     """Raised when a serialized event is too large to send."""
+
     def __init__(self, size):
         super(EventTooLargeError, self).__init__(
             "Event is too large to send (%d bytes)" % size)
@@ -146,6 +146,7 @@ class EventQueueFullError(EventError):
     to the event collector.
 
     """
+
     def __init__(self):
         super(EventQueueFullError, self).__init__("The event queue is full.")
 

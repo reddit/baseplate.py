@@ -26,6 +26,7 @@ class MetricsBaseplateObserver(BaseplateObserver):
         sent.
 
     """
+
     def __init__(self, client):
         self.client = client
 

@@ -34,6 +34,7 @@ class cached_property(object):
     with the return value of the first call.
 
     """
+
     def __init__(self, wrapped):
         self.wrapped = wrapped
         functools.update_wrapper(self, wrapped)

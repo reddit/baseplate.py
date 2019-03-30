@@ -10,7 +10,7 @@ from ...context.memcache import MemcacheContextFactory
 
 
 class MemcacheRateLimitBackendContextFactory(ContextFactory):
-    """MemcacheRateLimitBackend context factory
+    """MemcacheRateLimitBackend context factory.
 
     :param memcache_pool: An instance of
         :py:class:`~pymemcache.client.base.PooledClient`

@@ -10,7 +10,7 @@ from ...context.redis import RedisContextFactory
 
 
 class RedisRateLimitBackendContextFactory(ContextFactory):
-    """RedisRateLimitBackend context factory
+    """RedisRateLimitBackend context factory.
 
     :param redis_pool: An instance of :py:class:`redis.ConnectionPool`
     :param str prefix: A prefix to add to keys during rate limiting.

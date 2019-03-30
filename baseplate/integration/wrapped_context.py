@@ -7,6 +7,7 @@ class WrappedRequestContext(object):
     context. Users can still access the underlying context through
     the standard getattr/setattr interface.
     """
+
     def __init__(self, context, trace=None):
         self.__dict__['_context'] = context
 

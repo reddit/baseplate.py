@@ -95,6 +95,7 @@ class KombuProducerContextFactory(ContextFactory):
     :param int max_connections: The maximum number of connections.
 
     """
+
     def __init__(self, connection, exchange, max_connections=None):
         self.connection = connection
         self.exchange = exchange

@@ -39,6 +39,7 @@ class ThriftContextFactory(ContextFactory):
             svc.some_method()
 
     """
+
     def __init__(self, pool, client_cls):
         self.pool = pool
         self.client_cls = client_cls

@@ -74,6 +74,7 @@ class HvacContextFactory(ContextFactory):
     :param datetime.timedelta timeout: How long to wait for calls to Vault.
 
     """
+
     def __init__(self, secrets_store, timeout):
         self.secrets = secrets_store
         self.timeout = timeout

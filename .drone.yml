@@ -1,6 +1,6 @@
 ---
 kind: pipeline
-name: lint
+name: Lint
 
 steps:
     - name: Lint

@@ -131,7 +131,7 @@ def make_listener(endpoint):
 
 
 def _load_factory(url, default_name=None):
-    """Helper to load a factory function from a config file."""
+    """Load a factory function from a config file."""
     module_name, sep, func_name = url.partition(":")
     if not sep:
         if not default_name:
@@ -171,7 +171,6 @@ def register_signal_handlers():
 
 def load_app_and_run_server():
     """Parse arguments, read configuration, and start the server."""
-
     register_signal_handlers()
 
     args = parse_args(sys.argv[1:])

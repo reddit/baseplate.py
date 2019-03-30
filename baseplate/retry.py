@@ -35,11 +35,10 @@ class RetryPolicy(object):
         should not be retried any further.
 
         """
-
         raise NotImplementedError
 
     def __iter__(self):
-        """Convenience alias for :py:meth:`yield_attempts`.
+        """Return the result of :py:meth:`yield_attempts`.
 
         This allows policies to be directly iterated over.
 
@@ -75,6 +74,7 @@ class RetryPolicy(object):
 
 class IndefiniteRetryPolicy(RetryPolicy):  # pragma: noqa
     """Retry immediately forever."""
+
     def yield_attempts(self):
         while True:
             yield None
@@ -82,6 +82,7 @@ class IndefiniteRetryPolicy(RetryPolicy):  # pragma: noqa
 
 class MaximumAttemptsRetryPolicy(RetryPolicy):
     """Constrain the total number of attempts."""
+
     def __init__(self, policy, attempts):
         self.subpolicy = policy
         self.attempts = attempts
@@ -95,6 +96,7 @@ class MaximumAttemptsRetryPolicy(RetryPolicy):
 
 class TimeBudgetRetryPolicy(RetryPolicy):
     """Constrain attempts to an overall time budget."""
+
     def __init__(self, policy, budget):
         assert budget >= 0, "The time budget must not be negative."
         self.subpolicy = policy
@@ -115,6 +117,7 @@ class TimeBudgetRetryPolicy(RetryPolicy):
 
 class ExponentialBackoffRetryPolicy(RetryPolicy):
     """Sleep exponentially longer between attempts."""
+
     def __init__(self, policy, base):
         self.subpolicy = policy
         self.base = base

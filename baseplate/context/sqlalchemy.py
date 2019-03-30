@@ -33,6 +33,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     :param sqlalchemy.engine.Engine engine: A configured SQLAlchemy engine.
 
     """
+
     def __init__(self, engine):
         self.engine = engine.execution_options()
         event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
@@ -99,6 +100,7 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
     :param sqlalchemy.engine.Engine engine: A configured SQLAlchemy engine.
 
     """
+
     def make_object_for_context(self, name, span):
         if isinstance(span, ServerSpan):
             engine = super(SQLAlchemySessionContextFactory,
@@ -115,6 +117,7 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
 
 class SQLAlchemySessionSpanObserver(SpanObserver):
     """Automatically close the session at the end of each request."""
+
     def __init__(self, session, span):
         self.session = session
         self.span = span

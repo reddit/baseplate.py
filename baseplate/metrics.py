@@ -68,6 +68,7 @@ class Transport(object):
 
 class NullTransport(Transport):
     """A transport which doesn't send messages at all."""
+
     def send(self, serialized_metric):
         for metric_line in serialized_metric.splitlines():
             logger.debug("Would send metric %r", metric_line)
@@ -75,6 +76,7 @@ class NullTransport(Transport):
 
 class RawTransport(Transport):
     """A transport which sends messages on a socket."""
+
     def __init__(self, endpoint):
         self.socket = socket.socket(endpoint.family, socket.SOCK_DGRAM)
         self.socket.connect(endpoint.address)
@@ -85,6 +87,7 @@ class RawTransport(Transport):
 
 class BufferedTransport(object):
     """A transport which wraps another transport and buffers before sending."""
+
     def __init__(self, transport):
         self.transport = transport
         self.buffer = []
@@ -337,6 +340,7 @@ class BatchCounter(Counter):
     The above example results in one packet indicating an increase of two
     should be applied to "counter_name".
     """
+
     def __init__(self, transport, name):
         self.transport = transport
         self.name = name
@@ -375,6 +379,7 @@ class Histogram(object):
     being supported by the StatsD backend. Specifically, the StatsD
     backend must support the :code:`h` key, e.g. :code:`metric_name:320|h`.
     """
+
     def __init__(self, transport, name):
         self.transport = transport
         self.name = name
@@ -398,6 +403,7 @@ class Gauge(object):
         the "current value" being lost.
 
     """
+
     def __init__(self, transport, name):
         self.transport = transport
         self.name = name
@@ -432,7 +438,6 @@ def make_client(namespace, endpoint):
     .. seealso:: :py:func:`baseplate.metrics_client_from_config`.
 
     """
-
     if endpoint:
         transport = RawTransport(endpoint)
     else:

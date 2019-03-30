@@ -47,7 +47,6 @@ def _generate_overrides(override_config):
 
     Multiple targets can be provided for a single variant.
     """
-
     override_list = []
 
     if not override_config:
@@ -89,50 +88,49 @@ def _generate_targeting(targeting_config):
 class SimpleExperiment(Experiment):
     """A basic experiment choosing from a set of variants.
 
-        Simple experiments are meant to be used in conjunction with a
-        VariantSet. This class serves as the replacement for the legacy
-        r2 and feature_flag providers.
+    Simple experiments are meant to be used in conjunction with a VariantSet.
+    This class serves as the replacement for the legacy r2 and feature_flag
+    providers.
+
+    :param int id: The experiment id. This should be unique.
+    :param string name: The human-readable name of the experiment.
+    :param string owner: Who is responsible for this experiement.
+    :param int start_ts: When this experiment is due to start.
+        Variant requests prior to this time will return None. Expects
+        timestamp in seconds.
+    :param int stop_ts: When this experiment is due to end.
+        Variant requests after this time will return None. Expects
+        timestamp in seconds.
+    :param dict config: The configuration for this experiment.
+    :param int experiment_version: Which version of this experiment is
+        being used. This value should increment with each successive change
+        to the experimental configuration.
+    :param int shuffle_version: Distinct from the experiment version, this
+        value is used in constructing the default bucketing seed value (if not
+        provided). When this value changes, rebucketing will occur.
+    :param list variants: The list of variants for this experiment. This should
+        be provided as an array of dicts, each containing the keys 'name'
+        and 'size'. Name is the variant name, and size is the fraction of
+        users to bucket into the corresponding variant. Sizes are expressed
+        as a floating point value between 0 and 1.
+    :param str bucket_seed: If provided, this provides the seed for determining
+        which bucket a variant request lands in. Providing a consistent
+        bucket_seed will ensure a user is bucketed consistently. Calls to
+        the variant method will return consisten results for any given seed.
+    :param bool enabled: Whether or not this experiment is enabled.
+        disabling an experiment means all variant calls will return None.
+    :param bool log_bucketing: Whether or not to log bucketing events.
+    :param int num_buckets: How many available buckets there are for
+        bucketing requests. This should match the num_buckets in the
+        provided VariantSet. The default value is 1000, which provides
+        a potential variant granularity of 0.1%.
+
     """
 
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
                  experiment_version, shuffle_version, variant_set,
                  bucket_seed, bucket_val, targeting, overrides,
                  enabled=True, log_bucketing=True, num_buckets=1000):
-        """
-        :param int id: The experiment id. This should be unique.
-        :param string name: The human-readable name of the experiment.
-        :param string owner: Who is responsible for this experiement.
-        :param int start_ts: When this experiment is due to start.
-            Variant requests prior to this time will return None. Expects
-            timestamp in seconds.
-        :param int stop_ts: When this experiment is due to end.
-            Variant requests after this time will return None. Expects
-            timestamp in seconds.
-        :param dict config: The configuration for this experiment.
-        :param int experiment_version: Which version of this experiment is
-            being used. This value should increment with each successive change
-            to the experimental configuration.
-        :param int shuffle_version: Distinct from the experiment version, this
-            value is used in constructing the default bucketing seed value (if not
-            provided). When this value changes, rebucketing will occur.
-        :param list variants: The list of variants for this experiment. This should
-            be provided as an array of dicts, each containing the keys 'name'
-            and 'size'. Name is the variant name, and size is the fraction of
-            users to bucket into the corresponding variant. Sizes are expressed
-            as a floating point value between 0 and 1.
-        :param str bucket_seed: If provided, this provides the seed for determining
-            which bucket a variant request lands in. Providing a consistent
-            bucket_seed will ensure a user is bucketed consistently. Calls to
-            the variant method will return consisten results for any given seed.
-        :param bool enabled: Whether or not this experiment is enabled.
-            disabling an experiment means all variant calls will return None.
-        :param bool log_bucketing: Whether or not to log bucketing events.
-        :param int num_buckets: How many available buckets there are for
-            bucketing requests. This should match the num_buckets in the
-            provided VariantSet. The default value is 1000, which provides
-            a potential variant granularity of 0.1%.
-        """
-
         self.id = id
         self.name = name
         self.owner = owner
@@ -220,20 +218,15 @@ class SimpleExperiment(Experiment):
             return None
 
     def should_log_bucketing(self):
-        """Whether or not this experiment should log bucketing events.
-        """
+        """Whether or not this experiment should log bucketing events."""
         return self._log_bucketing
 
     def is_targeted(self, **kwargs):
-        """Determine whether the provided kwargs match targeting parameters
-        for this experiment.
-        """
+        """Return if kwargs match targeting parameters for this experiment."""
         return self._targeting.evaluate(**kwargs)
 
     def get_override(self, **kwargs):
-        """Determine whether the provided kwargs match targeting parameters
-        for forcing a particular variant.
-        """
+        """Return if kwargs match targeting parameters for forcing a particular variant."""
         if not self._overrides:
             return None
 

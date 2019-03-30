@@ -92,6 +92,7 @@ import socket
 
 class ConfigurationError(Exception):
     """Raised when the configuration violates the spec."""
+
     def __init__(self, key, error):
         super(ConfigurationError, self).__init__(
             "{}: {}".format(key, error))
@@ -99,19 +100,19 @@ class ConfigurationError(Exception):
         self.error = error
 
 
-def String(text):
+def String(text):  # noqa: D401
     """A raw string."""
     if not text:
         raise ValueError("no value specified")
     return text
 
 
-def Float(text):
+def Float(text):  # noqa: D401
     """A floating-point number."""
     return float(text)
 
 
-def Integer(text=None, base=10):
+def Integer(text=None, base=10):  # noqa: D401
     """An integer.
 
     To prevent mistakes, this will raise an error if the user attempts
@@ -128,7 +129,7 @@ def Integer(text=None, base=10):
         return functools.partial(int, base=base)
 
 
-def Boolean(text):
+def Boolean(text):  # noqa: D401
     """True or False, case insensitive."""
     parser = OneOf(true=True, false=False)
     return parser(text.lower())
@@ -157,7 +158,7 @@ class EndpointConfiguration(EndpointConfiguration_):
     """
 
 
-def Endpoint(text):
+def Endpoint(text):  # noqa: D401
     """A remote endpoint to connect to.
 
     Returns an :py:class:`EndpointConfiguration`.
@@ -184,7 +185,7 @@ def Endpoint(text):
         return EndpointConfiguration(socket.AF_INET, address)
 
 
-def Base64(text):
+def Base64(text):  # noqa: D401
     """A base64 encoded block of data.
 
     This is useful for arbitrary binary blobs.
@@ -199,7 +200,7 @@ def Base64(text):
         raise ValueError(*exc.args)
 
 
-def File(mode="r"):
+def File(mode="r"):  # noqa: D401
     """A path to a file.
 
     This takes a path to a file and returns an open file object, like
@@ -217,7 +218,7 @@ def File(mode="r"):
     return open_file
 
 
-def Timespan(text):
+def Timespan(text):  # noqa: D401
     """A span of time.
 
     This takes a string of the form "1 second" or "3 days" and returns a
@@ -250,14 +251,13 @@ def Timespan(text):
     return datetime.timedelta(seconds=count * scale)
 
 
-def Percent(text):
+def Percent(text):  # noqa: D401
     """A percentage.
 
     This takes a string of the form "37.2%" or "44%" and
     returns a float in the range [0.0, 1.0].
 
     """
-
     if not text.endswith("%"):
         raise ValueError("the value is not a percentage")
 
@@ -269,7 +269,7 @@ def Percent(text):
     return percentage
 
 
-def UnixUser(text):
+def UnixUser(text):  # noqa: D401
     """A Unix user name.
 
     The parsed value will be the integer user ID.
@@ -281,7 +281,7 @@ def UnixUser(text):
         raise ValueError(exc)
 
 
-def UnixGroup(text):
+def UnixGroup(text):  # noqa: D401
     """A Unix group name.
 
     The parsed value will be the integer group ID.
@@ -293,7 +293,7 @@ def UnixGroup(text):
         raise ValueError(exc)
 
 
-def OneOf(**options):
+def OneOf(**options):  # noqa: D401
     """One of several choices.
 
     For each ``option``, the name is what should be in the configuration file
@@ -320,7 +320,7 @@ def OneOf(**options):
     return one_of
 
 
-def TupleOf(T):
+def TupleOf(T):  # noqa: D401
     """A comma-delimited list of type T.
 
     At least one value must be provided. If you want an empty list
@@ -336,7 +336,7 @@ def TupleOf(T):
     return tuple_of
 
 
-def Optional(T, default=None):
+def Optional(T, default=None):  # noqa: D401
     """An option of type T, or ``default`` if not configured."""
     def optional(text):
         if text:
@@ -346,7 +346,7 @@ def Optional(T, default=None):
     return optional
 
 
-def Fallback(T1, T2):
+def Fallback(T1, T2):  # noqa: D401
     """An option of type T1, or if that fails to parse, of type T2.
 
     This is useful for backwards-compatible configuration changes.

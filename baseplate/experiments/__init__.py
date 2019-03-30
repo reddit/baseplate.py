@@ -24,22 +24,21 @@ class EventType(Enum):
 
 
 class ExperimentsContextFactory(ContextFactory):
-    """Experiment client context factory
+    """Experiment client context factory.
 
     This factory will attach a new :py:class:`baseplate.experiments.Experiments`
     to an attribute on the :term:`context object`.
-    """
-    def __init__(self, path, event_logger=None, timeout=None):
-        """ExperimentContextFactory constructor
 
-        :param str path: Path to the experiment config file.
-        :param baseplate.events.EventLogger event_logger: The logger to use
-            to log experiment eligibility events. If not provided, a
-            baseplate.events.DebugLogger will be created and used.
-        :param float timeout: How long, in seconds, to block instantiation
-            waiting for the watched experiments file to become available
-            (defaults to not blocking).
-        """
+    :param str path: Path to the experiment config file.
+    :param baseplate.events.EventLogger event_logger: The logger to use to log
+        experiment eligibility events. If not provided, a
+        baseplate.events.DebugLogger will be created and used.
+    :param float timeout: How long, in seconds, to block instantiation waiting
+        for the watched experiments file to become available (defaults to not
+        blocking).
+    """
+
+    def __init__(self, path, event_logger=None, timeout=None):
         self._filewatcher = FileWatcher(path, json.load, timeout=timeout)
         self._event_logger = event_logger
 
@@ -105,33 +104,29 @@ class Experiments(object):
         return self._experiment_cache[name]
 
     def get_all_experiment_names(self):
-        """Return a list of all valid experiment names from the
-        configuration file.
+        """Return a list of all valid experiment names from the configuration file.
 
         :rtype: :py:class:`list`
         :return: List of all valid experiment names.
         """
-
         config = self._config_watcher.get_data()
         experiment_names = list(config.keys())
 
         return experiment_names
 
     def is_valid_experiment(self, name):
-        """Return true if the provided experiment name is a valid
-        experiment.
+        """Return true if the provided experiment name is a valid experiment.
 
         :param str name: Name of the experiment you want to check.
 
         :rtype: :py:class:`bool`
         :return: Whether or not a particular experiment is valid.
         """
-
         return self._get_experiment(name) is not None
 
     def variant(self, name, user=None, bucketing_event_override=None,
                 **kwargs):
-        """Return which variant, if any, is active.
+        r"""Return which variant, if any, is active.
 
         If a variant is active, a bucketing event will be logged to the event
         pipeline unless any one of the following conditions are met:
@@ -174,7 +169,6 @@ class Experiments(object):
         :rtype: :py:class:`str`
         :return: Variant name if a variant is active, None otherwise.
         """
-
         experiment = self._get_experiment(name)
 
         if experiment is None:
@@ -223,8 +217,7 @@ class Experiments(object):
         return variant
 
     def expose(self, experiment_name, variant_name, user=None, **kwargs):
-        """Log an event to indicate that a user has been exposed to an
-        experimental treatment.
+        """Log an event to indicate that a user has been exposed to an experimental treatment.
 
         :param str experiment_name: Name of the experiment that was exposed.
         :param str variant_name: Name of the variant that was exposed.
@@ -234,7 +227,6 @@ class Experiments(object):
         :param kwargs: Additional arguments that will be passed to logger.
 
         """
-
         experiment = self._get_experiment(experiment_name)
 
         if experiment is None:

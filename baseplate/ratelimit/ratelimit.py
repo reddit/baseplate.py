@@ -8,13 +8,11 @@ from ..context import ContextFactory
 
 
 class RateLimitExceededException(Exception):
-    """This exception gets raised whenever a rate limit is exceeded.
-    """
-    pass
+    """This exception gets raised whenever a rate limit is exceeded."""
 
 
 class RateLimiterContextFactory(ContextFactory):
-    """RateLimiter context factory
+    """RateLimiter context factory.
 
     :param backend_factory: An instance of
         :py:class:`baseplate.context.ContextFactory`. The context factory must
