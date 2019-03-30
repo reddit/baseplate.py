@@ -38,15 +38,19 @@ and a small script, ``printer.py``:
 
 .. code-block:: python
 
-   def run(app_config):
-       print(app_config["message"])
+   def run(app_config, *args):
+       parser = argparse.ArgumentParser()
+       parser.add_argument("name")
+       args = parser.parse_args(args)
+
+       print('%s %s' % (app_config["message"], args.name))
 
 You can run the script with various configurations:
 
 .. code-block:: text
 
-   $ baseplate-script printer.ini printer:run
-   Hello!
+   $ baseplate-script printer.ini printer:run Goodbye.
+   Hello! Goodbye.
 
-   $ baseplate-script printer.ini --app-name=bizarro printer:run
-   !olleH
+   $ baseplate-script printer.ini --app-name=bizarro printer:run Goodbye.
+   !olleH Goodbye.

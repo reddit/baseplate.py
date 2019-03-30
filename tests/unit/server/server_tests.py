@@ -79,3 +79,27 @@ class LoadFactoryTests(unittest.TestCase):
 
         self.assertEqual(import_module.call_args, mock.call("package.module"))
         self.assertEqual(factory, import_module.return_value.default_name)
+
+
+class CheckFnSignatureTests(unittest.TestCase):
+    def test_no_args(self):
+        def foo(app_config):
+            pass
+        server._check_fn_signature(foo, [])
+        with self.assertRaises(ValueError):
+            server._check_fn_signature(foo, ['extra_arg'])
+
+    def test_positional_args(self):
+        def foo(app_config, arg1, arg2):
+            pass
+        server._check_fn_signature(foo, ['arg1', 'arg2'])
+        with self.assertRaises(ValueError):
+            server._check_fn_signature(foo, ['arg1'])
+
+    def test_varargs_and_kwargs(self):
+        def foo(app_config, arg1, *arg2, **kwargs):
+            pass
+        server._check_fn_signature(foo, ['arg1', 'arg2', 'arg3'])
+        server._check_fn_signature(foo, ['arg1'])
+        with self.assertRaises(ValueError):
+            server._check_fn_signature(foo, [])

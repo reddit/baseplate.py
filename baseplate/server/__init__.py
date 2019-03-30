@@ -9,6 +9,7 @@ import collections
 import configparser
 import fcntl
 import importlib
+import inspect
 import logging
 import logging.config
 import signal
@@ -244,7 +245,23 @@ def load_and_run_script():
     args = parser.parse_args(sys.argv[1:])
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
-    args.entrypoint(config.app, *args.args)
+
+    _check_fn_signature(args.entrypoint, args.args)
+
+    args.entrypoint(config.app, args.args)
+
+
+def _check_fn_signature(script_fn, fn_args):
+    argspec = inspect.getfullargspec(script_fn)
+    func_sig_arg_count = len(argspec.args[1:])  # slice off app_config arg
+    cli_arg_count = len(fn_args)
+    if argspec.varargs:
+        args_match = cli_arg_count >= func_sig_arg_count
+    else:
+        args_match = cli_arg_count == func_sig_arg_count
+    if not args_match:
+        raise ValueError('additional args do not match script function signature: %s' %
+                         inspect.formatargspec(*argspec))
 
 
 def load_and_run_tshell():
