@@ -7,16 +7,20 @@ import time
 
 
 class RateLimitBackend(object):
-    """An interface for rate limit backends to implement.
+    """An interface for rate limit backends to implement."""
 
-    :param str key: The name of the rate limit bucket to consume from.
-    :param int amount: The amount to consume from the rate limit bucket.
-    :param int allowance: The maximum allowance for the rate limit bucket.
-    :param int interval: The interval to reset the allowance.
+    def consume(self, key, amount, allowance, interval):
+        """Consume the given `amount` from the allowance for the given `key`.
 
-    """
+        This will return true if the `key` remains below the `allowance`
+        after consuming the given `amount`.
 
-    def consume(self, key, amount, max, bucket_size):
+        :param str key: The name of the rate limit bucket to consume from.
+        :param int amount: The amount to consume from the rate limit bucket.
+        :param int allowance: The maximum allowance for the rate limit bucket.
+        :param int interval: The interval to reset the allowance.
+
+        """
         raise NotImplementedError
 
 

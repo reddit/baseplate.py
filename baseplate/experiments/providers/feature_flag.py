@@ -50,7 +50,7 @@ class FeatureFlag(R2Experiment):
     """
 
     @classmethod
-    def from_dict(cls, id, name, owner, version, config):
+    def from_dict(cls, id, name, owner, version, config):  # pylint: disable=redefined-builtin
         variants = config.get("variants", {})
         assert not set(variants.keys()) - {"active"}
         return super(FeatureFlag, cls).from_dict(

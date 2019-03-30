@@ -42,10 +42,10 @@ class ExperimentsContextFactory(ContextFactory):
         self._filewatcher = FileWatcher(path, json.load, timeout=timeout)
         self._event_logger = event_logger
 
-    def make_object_for_context(self, name, server_span):
+    def make_object_for_context(self, name, span):
         return Experiments(
             config_watcher=self._filewatcher,
-            server_span=server_span,
+            server_span=span,
             context_name=name,
             event_logger=self._event_logger,
         )
@@ -78,16 +78,13 @@ class Experiments(object):
             return config_data[name]
         except WatchedFileNotAvailableError as exc:
             logger.warning("Experiment config unavailable: %s", str(exc))
-            return
         except KeyError:
             logger.warning(
                 "Experiment <%r> not found in experiment config",
                 name,
             )
-            return
         except TypeError as exc:
             logger.warning("Could not load experiment config: %s", str(exc))
-            return
 
     def _get_experiment(self, name):
         if name not in self._experiment_cache:
@@ -98,7 +95,7 @@ class Experiments(object):
                 try:
                     experiment = parse_experiment(experiment_config)
                 except Exception as err:
-                    logger.error("Invalid configuration for experiment {}: {}".format(name, err))
+                    logger.error("Invalid configuration for experiment %s: %s", name, err)
                     return None
             self._experiment_cache[name] = experiment
         return self._experiment_cache[name]
@@ -109,9 +106,8 @@ class Experiments(object):
         :rtype: :py:class:`list`
         :return: List of all valid experiment names.
         """
-        config = self._config_watcher.get_data()
-        experiment_names = list(config.keys())
-
+        cfg = self._config_watcher.get_data()
+        experiment_names = list(cfg.keys())
         return experiment_names
 
     def is_valid_experiment(self, name):

@@ -24,8 +24,8 @@ class MemcacheRateLimitBackendContextFactory(ContextFactory):
         self.memcache_context_factory = MemcacheContextFactory(memcache_pool)
         self.prefix = prefix
 
-    def make_object_for_context(self, name, server_span):
-        memcache = self.memcache_context_factory.make_object_for_context(name, server_span)
+    def make_object_for_context(self, name, span):
+        memcache = self.memcache_context_factory.make_object_for_context(name, span)
         return MemcacheRateLimitBackend(memcache, prefix=self.prefix)
 
 

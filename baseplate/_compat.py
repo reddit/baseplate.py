@@ -15,8 +15,8 @@ if sys.version_info.major == 3:  # pragma: nocover
     from io import BytesIO, StringIO
     import pickle
     from urllib.parse import urlparse, urljoin, unquote, quote
-    range = range
-    string_types = str,
+    range = range  # pylint: disable=redefined-builtin
+    string_types = (str,)
     long = int
     import builtins
 
@@ -28,10 +28,10 @@ else:  # pragma: nocover
     import Queue as queue
     import cPickle as pickle
     from cStringIO import StringIO
-    from urllib import unquote, quote  # pylint: disable=no-name-in-module
+    from urllib import unquote, quote  # pylint: disable=no-name-in-module,ungrouped-imports
     from urlparse import urlparse, urljoin
     range = xrange  # noqa: F821 pylint: disable=undefined-variable
-    string_types = basestring,  # noqa: F821 pylint: disable=undefined-variable
+    string_types = (basestring,)  # noqa: F821 pylint: disable=undefined-variable
     long = long
     BytesIO = StringIO
     import __builtin__ as builtins

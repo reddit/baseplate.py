@@ -3,9 +3,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+from math import ceil
+
 import redis
 import redis.client
-from math import ceil
 
 from . import ContextFactory
 from .. import config, message_queue
@@ -72,8 +73,8 @@ class RedisContextFactory(ContextFactory):
     def __init__(self, connection_pool):
         self.connection_pool = connection_pool
 
-    def make_object_for_context(self, name, server_span):
-        return MonitoredRedisConnection(name, server_span, self.connection_pool)
+    def make_object_for_context(self, name, span):
+        return MonitoredRedisConnection(name, span, self.connection_pool)
 
 
 # pylint: disable=too-many-public-methods
@@ -147,7 +148,7 @@ class MonitoredRedisPipeline(redis.client.StrictPipeline):
         super(MonitoredRedisPipeline, self).__init__(
             connection_pool, response_callbacks, **kwargs)
 
-    def execute(self, **kwargs):
+    def execute(self, **kwargs):  # pylint: disable=arguments-differ
         with self.server_span.make_child(self.trace_name):
             return super(MonitoredRedisPipeline, self).execute(**kwargs)
 
@@ -166,8 +167,7 @@ class MessageQueue(object):
 
     def __init__(self, name, client):
         self.queue = name
-        if isinstance(client, redis.BlockingConnectionPool) or \
-                isinstance(client, redis.ConnectionPool):
+        if isinstance(client, (redis.BlockingConnectionPool, redis.ConnectionPool)):
             self.client = redis.Redis(connection_pool=client)
         else:
             self.client = client
@@ -198,7 +198,7 @@ class MessageQueue(object):
 
         return message
 
-    def put(self, message, timeout=None):
+    def put(self, message, timeout=None):  # pylint: disable=unused-argument
         """Add a message to the queue.
 
         :param message: will be typecast to a string upon storage and will come
@@ -209,7 +209,6 @@ class MessageQueue(object):
 
     def unlink(self):
         """Not implemented for Redis variant."""
-        pass
 
     def close(self):
         """Close queue when finished.

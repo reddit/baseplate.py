@@ -31,8 +31,8 @@ test:
 	tox
 
 lint:
-	flake8 baseplate/
-	pylint --errors-only baseplate/
+	flake8
+	pylint baseplate/
 
 checks: tests lint spelling
 

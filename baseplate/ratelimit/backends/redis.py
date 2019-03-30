@@ -23,8 +23,8 @@ class RedisRateLimitBackendContextFactory(ContextFactory):
         self.redis_context_factory = RedisContextFactory(redis_pool)
         self.prefix = prefix
 
-    def make_object_for_context(self, name, server_span):
-        redis = self.redis_context_factory.make_object_for_context(name, server_span)
+    def make_object_for_context(self, name, span):
+        redis = self.redis_context_factory.make_object_for_context(name, span)
         return RedisRateLimitBackend(redis, prefix=self.prefix)
 
 

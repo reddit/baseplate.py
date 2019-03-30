@@ -5,13 +5,13 @@ from __future__ import unicode_literals
 
 import logging
 
+# pylint: disable=ungrouped-imports
 import gevent
 from gevent.pool import Pool
 from gevent.pywsgi import WSGIServer
 
-from . import _load_factory
 from baseplate import config
-from baseplate.server import runtime_monitor
+from baseplate.server import runtime_monitor, _load_factory
 
 try:
     # pylint: disable=no-name-in-module

@@ -188,7 +188,7 @@ class BatchTests(unittest.TestCase):
         with self.batch as b:
             batch_counter = b.counter("some_counter")
             batch_counter.increment()
-        self.assertTrue(batch_counter.send.called)
+        self.assertTrue(batch_counter.flush.called)
 
     def tearDown(self):
         self.patcher.stop()
@@ -301,12 +301,12 @@ class BatchCounterTests(unittest.TestCase):
         self.assertEqual(batch_counter.packets[1.0], 2)
         self.assertFalse(self.transport.send.called)
 
-    def test_send(self):
+    def test_flush(self):
         batch_counter = metrics.BatchCounter(self.transport, b"example")
         batch_counter.increment()
         batch_counter.increment(3)
         self.assertEqual(batch_counter.packets[1.0], 4)
-        batch_counter.send()
+        batch_counter.flush()
         self.assertEqual(self.transport.send.call_count, 1)
         self.assertEqual(self.transport.send.call_args,
             mock.call(b"example:4|c"))
@@ -316,7 +316,7 @@ class BatchCounterTests(unittest.TestCase):
         batch_counter.increment()
         batch_counter.increment()
         batch_counter.increment(sample_rate=0.5)
-        batch_counter.send()
+        batch_counter.flush()
 
         self.assertEqual(len(batch_counter.packets), 2)
         self.assertEqual(batch_counter.packets[1.0], 2)

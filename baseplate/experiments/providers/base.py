@@ -7,7 +7,7 @@ from __future__ import unicode_literals
 class Experiment(object):
     """Base interface for experiment objects."""
 
-    def get_unique_id(self, **kwargs):
+    def get_unique_id(self, **kwargs):  # pylint: disable=unused-argument
         """Generate a unique ID for this experiment with the given inputs.
 
         Used to determine if a bucketing event has alread been fired for a

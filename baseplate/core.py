@@ -39,15 +39,12 @@ class SpanObserver(object):
 
     def on_start(self):
         """Do something when the observed span is started."""
-        pass
 
     def on_set_tag(self, key, value):
         """Do something when a tag is set on the observed span."""
-        pass
 
     def on_log(self, name, payload):
         """Do something when a log entry is added to the span."""
-        pass
 
     def on_finish(self, exc_info):
         """Do something when the observed span is finished.
@@ -56,7 +53,6 @@ class SpanObserver(object):
             exception info. Otherwise, :py:data:`None`.
 
         """
-        pass
 
     def on_child_span_created(self, span):
         """Do something when a child span is created.
@@ -67,7 +63,6 @@ class SpanObserver(object):
         :param baseplate.core.Span span: The new child span.
 
         """
-        pass
 
 
 class ServerSpanObserver(SpanObserver):
@@ -496,8 +491,7 @@ class EdgeRequestContextFactory(object):
         if loid_id is not None and not loid_id.startswith("t2_"):
             raise ValueError(
                 "loid_id <%s> is not in a valid format, it should be in the "
-                "fullname format with the '0' padding removed: 't2_loid_id'",
-                loid_id
+                "fullname format with the '0' padding removed: 't2_loid_id'" % loid_id
             )
 
         t_request = TRequest(
@@ -635,6 +629,7 @@ class Baseplate(object):
 
     def configure_logging(self):
         """Add request context to the logging system."""
+        # pylint: disable=cyclic-import
         from .diagnostics.logging import LoggingBaseplateObserver
         self.register(LoggingBaseplateObserver())
 
@@ -650,6 +645,7 @@ class Baseplate(object):
             request metrics to.
 
         """
+        # pylint: disable=cyclic-import
         from .diagnostics.metrics import MetricsBaseplateObserver
         self._metrics_client = metrics_client
         self.register(MetricsBaseplateObserver(metrics_client))
@@ -664,6 +660,7 @@ class Baseplate(object):
             client to send request traces to.
 
         """
+        # pylint: disable=cyclic-import
         from .diagnostics.tracing import (
             make_client,
             TraceBaseplateObserver,
@@ -692,6 +689,7 @@ class Baseplate(object):
         :param raven.Client client: A configured raven client.
 
         """
+        # pylint: disable=cyclic-import
         from .diagnostics.sentry import (
             SentryBaseplateObserver,
             SentryUnhandledErrorReporter,
@@ -715,6 +713,7 @@ class Baseplate(object):
         :param baseplate.context.ContextFactory context_factory: A factory.
 
         """
+        # pylint: disable=cyclic-import
         from .context import ContextObserver
         self.register(ContextObserver(name, context_factory))
 

@@ -96,13 +96,14 @@ def _decode_secret(path, encoding, value):
         # encode to bytes for consistency with the base64 path. utf-8 because
         # that undoes json encoding.
         return value.encode("utf-8")
-    elif encoding == "base64":
+
+    if encoding == "base64":
         try:
             return base64.b64decode(value)
         except (TypeError, binascii.Error) as exc:
             raise CorruptSecretError(path, "unable to decode base64: %s" % exc)
-    else:
-        raise CorruptSecretError(path, "unknown encoding: %r" % encoding)
+
+    raise CorruptSecretError(path, "unknown encoding: %r" % encoding)
 
 
 class SecretsStore(ContextFactory):
@@ -239,7 +240,7 @@ class SecretsStore(ContextFactory):
         data = self._get_data()
         return data["vault"]["token"]
 
-    def make_object_for_context(self, name, server_span):
+    def make_object_for_context(self, name, span):
         """Return an object that can be added to the context object.
 
         This allows the secret store to be used with
@@ -255,7 +256,7 @@ class SecretsStore(ContextFactory):
 class _CachingSecretsStore(SecretsStore):
     """Lazily load and cache the parsed data until the server span ends."""
 
-    def __init__(self, filewatcher):
+    def __init__(self, filewatcher):  # pylint: disable=super-init-not-called
         self._filewatcher = filewatcher
 
     @cached_property

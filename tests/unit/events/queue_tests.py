@@ -14,8 +14,8 @@ from baseplate.events import (
     EventQueueFullError,
     EventTooLargeError,
     FieldKind,
-    MAX_EVENT_SIZE,
 )
+from baseplate.events.queue import MAX_EVENT_SIZE
 from baseplate.message_queue import MessageQueue, TimedOutError
 
 from ... import mock

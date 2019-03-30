@@ -57,6 +57,7 @@ class R2Experiment(Experiment):
           created or when an LoID cookie was generated.
     """
 
+    # pylint: disable=redefined-builtin
     def __init__(self, id, name, owner, variants, seed=None,
                  bucket_val="user_id", targeting=None, overrides=None,
                  newer_than=None, version=None):
@@ -109,6 +110,7 @@ class R2Experiment(Experiment):
         self.newer_than = newer_than
         self.version = version
 
+    # pylint: disable=redefined-builtin
     @classmethod
     def from_dict(cls, id, name, owner, version, config):
         """Parse the config dict and return a new R2Experiment object.
@@ -137,8 +139,7 @@ class R2Experiment(Experiment):
             return ":".join(
                 [self.name, self.bucket_val, str(kwargs[self.bucket_val])]
             )
-        else:
-            return None
+        return None
 
     def should_log_bucketing(self):
         return True
@@ -309,5 +310,4 @@ class R2Experiment(Experiment):
         )
         if bucket < int(bucket_limit):
             return candidate_variant
-        else:
-            return None
+        return None

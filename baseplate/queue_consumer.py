@@ -6,10 +6,11 @@ from __future__ import unicode_literals
 import logging
 from threading import Thread
 
-from baseplate._compat import queue
-from baseplate.retry import RetryPolicy
 from kombu import Queue
 from kombu.mixins import ConsumerMixin
+
+from baseplate._compat import queue
+from baseplate.retry import RetryPolicy
 
 
 logger = logging.getLogger(__name__)
@@ -48,12 +49,11 @@ def consume(baseplate, exchange, connection, queue_name, routing_keys, handler):
     """
     queues = []
     for routing_key in routing_keys:
-        queue = Queue(
+        queues.append(Queue(
             name=queue_name,
             exchange=exchange,
             routing_key=routing_key,
-        )
-        queues.append(queue)
+        ))
 
     logger.info("registering %s as a handler for %r", handler.__name__, queues)
     kombu_consumer = KombuConsumer.new(connection, queues)
@@ -166,7 +166,7 @@ class KombuConsumer(BaseKombuConsumer):
 
     """
 
-    def get_message(self, server_span):
+    def get_message(self, server_span):  # pylint: disable=arguments-differ
         """Return a single message.
 
         :param baseplate.core.ServerSpan server_span:
@@ -194,7 +194,7 @@ class KombuConsumer(BaseKombuConsumer):
 
             return message
 
-    def get_batch(self, server_span, max_items, timeout):
+    def get_batch(self, server_span, max_items, timeout):  # pylint: disable=arguments-differ
         """Return a batch of messages.
 
         :param baseplate.core.ServerSpan server_span:

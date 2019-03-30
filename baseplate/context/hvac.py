@@ -80,7 +80,7 @@ class HvacContextFactory(ContextFactory):
         self.timeout = timeout
         self.session = requests.Session()
 
-    def make_object_for_context(self, name, server_span):
+    def make_object_for_context(self, name, span):
         vault_url = self.secrets.get_vault_url()
         vault_token = self.secrets.get_vault_token()
 
@@ -90,7 +90,7 @@ class HvacContextFactory(ContextFactory):
             timeout=self.timeout.total_seconds(),
             session=self.session,
             context_name=name,
-            server_span=server_span,
+            server_span=span,
         )
 
 

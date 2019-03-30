@@ -51,7 +51,7 @@ TRACE_HEADER_NAMES = {
 }
 
 
-def _make_baseplate_tween(handler, registry):
+def _make_baseplate_tween(handler, _registry):
     def baseplate_tween(request):
         try:
             response = handler(request)
