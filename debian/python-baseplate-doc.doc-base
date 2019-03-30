@@ -1,8 +1,0 @@
-Document: python-baseplate-doc
-Title: Baseplate documentation
-Author: reddit
-Section: Programming/Python
-
-Format: HTML
-Index: /usr/share/doc/python-baseplate-doc/html/index.html
-Files: /usr/share/doc/python-baseplate-doc/html/*.html
