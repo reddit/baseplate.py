@@ -126,6 +126,7 @@ class TraceBaseplateObserver(BaseplateObserver):
         where metrics will be sent.
 
     """
+
     def __init__(self, tracing_client):
         self.service_name = tracing_client.service_name
         self.sample_rate = tracing_client.sample_rate
@@ -166,6 +167,7 @@ class TraceSpanObserver(SpanObserver):
     This observer implements the client-side span portion of a
     Zipkin request trace.
     """
+
     def __init__(self, service_name, hostname, span, recorder):
         self.service_name = service_name
         self.hostname = hostname
@@ -283,6 +285,7 @@ class TraceLocalSpanObserver(TraceSpanObserver):
     :param baseplate.core.Span span: Local span for this observer.
     :param baseplate.diagnostics.tracing.Recorder: Recorder for span trace.
     """
+
     def __init__(self,
                  service_name,
                  component_name,
@@ -407,12 +410,10 @@ class BaseBatchRecorder(object):
         raise NotImplementedError
 
     def _flush_spans(self):
-        """
-        This reads a batch of at most max_span_batch spans off the recorder queue
-        and sends them to a remote recording endpoint. If the queue
-        empties while being processed before reaching 10 spans, we flush
-        immediately.
-        """
+        # This reads a batch of at most max_span_batch spans off the recorder queue
+        # and sends them to a remote recording endpoint. If the queue
+        # empties while being processed before reaching 10 spans, we flush
+        # immediately.
         while True:
             spans = []
             try:
@@ -435,6 +436,7 @@ class BaseBatchRecorder(object):
 
 class LoggingRecorder(BaseBatchRecorder):
     """Interface for recording spans to the debug log."""
+
     def __init__(self, max_queue_size=50000,
                  num_workers=5,
                  max_span_batch=100,
@@ -454,6 +456,7 @@ class LoggingRecorder(BaseBatchRecorder):
 
 class NullRecorder(BaseBatchRecorder):
     """Noop recorder."""
+
     def __init__(self, max_queue_size=50000,
                  num_workers=5,
                  max_span_batch=100,
@@ -471,10 +474,12 @@ class NullRecorder(BaseBatchRecorder):
 
 class RemoteRecorder(BaseBatchRecorder):
     """Interface for recording spans to a remote collector.
+
     The RemoteRecorder adds spans to an in-memory Queue for a background
     thread worker to process. It currently does not shut down gracefully -
     in the event of parent process exit, any remaining spans will be discarded.
     """
+
     def __init__(self, endpoint,
                  num_conns=5,
                  num_workers=5,
@@ -527,6 +532,7 @@ class SidecarRecorder(BaseBatchRecorder):
     The SidecarRecorder serializes spans to a string representation before
     adding them to the queue.
     """
+
     def __init__(self, queue_name):
         self.queue = MessageQueue(
             "/traces-" + queue_name,

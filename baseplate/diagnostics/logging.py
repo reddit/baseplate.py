@@ -16,5 +16,6 @@ class LoggingBaseplateObserver(BaseplateObserver):
     the thread name to the current request's trace ID.
 
     """
+
     def on_server_span_created(self, context, server_span):
         threading.current_thread().name = str(server_span.trace_id)

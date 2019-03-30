@@ -59,7 +59,6 @@ else:
         function resistant to timing attacks.
 
         """
-
         if type(actual) != type(expected):
             warn_deprecated("Future versions of constant_time_compare require that both "
                 "parameters are of the same type.")
@@ -75,17 +74,14 @@ else:
 
 class SignatureError(Exception):
     """Base class for all message signing related errors."""
-    pass
 
 
 class UnreadableSignatureError(SignatureError):
     """Raised when the signature is corrupt or wrongly formatted."""
-    pass
 
 
 class IncorrectSignatureError(SignatureError):
     """Raised when the signature is readable but does not match the message."""
-    pass
 
 
 class ExpiredSignatureError(SignatureError):
@@ -95,6 +91,7 @@ class ExpiredSignatureError(SignatureError):
     at which the signature expired.
 
     """
+
     def __init__(self, expiration):
         self.expiration = expiration
         super(ExpiredSignatureError, self).__init__()
@@ -124,7 +121,6 @@ class SignatureInfo(_SignatureInfo):
         the signature will expire.
 
     """
-    pass
 
 
 def _compute_digest(secret_value, header, message):
@@ -210,6 +206,7 @@ class MessageSigner(object):
     versioned secrets for new code.
 
     """
+
     def __init__(self, secret_key):
         warn_deprecated("MessageSigner is deprecated in favor of the top-level "
                         "make_signature and validate_signature functions which "

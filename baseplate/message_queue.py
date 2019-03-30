@@ -13,11 +13,11 @@ from .retry import RetryPolicy
 
 class MessageQueueError(Exception):
     """Base exception for message queue related errors."""
-    pass
 
 
 class TimedOutError(MessageQueueError):
     """Raised when a message queue operation times out."""
+
     def __init__(self):
         super(TimedOutError, self).__init__(
             "Timed out waiting for the message queue.")
@@ -53,6 +53,7 @@ class MessageQueue(object):
     support this.
 
     """
+
     def __init__(self, name, max_messages, max_message_size):
         try:
             self.queue = posix_ipc.MessageQueue(

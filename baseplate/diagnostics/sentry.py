@@ -17,6 +17,7 @@ class SentryBaseplateObserver(BaseplateObserver):
     :param raven.Client client: A configured raven client.
 
     """
+
     def __init__(self, raven):
         self.raven = raven
 

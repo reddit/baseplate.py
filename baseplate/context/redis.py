@@ -30,7 +30,6 @@ def pool_from_config(app_config, prefix="redis.", **kwargs):
         e.g. ``200 milliseconds``.
 
     """
-
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
     cfg = config.parse_config(app_config, {
@@ -69,6 +68,7 @@ class RedisContextFactory(ContextFactory):
     :returns: :py:class:`~baseplate.context.redis.MonitoredRedisConnection`
 
     """
+
     def __init__(self, connection_pool):
         self.connection_pool = connection_pool
 
@@ -163,6 +163,7 @@ class MessageQueue(object):
            :py:func:`pool_from_config` helper).
 
     """
+
     def __init__(self, name, client):
         self.queue = name
         if isinstance(client, redis.BlockingConnectionPool) or \
@@ -207,12 +208,11 @@ class MessageQueue(object):
         return self.client.rpush(self.queue, message)
 
     def unlink(self):
-        """Not implemented for Redis variant
-        """
+        """Not implemented for Redis variant."""
         pass
 
     def close(self):
-        """Close queue when finished
+        """Close queue when finished.
 
         Will delete the queue from the Redis server (Note, can still enqueue
         and dequeue as the actions will recreate the queue)

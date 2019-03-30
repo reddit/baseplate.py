@@ -174,7 +174,7 @@ class R2Experiment(Experiment):
         return self._choose_variant(bucket)
 
     def _check_overrides(self, **kwargs):
-        """Check if any of the kwargs override the variant. """
+        """Check if any of the kwargs override the variant."""
         for override_arg in self.overrides:
             if override_arg in kwargs:
                 values = kwargs[override_arg]
@@ -193,9 +193,7 @@ class R2Experiment(Experiment):
         return None
 
     def _is_enabled(self, **kwargs):
-        """Check if the targeting parameters in kwargs allow us to perform
-        the experiment.
-        """
+        """Check if the targeting parameters in kwargs allow us to perform the experiment."""
         for targeting_param, allowed_values in iteritems(self.targeting):
             if targeting_param in kwargs:
                 targeting_values = kwargs[targeting_param]

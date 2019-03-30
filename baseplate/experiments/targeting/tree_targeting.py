@@ -10,19 +10,16 @@ class UnknownTargetingOperatorError(Exception):
 
 
 class EqualNode(Targeting):
-    """Used to determine whether an attribute equals a single value or a value
-    in a list
-    """
-    def __init__(self, input_node):
-        """Build a node to evaluate equality (single value or list).
+    """Used to determine whether an attribute equals a single value or a value in a list.
 
-        :param dict input_node: dict with the field name and value or list
-        of values to accept for targeting. This dict will contain two keys:
-        "field", and one of "value" or "values". If "value" is provided,
-        a single value is expected. If "values" is instead provided, then
-        a list of values is expected.
+    :param dict input_node: dict with the field name and value or list
+    of values to accept for targeting. This dict will contain two keys:
+    "field", and one of "value" or "values". If "value" is provided,
+    a single value is expected. If "values" is instead provided, then
+    a list of values is expected.
 
-        A full EqualNode in a targeting tree configuration looks like this:
+    A full EqualNode in a targeting tree configuration looks like this::
+
         {
             EQ:{
                 field: <field_name>
@@ -30,13 +27,16 @@ class EqualNode(Targeting):
             }
         }
 
-        The expected input to this constructor from the above example would be:
+    The expected input to this constructor from the above example would be::
+
         {
             field: <field_name>,
             value: <accepted_value>
         }
-        """
 
+    """
+
+    def __init__(self, input_node):
         if len(input_node) != 2:
             raise ValueError("EqualNode expects exactly two fields.")
 
@@ -58,13 +58,13 @@ class EqualNode(Targeting):
 
 
 class AllNode(Targeting):
-    """All child nodes return True"""
-    def __init__(self, input_node):
-        """Build a node to evaluate multiple children and return True if they
-        all evaluate to True (boolean 'and').
+    """All child nodes return True.
 
-        :param list input_node: a list of Targeting nodes
-        """
+    :param list input_node: a list of Targeting nodes
+
+    """
+
+    def __init__(self, input_node):
         if not isinstance(input_node, list):
             raise TypeError("Input to AllNode expects a list.")
 
@@ -78,14 +78,13 @@ class AllNode(Targeting):
 
 
 class AnyNode(Targeting):
-    """At least one child node return True"""
+    """At least one child node return True.
+
+    :param list input_node: a list of Targeting nodes
+
+    """
 
     def __init__(self, input_node):
-        """Build a node to evaluate multiple children and return True if at
-        least one of them evaluates to True (boolean 'or').
-
-        :param list input_node: a list of Targeting nodes
-        """
         if not isinstance(input_node, list):
             raise TypeError("Input to AnyNode expects a list.")
 
@@ -99,13 +98,13 @@ class AnyNode(Targeting):
 
 
 class NotNode(Targeting):
-    """Boolean 'not' operator"""
-    def __init__(self, input_node):
-        """Build a node that evaluates to true if its sole child node evaluates
-        to False (boolean 'not')
+    """Boolean 'not' operator.
 
-        :param dict input_node: a Targeting node
-        """
+    :param dict input_node: a Targeting node
+
+    """
+
+    def __init__(self, input_node):
         if len(input_node) != 1:
             raise ValueError("NotNode expects exactly one field.")
 
@@ -119,8 +118,8 @@ class NotNode(Targeting):
 
 
 class OverrideNode(Targeting):
-    """Always return True/False
-    """
+    """Always return True/False."""
+
     def __init__(self, input_node):
         if input_node is True:
             self._return_value = True
@@ -141,7 +140,7 @@ OPERATOR_NODE_TYPE_MAPPING = {
 
 
 def create_targeting_tree(input_node):
-    """Creates a tree-based targeting evaluator.
+    """Create a tree-based targeting evaluator.
 
     Processes input json to create a tree against which a set of inputs
     can be evaluated to determine whether or not a user with the input

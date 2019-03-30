@@ -254,6 +254,7 @@ class SecretsStore(ContextFactory):
 
 class _CachingSecretsStore(SecretsStore):
     """Lazily load and cache the parsed data until the server span ends."""
+
     def __init__(self, filewatcher):
         self._filewatcher = filewatcher
 

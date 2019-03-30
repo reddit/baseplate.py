@@ -53,7 +53,6 @@ class Backend(Backend_):
         when choosing whom to connect to.
 
     """
-    pass
 
 
 _Inventory = collections.namedtuple("_Inventory", "backends lottery")
@@ -76,7 +75,6 @@ def _parse(watched_file):
 
 class NoBackendsAvailableError(Exception):
     """Raised when no backends are available for this service."""
-    pass
 
 
 class ServiceInventory(object):
@@ -86,6 +84,7 @@ class ServiceInventory(object):
         inventory file in JSON format.
 
     """
+
     def __init__(self, filename):
         self._filewatcher = FileWatcher(filename, _parse)
 
@@ -98,7 +97,6 @@ class ServiceInventory(object):
         :rtype: list of :py:class:`Backend` objects
 
         """
-
         try:
             # pylint: disable=maybe-no-member
             return self._filewatcher.get_data().backends
@@ -116,7 +114,6 @@ class ServiceInventory(object):
             has no available endpoints.
 
         """
-
         try:
             inventory = self._filewatcher.get_data()
         except WatchedFileNotAvailableError:

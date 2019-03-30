@@ -5,12 +5,12 @@ from __future__ import unicode_literals
 
 
 class Experiment(object):
-    """Base interface for experiment objects. """
+    """Base interface for experiment objects."""
 
     def get_unique_id(self, **kwargs):
         """Generate a unique ID for this experiment with the given inputs.
 
-        Used to determine if a bucketing ivent has alread been fired for a
+        Used to determine if a bucketing event has alread been fired for a
         given experiment and bucketing value pair.  Returns None by default.
         If None is returned, we will not mark that a bucketing event has been
         logged even if we do log a bucketing event. The kwargs should be the
@@ -37,6 +37,5 @@ class Experiment(object):
         raise NotImplementedError
 
     def should_log_bucketing(self):
-        """Should this experiment log bucketing events to the event pipeline.
-        """
+        """Return whether this experiment should log bucketing events to the event pipeline."""
         raise NotImplementedError

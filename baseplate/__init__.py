@@ -76,7 +76,6 @@ def tracing_client_from_config(raw_config, log_if_unconfigured=True):
     :rtype: :py:class:`baseplate.diagnostics.tracing.TracingClient`
 
     """
-
     cfg = config.parse_config(raw_config, {
         "tracing": {
             "service_name": config.String,

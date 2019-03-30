@@ -58,7 +58,7 @@ class WatchedFileNotAvailableError(Exception):
 
 
 class FileWatcher(object):
-    """Watch a file and load its data when it changes.
+    r"""Watch a file and load its data when it changes.
 
     :param str path: Full path to a file to watch.
     :param callable parser: A callable that takes an open file object, parses
@@ -144,7 +144,6 @@ class FileWatcher(object):
         the freshest data.
 
         """
-
         try:
             current_mtime = os.path.getmtime(self._path)
         except OSError as exc:

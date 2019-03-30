@@ -65,6 +65,7 @@ class CassandraContextFactory(ContextFactory):
     :param cassandra.cluster.Session session: A configured session object.
 
     """
+
     def __init__(self, session):
         self.session = session
         self.prepared_statements = {}
@@ -75,7 +76,7 @@ class CassandraContextFactory(ContextFactory):
 
 
 class CQLMapperContextFactory(CassandraContextFactory):
-    """CQLMapper ORM connection context factory
+    """CQLMapper ORM connection context factory.
 
     This factory will attach a new CQLMapper
     :py:class:`cqlmapper.connection.Connection` to an attribute on the
@@ -207,7 +208,7 @@ class CassandraSessionAdapter(object):
         return future
 
     def prepare(self, query, cache=True):
-        """Prepares a CQL statement.
+        """Prepare a CQL statement.
 
         :param bool cache: If set to True (default), prepared statements will be
         automatically cached and reused. The cache is keyed on the text of the
@@ -216,7 +217,6 @@ class CassandraSessionAdapter(object):
         query set. Prepared statements are cached indefinitely, so be wary of
         memory usage.
         """
-
         if cache:
             try:
                 return self.prepared_statements[query]

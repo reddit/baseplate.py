@@ -35,8 +35,7 @@ simple_type_class_list = frozenset([
 
 
 def parse_experiment(config):
-    """Factory method that parses an experiment config dict and returns an
-    appropriate Experiment class.
+    """Parse an experiment config dict and return an appropriate Experiment class.
 
     The config dict is expected to have the following values:
 

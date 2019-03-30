@@ -22,7 +22,7 @@ class BaseplateObserver(object):
     """Interface for an observer that watches Baseplate."""
 
     def on_server_span_created(self, context, server_span):
-        """Called when a server span is created.
+        """Do something when a server span is created.
 
         :py:class:`Baseplate` calls this when a new request begins.
 
@@ -38,19 +38,19 @@ class SpanObserver(object):
     """Interface for an observer that watches a span."""
 
     def on_start(self):
-        """Called when the observed span is started."""
+        """Do something when the observed span is started."""
         pass
 
     def on_set_tag(self, key, value):
-        """Called when a tag is set on the observed span."""
+        """Do something when a tag is set on the observed span."""
         pass
 
     def on_log(self, name, payload):
-        """Called when a log entry is added to the span."""
+        """Do something when a log entry is added to the span."""
         pass
 
     def on_finish(self, exc_info):
-        """Called when the observed span is finished.
+        """Do something when the observed span is finished.
 
         :param exc_info: If the span ended because of an exception, the
             exception info. Otherwise, :py:data:`None`.
@@ -59,7 +59,7 @@ class SpanObserver(object):
         pass
 
     def on_child_span_created(self, span):
-        """Called when a child span is created.
+        """Do something when a child span is created.
 
         :py:class:`SpanObserver` objects call this when a new child span is
         created.
@@ -72,7 +72,6 @@ class SpanObserver(object):
 
 class ServerSpanObserver(SpanObserver):
     """Interface for an observer that watches the server span."""
-    pass
 
 
 _TraceInfo = collections.namedtuple("_TraceInfo",
@@ -81,7 +80,6 @@ _TraceInfo = collections.namedtuple("_TraceInfo",
 
 class NoAuthenticationError(Exception):
     """Raised when trying to use an invalid or missing authentication token."""
-    pass
 
 
 class TraceInfo(_TraceInfo):
@@ -234,7 +232,7 @@ class AuthenticationToken(object):
 
     @property
     def subject(self):
-        """The raw `subject` that is authenticated."""
+        """Return the raw `subject` that is authenticated."""
         raise NotImplementedError
 
     @property
@@ -298,12 +296,11 @@ _Service = collections.namedtuple("_Service", ["authentication_token"])
 
 
 class User(_User):
-    """Wrapper for the user values in AuthenticationToken and the LoId cookie.
-    """
+    """Wrapper for the user values in AuthenticationToken and the LoId cookie."""
 
     @property
     def id(self):
-        """Authenticated account_id for the current User.
+        """Return the authenticated account_id for the current User.
 
         :type: account_id string or None if context authentication is invalid
         :raises: :py:class:`NoAuthenticationError` if there was no
@@ -318,7 +315,7 @@ class User(_User):
 
     @property
     def is_logged_in(self):
-        """Does the User have a valid, authenticated id?"""
+        """Return if the User has a valid, authenticated id."""
         try:
             return self.id is not None
         except NoAuthenticationError:
@@ -326,7 +323,7 @@ class User(_User):
 
     @property
     def roles(self):
-        """Authenticated roles for the current User.
+        """Return the authenticated roles for the current User.
 
         :type: set(string)
         :raises: :py:class:`NoAuthenticationError` if there was no
@@ -336,7 +333,7 @@ class User(_User):
         return self.authentication_token.user_roles
 
     def has_role(self, role):
-        """Does the authenticated user have the specified role?
+        """Return if the authenticated user has the specified role.
 
         :param str client_types: Case-insensitive sequence role name to check.
 
@@ -366,7 +363,7 @@ class OAuthClient(_OAuthClient):
 
     @property
     def id(self):
-        """Authenticated id for the current client
+        """Return the authenticated id for the current client.
 
         :type: string or None if context authentication is invalid
         :raises: :py:class:`NoAuthenticationError` if there was no
@@ -376,7 +373,7 @@ class OAuthClient(_OAuthClient):
         return self.authentication_token.oauth_client_id
 
     def is_type(self, *client_types):
-        """Is the authenticated client type one of the given types?
+        """Return if the authenticated client type is one of the given types.
 
         When checking the type of the current OauthClient, you should check
         that the type "is" one of the allowed types rather than checking that
@@ -421,7 +418,7 @@ class Service(_Service):
 
     @property
     def name(self):
-        """Authenticated Service name.
+        """Return the authenticated service name.
 
         :type: name string or None if context authentication is invalid
         :raises: :py:class:`NoAuthenticationError` if there was no
@@ -449,6 +446,7 @@ class EdgeRequestContextFactory(object):
         store.
 
     """
+
     def __init__(self, secrets):
         self.authn_token_validator = AuthenticationTokenValidator(secrets)
 
@@ -530,7 +528,7 @@ class EdgeRequestContextFactory(object):
 
 
 class EdgeRequestContext(object):
-    """Contextual information about the initial request to an edge service
+    """Contextual information about the initial request to an edge service.
 
     Construct this using an
     :py:class:`~baseplate.core.EdgeRequestContextFactory`.
@@ -567,7 +565,7 @@ class EdgeRequestContext(object):
 
     @cached_property
     def user(self):
-        """:py:class:`~baseplate.core.User` object for the current context"""
+        """:py:class:`~baseplate.core.User` object for the current context."""
         return User(
             authentication_token=self.authentication_token,
             loid=self._t_request.loid.id,
@@ -576,18 +574,17 @@ class EdgeRequestContext(object):
 
     @cached_property
     def oauth_client(self):
-        """:py:class:`~baseplate.core.OAuthClient` object for the current context
-        """
+        """:py:class:`~baseplate.core.OAuthClient` object for the current context."""
         return OAuthClient(self.authentication_token)
 
     @cached_property
     def session(self):
-        """:py:class:`~baseplate.core.Session` object for the current context"""
+        """:py:class:`~baseplate.core.Session` object for the current context."""
         return Session(id=self._t_request.session.id)
 
     @cached_property
     def service(self):
-        """:py:class:`~baseplate.core.Service` object for the current context"""
+        """:py:class:`~baseplate.core.Service` object for the current context."""
         return Service(self.authentication_token)
 
     @cached_property
@@ -623,6 +620,7 @@ class Baseplate(object):
     integrate it with the application framework you are using.
 
     """
+
     def __init__(self):
         self.observers = []
         self._metrics_client = None
@@ -736,7 +734,6 @@ class Baseplate(object):
             context will be generated.
 
         """
-
         if trace_info is None:
             trace_info = TraceInfo.new()
 
@@ -884,4 +881,3 @@ class ServerSpan(LocalSpan):
     as the ``trace`` attribute.
 
     """
-    pass

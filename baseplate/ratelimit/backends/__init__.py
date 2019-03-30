@@ -15,6 +15,7 @@ class RateLimitBackend(object):
     :param int interval: The interval to reset the allowance.
 
     """
+
     def consume(self, key, amount, max, bucket_size):
         raise NotImplementedError
 

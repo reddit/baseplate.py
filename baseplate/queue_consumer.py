@@ -105,6 +105,7 @@ class BaseKombuConsumer(object):
     Can be used directly, outside of standard baseplate context.
 
     """
+
     def __init__(self, worker, worker_thread):
         self.worker = worker
         self.worker_thread = worker_thread
@@ -164,6 +165,7 @@ class KombuConsumer(BaseKombuConsumer):
     automatically record diagnostic information.
 
     """
+
     def get_message(self, server_span):
         """Return a single message.
 

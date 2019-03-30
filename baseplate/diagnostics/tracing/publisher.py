@@ -38,6 +38,7 @@ class TraceBatch(RawJSONBatch):
 
 class ZipkinPublisher(object):
     """Zipkin trace publisher."""
+
     def __init__(self,
             zipkin_api_url,
             metrics_client,

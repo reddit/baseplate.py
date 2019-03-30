@@ -131,6 +131,7 @@ def ttl_to_time(ttl):
 
 class VaultClientFactory(object):
     """Factory that makes authenticated clients."""
+
     def __init__(self, base_url, role, auth_type, mount_point):
         self.base_url = base_url
         self.role = role
@@ -151,7 +152,7 @@ class VaultClientFactory(object):
         )
 
     def _vault_kubernetes_auth(self):
-        """Get a client token from Vault through the Kubernetes auth backend.
+        r"""Get a client token from Vault through the Kubernetes auth backend.
 
         This authenticates with Vault as a specified role using its
         Kubernetes auth backend. This involves sending Vault a JSON Web Token
@@ -194,7 +195,7 @@ class VaultClientFactory(object):
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
     def _vault_aws_auth(self):
-        """Get a client token from Vault through the AWS auth backend.
+        r"""Get a client token from Vault through the AWS auth backend.
 
         This authenticates with Vault as a specified role using its AWS
         auth backend. This involves sending to Vault the AWS-signed instance
@@ -265,6 +266,7 @@ class VaultClient(object):
     get a new client from the factory.
 
     """
+
     def __init__(self, session, base_url, token, token_expiration):
         self.session = session
         self.base_url = base_url
@@ -273,7 +275,7 @@ class VaultClient(object):
 
     @property
     def is_about_to_expire(self):
-        """Is the token near expiration and in need of regeneration?"""
+        """Return if the token is near expiration and in need of regeneration."""
         expiration = self.token_expiration - VAULT_TOKEN_PREFETCH_TIME
         return expiration < datetime.datetime.utcnow()
 

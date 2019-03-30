@@ -43,7 +43,6 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
     :returns: :py:class:`pymemcache.client.base.PooledClient`
 
     """
-
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
     cfg = config.parse_config(app_config, {
@@ -84,6 +83,7 @@ class MemcacheContextFactory(ContextFactory):
     :returns: :py:class:`~baseplate.context.memcache.MonitoredMemcacheConnection`
 
     """
+
     def __init__(self, pooled_client):
         self.pooled_client = pooled_client
 
@@ -250,9 +250,7 @@ class MonitoredMemcacheConnection(PooledClient):
 
 
 def make_keys_str(keys):
-    """Make a string representation of an iterable of keys.
-
-    """
+    """Make a string representation of an iterable of keys."""
     keys_str = ",".join(x.decode("utf-8") if isinstance(x, bytes) else x for x in keys)
     if len(keys_str) > 100:
         return keys_str[:100] + "..."

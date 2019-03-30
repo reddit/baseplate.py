@@ -1,4 +1,4 @@
-"""Pyramid integration for Baseplate.
+r"""Pyramid integration for Baseplate.
 
 This module provides a configuration extension for Pyramid which integrates
 Baseplate's facilities into the Pyramid WSGI request lifecycle.
@@ -83,16 +83,16 @@ class ServerSpanInitialized(BaseplateEvent):
     cannot guarantee that any other subscribers to
     :py:class:`pyramid.events.ContextFound` have been called or not.
     """
-    pass
 
 
 class HeaderTrustHandler(object):
     """Abstract class used by :py:class:`BaseplateConfigurator` to validate headers.
+
     See :py:class:`StaticTrustHandler` for the default implementation.
     """
 
     def should_trust_trace_headers(self, request):
-        """ Whether baseplate should parse the trace headers from the inbound request
+        """Return whether baseplate should parse the trace headers from the inbound request.
 
         :param request pyramid.util.Request: The request
 
@@ -101,7 +101,7 @@ class HeaderTrustHandler(object):
         raise NotImplementedError
 
     def should_trust_edge_context_payload(self, request):
-        """ Whether baseplate should trust the edge context headers from the inbound request.
+        """Return whether baseplate should trust the edge context headers from the inbound request.
 
         :param request pyramid.util.Request: The request
 
@@ -111,8 +111,10 @@ class HeaderTrustHandler(object):
 
 
 class StaticTrustHandler(HeaderTrustHandler):
-    """Default implementation for handling headers. This class is created
-    automatically by BaseplateConfigurator unless you supply your own HeaderTrustHandler
+    """Default implementation for handling headers.
+
+    This class is created automatically by BaseplateConfigurator unless you
+    supply your own HeaderTrustHandler
 
     :param bool trust_headers:
         Whether or not to trust trace and edge context headers from
@@ -274,8 +276,7 @@ def paste_make_app(_, **local_config):
 
 
 def pshell_setup(env):
-    # pylint: disable=line-too-long
-    """Start a server span when pshell starts up.
+    r"""Start a server span when pshell starts up.
 
     This simply starts a server span after the shell initializes, which
     gives shell users access to all the :term:`context object` goodness.
