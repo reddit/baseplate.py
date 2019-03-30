@@ -53,8 +53,8 @@ class ThriftContextFactory(ContextFactory):
             },
         )
 
-    def make_object_for_context(self, name, server_span):
-        return self.proxy_cls(self.client_cls, self.pool, server_span, name)
+    def make_object_for_context(self, name, span):
+        return self.proxy_cls(self.client_cls, self.pool, span, name)
 
 
 def _enumerate_service_methods(client):

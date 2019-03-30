@@ -226,7 +226,7 @@ class TraceSpanObserver(SpanObserver):
         endpoint_info = self._endpoint_info()
 
         # Annotation values must be bool or str type.
-        if type(annotation_value) not in (bool, str):
+        if not isinstance(annotation_value, (bool, str)):
             annotation_value = str(annotation_value)
 
         return {
@@ -307,25 +307,25 @@ class TraceLocalSpanObserver(TraceSpanObserver):
     def on_start(self):
         self.start = current_epoch_microseconds()
 
-    def on_child_span_created(self, child_span):
+    def on_child_span_created(self, span):
         """Perform tracing-related actions for child spans creation.
 
         Register new TraceSpanObserver for the child span
         being created so span start and finish get properly recorded.
         """
-        if isinstance(child_span, LocalSpan):
+        if isinstance(span, LocalSpan):
             trace_observer = TraceLocalSpanObserver(self.service_name,
-                                                    child_span.component_name,
+                                                    span.component_name,
                                                     self.hostname,
-                                                    child_span,
+                                                    span,
                                                     self.recorder)
 
         else:
             trace_observer = TraceSpanObserver(self.service_name,
                                                self.hostname,
-                                               child_span,
+                                               span,
                                                self.recorder)
-        child_span.register(trace_observer)
+        span.register(trace_observer)
 
     def _serialize(self):
         annotations = []
@@ -351,25 +351,25 @@ class TraceServerSpanObserver(TraceSpanObserver):
     def on_start(self):
         self.start = current_epoch_microseconds()
 
-    def on_child_span_created(self, child_span):
+    def on_child_span_created(self, span):
         """Perform tracing-related actions for child spans creation.
 
         Register new TraceSpanObserver for the child span
         being created so span start and finish get properly recorded.
         """
-        if isinstance(child_span, LocalSpan):
+        if isinstance(span, LocalSpan):
             trace_observer = TraceLocalSpanObserver(self.service_name,
-                                                    child_span.component_name,
+                                                    span.component_name,
                                                     self.hostname,
-                                                    child_span,
+                                                    span,
                                                     self.recorder)
 
         else:
             trace_observer = TraceSpanObserver(self.service_name,
                                                self.hostname,
-                                               child_span,
+                                               span,
                                                self.recorder)
-        child_span.register(trace_observer)
+        span.register(trace_observer)
 
     def _serialize(self):
         """Serialize span information into Zipkin-accepted format."""
@@ -400,7 +400,7 @@ class BaseBatchRecorder(object):
         self.batch_wait_interval = batch_wait_interval
         self.max_span_batch = max_span_batch
         self.logger = logging.getLogger(self.__class__.__name__)
-        for i in range(num_workers):
+        for _ in range(num_workers):
             self.flush_worker = threading.Thread(target=self._flush_spans)
             self.flush_worker.name = "span recorder"
             self.flush_worker.daemon = True
@@ -526,7 +526,7 @@ MAX_SIDECAR_QUEUE_SIZE = 102400
 MAX_SIDECAR_MESSAGE_SIZE = 10000
 
 
-class SidecarRecorder(BaseBatchRecorder):
+class SidecarRecorder(object):
     """Interface for recording spans to a POSIX message queue.
 
     The SidecarRecorder serializes spans to a string representation before

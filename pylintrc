@@ -38,8 +38,29 @@ load-plugins=
 # --enable=similarities". If you want to run only the classes checker, but have
 # no Warning level messages displayed, use"--disable=all --enable=classes
 # --disable=W"
-disable=missing-docstring,too-few-public-methods
-
+disable= attribute-defined-outside-init,
+         bad-continuation,
+         broad-except,
+         c-extension-no-member,
+         duplicate-code,
+         fixme,
+         invalid-name,
+         line-too-long,
+         missing-docstring,
+         no-self-use,
+         protected-access,
+         too-few-public-methods,
+         too-many-arguments,
+         too-many-boolean-expressions,
+         too-many-branches,
+         too-many-instance-attributes,
+         too-many-locals,
+         too-many-nested-blocks,
+         too-many-public-methods,
+         too-many-return-statements,
+         too-many-statements,
+         useless-object-inheritance,
+         useless-return,
 
 [REPORTS]
 

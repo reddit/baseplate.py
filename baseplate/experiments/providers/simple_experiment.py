@@ -58,8 +58,8 @@ def _generate_overrides(override_config):
 
     for override_entry in override_config:
         if not isinstance(override_entry, dict) or len(override_entry) > 1:
-            logger.error("Invalid override configuration. Not applying override."
-                "Expected dictionary with single entry: {}".format(override_entry))
+            logger.error("Invalid override configuration. Not applying override. "
+                "Expected dictionary with single entry: %s", override_entry)
             continue
 
         for treatment, targeting_tree_cfg in override_entry.items():
@@ -127,6 +127,7 @@ class SimpleExperiment(Experiment):
 
     """
 
+    # pylint: disable=redefined-builtin, unused-argument
     def __init__(self, id, name, owner, start_ts, stop_ts, config,
                  experiment_version, shuffle_version, variant_set,
                  bucket_seed, bucket_val, targeting, overrides,
@@ -214,8 +215,7 @@ class SimpleExperiment(Experiment):
             return ":".join(
                 [self.name, self.bucket_val, str(kwargs[self.bucket_val])]
             )
-        else:
-            return None
+        return None
 
     def should_log_bucketing(self):
         """Whether or not this experiment should log bucketing events."""
@@ -271,10 +271,9 @@ class SimpleExperiment(Experiment):
         bucket = self._calculate_bucket(lower_kwargs[self.bucket_val])
         return self._choose_variant(bucket)
 
-    def _is_enabled(self, **kwargs):
+    def _is_enabled(self, **_kwargs):
         current_ts = time.time()
-
-        return (self.enabled and self.start_ts <= current_ts < self.stop_ts)
+        return self.enabled and self.start_ts <= current_ts < self.stop_ts
 
     def _calculate_bucket(self, bucket_val):
         """Sort something into one of self.num_buckets buckets.

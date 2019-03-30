@@ -39,11 +39,11 @@ class cached_property(object):
         self.wrapped = wrapped
         functools.update_wrapper(self, wrapped)
 
-    def __get__(self, obj, type=None):
-        if obj is None:
+    def __get__(self, instance, owner):
+        if instance is None:
             return self
-        ret = self.wrapped(obj)
-        setattr(obj, self.wrapped.__name__, ret)
+        ret = self.wrapped(instance)
+        setattr(instance, self.wrapped.__name__, ret)
         return ret
 
 

@@ -147,9 +147,8 @@ class ThriftConnectionPool(object):
             if prot:
                 if time.time() - prot.baseplate_birthdate < self.max_age:
                     return prot
-                else:
-                    prot.trans.close()
-                    prot = None
+                prot.trans.close()
+                prot = None
 
             trans = _make_transport(self.endpoint)
             trans.setTimeout(self.timeout * 1000.)

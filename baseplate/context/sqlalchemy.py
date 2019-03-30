@@ -40,10 +40,10 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
         event.listen(self.engine, "dbapi_error", self.on_dbapi_error)
 
-    def make_object_for_context(self, name, server_span):
+    def make_object_for_context(self, name, span):
         engine = self.engine.execution_options(
             context_name=name,
-            server_span=server_span,
+            server_span=span,
         )
         return engine
 

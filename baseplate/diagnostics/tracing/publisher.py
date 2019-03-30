@@ -3,12 +3,12 @@ import logging
 
 import requests
 
-from . import MAX_SPAN_SIZE, MAX_QUEUE_SIZE
 from baseplate import config, metrics_client_from_config
 from baseplate._compat import configparser
+from baseplate._compat import urlparse
+from baseplate.diagnostics.tracing import MAX_SPAN_SIZE, MAX_QUEUE_SIZE
 from baseplate.message_queue import MessageQueue, TimedOutError
 from baseplate.retry import RetryPolicy
-from baseplate._compat import urlparse
 from baseplate._utils import BatchFull, RawJSONBatch, TimeLimitedBatch
 
 
@@ -97,10 +97,9 @@ class ZipkinPublisher(object):
             else:
                 self.metrics.counter("sent").increment(payload.count)
                 return
-        else:
-            raise MaxRetriesError(
-                "ZipkinPublisher exhausted allowance of %d retries.",
-                self.retry_limit)
+
+        raise MaxRetriesError("ZipkinPublisher exhausted allowance of %d retries." %
+            self.retry_limit)
 
 
 def publish_traces():
@@ -122,7 +121,7 @@ def publish_traces():
     logging.basicConfig(level=level)
 
     config_parser = configparser.RawConfigParser()
-    config_parser.readfp(args.config_file)
+    config_parser.readfp(args.config_file)  # pylint: disable=deprecated-method
 
     publisher_raw_cfg = dict(config_parser.items("trace-publisher:" + args.queue_name))
     publisher_cfg = config.parse_config(publisher_raw_cfg, {

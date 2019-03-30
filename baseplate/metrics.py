@@ -204,8 +204,8 @@ class Batch(BaseClient):
 
     def flush(self):
         """Immediately send the batched metrics."""
-        for name, counter in self.counters.items():
-            counter.send()
+        for counter in self.counters.values():
+            counter.flush()
         self.transport.flush()
 
     def counter(self, name):
@@ -340,15 +340,14 @@ class BatchCounter(Counter):
         counter.increment()
         do_something_else()
         counter.increment()
-        counter.send()
+        counter.flush()
 
     The above example results in one packet indicating an increase of two
     should be applied to "counter_name".
     """
 
     def __init__(self, transport, name):
-        self.transport = transport
-        self.name = name
+        super(BatchCounter, self).__init__(transport, name)
         self.packets = defaultdict(int)
 
     def increment(self, delta=1, sample_rate=1.0):
@@ -368,7 +367,7 @@ class BatchCounter(Counter):
         """
         self.increment(delta=-delta, sample_rate=sample_rate)
 
-    def send(self):
+    def flush(self):
         for sample_rate, delta in self.packets.items():
             super(BatchCounter, self).send(delta, sample_rate)
 

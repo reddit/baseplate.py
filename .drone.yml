@@ -11,7 +11,7 @@ steps:
       commands:
           - pip install $PIP_OPTIONS -r requirements-lint.txt
           - flake8
-          - pylint --errors-only baseplate/
+          - pylint baseplate/
 
 ---
 kind: pipeline

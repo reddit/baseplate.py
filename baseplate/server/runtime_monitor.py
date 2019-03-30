@@ -80,7 +80,7 @@ class _GCTimingReporter(object):
         self.gc_durations = []
         self.current_gc_start = None
 
-    def _on_gc_event(self, phase, info):
+    def _on_gc_event(self, phase, _info):
         if phase == "start":
             self.current_gc_start = time.time()
         elif phase == "stop":

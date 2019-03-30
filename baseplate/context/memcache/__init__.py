@@ -87,11 +87,11 @@ class MemcacheContextFactory(ContextFactory):
     def __init__(self, pooled_client):
         self.pooled_client = pooled_client
 
-    def make_object_for_context(self, name, server_span):
-        return MonitoredMemcacheConnection(name, server_span, self.pooled_client)
+    def make_object_for_context(self, name, span):
+        return MonitoredMemcacheConnection(name, span, self.pooled_client)
 
 
-class MonitoredMemcacheConnection(PooledClient):
+class MonitoredMemcacheConnection(object):
     """Memcache connection that collects diagnostic information.
 
     This connection acts like a
@@ -254,5 +254,4 @@ def make_keys_str(keys):
     keys_str = ",".join(x.decode("utf-8") if isinstance(x, bytes) else x for x in keys)
     if len(keys_str) > 100:
         return keys_str[:100] + "..."
-    else:
-        return keys_str
+    return keys_str

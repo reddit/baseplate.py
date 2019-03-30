@@ -131,7 +131,8 @@ def parse_experiment(config):
             version=version,
             config=experiment_config,
         )
-    elif experiment_type in simple_type_class_list:
+
+    if experiment_type in simple_type_class_list:
         return SimpleExperiment.from_dict(
             id=experiment_id,
             name=name,
@@ -142,13 +143,13 @@ def parse_experiment(config):
             config=experiment_config,
             variant_type=experiment_type,
         )
-    else:
-        logger.warning(
-            "Found an experiment <%s:%s> with an unknown experiment type <%s> "
-            "that is owned by <%s>. Please clean up.",
-            experiment_id,
-            name,
-            experiment_type,
-            owner,
-        )
-        return ForcedVariantExperiment(None)
+
+    logger.warning(
+        "Found an experiment <%s:%s> with an unknown experiment type <%s> "
+        "that is owned by <%s>. Please clean up.",
+        experiment_id,
+        name,
+        experiment_type,
+        owner,
+    )
+    return ForcedVariantExperiment(None)

@@ -8,7 +8,7 @@ class WrappedRequestContext(object):
     the standard getattr/setattr interface.
     """
 
-    def __init__(self, context, trace=None):
+    def __init__(self, context):
         self.__dict__['_context'] = context
 
     def __getattr__(self, attr):

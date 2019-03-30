@@ -99,7 +99,7 @@ def main():
     logging.getLogger("kazoo").setLevel(logging.WARNING)
 
     parser = configparser.RawConfigParser()
-    parser.readfp(args.config_file)
+    parser.readfp(args.config_file)  # pylint: disable=deprecated-method
     watcher_config = dict(parser.items("live-data"))
 
     cfg = config.parse_config(watcher_config, {

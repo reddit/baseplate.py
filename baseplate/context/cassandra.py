@@ -70,9 +70,8 @@ class CassandraContextFactory(ContextFactory):
         self.session = session
         self.prepared_statements = {}
 
-    def make_object_for_context(self, name, server_span):
-        return CassandraSessionAdapter(name, server_span, self.session,
-                                       self.prepared_statements)
+    def make_object_for_context(self, name, span):
+        return CassandraSessionAdapter(name, span, self.session, self.prepared_statements)
 
 
 class CQLMapperContextFactory(CassandraContextFactory):
@@ -88,14 +87,14 @@ class CQLMapperContextFactory(CassandraContextFactory):
 
     """
 
-    def make_object_for_context(self, name, server_span):
+    def make_object_for_context(self, name, span):
         # Import inline so you can still use the regular Cassandra integration
         # without installing cqlmapper
         import cqlmapper.connection
         session_adapter = super(
             CQLMapperContextFactory,
             self,
-        ).make_object_for_context(name, server_span)
+        ).make_object_for_context(name, span)
         return cqlmapper.connection.Connection(session_adapter)
 
 
@@ -107,7 +106,7 @@ class WaitForCallbackResponseFuture(object):
 
     """
 
-    def __init__(self, span, future, callback_fn, callback_args, errback_fn, errback_args):
+    def __init__(self, future, callback_fn, callback_args, errback_fn, errback_args):
         self.callback_event = Event()
 
         future.add_callback(callback_fn, callback_args, self.callback_event)
@@ -134,7 +133,7 @@ class WaitForCallbackResponseFuture(object):
         return result
 
 
-def _on_execute_complete(result, span, event):
+def _on_execute_complete(_result, span, event):
     # TODO: tag with anything from the result set?
     # TODO: tag with any returned warnings
     try:
@@ -198,7 +197,6 @@ class CassandraSessionAdapter(object):
             timeout=timeout,
         )
         future = WaitForCallbackResponseFuture(
-            span=span,
             future=future,
             callback_fn=_on_execute_complete,
             callback_args=span,

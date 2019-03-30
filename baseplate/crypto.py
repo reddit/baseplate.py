@@ -59,7 +59,7 @@ else:
         function resistant to timing attacks.
 
         """
-        if type(actual) != type(expected):
+        if type(actual) != type(expected):  # pylint: disable=unidiomatic-typecheck
             warn_deprecated("Future versions of constant_time_compare require that both "
                 "parameters are of the same type.")
 

@@ -124,9 +124,9 @@ def Integer(text=None, base=10):  # noqa: D401
     if text is not None:
         # this allows the original config.Integer format
         return int(text, base=base)
-    else:
-        # and this allows the base to be specified as config.Integer(base=N)
-        return functools.partial(int, base=base)
+
+    # and this allows the base to be specified as config.Integer(base=N)
+    return functools.partial(int, base=base)
 
 
 def Boolean(text):  # noqa: D401
@@ -177,12 +177,12 @@ def Endpoint(text):  # noqa: D401
 
     if "/" in text:
         return EndpointConfiguration(socket.AF_UNIX, text)
-    else:
-        host, sep, port = text.partition(":")
-        if sep != ":":
-            raise ValueError("no port specified")
-        address = InternetAddress(host, int(port))
-        return EndpointConfiguration(socket.AF_INET, address)
+
+    host, sep, port = text.partition(":")
+    if sep != ":":
+        raise ValueError("no port specified")
+    address = InternetAddress(host, int(port))
+    return EndpointConfiguration(socket.AF_INET, address)
 
 
 def Base64(text):  # noqa: D401
@@ -341,8 +341,7 @@ def Optional(T, default=None):  # noqa: D401
     def optional(text):
         if text:
             return T(text)
-        else:
-            return default
+        return default
     return optional
 
 
@@ -374,12 +373,11 @@ class Parser(object):
         """Return a parser for the given spec object."""
         if isinstance(spec, Parser):
             return spec
-        elif isinstance(spec, dict):
+        if isinstance(spec, dict):
             return SpecParser(spec)
-        elif callable(spec):
+        if callable(spec):
             return CallableParser(spec)
-        else:
-            raise AssertionError("invalid specification: %r" % spec)
+        raise AssertionError("invalid specification: %r" % spec)
 
     def parse(self, key_path, raw_config):
         """Parse and return the relevant info for a given key.
@@ -397,26 +395,26 @@ class SpecParser(Parser):
     def __init__(self, spec):
         self.spec = spec
 
-    def parse(self, root, raw_config):
+    def parse(self, key_path, raw_config):
         parsed = ConfigNamespace()
         for key, spec in self.spec.items():
             assert "." not in key, "dots are not allowed in keys"
 
-            if root:
-                key_path = "%s.%s" % (root, key)
+            if key_path:
+                sub_key_path = "%s.%s" % (key_path, key)
             else:
-                key_path = key
+                sub_key_path = key
 
             parser = Parser.from_spec(spec)
-            parsed[key] = parser.parse(key_path, raw_config)
+            parsed[key] = parser.parse(sub_key_path, raw_config)
         return parsed
 
 
 class CallableParser(Parser):
     """A parser that wraps a simple callable."""
 
-    def __init__(self, callable):
-        self.callable = callable
+    def __init__(self, callable_):
+        self.callable = callable_
 
     def parse(self, key_path, raw_config):
         raw_value = raw_config.get(key_path, "")

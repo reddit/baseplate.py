@@ -343,7 +343,7 @@ def main():
         format='%(asctime)s:%(levelname)s:%(message)s',
         level=level)
     parser = configparser.RawConfigParser()
-    parser.readfp(args.config_file)
+    parser.readfp(args.config_file)  # pylint: disable=deprecated-method
     fetcher_config = dict(parser.items("secret-fetcher"))
 
     cfg = config.parse_config(fetcher_config, {

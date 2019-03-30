@@ -34,8 +34,8 @@ class RateLimiterContextFactory(ContextFactory):
         self.allowance = allowance
         self.interval = interval
 
-    def make_object_for_context(self, name, server_span):
-        backend = self.backend_factory.make_object_for_context(name, server_span)
+    def make_object_for_context(self, name, span):
+        backend = self.backend_factory.make_object_for_context(name, span)
         return RateLimiter(backend, self.allowance, self.interval)
 
 

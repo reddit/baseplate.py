@@ -26,10 +26,13 @@ from enum import Enum
 from thrift import TSerialization
 from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
-from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
 from baseplate.context import ContextFactory
 from baseplate.message_queue import MessageQueue, TimedOutError
 from baseplate._utils import warn_deprecated
+
+
+MAX_EVENT_SIZE = 102400
+MAX_QUEUE_SIZE = 10000
 
 
 # pylint: disable=pointless-string-statement,no-init
@@ -182,7 +185,7 @@ class DebugLogger(EventLogger):
         self.logger = logging.getLogger(__name__)
 
     def log(self, **kwargs):
-        self.logger.debug("Would send event: {}".format(kwargs))
+        self.logger.debug("Would send event: %s", kwargs)
 
 
 class EventQueue(ContextFactory):
@@ -228,5 +231,5 @@ class EventQueue(ContextFactory):
         except TimedOutError:
             raise EventQueueFullError
 
-    def make_object_for_context(self, name, server_span):
+    def make_object_for_context(self, name, span):
         return self

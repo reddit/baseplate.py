@@ -7,7 +7,7 @@ import logging
 
 import requests
 
-from . import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
+from .queue import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
 from .. import config, metrics_client_from_config
 from .. _compat import configparser, BytesIO
 from .. _utils import (
@@ -135,10 +135,9 @@ class BatchPublisher(object):
                 # we should crash if it's our fault
                 response = getattr(exc, "response", None)
                 if response is not None and response.status_code < 500:
-                    logger.exception("HTTP Request failed. Error: {}".format(response.text))
+                    logger.exception("HTTP Request failed. Error: %s", response.text)
                     raise
-                else:
-                    logger.exception("HTTP Request failed.")
+                logger.exception("HTTP Request failed.")
             except IOError:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
@@ -172,7 +171,7 @@ def publish_events():
     logging.basicConfig(level=level)
 
     config_parser = configparser.RawConfigParser()
-    config_parser.readfp(args.config_file)
+    config_parser.readfp(args.config_file)  # pylint: disable=deprecated-method
     raw_config = dict(config_parser.items("event-publisher:" + args.queue_name))
     cfg = config.parse_config(raw_config, {
         "collector": {
