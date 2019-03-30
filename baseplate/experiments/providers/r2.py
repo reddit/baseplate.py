@@ -211,8 +211,7 @@ class R2Experiment(Experiment):
                     if final_value in allowed_values:
                         if targeting_param == "logged_in" and self.newer_than:
                             user_created = kwargs.get("user_created")
-                            if (user_created and
-                                    user_created > self.newer_than):
+                            if user_created and user_created > self.newer_than:
                                 return True
 
                         else:

@@ -216,7 +216,7 @@ class ThriftConnectionPool(object):
             # know what state it's in.
             prot.trans.close()
             raise
-        except TException as exc:
+        except TException:
             # the only other TException-derived errors are application level
             # (expected) errors which should be safe for the connection.
             # don't close the transport here!
