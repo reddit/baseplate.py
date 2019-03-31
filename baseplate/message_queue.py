@@ -154,7 +154,7 @@ def queue_tool():
     if args.mode == "read":
         while True:
             item = queue.get()
-            print(item)
+            print(item.decode())
     elif args.mode == "write":
         for line in sys.stdin:
             queue.put(line.rstrip("\n"))
