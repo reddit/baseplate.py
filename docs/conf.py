@@ -23,7 +23,7 @@ extensions = [
 ]
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.4", "intersphinx/python.inv"),
+    "python": ("https://docs.python.org/3.7", "intersphinx/python.inv"),
     "pyramid": ("http://docs.pylonsproject.org/projects/pyramid/en/1.5-branch",
                 "intersphinx/pyramid.inv"),
     "cassandra": ("https://datastax.github.io/python-driver/", "intersphinx/cassandra.inv"),
