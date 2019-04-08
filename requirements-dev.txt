@@ -3,6 +3,7 @@
 -r requirements-lint.txt
 -r requirements-test.txt
 filelock==3.0.10
+setuptools-scm==3.2.0
 toml==0.10.0
 tox==3.7.0
 virtualenv==16.2.0
