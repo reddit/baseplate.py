@@ -8,9 +8,13 @@ setup(
     author_email="neil@reddit.com",
     license="BSD",
     url="https://baseplate.readthedocs.io/en/stable/",
-    version="0.29.0",
+    use_scm_version=True,
 
     packages=find_packages(exclude=["tests", "tests.*"]),
+
+    setup_requires=[
+        "setuptools_scm",
+    ],
 
     install_requires=[
         "enum34; python_version <= '3.4'",
