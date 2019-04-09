@@ -37,17 +37,17 @@ class EngineFromConfigTests(unittest.TestCase):
         self.secrets = secrets
 
     def test_drivername_only(self):
-        engine = engine_from_config({"database.drivername": "sqlite"}, self.secrets)
+        engine = engine_from_config({"database.drivername": "sqlite"})
         self.assertEqual(engine.url, URL("sqlite"))
 
     def test_url(self):
-        engine = engine_from_config({"database.url": "sqlite://"}, self.secrets)
+        engine = engine_from_config({"database.url": "sqlite://"})
         self.assertEqual(engine.url, URL("sqlite"))
 
     @mock.patch('baseplate.context.sqlalchemy.create_engine')
     def test_drivername_missing(self, create_engine_mock):
         with self.assertRaises(ConfigurationError):
-            engine_from_config({"database.username": "reddit"}, self.secrets)
+            engine_from_config({"database.username": "reddit"})
         self.assertEqual(create_engine_mock.call_count, 0)
 
     @mock.patch('baseplate.context.sqlalchemy.create_engine')
@@ -151,4 +151,20 @@ class EngineFromConfigTests(unittest.TestCase):
                 query={"fizz": "buzz"},
                 unsupported="oops",
             )
+        self.assertEqual(create_engine_mock.call_count, 0)
+
+    @mock.patch('baseplate.context.sqlalchemy.create_engine')
+    def test_secrets_required_with_password_secret(self, create_engine_mock):
+        app_config = {
+            "database.drivername": "postgresql",
+            "database.username": "reddit",
+            "database.password_secret": "secret/sql/password",
+            "database.host": "database.local",
+            "database.port": "8000",
+            "database.database": "test",
+            "database.query.foo": "bar",
+            "database.query.hello": "world",
+        }
+        with self.assertRaises(TypeError):
+            engine_from_config(app_config)
         self.assertEqual(create_engine_mock.call_count, 0)

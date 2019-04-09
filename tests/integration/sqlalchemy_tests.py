@@ -35,7 +35,7 @@ class TestObject(Base):
 
 class SQLAlchemyEngineTests(unittest.TestCase):
     def setUp(self):
-        engine = engine_from_config({"database.drivername": "sqlite"}, secrets=mock.Mock())  # in-memory db
+        engine = engine_from_config({"database.url": "sqlite://"})  # in-memory db
         Base.metadata.create_all(bind=engine)
         factory = SQLAlchemyEngineContextFactory(engine)
 
@@ -86,7 +86,7 @@ class SQLAlchemyEngineTests(unittest.TestCase):
 
 class SQLAlchemySessionTests(unittest.TestCase):
     def setUp(self):
-        engine = engine_from_config({"database.drivername": "sqlite"}, secrets=mock.Mock())  # in-memory db
+        engine = engine_from_config({"database.url": "sqlite://"})  # in-memory db
         Base.metadata.create_all(bind=engine)
         factory = SQLAlchemySessionContextFactory(engine)
 

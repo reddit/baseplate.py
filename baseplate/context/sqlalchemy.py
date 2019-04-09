@@ -12,7 +12,7 @@ from baseplate.context import ContextFactory
 from baseplate.core import ServerSpan, SpanObserver
 
 
-def engine_from_config(app_config, secrets, prefix="database.", **kwargs):
+def engine_from_config(app_config, secrets=None, prefix="database.", **kwargs):
     """Make an Engine from a configuration dictionary.
 
     The keys useful to :py:func:`engine_from_config` should be prefixed, e.g.
@@ -71,6 +71,9 @@ def engine_from_config(app_config, secrets, prefix="database.", **kwargs):
     if options.username:
         kwargs.setdefault("username", options.username)
     if options.password_secret:
+        if not secrets:
+            raise TypeError("'secrets' is a required argument to 'engine_from_config' "
+                            "if 'password_secret' is set")
         kwargs.setdefault("password", secrets.get_simple(options.password_secret).decode("utf-8"))
     if options.host:
         kwargs.setdefault("host", options.host)
