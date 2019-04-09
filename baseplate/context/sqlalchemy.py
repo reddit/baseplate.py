@@ -26,9 +26,13 @@ def engine_from_config(app_config, secrets, prefix="database.", **kwargs):
 
     Supported keys:
 
-    * ``drivername`` (required):  the name of the database backend. This name will
+    * ``url`` (optional): the connection URL to the database, if this is supplied, it
+        will be the only value used to connect to the database, all others will be
+        ignored.
+    * ``drivername`` (optional):  the name of the database backend. This name will
         correspond to a module in sqlalchemy/databases or a third party plug-in e.g.
-        "postgresql".
+        "postgresql".  Note that this is only optional if ``url`` is set, otherwise
+        it will be required.
     * ``username`` (optional): the username used to connect to the database.
     * ``password_secret`` (optional): the key used to retrieve the password from
         ``secrets`` as a :py:class:`baseplate.secrets.SimpleSecret`.
@@ -44,7 +48,8 @@ def engine_from_config(app_config, secrets, prefix="database.", **kwargs):
     config_prefix = prefix[:-1]
     cfg = config.parse_config(app_config, {
         config_prefix: {
-            "drivername": config.String,
+            "url": config.Optional(config.String),
+            "drivername": config.Optional(config.String),
             "username": config.Optional(config.String),
             "password_secret": config.Optional(config.String),
             "host": config.Optional(config.String),
@@ -53,6 +58,15 @@ def engine_from_config(app_config, secrets, prefix="database.", **kwargs):
             "query": config.DictOf(config.String),  # optional
         }})
     options = getattr(cfg, config_prefix)
+
+    if options.url:
+        return create_engine(options.url)
+    elif not options.drivername:
+        raise config.ConfigurationError(
+            "drivername",
+            AttributeError("'drivername' is required if 'url' is not set"),
+        )
+
     kwargs.setdefault("drivername", options.drivername)
     if options.username:
         kwargs.setdefault("username", options.username)

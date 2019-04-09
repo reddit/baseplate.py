@@ -10,6 +10,7 @@ try:
 except ImportError:
     raise unittest.SkipTest("sqlalchemy is not installed")
 
+from baseplate.config import ConfigurationError
 from baseplate.context.sqlalchemy import engine_from_config
 from baseplate.file_watcher import FileWatcher
 from baseplate.secrets.store import SecretsStore
@@ -35,9 +36,19 @@ class EngineFromConfigTests(unittest.TestCase):
         secrets._filewatcher = mock_filewatcher
         self.secrets = secrets
 
-    def test_database_only(self):
+    def test_drivername_only(self):
         engine = engine_from_config({"database.drivername": "sqlite"}, self.secrets)
         self.assertEqual(engine.url, URL("sqlite"))
+
+    def test_url(self):
+        engine = engine_from_config({"database.url": "sqlite://"}, self.secrets)
+        self.assertEqual(engine.url, URL("sqlite"))
+
+    @mock.patch('baseplate.context.sqlalchemy.create_engine')
+    def test_drivername_missing(self, create_engine_mock):
+        with self.assertRaises(ConfigurationError):
+            engine_from_config({"database.username": "reddit"}, self.secrets)
+        self.assertEqual(create_engine_mock.call_count, 0)
 
     @mock.patch('baseplate.context.sqlalchemy.create_engine')
     def test_no_query(self, create_engine_mock):
@@ -141,7 +152,3 @@ class EngineFromConfigTests(unittest.TestCase):
                 unsupported="oops",
             )
         self.assertEqual(create_engine_mock.call_count, 0)
-
-
-if __name__ == '__main__':
-    unittest.main()
