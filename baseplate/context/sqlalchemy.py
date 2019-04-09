@@ -7,12 +7,9 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import Session
 
-from .. import config
-from ..context import ContextFactory
-from ..core import (
-    ServerSpan,
-    SpanObserver,
-)
+from baseplate import config
+from baseplate.context import ContextFactory
+from baseplate.core import ServerSpan, SpanObserver
 
 
 def engine_from_config(app_config, secrets, prefix="database.", **kwargs):
