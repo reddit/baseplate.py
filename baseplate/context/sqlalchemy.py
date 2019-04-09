@@ -56,21 +56,20 @@ def engine_from_config(app_config, secrets, prefix="database.", **kwargs):
             "query": config.DictOf(config.String),  # optional
         }})
     options = getattr(cfg, config_prefix)
-    url_params = dict(drivername=options.drivername)
+    kwargs.setdefault("drivername", options.drivername)
     if options.username:
-        url_params["username"] = options.username
+        kwargs.setdefault("username", options.username)
     if options.password_secret:
-        url_params["password"] = secrets.get_simple(options.password_secret).decode("utf-8")
+        kwargs.setdefault("password", secrets.get_simple(options.password_secret).decode("utf-8"))
     if options.host:
-        url_params["host"] = options.host
+        kwargs.setdefault("host", options.host)
     if options.port:
-        url_params["port"] = options.port
+        kwargs.setdefault("port", options.port)
     if options.database:
-        url_params["database"] = options.database
+        kwargs.setdefault("database", options.database)
     if options.query:
-        url_params["query"] = options.query
-    url_params.update(kwargs)
-    return create_engine(URL(**url_params))
+        kwargs.setdefault("query", options.query)
+    return create_engine(URL(**kwargs))
 
 
 class SQLAlchemyEngineContextFactory(ContextFactory):
