@@ -61,7 +61,8 @@ def engine_from_config(app_config, secrets=None, prefix="database.", **kwargs):
 
     if options.url:
         return create_engine(options.url)
-    elif not options.drivername:
+
+    if not options.drivername:
         raise config.ConfigurationError(
             "drivername",
             AttributeError("'drivername' is required if 'url' is not set"),
