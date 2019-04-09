@@ -3,14 +3,74 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from sqlalchemy import event
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine.url import URL
 from sqlalchemy.orm import Session
 
+from .. import config
 from ..context import ContextFactory
 from ..core import (
     ServerSpan,
     SpanObserver,
 )
+
+
+def engine_from_config(app_config, secrets, prefix="database.", **kwargs):
+    """Make an Engine from a configuration dictionary.
+
+    The keys useful to :py:func:`engine_from_config` should be prefixed, e.g.
+    ``database.drivername``, ``database.username``, etc. The ``prefix`` argument
+    specifies the prefix used to filter keys.  Each key is mapped to a
+    corresponding keyword argument on the :py:class:`sqlalchemy.engine.url.URL`
+    constructor.  The :py:class:`sqlalchemy.engine.url.URL` object will then be
+    passed to :py:func:`sqlalchemy.create_engine`.  Any additional keyword arguments
+    that are passed in will override the values set in ``app_config`` that are
+    passed to the :py:class:`sqlalchemy.engine.url.URL` constructor.
+
+    Supported keys:
+
+    * ``drivername`` (required):  the name of the database backend. This name will
+        correspond to a module in sqlalchemy/databases or a third party plug-in e.g.
+        "postgresql".
+    * ``username`` (optional): the username used to connect to the database.
+    * ``password_secret`` (optional): the key used to retrieve the password from
+        ``secrets`` as a :py:class:`baseplate.secrets.SimpleSecret`.
+    * ``host`` (optional): the name of the database host.
+    * ``port`` (optional): the port number that the database is listening on on
+    the host.
+    * ``database`` (optional): the database name.
+    * ``query`` (optional): a dictionary of options to be passed to the dialect
+        and/or the DBAPI upon connect.
+
+    """
+    assert prefix.endswith(".")
+    config_prefix = prefix[:-1]
+    cfg = config.parse_config(app_config, {
+        config_prefix: {
+            "drivername": config.String,
+            "username": config.Optional(config.String),
+            "password_secret": config.Optional(config.String),
+            "host": config.Optional(config.String),
+            "port": config.Optional(config.Integer),
+            "database": config.Optional(config.String),
+            "query": config.DictOf(config.String),  # optional
+        }})
+    options = getattr(cfg, config_prefix)
+    url_params = dict(drivername=options.drivername)
+    if options.username:
+        url_params["username"] = options.username
+    if options.password_secret:
+        url_params["password"] = secrets.get_simple(options.password_secret).decode("utf-8")
+    if options.host:
+        url_params["host"] = options.host
+    if options.port:
+        url_params["port"] = options.port
+    if options.database:
+        url_params["database"] = options.database
+    if options.query:
+        url_params["query"] = options.query
+    url_params.update(kwargs)
+    return create_engine(URL(**url_params))
 
 
 class SQLAlchemyEngineContextFactory(ContextFactory):

@@ -6,13 +6,14 @@ from __future__ import unicode_literals
 import unittest
 
 try:
-    from sqlalchemy import create_engine, Column, Integer, String
+    from sqlalchemy import Column, Integer, String
     from sqlalchemy.exc import OperationalError
     from sqlalchemy.ext.declarative import declarative_base
 except ImportError:
     raise unittest.SkipTest("sqlalchemy is not installed")
 
 from baseplate.context.sqlalchemy import (
+    engine_from_config,
     SQLAlchemyEngineContextFactory,
     SQLAlchemySessionContextFactory,
 )
@@ -34,7 +35,7 @@ class TestObject(Base):
 
 class SQLAlchemyEngineTests(unittest.TestCase):
     def setUp(self):
-        engine = create_engine("sqlite://")  # in-memory db
+        engine = engine_from_config({"database.drivername": "sqlite"}, secrets=mock.Mock())  # in-memory db
         Base.metadata.create_all(bind=engine)
         factory = SQLAlchemyEngineContextFactory(engine)
 
@@ -85,7 +86,7 @@ class SQLAlchemyEngineTests(unittest.TestCase):
 
 class SQLAlchemySessionTests(unittest.TestCase):
     def setUp(self):
-        engine = create_engine("sqlite://")  # in-memory db
+        engine = engine_from_config({"database.drivername": "sqlite"}, secrets=mock.Mock())  # in-memory db
         Base.metadata.create_all(bind=engine)
         factory = SQLAlchemySessionContextFactory(engine)
 
