@@ -7,3 +7,4 @@ setuptools-scm==3.2.0
 toml==0.10.0
 tox==3.7.0
 virtualenv==16.2.0
+wheel==0.31.1
