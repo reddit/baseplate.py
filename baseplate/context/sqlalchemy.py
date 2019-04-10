@@ -4,7 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.engine.url import URL
+from sqlalchemy.engine.url import create_url, URL
 from sqlalchemy.orm import Session
 
 from baseplate import config
@@ -50,32 +50,37 @@ def engine_from_config(app_config, secrets=None, prefix="database.", **kwargs):
         config_prefix: {
             "url": config.Optional(config.String),
             "drivername": config.Optional(config.String),
-            "username": config.Optional(config.String),
-            "password_secret": config.Optional(config.String),
+            "credentials_secret": config.Optional(config.String),
             "host": config.Optional(config.String),
             "port": config.Optional(config.Integer),
             "database": config.Optional(config.String),
             "query": config.DictOf(config.String),  # optional
         }})
     options = getattr(cfg, config_prefix)
+    credentials = None
+    if options.credentials_secret:
+        if not secrets:
+            raise TypeError("'secrets' is a required argument to 'engine_from_config' "
+                            "if 'credentials_secret' is set")
+        credentials = secrets.get_credentials(options.credentials_secret)
 
     if options.url:
-        return create_engine(options.url)
+        connection_url = create_url(options.url)
+        if credentials:
+            connection_url.username = credentials.username
+            connection_url.password = credentials.password
+        return create_engine(connection_url)
 
-    if not options.drivername:
+    elif not options.drivername:
         raise config.ConfigurationError(
             "drivername",
             AttributeError("'drivername' is required if 'url' is not set"),
         )
 
     kwargs.setdefault("drivername", options.drivername)
-    if options.username:
-        kwargs.setdefault("username", options.username)
-    if options.password_secret:
-        if not secrets:
-            raise TypeError("'secrets' is a required argument to 'engine_from_config' "
-                            "if 'password_secret' is set")
-        kwargs.setdefault("password", secrets.get_simple(options.password_secret).decode("utf-8"))
+    if credentials:
+        kwargs.setdefault("username", credentials.username)
+        kwargs.setdefault("password", credentials.password)
     if options.host:
         kwargs.setdefault("host", options.host)
     if options.port:
