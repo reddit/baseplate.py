@@ -188,7 +188,9 @@ class SecretsStore(ContextFactory):
         encoding = secret_attributes.get("encoding", "identity")
 
         if encoding != "identity":
-            raise CorruptSecretError(path, "secret has encoding=%s rather than encoding=identity" % encoding)
+            raise CorruptSecretError(path,
+                                    "secret has encoding=%s rather than "
+                                    "encoding=identity" % encoding)
 
         missing_keys = []
         values = {}
