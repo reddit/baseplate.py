@@ -193,7 +193,6 @@ class SecretsStore(ContextFactory):
                                     "secret has encoding=%s rather than "
                                     "encoding=identity" % encoding)
 
-        missing_keys = []
         values = {}
         for key in ("username", "password"):
             try:
@@ -202,14 +201,7 @@ class SecretsStore(ContextFactory):
                     raise CorruptSecretError(path, "secret value '%s' is not a string" % key)
                 values[key] = val
             except KeyError:
-                missing_keys.append(key)
-
-        if missing_keys:
-            if len(missing_keys) > 1:
-                message = "keys %s" % (tuple(missing_keys),)
-            else:
-                message = "key '%s'" % missing_keys[0]
-            raise CorruptSecretError(path, "secret does not have %s" % message)
+                raise CorruptSecretError(path, "secret does not have key '%s'" % key)
 
         return CredentialSecret(**values)
 
