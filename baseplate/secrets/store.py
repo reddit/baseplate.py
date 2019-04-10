@@ -103,9 +103,9 @@ class CredentialSecret(_CredentialSecret):
     pair.  This object has two properties:
 
     ``username``
-        The username portion of the credentials as :py:class:`bytes`.
+        The username portion of the credentials as :py:class:`str`.
     ``password``
-        The password portion of the credentials as :py:class:`bytes`.
+        The password portion of the credentials as :py:class:`str`.
     """
 
 
@@ -185,14 +185,16 @@ class SecretsStore(ContextFactory):
         if secret_attributes.get("type") != "credentials":
             raise CorruptSecretError(path, "secret does not have type=credentials")
 
-        if secret_attributes.get("encoding", "identity") != "identity":
-            raise CorruptSecretError(path, "secret does not have encoding=identity")
+        encoding = secret_attributes.get("encoding", "identity") != "identity"
+
+        if encoding != "identity":
+            raise CorruptSecretError(path, "secret has encoding=%s rather than encoding=identity" % encoding)
 
         missing_keys = []
-        encoded_values = {}
+        values = {}
         for key in ("username", "password"):
             try:
-                encoded_values[key] = secret_attributes[key]
+                values[key] = str(secret_attributes[key])
             except KeyError:
                 missing_keys.append(key)
 
@@ -202,10 +204,6 @@ class SecretsStore(ContextFactory):
             else:
                 message = "key '%s'" % missing_keys[0]
             raise CorruptSecretError(path, "secret does not have %s" % message)
-
-        values = {}
-        for key, encoded_value in encoded_values:
-            values[key] = _decode_secret(path, "identity", encoded_value)
 
         return CredentialSecret(**values)
 
