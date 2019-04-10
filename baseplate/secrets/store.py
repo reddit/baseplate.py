@@ -169,7 +169,7 @@ class SecretsStore(ContextFactory):
         The following keys are significant:
 
         ``type``
-            This must always be ``credentials`` for this method.
+            This must always be ``credential`` for this method.
         ``encoding``
             This must be un-set or set to ``identity``.
         ``username``
@@ -182,10 +182,10 @@ class SecretsStore(ContextFactory):
         """
         secret_attributes = self.get_raw(path)
 
-        if secret_attributes.get("type") != "credentials":
-            raise CorruptSecretError(path, "secret does not have type=credentials")
+        if secret_attributes.get("type") != "credential":
+            raise CorruptSecretError(path, "secret does not have type=credential")
 
-        encoding = secret_attributes.get("encoding", "identity") != "identity"
+        encoding = secret_attributes.get("encoding", "identity")
 
         if encoding != "identity":
             raise CorruptSecretError(path, "secret has encoding=%s rather than encoding=identity" % encoding)
