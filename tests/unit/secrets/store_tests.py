@@ -204,6 +204,11 @@ class StoreTests(unittest.TestCase):
                     "type": "credential",
                     "username": "user"
                 },
+                "test_bad_type": {
+                    "type": "credential",
+                    "username": "user",
+                    "password": 100,
+                },
             },
             "vault": {
                 "token": "test",

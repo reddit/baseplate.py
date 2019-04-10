@@ -10,10 +10,11 @@ import collections
 import json
 import logging
 
-from .. import config
-from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
-from ..context import ContextFactory
-from .._utils import cached_property
+from baseplate import config
+from baseplate.context import ContextFactory
+from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate._compat import string_types
+from baseplate._utils import cached_property
 
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -196,7 +197,10 @@ class SecretsStore(ContextFactory):
         values = {}
         for key in ("username", "password"):
             try:
-                values[key] = str(secret_attributes[key])
+                val = secret_attributes[key]
+                if not isinstance(val, string_types):
+                    raise CorruptSecretError(path, "secret value '%s' is not a string" % key)
+                values[key] = val
             except KeyError:
                 missing_keys.append(key)
 

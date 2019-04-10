@@ -7,7 +7,6 @@ from __future__ import unicode_literals
 
 from .store import (
     CorruptSecretError,
-    CredentialSecret,
     SecretNotFoundError,
     SecretsNotAvailableError,
     SecretsStore,
@@ -18,7 +17,6 @@ from .store import (
 
 __all__ = [
     "CorruptSecretError",
-    "CredentialSecret",
     "SecretNotFoundError",
     "SecretsNotAvailableError",
     "SecretsStore",
