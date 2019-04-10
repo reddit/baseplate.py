@@ -4,7 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.engine.url import create_url, URL
+from sqlalchemy.engine.url import create_url
 from sqlalchemy.orm import Session
 
 from baseplate import config
@@ -12,84 +12,43 @@ from baseplate.context import ContextFactory
 from baseplate.core import ServerSpan, SpanObserver
 
 
-def engine_from_config(app_config, secrets=None, prefix="database.", **kwargs):
+def engine_from_config(app_config, secrets=None, prefix="database."):
     """Make an Engine from a configuration dictionary.
 
     The keys useful to :py:func:`engine_from_config` should be prefixed, e.g.
-    ``database.drivername``, ``database.username``, etc. The ``prefix`` argument
-    specifies the prefix used to filter keys.  Each key is mapped to a
-    corresponding keyword argument on the :py:class:`sqlalchemy.engine.url.URL`
-    constructor.  The :py:class:`sqlalchemy.engine.url.URL` object will then be
-    passed to :py:func:`sqlalchemy.create_engine`.  Any additional keyword arguments
-    that are passed in will override the values set in ``app_config`` that are
-    passed to the :py:class:`sqlalchemy.engine.url.URL` constructor.
+    ``database.url``, etc. The ``prefix`` argument specifies the prefix used to
+    filter keys.
 
     Supported keys:
 
-    * ``url`` (optional): the connection URL to the database, if this is supplied, it
-        will be the only value used to connect to the database, all others will be
-        ignored.
-    * ``drivername`` (optional):  the name of the database backend. This name will
-        correspond to a module in sqlalchemy/databases or a third party plug-in e.g.
-        "postgresql".  Note that this is only optional if ``url`` is set, otherwise
-        it will be required.
-    * ``username`` (optional): the username used to connect to the database.
-    * ``password_secret`` (optional): the key used to retrieve the password from
-        ``secrets`` as a :py:class:`baseplate.secrets.SimpleSecret`.
-    * ``host`` (optional): the name of the database host.
-    * ``port`` (optional): the port number that the database is listening on on
-    the host.
-    * ``database`` (optional): the database name.
-    * ``query`` (optional): a dictionary of options to be passed to the dialect
-        and/or the DBAPI upon connect.
+    * ``url``: the connection URL to the database, passed to :py:func:`sqlalchemy.engine.url.create_url`
+        to create the :py:class:`sqlalchemy.engine.url.URL` used to connect to the
+        database.
+    * ``credentials_secret`` (optional): the key used to retrieve the database
+        credentials from ``secrets`` as a :py:class:`baseplate.secrets.CredentialSecret`.
+        If this is supplied, any credentials given in ``url`` we be replaced by
+        these.
 
     """
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
     cfg = config.parse_config(app_config, {
         config_prefix: {
-            "url": config.Optional(config.String),
-            "drivername": config.Optional(config.String),
+            "url": config.String,
             "credentials_secret": config.Optional(config.String),
-            "host": config.Optional(config.String),
-            "port": config.Optional(config.Integer),
-            "database": config.Optional(config.String),
-            "query": config.DictOf(config.String),  # optional
         }})
     options = getattr(cfg, config_prefix)
-    credentials = None
+    url = create_url(options.url)
+
     if options.credentials_secret:
         if not secrets:
             raise TypeError("'secrets' is a required argument to 'engine_from_config' "
                             "if 'credentials_secret' is set")
         credentials = secrets.get_credentials(options.credentials_secret)
+        url.username = credentials.username
+        url.password = credentials.password
 
-    if options.url:
-        connection_url = create_url(options.url)
-        if credentials:
-            connection_url.username = credentials.username
-            connection_url.password = credentials.password
-        return create_engine(connection_url)
-
-    elif not options.drivername:
-        raise config.ConfigurationError(
-            "drivername",
-            AttributeError("'drivername' is required if 'url' is not set"),
-        )
-
-    kwargs.setdefault("drivername", options.drivername)
-    if credentials:
-        kwargs.setdefault("username", credentials.username)
-        kwargs.setdefault("password", credentials.password)
-    if options.host:
-        kwargs.setdefault("host", options.host)
-    if options.port:
-        kwargs.setdefault("port", options.port)
-    if options.database:
-        kwargs.setdefault("database", options.database)
-    if options.query:
-        kwargs.setdefault("query", options.query)
-    return create_engine(URL(**kwargs))
+    return create_engine(url)
 
 
 class SQLAlchemyEngineContextFactory(ContextFactory):
