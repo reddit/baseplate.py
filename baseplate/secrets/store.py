@@ -91,6 +91,24 @@ class VersionedSecret(_VersionedSecret):
         )
 
 
+_CredentialSecret = collections.namedtuple("CredentialSecret", "username password")
+
+
+class CredentialSecret(_CredentialSecret):
+    """A secret for storing username/password pairs.
+
+    Credential secrets allow us to store usernames and passwords together in a
+    single secret.  Note that they are not versioned since the general pattern
+    for rotating credenitals like this would be to generate a new username/password
+    pair.  This object has two properties:
+
+    ``username``
+        The username portion of the credentials as :py:class:`bytes`.
+    ``password``
+        The password portion of the credentials as :py:class:`bytes`.
+    """
+
+
 def _decode_secret(path, encoding, value):
     if encoding == "identity":
         # encode to bytes for consistency with the base64 path. utf-8 because
@@ -141,6 +159,55 @@ class SecretsStore(ContextFactory):
             return data["secrets"][path]
         except KeyError:
             raise SecretNotFoundError(path)
+
+    def get_credentials(self, path):
+        """Decode and return a credential secret.
+
+        Credential secrets are a convention of username/password pairs stored as
+        separate values in the raw secret payload.
+
+        The following keys are significant:
+
+        ``type``
+            This must always be ``credentials`` for this method.
+        ``encoding``
+            This must be un-set or set to ``identity``.
+        ``username``
+            This contains the raw username.
+        ``password``
+            This contains the raw password.
+
+        :rtype: :py:class:`CredentialSecret`
+
+        """
+        secret_attributes = self.get_raw(path)
+
+        if secret_attributes.get("type") != "credentials":
+            raise CorruptSecretError(path, "secret does not have type=credentials")
+
+        if secret_attributes.get("encoding", "identity") != "identity":
+            raise CorruptSecretError(path, "secret does not have encoding=identity")
+
+        missing_keys = []
+        encoded_values = {}
+        for key in ("username", "password"):
+            try:
+                encoded_values[key] = secret_attributes[key]
+            except KeyError:
+                missing_keys.append(key)
+
+        if missing_keys:
+            if len(missing_keys) > 1:
+                message = "keys %s" % (tuple(missing_keys),)
+            else:
+                message = "key '%s'" % missing_keys[0]
+            raise CorruptSecretError(path, "secret does not have %s" % message)
+
+        values = {}
+        for key, encoded_value in encoded_values:
+            values[key] = _decode_secret(path, "identity", encoded_value)
+
+        return CredentialSecret(**values)
 
     def get_simple(self, path):
         """Decode and return a simple secret.
