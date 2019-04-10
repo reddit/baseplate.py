@@ -101,6 +101,13 @@ class CQLMapperContextFactory(CassandraContextFactory):
 class WaitForCallbackResponseFuture(object):
     """Wrap the ResponseFuture to ensure callbacks have completed.
 
+    The callback_fn and errback_fn passed in the constructor are given
+    special treatment: they must be complete before a result will be
+    returned from result(). They are not given precedence over other
+    callbacks or errbacks, so if another callback triggers the response
+    from the service (and the server span is closed) the special callback might
+    not complete.
+
     This fixes a race condition where the server span can complete before
     the callback has closed out the child span.
 
@@ -131,6 +138,24 @@ class WaitForCallbackResponseFuture(object):
             raise exc   # pylint: disable=E0702
 
         return result
+
+    # we need to define the following methods for compatibility with
+    # execute_concurrent and execute_concurrent_with_args, which add callbacks
+    # to futures returned by execute_async. we're not going to attempt to
+    # ensure that our special callback completes before these callbacks.
+    def add_callback(self, fn, *args, **kwargs):
+        self.future.add_callback(fn, *args, **kwargs)
+
+    def add_errback(self, fn, *args, **kwargs):
+        self.future.add_callback(fn, *args, **kwargs)
+
+    def add_callbacks(self, callback, errback, callback_args=(), callback_kwargs=None,
+                      errback_args=(), errback_kwargs=None):
+        self.add_callback(callback, *callback_args, **(callback_kwargs or {}))
+        self.add_errback(errback, *errback_args, **(errback_kwargs or {}))
+
+    def clear_callbacks(self):
+        self.future.clear_callbacks()
 
 
 def _on_execute_complete(_result, span, event):
