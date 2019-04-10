@@ -163,6 +163,82 @@ class StoreTests(unittest.TestCase):
         with self.assertRaises(store.CorruptSecretError):
             self.store.get_versioned("test_bad_base64")
 
+    def test_credential_secrets(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "secrets": {
+                "test": {
+                    "type": "credential",
+                    "username": "user",
+                    "password": "password",
+                },
+                "test_identity": {
+                    "type": "credential",
+                    "username": "spez",
+                    "password": "hunter2",
+                    "encoding": "identity",
+                },
+                "test_base64": {
+                    "type": "credential",
+                    "username": "foo",
+                    "password": "aHVudGVyMg==",
+                    "encoding": "base64",
+                },
+                "test_unknown_encoding": {
+                    "type": "credential",
+                    "username": "fizz",
+                    "password": "buzz",
+                    "encoding": "something",
+                },
+                "test_not_credentials": {
+                    "type": "versioned",
+                    "current": "easy",
+                },
+                "test_no_values": {
+                    "type": "credential",
+                },
+                "test_no_username": {
+                    "type": "credential",
+                    "password": "password"
+                },
+                "test_no_password": {
+                    "type": "credential",
+                    "username": "user"
+                },
+                "test_bad_type": {
+                    "type": "credential",
+                    "username": "user",
+                    "password": 100,
+                },
+            },
+            "vault": {
+                "token": "test",
+                "url": "http://vault.example.com:8200/",
+            }
+        }
+
+        self.assertEqual(self.store.get_credentials("test"),
+                         store.CredentialSecret("user", "password"))
+        self.assertEqual(self.store.get_credentials("test_identity"),
+                         store.CredentialSecret("spez", "hunter2"))
+
+        with self.assertRaises(store.CorruptSecretError):
+            self.store.get_credentials("test_base64")
+
+        with self.assertRaises(store.CorruptSecretError):
+            self.store.get_credentials("test_unknown_encoding")
+
+        with self.assertRaises(store.CorruptSecretError):
+            self.store.get_credentials("test_not_credentials")
+
+        with self.assertRaises(store.CorruptSecretError):
+            self.store.get_credentials("test_no_values")
+
+        with self.assertRaises(store.CorruptSecretError):
+            self.store.get_credentials("test_no_username")
+
+        with self.assertRaises(store.CorruptSecretError):
+            self.store.get_credentials("test_no_password")
+
 
 class StoreFromConfigTests(unittest.TestCase):
     def test_make_store(self):

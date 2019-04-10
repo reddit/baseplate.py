@@ -10,10 +10,11 @@ import collections
 import json
 import logging
 
-from .. import config
-from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
-from ..context import ContextFactory
-from .._utils import cached_property
+from baseplate import config
+from baseplate.context import ContextFactory
+from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate._compat import string_types
+from baseplate._utils import cached_property
 
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -91,6 +92,24 @@ class VersionedSecret(_VersionedSecret):
         )
 
 
+_CredentialSecret = collections.namedtuple("CredentialSecret", "username password")
+
+
+class CredentialSecret(_CredentialSecret):
+    """A secret for storing username/password pairs.
+
+    Credential secrets allow us to store usernames and passwords together in a
+    single secret.  Note that they are not versioned since the general pattern
+    for rotating credenitals like this would be to generate a new username/password
+    pair.  This object has two properties:
+
+    ``username``
+        The username portion of the credentials as :py:class:`str`.
+    ``password``
+        The password portion of the credentials as :py:class:`str`.
+    """
+
+
 def _decode_secret(path, encoding, value):
     if encoding == "identity":
         # encode to bytes for consistency with the base64 path. utf-8 because
@@ -141,6 +160,50 @@ class SecretsStore(ContextFactory):
             return data["secrets"][path]
         except KeyError:
             raise SecretNotFoundError(path)
+
+    def get_credentials(self, path):
+        """Decode and return a credential secret.
+
+        Credential secrets are a convention of username/password pairs stored as
+        separate values in the raw secret payload.
+
+        The following keys are significant:
+
+        ``type``
+            This must always be ``credential`` for this method.
+        ``encoding``
+            This must be un-set or set to ``identity``.
+        ``username``
+            This contains the raw username.
+        ``password``
+            This contains the raw password.
+
+        :rtype: :py:class:`CredentialSecret`
+
+        """
+        secret_attributes = self.get_raw(path)
+
+        if secret_attributes.get("type") != "credential":
+            raise CorruptSecretError(path, "secret does not have type=credential")
+
+        encoding = secret_attributes.get("encoding", "identity")
+
+        if encoding != "identity":
+            raise CorruptSecretError(path,
+                                    "secret has encoding=%s rather than "
+                                    "encoding=identity" % encoding)
+
+        values = {}
+        for key in ("username", "password"):
+            try:
+                val = secret_attributes[key]
+                if not isinstance(val, string_types):
+                    raise CorruptSecretError(path, "secret value '%s' is not a string" % key)
+                values[key] = val
+            except KeyError:
+                raise CorruptSecretError(path, "secret does not have key '%s'" % key)
+
+        return CredentialSecret(**values)
 
     def get_simple(self, path):
         """Decode and return a simple secret.
