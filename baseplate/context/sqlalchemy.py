@@ -3,14 +3,52 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from sqlalchemy import event
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 
-from ..context import ContextFactory
-from ..core import (
-    ServerSpan,
-    SpanObserver,
-)
+from baseplate import config
+from baseplate.context import ContextFactory
+from baseplate.core import ServerSpan, SpanObserver
+
+
+def engine_from_config(app_config, secrets=None, prefix="database."):
+    """Make an :py:class:`~sqlalchemy.engine.Engine` from a configuration dictionary.
+
+    The keys useful to :py:func:`engine_from_config` should be prefixed, e.g.
+    ``database.url``, etc. The ``prefix`` argument specifies the prefix used to
+    filter keys.
+
+    Supported keys:
+
+    * ``url``: the connection URL to the database, passed to
+        :py:func:`~sqlalchemy.engine.url.make_url` to create the
+        :py:class:`~sqlalchemy.engine.url.URL` used to connect to the database.
+    * ``credentials_secret`` (optional): the key used to retrieve the database
+        credentials from ``secrets`` as a :py:class:`~baseplate.secrets.CredentialSecret`.
+        If this is supplied, any credentials given in ``url`` we be replaced by
+        these.
+
+    """
+    assert prefix.endswith(".")
+    config_prefix = prefix[:-1]
+    cfg = config.parse_config(app_config, {
+        config_prefix: {
+            "url": config.String,
+            "credentials_secret": config.Optional(config.String),
+        }})
+    options = getattr(cfg, config_prefix)
+    url = make_url(options.url)
+
+    if options.credentials_secret:
+        if not secrets:
+            raise TypeError("'secrets' is a required argument to 'engine_from_config' "
+                            "if 'credentials_secret' is set")
+        credentials = secrets.get_credentials(options.credentials_secret)
+        url.username = credentials.username
+        url.password = credentials.password
+
+    return create_engine(url)
 
 
 class SQLAlchemyEngineContextFactory(ContextFactory):
