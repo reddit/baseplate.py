@@ -13,7 +13,7 @@ from baseplate.core import ServerSpan, SpanObserver
 
 
 def engine_from_config(app_config, secrets=None, prefix="database."):
-    """Make an :py:class:`sqlalchemy.engine.Engine` from a configuration dictionary.
+    """Make an :py:class:`~sqlalchemy.engine.Engine` from a configuration dictionary.
 
     The keys useful to :py:func:`engine_from_config` should be prefixed, e.g.
     ``database.url``, etc. The ``prefix`` argument specifies the prefix used to
