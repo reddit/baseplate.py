@@ -22,10 +22,10 @@ def engine_from_config(app_config, secrets=None, prefix="database."):
     Supported keys:
 
     * ``url``: the connection URL to the database, passed to
-        :py:func:`sqlalchemy.engine.url.make_url` to create the
-        :py:class:`sqlalchemy.engine.url.URL` used to connect to the database.
+        :py:func:`~sqlalchemy.engine.url.make_url` to create the
+        :py:class:`~sqlalchemy.engine.url.URL` used to connect to the database.
     * ``credentials_secret`` (optional): the key used to retrieve the database
-        credentials from ``secrets`` as a :py:class:`baseplate.secrets.CredentialSecret`.
+        credentials from ``secrets`` as a :py:class:`~baseplate.secrets.CredentialSecret`.
         If this is supplied, any credentials given in ``url`` we be replaced by
         these.
 
