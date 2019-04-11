@@ -635,3 +635,12 @@ class ExperimentsClientFromConfigTests(unittest.TestCase):
         }, event_logger)
         self.assertIsInstance(experiments, ExperimentsContextFactory)
         file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=60.0)
+
+    def test_prefix(self, file_watcher_mock):
+        event_logger = mock.Mock(spec=DebugLogger)
+        experiments = experiments_client_from_config({
+            "r2_experiments.path": "/tmp/test",
+            "r2_experiments.timeout": "60 seconds",
+        }, event_logger, prefix="r2_experiments.")
+        self.assertIsInstance(experiments, ExperimentsContextFactory)
+        file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=60.0)
