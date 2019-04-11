@@ -41,18 +41,26 @@ class EngineFromConfigTests(unittest.TestCase):
         engine = engine_from_config({"database.url": "sqlite://"})
         self.assertEqual(engine.url, URL("sqlite"))
 
-    def test_credentials(self):
+    @mock.patch('baseplate.context.sqlalchemy.create_engine')
+    def test_credentials(self, create_engine_mock):
         engine = engine_from_config({
-            "database.url": "sqlite://",
+            "database.url": "postgresql://fizz:buzz@localhost:9000/db",
             "database.credentials_secret": "secret/sql/account",
         }, self.secrets)
-        self.assertEqual(engine.url, URL("sqlite", username="reddit", password="password"))
+        create_engine_mock.assert_called_once_with(URL(
+            drivername="postgresql",
+            username="reddit",
+            password="password",
+            host="localhost",
+            port="9000",
+            database="db",
+        ))
 
     @mock.patch('baseplate.context.sqlalchemy.create_engine')
     def test_credentials_no_secrets(self, create_engine_mock):
         with self.assertRaises(TypeError):
             engine_from_config({
-                "database.url": "sqlite://",
+                "database.url": "postgresql://fizz:buzz@localhost:9000/db",
                 "database.credentials_secret": "secret/sql/account",
             })
         self.assertEqual(create_engine_mock.call_count, 0)

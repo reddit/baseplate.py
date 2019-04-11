@@ -4,7 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.engine.url import create_url
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 
 from baseplate import config
@@ -21,7 +21,7 @@ def engine_from_config(app_config, secrets=None, prefix="database."):
 
     Supported keys:
 
-    * ``url``: the connection URL to the database, passed to :py:func:`sqlalchemy.engine.url.create_url`
+    * ``url``: the connection URL to the database, passed to :py:func:`sqlalchemy.engine.url.make_url`
         to create the :py:class:`sqlalchemy.engine.url.URL` used to connect to the
         database.
     * ``credentials_secret`` (optional): the key used to retrieve the database
@@ -38,7 +38,7 @@ def engine_from_config(app_config, secrets=None, prefix="database."):
             "credentials_secret": config.Optional(config.String),
         }})
     options = getattr(cfg, config_prefix)
-    url = create_url(options.url)
+    url = make_url(options.url)
 
     if options.credentials_secret:
         if not secrets:
