@@ -8,11 +8,11 @@ import logging
 
 from enum import Enum
 
-from .providers import parse_experiment
-from .. import config
-from ..context import ContextFactory
-from ..events import DebugLogger
-from ..file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate import config
+from baseplate.context import ContextFactory
+from baseplate.events import DebugLogger
+from baseplate.experiments.providers import parse_experiment
+from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
 
 
 logger = logging.getLogger(__name__)
