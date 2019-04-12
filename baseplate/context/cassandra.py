@@ -105,7 +105,9 @@ def wrap_future(response_future, callback_fn, callback_args, errback_fn, errback
     complete before a result will be returned from ResponseFuture.result().
     They are not given precedence over other callbacks or errbacks, so if
     another callback triggers the response from the service (and the server
-    span is closed) the special callback might not complete.
+    span is closed) the special callback might not complete. The special
+    callback is added first and  callbacks are executed in order, so
+    generally the special callback should finish before any other callbacks.
 
     This fixes a race condition where the server span can complete before
     the callback has closed out the child span.
