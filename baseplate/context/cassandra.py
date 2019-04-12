@@ -7,7 +7,7 @@ import logging
 from threading import Event
 
 # pylint: disable=no-name-in-module
-from cassandra.cluster import Cluster, _NOT_SET
+from cassandra.cluster import Cluster, _NOT_SET, ResponseFuture
 # pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
 
@@ -98,39 +98,36 @@ class CQLMapperContextFactory(CassandraContextFactory):
         return cqlmapper.connection.Connection(session_adapter)
 
 
-class WaitForCallbackResponseFuture(object):
-    """Wrap the ResponseFuture to ensure callbacks have completed.
+def wrap_future(response_future, callback_fn, callback_args, errback_fn, errback_args):
+    """Patch ResponseFuture.result() to wait for callback or errback to complete.
 
-    The callback_fn and errback_fn passed in the constructor are given
-    special treatment: they must be complete before a result will be
-    returned from result(). They are not given precedence over other
-    callbacks or errbacks, so if another callback triggers the response
-    from the service (and the server span is closed) the special callback might
-    not complete.
+    The callback_fn and errback_fn are given special treatment: they must be
+    complete before a result will be returned from ResponseFuture.result().
+    They are not given precedence over other callbacks or errbacks, so if
+    another callback triggers the response from the service (and the server
+    span is closed) the special callback might not complete. The special
+    callback is added first and  callbacks are executed in order, so
+    generally the special callback should finish before any other callbacks.
 
     This fixes a race condition where the server span can complete before
     the callback has closed out the child span.
 
     """
+    response_future._callback_event = Event()
 
-    def __init__(self, future, callback_fn, callback_args, errback_fn, errback_args):
-        self.callback_event = Event()
+    response_future.add_callback(callback_fn, callback_args, response_future._callback_event)
+    response_future.add_errback(errback_fn, errback_args, response_future._callback_event)
 
-        future.add_callback(callback_fn, callback_args, self.callback_event)
-        future.add_errback(errback_fn, errback_args, self.callback_event)
-
-        self.future = future
-
-    def result(self):
+    def wait_for_callbacks_result(self):
         exc = None
 
         try:
-            result = self.future.result()
+            result = ResponseFuture.result(self)
         except Exception as e:
             exc = e
 
         # wait for either _on_execute_complete or _on_execute_failed to run
-        wait_result = self.callback_event.wait(timeout=0.01)
+        wait_result = self._callback_event.wait(timeout=0.01)
         if not wait_result:
             logger.warning("Cassandra metrics callback took too long. Some metrics may be lost.")
 
@@ -139,23 +136,11 @@ class WaitForCallbackResponseFuture(object):
 
         return result
 
-    # we need to define the following methods for compatibility with
-    # execute_concurrent and execute_concurrent_with_args, which add callbacks
-    # to futures returned by execute_async. we're not going to attempt to
-    # ensure that our special callback completes before these callbacks.
-    def add_callback(self, fn, *args, **kwargs):
-        self.future.add_callback(fn, *args, **kwargs)
-
-    def add_errback(self, fn, *args, **kwargs):
-        self.future.add_callback(fn, *args, **kwargs)
-
-    def add_callbacks(self, callback, errback, callback_args=(), callback_kwargs=None,
-                      errback_args=(), errback_kwargs=None):
-        self.add_callback(callback, *callback_args, **(callback_kwargs or {}))
-        self.add_errback(errback, *errback_args, **(errback_kwargs or {}))
-
-    def clear_callbacks(self):
-        self.future.clear_callbacks()
+    # call __get__ to turn wait_for_callbacks_result into a bound method
+    bound_method = wait_for_callbacks_result.__get__(response_future, ResponseFuture)
+    # patch the ResponseFuture instance
+    response_future.result = bound_method
+    return response_future
 
 
 def _on_execute_complete(_result, span, event):
@@ -221,8 +206,8 @@ class CassandraSessionAdapter(object):
             parameters=parameters,
             timeout=timeout,
         )
-        future = WaitForCallbackResponseFuture(
-            future=future,
+        future = wrap_future(
+            response_future=future,
             callback_fn=_on_execute_complete,
             callback_args=span,
             errback_fn=_on_execute_failed,

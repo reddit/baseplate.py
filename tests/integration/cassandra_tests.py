@@ -10,6 +10,7 @@ import unittest
 try:
     from cassandra import InvalidRequest
     from cassandra.cluster import Cluster
+    from cassandra.concurrent import execute_concurrent_with_args
     from cassandra.query import dict_factory, named_tuple_factory
 except ImportError:
     raise unittest.SkipTest("cassandra-driver is not installed")
@@ -155,3 +156,37 @@ class CassandraTests(unittest.TestCase):
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
         self.assertFalse(span_observer.on_finish_called)
+
+
+class CassandraConcurrentTests(unittest.TestCase):
+    def setUp(self):
+        cluster = Cluster([cassandra_endpoint.address.host], port=cassandra_endpoint.address.port)
+        session = cluster.connect("system")
+        factory = CassandraContextFactory(session)
+
+        self.baseplate_observer = TestBaseplateObserver()
+
+        baseplate = Baseplate()
+        baseplate.register(self.baseplate_observer)
+        baseplate.add_to_context("cassandra", factory)
+
+        self.context = mock.Mock()
+        self.server_span = baseplate.make_server_span(self.context, "test")
+
+    def test_execute_concurrent_with_args(self):
+        with self.server_span:
+            statement = self.context.cassandra.prepare('SELECT * FROM system.local WHERE "key"=?')
+            params = [(_key,) for _key in ['local', 'other']]
+            results = execute_concurrent_with_args(self.context.cassandra, statement, params)
+
+        server_span_observer = self.baseplate_observer.get_only_child()
+        self.assertEqual(len(server_span_observer.children), 3)
+        for span_observer in server_span_observer.children:
+            self.assertTrue(span_observer.on_start_called)
+            self.assertTrue(span_observer.on_finish_called)
+            self.assertIsNone(span_observer.on_finish_exc_info)
+            span_observer.assert_tag("statement", 'SELECT * FROM system.local WHERE "key"=?')
+
+        self.assertEqual(len(results), 2)
+        self.assertTrue(results[0].success)
+        self.assertTrue(results[1].success)
