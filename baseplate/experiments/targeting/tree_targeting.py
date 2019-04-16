@@ -51,9 +51,12 @@ class EqualNode(Targeting):
 
     def evaluate(self, **kwargs):
         candidate_value = kwargs.get(self._accepted_key)
-        if candidate_value in self._accepted_values:
-            return True
-
+        try:
+            if candidate_value in self._accepted_values:
+                return True
+        except TypeError:
+            pass
+            
         return False
 
 
