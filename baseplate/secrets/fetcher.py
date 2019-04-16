@@ -279,13 +279,19 @@ class VaultClient:
     def get_secret(self, secret_name):
         """Get the value and expiration time of a named secret."""
         logger.debug("Fetching secret %r.", secret_name)
-        response = self.session.get(
-            urllib.parse.urljoin(self.base_url, posixpath.join("v1", secret_name)),
-            headers={
-                "X-Vault-Token": self.token,
-            },
-        )
-        response.raise_for_status()
+        try:
+            response = self.session.get(
+                urllib.parse.urljoin(self.base_url, posixpath.join("v1", secret_name)),
+                headers={
+                    "X-Vault-Token": self.token,
+                },
+            )
+            response.raise_for_status()
+        except requests.HTTPError:
+            logger.exception("Vault client failed to get secret: %s",
+                             secret_name)
+            raise
+
         payload = response.json()
         return payload["data"], ttl_to_time(payload["lease_duration"])
 
