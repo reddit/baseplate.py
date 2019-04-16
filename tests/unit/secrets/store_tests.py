@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import json
 import unittest
 
 from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
@@ -246,3 +247,20 @@ class StoreFromConfigTests(unittest.TestCase):
             "secrets.path": "/tmp/test",
         })
         self.assertIsInstance(secrets, store.SecretsStore)
+
+    @mock.patch("baseplate.secrets.store.FileWatcher")
+    def test_timeout(self, file_watcher_mock):
+        secrets = store.secrets_store_from_config({
+            "secrets.path": "/tmp/test",
+            "secrets.timeout": "60 seconds",
+        })
+        self.assertIsInstance(secrets, store.SecretsStore)
+        file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=60)
+
+    def test_prefix(self):
+        secrets = store.secrets_store_from_config({
+            "secrets.path": "/tmp/test",
+            "test_secrets.path": "/tmp/secrets",
+        }, prefix="test_secrets.")
+        self.assertIsInstance(secrets, store.SecretsStore)
+        self.assertEqual(secrets._filewatcher._path, "/tmp/secrets")
