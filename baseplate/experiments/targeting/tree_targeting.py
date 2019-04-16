@@ -60,7 +60,7 @@ class EqualNode(Targeting):
             if candidate_value in self._accepted_values:
                 return True
         except TypeError as err:
-            logger.warn(err)
+            logger.warning(err)
 
         return False
 
