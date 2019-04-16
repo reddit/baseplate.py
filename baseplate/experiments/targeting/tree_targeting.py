@@ -1,5 +1,9 @@
+import logging
+
 from .base import Targeting
 
+
+logger = logging.getLogger(__name__)
 
 class TargetingNodeError(Exception):
     pass
@@ -54,9 +58,9 @@ class EqualNode(Targeting):
         try:
             if candidate_value in self._accepted_values:
                 return True
-        except TypeError:
-            pass
-            
+        except TypeError as err:
+            logger.warn(err)
+
         return False
 
 
