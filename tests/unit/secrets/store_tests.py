@@ -248,15 +248,6 @@ class StoreFromConfigTests(unittest.TestCase):
         })
         self.assertIsInstance(secrets, store.SecretsStore)
 
-    @mock.patch("baseplate.secrets.store.FileWatcher")
-    def test_timeout(self, file_watcher_mock):
-        secrets = store.secrets_store_from_config({
-            "secrets.path": "/tmp/test",
-            "secrets.timeout": "60 seconds",
-        })
-        self.assertIsInstance(secrets, store.SecretsStore)
-        file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=60)
-
     def test_prefix(self):
         secrets = store.secrets_store_from_config({
             "secrets.path": "/tmp/test",
