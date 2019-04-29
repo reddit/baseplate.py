@@ -246,3 +246,11 @@ class StoreFromConfigTests(unittest.TestCase):
             "secrets.path": "/tmp/test",
         })
         self.assertIsInstance(secrets, store.SecretsStore)
+
+    def test_prefix(self):
+        secrets = store.secrets_store_from_config({
+            "secrets.path": "/tmp/test",
+            "test_secrets.path": "/tmp/secrets",
+        }, prefix="test_secrets.")
+        self.assertIsInstance(secrets, store.SecretsStore)
+        self.assertEqual(secrets._filewatcher._path, "/tmp/secrets")
