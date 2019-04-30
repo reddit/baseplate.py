@@ -287,9 +287,9 @@ class VaultClient:
                 },
             )
             response.raise_for_status()
-        except requests.HTTPError:
-            logger.exception("Vault client failed to get secret: %s",
-                             secret_name)
+        except requests.HTTPError as e:
+            logger.error("Vault client failed to get secret: %s: %s",
+                         secret_name, e)
             raise
 
         payload = response.json()
