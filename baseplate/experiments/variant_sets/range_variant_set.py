@@ -7,7 +7,7 @@ from .base import VariantSet
 
 
 class RangeVariantSet(VariantSet):
-    """ Variant Set designed to take fixed bucket ranges.
+    """Variant Set designed to take fixed bucket ranges.
 
     This VariantSet allows manually setting bucketing ranges.
     It takes in a variant name, then the range of buckets in
@@ -24,6 +24,7 @@ class RangeVariantSet(VariantSet):
         passed in for a variant call. Defaults to 1000, which means maximum
         granularity of 0.1% for bucketing
     """
+
     def __init__(self, variants, num_buckets=1000):
         self.num_buckets = num_buckets
         self.variants = variants
@@ -41,7 +42,6 @@ class RangeVariantSet(VariantSet):
 
         if not self.variants:
             raise ValueError('No variants provided')
-
 
         total_size = 0
         for variant in self.variants:
@@ -63,10 +63,10 @@ class RangeVariantSet(VariantSet):
         :return string: the variant name, or None if bucket doesn't fall into
                           any of the variants
         """
-
         for variant in self.variants:
-            if (bucket >= int(variant['range_start'] * self.num_buckets) and
-                    bucket < int(variant['range_end'] * self.num_buckets)):
+            bucket_lower = int(variant['range_start'] * self.num_buckets)
+            bucket_upper = int(variant['range_end'] * self.num_buckets)
+            if bucket_lower <= bucket < bucket_upper:
                 return variant['name']
 
         return None
