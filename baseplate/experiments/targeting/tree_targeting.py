@@ -140,18 +140,17 @@ class OverrideNode(Targeting):
 
 
 class ComparisonNode(Targeting):
-    """Non-equality comparison operators (gt, ge, lt, le)."""
+    """Non-equality comparison operators (gt, ge, lt, le).
+
+    Expects as input the input node as well as an operator (from the
+    operator module). Operator must be one that expects two inputs (
+    ie: gt, ge, lt, le, eq, ne)
+
+    :param dict input_node: a Targeting node
+    :param operator operator: an operator to apply to the input node
+    """
 
     def __init__(self, input_node, comparator):
-        """Return True for matching expected values.
-
-        Expects as input the input node as well as an operator (from the
-        operator module). Operator must be one that expects two inputs (
-        ie: gt, ge, lt, le, eq, ne)
-
-        :param dict input_node: a Targeting node
-        :param operator operator: an operator to apply to the input node
-        """
         if len(input_node) != 2:
             raise ValueError("ComparisonNode expects exactly two fields.")
 
