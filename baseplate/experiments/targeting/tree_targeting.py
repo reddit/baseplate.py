@@ -1,7 +1,7 @@
 import logging
+import operator
 
 from .base import Targeting
-import operator
 
 
 logger = logging.getLogger(__name__)
@@ -140,9 +140,12 @@ class OverrideNode(Targeting):
 
 
 class ComparisonNode(Targeting):
-    """Non-equality comparison operators (gt, ge, lt, le)"""
+    """Non-equality comparison operators (gt, ge, lt, le)."""
+
     def __init__(self, input_node, comparator):
-        """Expects as input the input node as well as an operator (from the
+        """Return True for matching expected values.
+
+        Expects as input the input node as well as an operator (from the
         operator module). Operator must be one that expects two inputs (
         ie: gt, ge, lt, le, eq, ne)
 
