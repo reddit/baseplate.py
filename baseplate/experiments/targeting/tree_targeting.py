@@ -127,7 +127,7 @@ class NotNode(Targeting):
 
 
 class OverrideNode(Targeting):
-    """Always return True/False"""
+    """Always return True/False."""
 
     def __init__(self, input_node):
         if input_node is True:

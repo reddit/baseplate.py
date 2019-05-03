@@ -396,7 +396,7 @@ class TestComparisonNode(unittest.TestCase):
     def test_gt_node(self):
 
         inputs = get_input_set()
-        
+
         targeting_config_eq = {
             'GT':{'field': 'num_field', 'value': 5}
         }
@@ -418,7 +418,7 @@ class TestComparisonNode(unittest.TestCase):
     def test_lt_node(self):
 
         inputs = get_input_set()
-        
+
         targeting_config_eq = {
             'LT':{'field': 'num_field', 'value': 5}
         }
@@ -440,7 +440,7 @@ class TestComparisonNode(unittest.TestCase):
     def test_ge_node(self):
 
         inputs = get_input_set()
-        
+
         targeting_config_eq = {
             'GE':{'field': 'num_field', 'value': 5}
         }
@@ -462,7 +462,7 @@ class TestComparisonNode(unittest.TestCase):
     def test_le_node(self):
 
         inputs = get_input_set()
-        
+
         targeting_config_eq = {
             'LE':{'field': 'num_field', 'value': 5}
         }
@@ -484,7 +484,7 @@ class TestComparisonNode(unittest.TestCase):
     def test_ne_node(self):
 
         inputs = get_input_set()
-        
+
         targeting_config_eq = {
             'NE':{'field': 'num_field', 'value': 5}
         }
