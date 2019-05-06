@@ -201,6 +201,46 @@ class TestRangeVariantSet(unittest.TestCase):
         self.assertEqual(variant_counts["variant_3"], 259)
         self.assertEqual(variant_counts["variant_4"], 260)
 
+    def test_distribution_multi_range_variant(self):
+        cfg = [
+            {
+                "name": "variant_1", 
+                "range_start": 0.0,
+                "range_end": 0.25,
+            },
+            {
+                "name": "variant_2", 
+                "range_start": 0.25,
+                "range_end": 0.5,
+            },
+            {
+                "name": "variant_1", 
+                "range_start": 0.5,
+                "range_end": 0.75,
+            },
+        ]
+
+        variant_set = RangeVariantSet(
+            variants=cfg, 
+            num_buckets=NUM_BUCKETS_DEFAULT
+        )
+
+        variant_counts = {
+            "variant_1": 0,
+            "variant_2": 0,
+            None: 0,
+        }
+
+        for bucket in range(0, NUM_BUCKETS_DEFAULT):
+            variant = variant_set.choose_variant(bucket)
+            variant_counts[variant] += 1
+
+        self.assertEqual(len(variant_counts), 3)
+
+        self.assertEqual(variant_counts['variant_1'], 500)
+        self.assertEqual(variant_counts['variant_2'], 250)
+        self.assertEqual(variant_counts[None], 250)
+
     def test_contains(self):
         variant_set = create_range_variant_set()
 
