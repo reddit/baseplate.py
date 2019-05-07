@@ -1,5 +1,7 @@
 namespace py baseplate.thrift
 
+namespace java com.reddit.baseplate
+
 /** The base for any baseplate-based service.
 
 Your service should inherit from this one so that common tools can interact
