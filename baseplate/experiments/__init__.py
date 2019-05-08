@@ -122,7 +122,7 @@ class Experiments(object):
 
     def variant(self, name, user=None, bucketing_event_override=None,
                 **kwargs):
-        r"""Return which variant, if any, is active.
+        """Return which variant, if any, is active.
 
         If a variant is active, a bucketing event will be logged to the event
         pipeline unless any one of the following conditions are met:
