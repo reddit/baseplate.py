@@ -218,7 +218,7 @@ class BaseplateConfigurator(object):
 
     def _get_trace_info(self, headers):
         extracted_values = TraceInfo.extract_upstream_header_values(TRACE_HEADER_NAMES, headers)
-        sampled = bool(extracted_values.get("sampled") == b"1")
+        sampled = bool(extracted_values.get("sampled") in {b"1", "1"})
         flags = extracted_values.get("flags", None)
         return TraceInfo.from_upstream(
             int(extracted_values["trace_id"]),
