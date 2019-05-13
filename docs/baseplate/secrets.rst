@@ -35,6 +35,9 @@ fetcher daemon.
 .. autoclass:: VersionedSecret
    :members:
 
+.. autoclass:: CredentialSecret
+   :members:
+
 Exceptions
 ~~~~~~~~~~
 
