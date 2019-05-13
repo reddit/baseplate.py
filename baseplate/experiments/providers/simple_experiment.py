@@ -13,6 +13,7 @@ from ..._compat import long, iteritems
 from ..variant_sets.single_variant_set import SingleVariantSet
 from ..variant_sets.multi_variant_set import MultiVariantSet
 from ..variant_sets.rollout_variant_set import RolloutVariantSet
+from ..variant_sets.range_variant_set import RangeVariantSet
 
 from ..targeting.tree_targeting import create_targeting_tree
 
@@ -24,6 +25,7 @@ variant_type_map = {
     'single_variant': SingleVariantSet,
     'multi_variant': MultiVariantSet,
     'feature_rollout': RolloutVariantSet,
+    'range_variant': RangeVariantSet,
 }
 
 
