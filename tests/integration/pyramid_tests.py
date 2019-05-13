@@ -160,7 +160,7 @@ class ConfiguratorTests(unittest.TestCase):
             "X-Trace": "1234",
             "X-Parent": "2345",
             "X-Span": "3456",
-            "X-Sampled": b"1",
+            "X-Sampled": "1",
             "X-Flags": "1",
         })
 
@@ -185,7 +185,7 @@ class ConfiguratorTests(unittest.TestCase):
             "X-B3-TraceId": "1234",
             "X-B3-ParentSpanId": "2345",
             "X-B3-SpanId": "3456",
-            "X-B3-Sampled": b"1",
+            "X-B3-Sampled": "1",
             "X-B3-Flags": "1",
         })
 
