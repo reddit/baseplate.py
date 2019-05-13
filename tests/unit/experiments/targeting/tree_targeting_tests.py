@@ -391,3 +391,235 @@ class TestAllNode(unittest.TestCase):
         }
         with self.assertRaises(TargetingNodeError):
             targeting_tree_not_list = create_targeting_tree(targeting_config_not_list)
+
+class TestComparisonNode(unittest.TestCase):
+    def test_gt_node(self):
+
+        inputs = get_input_set()
+
+        targeting_config_eq = {
+            'GT':{'field': 'num_field', 'value': 5}
+        }
+        targeting_tree_eq = create_targeting_tree(targeting_config_eq)
+        self.assertFalse(targeting_tree_eq.evaluate(**inputs))
+
+        targeting_config_lt = {
+            'GT':{'field': 'num_field', 'value': 4}
+        }
+        targeting_tree_lt = create_targeting_tree(targeting_config_lt)
+        self.assertTrue(targeting_tree_lt.evaluate(**inputs))
+
+        targeting_config_gt = {
+            'GT':{'field': 'num_field', 'value': 6}
+        }
+        targeting_tree_gt = create_targeting_tree(targeting_config_gt)
+        self.assertFalse(targeting_tree_gt.evaluate(**inputs))
+
+    def test_lt_node(self):
+
+        inputs = get_input_set()
+
+        targeting_config_eq = {
+            'LT':{'field': 'num_field', 'value': 5}
+        }
+        targeting_tree_eq = create_targeting_tree(targeting_config_eq)
+        self.assertFalse(targeting_tree_eq.evaluate(**inputs))
+
+        targeting_config_lt = {
+            'LT':{'field': 'num_field', 'value': 4}
+        }
+        targeting_tree_lt = create_targeting_tree(targeting_config_lt)
+        self.assertFalse(targeting_tree_lt.evaluate(**inputs))
+
+        targeting_config_gt = {
+            'LT':{'field': 'num_field', 'value': 6}
+        }
+        targeting_tree_gt = create_targeting_tree(targeting_config_gt)
+        self.assertTrue(targeting_tree_gt.evaluate(**inputs))
+
+    def test_ge_node(self):
+
+        inputs = get_input_set()
+
+        targeting_config_eq = {
+            'GE':{'field': 'num_field', 'value': 5}
+        }
+        targeting_tree_eq = create_targeting_tree(targeting_config_eq)
+        self.assertTrue(targeting_tree_eq.evaluate(**inputs))
+
+        targeting_config_lt = {
+            'GE':{'field': 'num_field', 'value': 4}
+        }
+        targeting_tree_lt = create_targeting_tree(targeting_config_lt)
+        self.assertTrue(targeting_tree_lt.evaluate(**inputs))
+
+        targeting_config_gt = {
+            'GE':{'field': 'num_field', 'value': 6}
+        }
+        targeting_tree_gt = create_targeting_tree(targeting_config_gt)
+        self.assertFalse(targeting_tree_gt.evaluate(**inputs))
+
+    def test_le_node(self):
+
+        inputs = get_input_set()
+
+        targeting_config_eq = {
+            'LE':{'field': 'num_field', 'value': 5}
+        }
+        targeting_tree_eq = create_targeting_tree(targeting_config_eq)
+        self.assertTrue(targeting_tree_eq.evaluate(**inputs))
+
+        targeting_config_lt = {
+            'LE':{'field': 'num_field', 'value': 4}
+        }
+        targeting_tree_lt = create_targeting_tree(targeting_config_lt)
+        self.assertFalse(targeting_tree_lt.evaluate(**inputs))
+
+        targeting_config_gt = {
+            'LE':{'field': 'num_field', 'value': 6}
+        }
+        targeting_tree_gt = create_targeting_tree(targeting_config_gt)
+        self.assertTrue(targeting_tree_gt.evaluate(**inputs))
+
+    def test_ne_node(self):
+
+        inputs = get_input_set()
+
+        targeting_config_eq = {
+            'NE':{'field': 'num_field', 'value': 5}
+        }
+        targeting_tree_eq = create_targeting_tree(targeting_config_eq)
+        self.assertFalse(targeting_tree_eq.evaluate(**inputs))
+
+        targeting_config_lt = {
+            'NE':{'field': 'num_field', 'value': 4}
+        }
+        targeting_tree_lt = create_targeting_tree(targeting_config_lt)
+        self.assertTrue(targeting_tree_lt.evaluate(**inputs))
+
+        targeting_config_gt = {
+            'NE':{'field': 'num_field', 'value': 6}
+        }
+        targeting_tree_gt = create_targeting_tree(targeting_config_gt)
+        self.assertTrue(targeting_tree_gt.evaluate(**inputs))
+
+    def test_comparison_le_none(self):
+
+        inputs = get_input_set()
+
+        # test explicit none in inputs
+        targeting_config_none = {
+            'LE':{'field': 'explicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+        # test field missing in inputs (implicit none)
+        targeting_config_none = {
+            'LE':{'field': 'implicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+    def test_comparison_ge_none(self):
+
+        inputs = get_input_set()
+
+        # test explicit none in inputs
+        targeting_config_none = {
+            'GE':{'field': 'explicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+        # test field missing in inputs (implicit none)
+        targeting_config_none = {
+            'GE':{'field': 'implicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+    def test_comparison_lt_none(self):
+
+        inputs = get_input_set()
+
+        # test explicit none in inputs
+        targeting_config_none = {
+            'LT':{'field': 'explicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+        # test field missing in inputs (implicit none)
+        targeting_config_none = {
+            'LT':{'field': 'implicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+    def test_comparison_gt_none(self):
+
+        inputs = get_input_set()
+
+        # test explicit none in inputs
+        targeting_config_none = {
+            'GT':{'field': 'explicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+        # test field missing in inputs (implicit none)
+        targeting_config_none = {
+            'GT':{'field': 'implicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+    def test_comparison_ne_none(self):
+
+        inputs = get_input_set()
+
+        # test explicit none in inputs
+        targeting_config_none = {
+            'NE':{'field': 'explicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+        # test field missing in inputs (implicit none)
+        targeting_config_none = {
+            'NE':{'field': 'implicit_none_field', 'value': None}
+        }
+        targeting_tree_none = create_targeting_tree(targeting_config_none)
+        self.assertFalse(targeting_tree_none.evaluate(**inputs))
+
+    def test_comparison_node_bad_inputs(self):
+        targeting_config_empty = {
+            'LE':{}
+        }
+        with self.assertRaises(TargetingNodeError):
+            targeting_tree_empty = create_targeting_tree(targeting_config_empty)
+
+        targeting_config_one_arg = {
+            'LE':{'field':'some_field'}
+        }
+        with self.assertRaises(TargetingNodeError):
+            targeting_tree_empty = create_targeting_tree(targeting_config_one_arg)
+
+        targeting_config_three_args = {
+            'LE':{'field':'some_field', 'values': ['one', True], 'value': 'str_arg'}
+        }
+        with self.assertRaises(TargetingNodeError):
+            targeting_tree_empty = create_targeting_tree(targeting_config_three_args)
+
+        targeting_config_no_field = {
+            'LE':{'fields':'some_field', 'value': 'str_arg'}
+        }
+        with self.assertRaises(TargetingNodeError):
+            targeting_tree_empty = create_targeting_tree(targeting_config_no_field)
+
+        targeting_config_no_value = {
+            'LE':{'field':'some_field', 'valu': 'str_arg'}
+        }
+        with self.assertRaises(TargetingNodeError):
+            targeting_tree_empty = create_targeting_tree(targeting_config_no_value)

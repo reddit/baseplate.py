@@ -1,4 +1,5 @@
 import logging
+import operator
 
 from .base import Targeting
 
@@ -138,12 +139,52 @@ class OverrideNode(Targeting):
         return self._return_value
 
 
+class ComparisonNode(Targeting):
+    """Non-equality comparison operators (gt, ge, lt, le).
+
+    Expects as input the input node as well as an operator (from the
+    operator module). Operator must be one that expects two inputs (
+    ie: gt, ge, lt, le, eq, ne)
+
+    :param dict input_node: a Targeting node
+    :param operator operator: an operator to apply to the input node
+    """
+
+    def __init__(self, input_node, comparator):
+        if len(input_node) != 2:
+            raise ValueError("ComparisonNode expects exactly two fields.")
+
+        if 'field' not in input_node:
+            raise ValueError("ComparisonNode expects input key 'field'.")
+
+        if 'value' not in input_node:
+            raise ValueError("ComparisonNode expects input key 'value'.")
+
+        self._accepted_key = input_node.get('field').lower()
+        self._accepted_value = input_node.get('value')
+        self.comparator = comparator
+
+    def evaluate(self, **kwargs):
+        candidate_value = kwargs.get(self._accepted_key)
+
+        # Python 3 throws a TypeError when comparing two Nones. Handle
+        # this here by returning false for consistency between python 2 and 3
+        if candidate_value is None and self._accepted_value is None:
+            return False
+        return self.comparator(candidate_value, self._accepted_value)
+
+
 OPERATOR_NODE_TYPE_MAPPING = {
-    "ANY": AnyNode,
-    "ALL": AllNode,
-    "EQ": EqualNode,
-    "NOT": NotNode,
-    "OVERRIDE": OverrideNode,
+    "any": AnyNode,
+    "all": AllNode,
+    "eq": EqualNode,
+    "not": NotNode,
+    "override": OverrideNode,
+    "gt": ComparisonNode,
+    "ge": ComparisonNode,
+    "lt": ComparisonNode,
+    "le": ComparisonNode,
+    "ne": ComparisonNode,
 }
 
 
@@ -190,15 +231,21 @@ def create_targeting_tree(input_node):
     if not isinstance(input_node, dict) or not len(input_node) == 1:
         raise TargetingNodeError("Call to create_targeting_tree expects a single input key.")
 
-    operator, input_node_value = list(input_node.items())[0]
+    operator_name, input_node_value = list(input_node.items())[0]
 
-    if operator in OPERATOR_NODE_TYPE_MAPPING:
+    operator_name = operator_name.lower()
+
+    if operator_name in OPERATOR_NODE_TYPE_MAPPING:
+        operator_node_type = OPERATOR_NODE_TYPE_MAPPING[operator_name]
         try:
-            subnode = OPERATOR_NODE_TYPE_MAPPING[operator](input_node_value)
+            if issubclass(operator_node_type, ComparisonNode):
+                subnode = operator_node_type(input_node_value, getattr(operator, operator_name))
+            else:
+                subnode = operator_node_type(input_node_value)
             return subnode
         except (TypeError, ValueError) as e:
             raise TargetingNodeError("Error while constructing targeting "
                 "tree: {}".format(getattr(e, 'message', None)))
     else:
         raise UnknownTargetingOperatorError("Unrecognized operator while constructing targeting "
-            "tree: {}".format(operator))
+            "tree: {}".format(operator_name))
