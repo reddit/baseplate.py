@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import base64
 import unittest
@@ -53,7 +49,6 @@ class TokenCSRFStoragePolicyTests(unittest.TestCase):
         self.assertEqual(prefix, "1")
         self.assertEqual(payload, "1.t2_1")
 
-    @unittest.skipIf(sys.version_info.major != 3, "HORRIBLE HACK BECAUSE OF hmac.compare_digest")
     def test_new_csrf_token(self, time_mock):
         time_mock.time.return_value = 1000.0
         request = mock.Mock()
@@ -74,7 +69,6 @@ class TokenCSRFStoragePolicyTests(unittest.TestCase):
         request.params = {}
         self.assertIs(self.policy.get_csrf_token(request), None)
 
-    @unittest.skipIf(sys.version_info.major != 3, "HORRIBLE HACK BECAUSE OF hmac.compare_digest")
     def test_check_csrf_token_pass(self, time_mock):
         time_mock.time.return_value = 1000.0
         token = "1.AQAA-BEAAF-br-ovnk0q8Wd0kA98-jsak9elbMqo0WbjT0GuyRTD"

@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import logging
 import collections
@@ -10,7 +6,6 @@ import unittest
 
 from datetime import timedelta
 
-from baseplate._compat import range
 from baseplate.core import ServerSpan
 from baseplate.events import EventQueue
 from baseplate.experiments import Experiments

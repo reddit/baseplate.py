@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from math import ceil
 
@@ -153,7 +149,7 @@ class MonitoredRedisPipeline(redis.client.StrictPipeline):
             return super(MonitoredRedisPipeline, self).execute(**kwargs)
 
 
-class MessageQueue(object):
+class MessageQueue:
     """A Redis-backed variant of :py:class:`~baseplate.message_queue.MessageQueue`.
 
     :param name: can be any string.

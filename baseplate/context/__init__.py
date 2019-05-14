@@ -18,10 +18,6 @@ and then a context-aware version of the client will show up on the
         context.my_client.make_some_remote_call()
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from ..core import (
     BaseplateObserver,
@@ -30,7 +26,7 @@ from ..core import (
 )
 
 
-class ContextFactory(object):
+class ContextFactory:
     """An interface for adding stuff to the context object.
 
     Objects implementing this interface can be passed to

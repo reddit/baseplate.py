@@ -1,13 +1,9 @@
 """Policies for retrying an operation safely."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import time
 
 
-class RetryPolicy(object):
+class RetryPolicy:
     """A policy for retrying operations.
 
     Policies are meant to be used as an iterable::

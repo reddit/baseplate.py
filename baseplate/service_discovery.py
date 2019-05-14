@@ -17,10 +17,6 @@ A basic example of usage::
     print(backend.endpoint.address)
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import collections
 import json
@@ -77,7 +73,7 @@ class NoBackendsAvailableError(Exception):
     """Raised when no backends are available for this service."""
 
 
-class ServiceInventory(object):
+class ServiceInventory:
     """The inventory enumerates available backends for a single service.
 
     :param str filename: The absolute path to the Synapse-generated

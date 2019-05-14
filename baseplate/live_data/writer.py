@@ -1,17 +1,13 @@
 """Write a file's contents to a node in ZooKeeper."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import argparse
+import configparser
 import difflib
 import logging
 import sys
 
 from kazoo.exceptions import NoNodeError, BadVersionError
 
-from .._compat import configparser
 from ..secrets import secrets_store_from_config
 from .zookeeper import zookeeper_client_from_config
 

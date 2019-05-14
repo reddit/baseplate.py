@@ -1,8 +1,4 @@
 """Application integration with the secret fetcher daemon."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import base64
 import binascii
@@ -13,7 +9,6 @@ import logging
 from baseplate import config
 from baseplate.context import ContextFactory
 from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
-from baseplate._compat import string_types
 from baseplate._utils import cached_property
 
 
@@ -197,7 +192,7 @@ class SecretsStore(ContextFactory):
         for key in ("username", "password"):
             try:
                 val = secret_attributes[key]
-                if not isinstance(val, string_types):
+                if not isinstance(val, str):
                     raise CorruptSecretError(path, "secret value '%s' is not a string" % key)
                 values[key] = val
             except KeyError:

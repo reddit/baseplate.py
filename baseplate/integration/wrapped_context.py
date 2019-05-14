@@ -1,4 +1,4 @@
-class WrappedRequestContext(object):
+class WrappedRequestContext:
     """A class for wrapping request contexts to add custom attributes.
 
     This class is used to wrap framework request contexts in order to

@@ -1,16 +1,12 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import argparse
+import configparser
 import logging
 import os
 import sys
 import time
 
-from .._compat import configparser
 from .. import config
 from ..secrets import secrets_store_from_config
 from .zookeeper import zookeeper_client_from_config
@@ -22,7 +18,7 @@ logger = logging.getLogger(__name__)
 HEARTBEAT_INTERVAL = 300
 
 
-class NodeWatcher(object):
+class NodeWatcher:
     def __init__(self, dest, owner, group, mode):
         self.dest = dest
         self.owner = owner

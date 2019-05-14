@@ -1,4 +1,4 @@
-class Targeting(object):
+class Targeting:
     """Base targeting interface for experiment targeting."""
 
     def evaluate(self, **kwargs):

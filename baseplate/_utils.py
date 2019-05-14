@@ -1,11 +1,5 @@
 """Internal library helpers."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
-
-
 import collections
 import functools
 import time
@@ -25,7 +19,7 @@ def warn_deprecated(message):
 
 # cached_property is a renamed copy of pyramid.decorator.reify
 # see debian/copyright for full license information
-class cached_property(object):
+class cached_property:
     """Like @property but the function will only be called once per instance.
 
     When used as a method decorator, this will act like @property but instead
@@ -54,7 +48,7 @@ class BatchFull(Exception):
     pass
 
 
-class Batch(object):
+class Batch:
     def add(self, item):
         raise NotImplementedError
 

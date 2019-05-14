@@ -29,14 +29,9 @@ The return value of :py:meth:`~baseplate.file_watcher.FileWatcher.get_data`
 would change whenever the underlying file changes.
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import logging
 import os
-import sys
 
 from baseplate.retry import RetryPolicy
 
@@ -57,7 +52,7 @@ class WatchedFileNotAvailableError(Exception):
         self.inner = inner
 
 
-class FileWatcher(object):
+class FileWatcher:
     r"""Watch a file and load its data when it changes.
 
     :param str path: Full path to a file to watch.
@@ -82,14 +77,6 @@ class FileWatcher(object):
 
     def __init__(self, path, parser, timeout=None, binary=False, encoding=None,
                  newline=None):
-        if sys.version_info.major < 3 and encoding is not None:
-            raise TypeError("'encoding' keyword argument for FileWatcher() is "
-                            "not supported in Python 2")
-
-        if sys.version_info.major < 3 and newline is not None:
-            raise TypeError("'newline' keyword argument for FileWatcher() is "
-                            "not supported in Python 2")
-
         if binary and encoding is not None:
             raise TypeError("'encoding' is not supported in binary mode.")
 
@@ -101,10 +88,6 @@ class FileWatcher(object):
         self._mtime = 0
         self._data = _NOT_LOADED
         self._mode = "rb" if binary else "r"
-        # Since Python 2 does not support these kwargs, we store them as a dict
-        # that we `**` in the call to `open` in `get_data` so we do not have to
-        # call `open` in different ways depending on the Python version.  This
-        # can change if/when Python 2 support is dropped.
         self._open_options = {}
 
         if encoding:

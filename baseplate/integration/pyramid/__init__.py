@@ -28,10 +28,6 @@ An abbreviated example of it in use::
 
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import sys
 
@@ -67,7 +63,7 @@ def _make_baseplate_tween(handler, _registry):
     return baseplate_tween
 
 
-class BaseplateEvent(object):
+class BaseplateEvent:
 
     def __init__(self, request):
         self.request = request
@@ -85,7 +81,7 @@ class ServerSpanInitialized(BaseplateEvent):
     """
 
 
-class HeaderTrustHandler(object):
+class HeaderTrustHandler:
     """Abstract class used by :py:class:`BaseplateConfigurator` to validate headers.
 
     See :py:class:`StaticTrustHandler` for the default implementation.
@@ -138,7 +134,7 @@ class StaticTrustHandler(HeaderTrustHandler):
         return self.trust_headers
 
 
-class BaseplateConfigurator(object):
+class BaseplateConfigurator:
     """Config extension to integrate Baseplate into Pyramid.
 
     :param baseplate.core.Baseplate baseplate: The Baseplate instance for your

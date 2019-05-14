@@ -1,13 +1,9 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
+import queue
 import socket
 import unittest
 
 from baseplate import config, thrift_pool
-from baseplate._compat import queue
 from thrift.Thrift import TException
 from thrift.transport import TTransport, THeaderTransport, TSocket
 from thrift.protocol import THeaderProtocol, TBinaryProtocol

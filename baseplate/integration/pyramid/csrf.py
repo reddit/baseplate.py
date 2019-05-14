@@ -27,7 +27,7 @@ def _make_csrf_token_payload(version, account_id):
 
 
 @implementer(ICSRFStoragePolicy)
-class TokenCSRFStoragePolicy(object):
+class TokenCSRFStoragePolicy:
     """ICSRFStoragePolicy implementation for Intranet Services.
 
     This implementation of Pyramid's ICSRFStoragePolicy interface takes

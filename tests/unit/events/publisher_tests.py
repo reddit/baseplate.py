@@ -1,15 +1,12 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import gzip
 import unittest
 
+from io import BytesIO
+
 import requests
 
 from baseplate import config, metrics
-from baseplate._compat import BytesIO
 from baseplate.events import publisher
 from baseplate._utils import SerializedBatch
 

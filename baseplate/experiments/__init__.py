@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import json
 import logging
@@ -51,7 +47,7 @@ class ExperimentsContextFactory(ContextFactory):
         )
 
 
-class Experiments(object):
+class Experiments:
     """Access to experiments with automatic refresh when changed.
 
     This experiments client allows access to the experiments cached on disk

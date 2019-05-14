@@ -59,7 +59,6 @@ disable= attribute-defined-outside-init,
          too-many-public-methods,
          too-many-return-statements,
          too-many-statements,
-         useless-object-inheritance,
          useless-return,
 
 [REPORTS]

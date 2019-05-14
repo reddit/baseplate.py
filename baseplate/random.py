@@ -1,16 +1,10 @@
 """Extensions to the standard library `random` module."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import bisect
 import random
 
-from . import _compat
 
-
-class WeightedLottery(object):
+class WeightedLottery:
     """A lottery where items can have different chances of selection.
 
     Items will be picked with chance proportional to their weight relative to
@@ -85,7 +79,7 @@ class WeightedLottery(object):
 
         # we use indexes in the set so we don't add a hashability requirement
         # to the items in the population.
-        for i in _compat.range(sample_size):
+        for i in range(sample_size):
             picked_index = self._pick_index()
             while picked_index in already_picked:
                 picked_index = self._pick_index()

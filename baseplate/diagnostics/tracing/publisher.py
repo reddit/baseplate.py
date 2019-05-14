@@ -1,11 +1,11 @@
 import argparse
+import configparser
 import logging
+import urllib.parse
 
 import requests
 
 from baseplate import config, metrics_client_from_config
-from baseplate._compat import configparser
-from baseplate._compat import urlparse
 from baseplate.diagnostics.tracing import MAX_SPAN_SIZE, MAX_QUEUE_SIZE
 from baseplate.message_queue import MessageQueue, TimedOutError
 from baseplate.retry import RetryPolicy
@@ -36,7 +36,7 @@ class TraceBatch(RawJSONBatch):
         super(TraceBatch, self).__init__(max_size)
 
 
-class ZipkinPublisher(object):
+class ZipkinPublisher:
     """Zipkin trace publisher."""
 
     def __init__(self,
@@ -48,7 +48,7 @@ class ZipkinPublisher(object):
 
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns,
                                                 pool_maxsize=num_conns)
-        parsed_url = urlparse(zipkin_api_url)
+        parsed_url = urllib.parse.urlparse(zipkin_api_url)
         self.session = requests.Session()
         self.session.mount("{}://".format(parsed_url.scheme), adapter)
         self.endpoint = "{}/spans".format(zipkin_api_url)

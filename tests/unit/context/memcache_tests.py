@@ -1,8 +1,5 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
+import builtins
 import unittest
 
 from ... import mock
@@ -14,7 +11,6 @@ except ImportError:
 else:
     del pymemcache
 
-from baseplate._compat import builtins
 from baseplate.config import ConfigurationError
 from baseplate.context.memcache import pool_from_config
 from baseplate.context.memcache import lib as memcache_lib
@@ -77,22 +73,6 @@ class SerdeTests(unittest.TestCase):
         self.assertEqual(value, "100")
         self.assertEqual(flags, memcache_lib.Flags.INTEGER)
 
-    def test_serialize_long(self):
-        try:
-            long
-        except NameError:
-            # python3
-            value = 100
-            expected_flags = memcache_lib.Flags.INTEGER
-        else:
-            value = long(100)
-            expected_flags = memcache_lib.Flags.LONG
-
-        dump_no_compress = memcache_lib.make_dump_and_compress_fn()
-        value, flags = dump_no_compress(key="key", value=value)
-        self.assertEqual(value, "100")
-        self.assertEqual(flags, expected_flags)
-
     def test_serialize_other(self):
         json_patch = mock.patch.object(memcache_lib, "json")
         json = json_patch.start()
@@ -123,14 +103,8 @@ class SerdeTests(unittest.TestCase):
         value = memcache_lib.decompress_and_load(
             key="key", serialized="100", flags=memcache_lib.Flags.LONG)
 
-        try:
-            expected_class = long
-        except NameError:
-            # python3
-            expected_class = int
-
         self.assertEqual(value, 100)
-        self.assertTrue(isinstance(value, expected_class))
+        self.assertTrue(isinstance(value, int))
 
     def test_deserialize_other(self):
         json_patch = mock.patch.object(memcache_lib, "json")
@@ -229,7 +203,7 @@ class SerdeTests(unittest.TestCase):
         expected_zlib_value = object()
         zlib.decompress.return_value = expected_zlib_value
 
-        long_patch = mock.patch.object(memcache_lib, "long")
+        long_patch = mock.patch.object(memcache_lib, "int")
         long_cls = long_patch.start()
         self.addCleanup(long_patch.stop)
 
@@ -278,22 +252,6 @@ class R2CompatSerdeTests(unittest.TestCase):
         self.assertEqual(value, "100")
         self.assertEqual(flags, memcache_lib.PickleFlags.INTEGER)
 
-    def test_serialize_long(self):
-        try:
-            long
-        except NameError:
-            # python3
-            value = 100
-            expected_flags = memcache_lib.PickleFlags.INTEGER
-        else:
-            value = long(100)
-            expected_flags = memcache_lib.PickleFlags.LONG
-
-        pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
-        value, flags = pickle_no_compress(key="key", value=value)
-        self.assertEqual(value, "100")
-        self.assertEqual(flags, expected_flags)
-
     def test_serialize_other(self):
         pickle_patch = mock.patch.object(memcache_lib, "pickle")
         pickle = pickle_patch.start()
@@ -324,14 +282,8 @@ class R2CompatSerdeTests(unittest.TestCase):
         value = memcache_lib.decompress_and_unpickle(
             key="key", serialized="100", flags=memcache_lib.PickleFlags.LONG)
 
-        try:
-            expected_class = long
-        except NameError:
-            # python3
-            expected_class = int
-
         self.assertEqual(value, 100)
-        self.assertTrue(isinstance(value, expected_class))
+        self.assertTrue(isinstance(value, int))
 
     def test_deserialize_other(self):
         pickle_patch = mock.patch.object(memcache_lib, "pickle")
@@ -430,7 +382,7 @@ class R2CompatSerdeTests(unittest.TestCase):
         expected_zlib_value = object()
         zlib.decompress.return_value = expected_zlib_value
 
-        long_patch = mock.patch.object(memcache_lib, "long")
+        long_patch = mock.patch.object(memcache_lib, "int")
         long_cls = long_patch.start()
         self.addCleanup(long_patch.stop)
 

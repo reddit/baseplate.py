@@ -14,13 +14,10 @@ A basic example of usage::
         client.do_example_thing()
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import contextlib
 import logging
+import queue
 import socket
 import time
 
@@ -30,7 +27,6 @@ from thrift.Thrift import TApplicationException, TException
 from thrift.transport import TSocket
 from thrift.transport.TTransport import TTransportException
 
-from baseplate._compat import queue
 from baseplate import config
 from baseplate.retry import RetryPolicy
 
@@ -99,7 +95,7 @@ def thrift_pool_from_config(app_config, prefix, **kwargs):
     return ThriftConnectionPool(endpoint=options.endpoint, **kwargs)
 
 
-class ThriftConnectionPool(object):
+class ThriftConnectionPool:
     """A pool that maintains a queue of open Thrift connections.
 
     :param baseplate.config.EndpointConfiguration endpoint: The remote address

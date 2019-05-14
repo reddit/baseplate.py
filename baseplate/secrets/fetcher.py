@@ -53,23 +53,20 @@ The `store` module in this package contains utilities for interacting with this
 file from a running service.
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import argparse
+import configparser
 import datetime
 import json
 import logging
 import os
 import posixpath
 import time
+import urllib.parse
 import uuid
 
 import requests
 
-from .._compat import configparser, urljoin
 from .. import config
 
 
@@ -129,7 +126,7 @@ def ttl_to_time(ttl):
     return datetime.datetime.utcnow() + datetime.timedelta(seconds=ttl)
 
 
-class VaultClientFactory(object):
+class VaultClientFactory:
     """Factory that makes authenticated clients."""
 
     def __init__(self, base_url, role, auth_type, mount_point):
@@ -187,7 +184,7 @@ class VaultClientFactory(object):
 
         logger.debug("Obtaining Vault token via kubernetes auth.")
         response = self.session.post(
-            urljoin(self.base_url, "v1/auth/%s/login" % self.mount_point),
+            urllib.parse.urljoin(self.base_url, "v1/auth/%s/login" % self.mount_point),
             json=login_data,
         )
         response.raise_for_status()
@@ -235,7 +232,7 @@ class VaultClientFactory(object):
 
         logger.debug("Obtaining Vault token via aws auth.")
         response = self.session.post(
-            urljoin(self.base_url, "v1/auth/%s/login" % self.mount_point),
+            urllib.parse.urljoin(self.base_url, "v1/auth/%s/login" % self.mount_point),
             json=login_data,
         )
         if response.status_code == 400:
@@ -259,7 +256,7 @@ class VaultClientFactory(object):
         return self.client
 
 
-class VaultClient(object):
+class VaultClient:
     """An authenticated vault client.
 
     Use this as long as is_about_to_expire is False. Once that becomes True,
@@ -283,7 +280,7 @@ class VaultClient(object):
         """Get the value and expiration time of a named secret."""
         logger.debug("Fetching secret %r.", secret_name)
         response = self.session.get(
-            urljoin(self.base_url, posixpath.join("v1", secret_name)),
+            urllib.parse.urljoin(self.base_url, posixpath.join("v1", secret_name)),
             headers={
                 "X-Vault-Token": self.token,
             },

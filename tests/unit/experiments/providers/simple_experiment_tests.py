@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import collections
 import math
@@ -12,7 +8,6 @@ import copy
 
 from datetime import datetime, timedelta
 
-from baseplate._compat import iteritems, long, range
 from baseplate.core import ServerSpan
 from baseplate.events import EventLogger
 from baseplate.experiments import ExperimentsContextFactory
@@ -136,7 +131,7 @@ class TestSimpleExperiment(unittest.TestCase):
     def test_calculate_bucket_value(self):
         experiment = create_simple_experiment()
         experiment.num_buckets = 1000
-        self.assertEqual(experiment._calculate_bucket("t2_1"), long(867))
+        self.assertEqual(experiment._calculate_bucket("t2_1"), int(867))
 
         seeded_cfg = {
             "id": 1,
@@ -171,7 +166,7 @@ class TestSimpleExperiment(unittest.TestCase):
         seeded_experiment.num_buckets = 1000
         self.assertEqual(
             seeded_experiment._calculate_bucket("t2_1"),
-            long(924),
+            int(924),
         )
 
     @unittest.skipIf("CI" not in os.environ,

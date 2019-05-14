@@ -1,12 +1,8 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import time
 
 
-class RateLimitBackend(object):
+class RateLimitBackend:
     """An interface for rate limit backends to implement."""
 
     def consume(self, key, amount, allowance, interval):

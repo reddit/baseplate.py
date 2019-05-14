@@ -7,7 +7,7 @@ Baseplate is a library to build services on. Its goal is to provide all
 the common things a service needs with as few surprises as possible,
 including:
 
--  compatibility with Python 2.7 and Python 3.4+
+-  compatibility with Python 3.6+
 -  transparent diagnostic information collection (metrics, tracing,
    logging)
 -  configuration parsing

@@ -1,6 +1,6 @@
 
 
-class VariantSet(object):
+class VariantSet:
     """Base interface for variant sets.
 
     A VariantSet contains a set of experimental variants, as well as
