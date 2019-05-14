@@ -19,8 +19,8 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
 .. testsetup:: overview
 
+    import configparser
     from baseplate import config
-    from baseplate._compat import configparser
     from tempfile import NamedTemporaryFile
     config_parser = configparser.RawConfigParser()
     config_parser.readfp(open("docs/config_example.ini"))
@@ -75,10 +75,6 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     tempfile.close()
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import base64
 import collections
@@ -365,7 +361,7 @@ class ConfigNamespace(dict):
         self.__dict__ = self
 
 
-class Parser(object):
+class Parser:
     """Base for config parsers."""
 
     @staticmethod
@@ -440,8 +436,8 @@ class DictOf(Parser):
 
     .. testsetup:: dictof_simple
 
+        import configparser
         from baseplate import config
-        from baseplate._compat import configparser
         config_parser = configparser.RawConfigParser()
         config_parser.readfp(open("docs/config_dictof_example.ini"))
         raw_config = dict(config_parser.items("app:main"))
@@ -470,8 +466,8 @@ class DictOf(Parser):
 
     .. testsetup:: dictof_spec
 
+        import configparser
         from baseplate import config
-        from baseplate._compat import configparser
         config_parser = configparser.RawConfigParser()
         config_parser.readfp(open("docs/config_dictof_spec_example.ini"))
         raw_config = dict(config_parser.items("app:main"))

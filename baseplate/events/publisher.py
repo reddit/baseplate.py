@@ -1,15 +1,17 @@
 import argparse
+import configparser
 import email.utils
 import gzip
 import hashlib
 import hmac
 import logging
 
+from io import BytesIO
+
 import requests
 
 from .queue import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
 from .. import config, metrics_client_from_config
-from .. _compat import configparser, BytesIO
 from .. _utils import (
     Batch, BatchFull, RawJSONBatch,
     SerializedBatch, TimeLimitedBatch,
@@ -90,7 +92,7 @@ def gzip_compress(content):
     return buf.getvalue()
 
 
-class BatchPublisher(object):
+class BatchPublisher:
     def __init__(self, metrics_client, cfg):
         self.metrics = metrics_client
         self.url = "https://%s/v%d" % (cfg.collector.hostname, cfg.collector.version)

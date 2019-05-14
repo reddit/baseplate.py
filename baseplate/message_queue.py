@@ -1,8 +1,4 @@
 """A gevent-friendly POSIX message queue."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import select
 
@@ -41,7 +37,7 @@ class MessageQueueOSError(OSError):
             "%s (check `ulimit -q`?)" % inner)
 
 
-class MessageQueue(object):
+class MessageQueue:
     """A gevent-friendly (but not required) inter process message queue.
 
     ``name`` should be a string of up to 255 characters consisting of an

@@ -13,10 +13,6 @@ An abbreviated example of it in use::
         return baseplateify_processor(processor, baseplate)
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import sys
 
@@ -37,11 +33,11 @@ TRACE_HEADER_NAMES = {
 }
 
 
-class RequestContext(object):
+class RequestContext:
     pass
 
 
-class _ContextAwareHandler(object):
+class _ContextAwareHandler:
     def __init__(self, handler, context, logger):
         self.handler = handler
         self.context = context

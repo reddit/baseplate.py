@@ -1,9 +1,7 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import unittest
+
+from io import BytesIO
 
 try:
     from kazoo.client import KazooClient
@@ -11,7 +9,6 @@ try:
 except ImportError:
     raise unittest.SkipTest("kazoo is not installed")
 
-from baseplate._compat import BytesIO
 from baseplate.live_data.writer import (
     NodeDoesNotExistError,
     UnexpectedChangeError,

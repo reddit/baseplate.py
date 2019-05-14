@@ -1,12 +1,9 @@
 """Components for processing Baseplate spans for service request tracing."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import collections
 import json
 import logging
+import queue
 import random
 import socket
 import threading
@@ -17,7 +14,6 @@ import requests
 from requests.exceptions import RequestException
 
 from baseplate.message_queue import MessageQueue, TimedOutError
-from baseplate._compat import queue
 from baseplate.core import (
     BaseplateObserver,
     LocalSpan,
@@ -391,7 +387,7 @@ class TraceServerSpanObserver(TraceSpanObserver):
         return self._to_span_obj(annotations, self.binary_annotations)
 
 
-class BaseBatchRecorder(object):
+class BaseBatchRecorder:
     def __init__(self, max_queue_size,
                  num_workers,
                  max_span_batch,
@@ -526,7 +522,7 @@ MAX_SIDECAR_QUEUE_SIZE = 102400
 MAX_SIDECAR_MESSAGE_SIZE = 10000
 
 
-class SidecarRecorder(object):
+class SidecarRecorder:
     """Interface for recording spans to a POSIX message queue.
 
     The SidecarRecorder serializes spans to a string representation before

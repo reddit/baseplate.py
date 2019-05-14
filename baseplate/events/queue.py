@@ -11,10 +11,6 @@ by a separate daemon.
 See also: https://github.com/reddit/event-collector
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import calendar
 import json
@@ -57,7 +53,7 @@ class FieldKind(Enum):
     """
 
 
-class Event(object):
+class Event:
     """An event."""
 
     # pylint: disable=invalid-name,redefined-builtin
@@ -175,7 +171,7 @@ def serialize_v2_event(event):
     return TSerialization.serialize(event, _V2_PROTOCOL_FACTORY)
 
 
-class EventLogger(object):
+class EventLogger:
     def log(self, **kwargs):
         raise NotImplementedError
 

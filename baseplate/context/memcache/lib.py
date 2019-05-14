@@ -11,23 +11,14 @@ should use pickle_and_compress() and decompress_and_unpickle().
 
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
-import logging
 import json
+import logging
+import pickle
 import zlib
 
-from ..._compat import (
-    long,
-    pickle,
-    string_types,
-)
 
-
-class Flags(object):
+class Flags:
     """Memcached client flags.
 
     Flags are an arbitrary 16-bit unsigned integer that the memcache server
@@ -63,16 +54,13 @@ def decompress_and_load(key, serialized, flags):  # pylint: disable=unused-argum
     if flags == 0:
         return serialized
 
-    if flags == Flags.INTEGER:
+    if flags in (Flags.INTEGER, Flags.LONG):
         # python3 doesn't have a long integer type, so all integers are written
         # with Flags.INTEGER. This means that a value written by a python3
         # client can exceed the maximum integer value (sys.maxint). This
         # appears to be ok--python2 will automatically convert to long if the
         # value is too large.
         return int(serialized)
-
-    if flags == Flags.LONG:
-        return long(serialized)
 
     if flags == Flags.JSON:
         try:
@@ -114,15 +102,12 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
         :raises ValueError: if `value` is not JSON serializable
 
         """
-        if isinstance(value, string_types):
+        if isinstance(value, str):
             serialized = value
             flags = 0
         elif isinstance(value, int):
             serialized = "%d" % value
             flags = Flags.INTEGER
-        elif isinstance(value, long):
-            serialized = "%d" % value
-            flags = Flags.LONG
         else:
             # NOTE: json.dumps raises ValueError if `value` is not serializable
             serialized = json.dumps(value)
@@ -139,7 +124,7 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
     return dump_and_compress
 
 
-class PickleFlags(object):
+class PickleFlags:
     """Memcached client flags.
 
     Flags are an arbitrary 16-bit unsigned integer that the memcache server
@@ -177,16 +162,13 @@ def decompress_and_unpickle(key, serialized, flags):  # pylint: disable=unused-a
     if flags == 0:
         return serialized
 
-    if flags == PickleFlags.INTEGER:
+    if flags in (PickleFlags.INTEGER, PickleFlags.LONG):
         # python3 doesn't have a long integer type, so all integers are written
         # with PickleFlags.INTEGER. This means that a value written by a python3
         # client can exceed the maximum integer value (sys.maxint). This
         # appears to be ok--python2 will automatically convert to long if the
         # value is too large.
         return int(serialized)
-
-    if flags == PickleFlags.LONG:
-        return long(serialized)
 
     if flags == PickleFlags.PICKLE:
         try:
@@ -229,15 +211,12 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
         :returns: value serialized as str, flags int.
 
         """
-        if isinstance(value, string_types):
+        if isinstance(value, str):
             serialized = value
             flags = 0
         elif isinstance(value, int):
             serialized = "%d" % value
             flags = PickleFlags.INTEGER
-        elif isinstance(value, long):
-            serialized = "%d" % value
-            flags = PickleFlags.LONG
         else:
             # use protocol 2 which is the highest value supported by python2
             serialized = pickle.dumps(value, protocol=2)

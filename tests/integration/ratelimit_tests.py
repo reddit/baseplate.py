@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from time import sleep
 import unittest
@@ -28,7 +24,7 @@ redis_endpoint = get_endpoint_or_skip_container("redis", 6379)
 memcached_endpoint = get_endpoint_or_skip_container("memcached", 11211)
 
 
-class RateLimiterBackendTests(object):
+class RateLimiterBackendTests:
     def setUp(self):
         self.allowance = 10
         self.interval = 1

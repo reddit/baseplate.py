@@ -1,14 +1,9 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import logging
 import hashlib
 import time
 
 from .base import Experiment
-from ..._compat import long, iteritems
 
 from ..variant_sets.single_variant_set import SingleVariantSet
 from ..variant_sets.multi_variant_set import MultiVariantSet
@@ -243,7 +238,7 @@ class SimpleExperiment(Experiment):
         if not self._is_enabled():
             return None
 
-        lower_kwargs = {k.lower(): v for k, v in iteritems(kwargs)}
+        lower_kwargs = {k.lower(): v for k, v in kwargs.items()}
 
         if self.bucket_val not in lower_kwargs:
             logger.info(
@@ -289,7 +284,7 @@ class SimpleExperiment(Experiment):
         # get placed into the same bucket for each experiment.
         seed_bytes = ("%s%s" % (self.seed, bucket_val)).encode()
         hashed = hashlib.sha1(seed_bytes)
-        bucket = long(hashed.hexdigest(), 16) % self.num_buckets
+        bucket = int(hashed.hexdigest(), 16) % self.num_buckets
         return bucket
 
     def _choose_variant(self, bucket):

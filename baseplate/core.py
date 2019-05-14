@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import collections
 import logging
@@ -18,7 +14,7 @@ from ._utils import warn_deprecated, cached_property
 logger = logging.getLogger(__name__)
 
 
-class BaseplateObserver(object):
+class BaseplateObserver:
     """Interface for an observer that watches Baseplate."""
 
     def on_server_span_created(self, context, server_span):
@@ -34,7 +30,7 @@ class BaseplateObserver(object):
         raise NotImplementedError
 
 
-class SpanObserver(object):
+class SpanObserver:
     """Interface for an observer that watches a span."""
 
     def on_start(self):
@@ -186,7 +182,7 @@ class TraceInfo(_TraceInfo):
         return extracted_values
 
 
-class AuthenticationTokenValidator(object):
+class AuthenticationTokenValidator:
     """Factory that knows how to validate raw authentication tokens."""
 
     def __init__(self, secrets):
@@ -216,7 +212,7 @@ class AuthenticationTokenValidator(object):
         return InvalidAuthenticationToken()
 
 
-class AuthenticationToken(object):
+class AuthenticationToken:
     """Information about the authenticated user.
 
     :py:class:`EdgeRequestContext` provides high-level helpers for extracting
@@ -429,7 +425,7 @@ class Service(_Service):
         return name
 
 
-class EdgeRequestContextFactory(object):
+class EdgeRequestContextFactory:
     """Factory for creating :py:class:`EdgeRequestContext` objects.
 
     Every application should set one of these up. Edge services that talk
@@ -521,7 +517,7 @@ class EdgeRequestContextFactory(object):
         return EdgeRequestContext(self.authn_token_validator, edge_header)
 
 
-class EdgeRequestContext(object):
+class EdgeRequestContext:
     """Contextual information about the initial request to an edge service.
 
     Construct this using an
@@ -606,7 +602,7 @@ class EdgeRequestContext(object):
         return _t_request
 
 
-class Baseplate(object):
+class Baseplate:
     """The core of the Baseplate diagnostics framework.
 
     This class coordinates monitoring and tracing of service calls made to
@@ -745,7 +741,7 @@ class Baseplate(object):
         return server_span
 
 
-class Span(object):
+class Span:
     """A span represents a single RPC within a system."""
 
     def __init__(self, trace_id, parent_id, span_id, sampled, flags, name, context):

@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from ..core import BaseplateObserver, ServerSpanObserver
 
@@ -54,7 +50,7 @@ class SentryServerSpanObserver(ServerSpanObserver):
         self.raven.context.clear(deactivate=True)
 
 
-class SentryUnhandledErrorReporter(object):
+class SentryUnhandledErrorReporter:
     """Hook into the Gevent hub and report errors outside request context."""
 
     def __init__(self, hub, raven):

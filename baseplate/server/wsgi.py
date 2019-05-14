@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import logging
 
@@ -18,7 +14,7 @@ try:
     from gevent.pywsgi import LoggingLogAdapter
 except ImportError:
     # LoggingLogAdapter is from gevent 1.1+
-    class LoggingLogAdapter(object):
+    class LoggingLogAdapter:
         def __init__(self, logger_, level):
             self._logger = logger_
             self._level = level

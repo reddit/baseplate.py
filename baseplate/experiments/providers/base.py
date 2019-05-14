@@ -1,10 +1,6 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 
-class Experiment(object):
+class Experiment:
     """Base interface for experiment objects."""
 
     def get_unique_id(self, **kwargs):  # pylint: disable=unused-argument

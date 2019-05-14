@@ -1,12 +1,9 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import unittest
 
+from io import StringIO
+
 from baseplate import service_discovery
-from baseplate._compat import StringIO
 from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
 
 from .. import mock

@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import collections
 import math
@@ -11,7 +7,6 @@ import unittest
 
 from datetime import datetime, timedelta
 
-from baseplate._compat import iteritems, long, range
 from baseplate.core import ServerSpan
 from baseplate.events import EventLogger
 from baseplate.experiments import ExperimentsContextFactory
@@ -119,7 +114,7 @@ class TestR2Experiment(unittest.TestCase):
         }
         experiment = parse_experiment(cfg)
         experiment.num_buckets = 1000
-        self.assertEqual(experiment._calculate_bucket("t2_1"), long(236))
+        self.assertEqual(experiment._calculate_bucket("t2_1"), int(236))
         cfg = {
             "id": 1,
             "name": "test",
@@ -142,7 +137,7 @@ class TestR2Experiment(unittest.TestCase):
         seeded_experiment.num_buckets = 1000
         self.assertEqual(
             seeded_experiment._calculate_bucket("t2_1"),
-            long(595),
+            int(595),
         )
 
     @unittest.skipIf("CI" not in os.environ,
@@ -326,7 +321,7 @@ class TestR2Experiment(unittest.TestCase):
                 self.assertEqual(variant, previous_variant)
 
         for experiment in (control_only, three_variants, three_variants_more):
-            for variant, percentage in iteritems(experiment.variants):
+            for variant, percentage in experiment.variants.items():
                 count = counters[experiment.name][variant]
                 scaled_percentage = float(count) / (experiment.num_buckets / 100)
                 self.assertEqual(scaled_percentage, percentage)
@@ -480,7 +475,7 @@ class TestSimulatedR2Experiments(unittest.TestCase):
         # the likeliness of that happening
         error_bar_percent = 100. / math.sqrt(num_experiments)
         experiment = parse_experiment(config)
-        for variant, percent in iteritems(experiment.variants):
+        for variant, percent in experiment.variants.items():
             # Our actual percentage should be within our expected percent
             # (expressed as a part of 100 rather than a fraction of 1)
             # +- 1%.

@@ -12,12 +12,13 @@ setup(
 
     packages=find_packages(exclude=["tests", "tests.*"]),
 
+    python_requires=">=3.6",
+
     setup_requires=[
         "setuptools_scm",
     ],
 
     install_requires=[
-        "enum34; python_version <= '3.4'",
         "posix_ipc",
         "pyjwt",
         "requests",
@@ -53,8 +54,6 @@ setup(
         "License :: OSI Approved :: BSD License",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Topic :: Software Development :: Libraries",

@@ -14,10 +14,6 @@ See `HVAC's README`_ for documentation on the methods available from its client.
 .. _HVAC's README: https://github.com/ianunruh/hvac/blob/master/README.md
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import datetime
 

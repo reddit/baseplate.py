@@ -1,13 +1,8 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import logging
 import hashlib
 
 from .base import Experiment
-from ..._compat import long, iteritems, string_types
 
 
 logger = logging.getLogger(__name__)
@@ -73,8 +68,8 @@ class R2Experiment(Experiment):
             param_name.lower() for param_name in
             targeting.pop("__case_sensitive__", [])
         ]
-        for param, value in iteritems(targeting):
-            assert isinstance(param, string_types)
+        for param, value in targeting.items():
+            assert isinstance(param, str)
             assert isinstance(value, list)
             # even if the targeting parameter is case sensitive, the paramer
             # name cannot be
@@ -82,20 +77,20 @@ class R2Experiment(Experiment):
             self.targeting[param.lower()] = []
             is_case_sensitive = key in self._case_sensitive_targeting
             for v in value:
-                if is_case_sensitive or not isinstance(v, string_types):
+                if is_case_sensitive or not isinstance(v, str):
                     self.targeting[param.lower()].append(v)
                 else:
                     self.targeting[param.lower()].append(v.lower())
-        for param, value in iteritems(overrides):
-            assert isinstance(param, string_types)
+        for param, value in overrides.items():
+            assert isinstance(param, str)
             assert isinstance(value, dict)
             # even if the override parameter is case sensitive, the paramer
             # name cannot be
             key = param.lower()
             self.overrides[key] = {}
             is_case_sensitive = key in self._case_sensitive_overrides
-            for k, v in iteritems(value):
-                if is_case_sensitive or not isinstance(k, string_types):
+            for k, v in value.items():
+                if is_case_sensitive or not isinstance(k, str):
                     override_val = k
                 else:
                     override_val = k.lower()
@@ -145,7 +140,7 @@ class R2Experiment(Experiment):
         return True
 
     def variant(self, **kwargs):
-        lower_kwargs = {k.lower(): v for k, v in iteritems(kwargs)}
+        lower_kwargs = {k.lower(): v for k, v in kwargs.items()}
 
         variant = self._check_overrides(**lower_kwargs)
         if variant is not None and variant in self.variants:
@@ -182,7 +177,7 @@ class R2Experiment(Experiment):
                 if not isinstance(values, (list, tuple)):
                     values = [values]
                 for value in values:
-                    if not isinstance(value, string_types):
+                    if not isinstance(value, str):
                         final_value = value
                     elif override_arg in self._case_sensitive_overrides:
                         final_value = value
@@ -195,7 +190,7 @@ class R2Experiment(Experiment):
 
     def _is_enabled(self, **kwargs):
         """Check if the targeting parameters in kwargs allow us to perform the experiment."""
-        for targeting_param, allowed_values in iteritems(self.targeting):
+        for targeting_param, allowed_values in self.targeting.items():
             if targeting_param in kwargs:
                 targeting_values = kwargs[targeting_param]
                 if not isinstance(targeting_values, (list, tuple)):
@@ -203,7 +198,7 @@ class R2Experiment(Experiment):
                 if not isinstance(allowed_values, list):
                     allowed_values = [allowed_values]
                 for value in targeting_values:
-                    if not isinstance(value, string_types):
+                    if not isinstance(value, str):
                         final_value = value
                     elif targeting_param in self._case_sensitive_targeting:
                         final_value = value
@@ -231,7 +226,7 @@ class R2Experiment(Experiment):
         # get bucketed into the same bucket for each experiment.
         seed_bytes = ("%s%s" % (self.seed, bucket_val)).encode()
         hashed = hashlib.sha1(seed_bytes)
-        bucket = long(hashed.hexdigest(), 16) % self.num_buckets
+        bucket = int(hashed.hexdigest(), 16) % self.num_buckets
         return bucket
 
     def _choose_variant(self, bucket):

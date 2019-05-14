@@ -1,15 +1,11 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import logging
+import queue
 from threading import Thread
 
 from kombu import Queue
 from kombu.mixins import ConsumerMixin
 
-from baseplate._compat import queue
 from baseplate.retry import RetryPolicy
 
 
@@ -89,11 +85,11 @@ class _ConsumerWorker(ConsumerMixin):
             return None
 
 
-class ConsumerContext(object):
+class ConsumerContext:
     pass
 
 
-class BaseKombuConsumer(object):
+class BaseKombuConsumer:
     """Base object for consuming messages from a queue.
 
     A worker process accepts messages from the queue and puts them in a local

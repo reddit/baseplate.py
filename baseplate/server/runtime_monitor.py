@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import gc
 import logging
@@ -16,7 +12,7 @@ from baseplate import config
 REPORT_INTERVAL_SECONDS = 10
 
 
-class _ConcurrencyReporter(object):
+class _ConcurrencyReporter:
     def __init__(self, pool):
         self.pool = pool
 
@@ -24,7 +20,7 @@ class _ConcurrencyReporter(object):
         batch.gauge("active_requests").replace(len(self.pool.greenlets))
 
 
-class _BlockedGeventHubReporter(object):
+class _BlockedGeventHubReporter:
     def __init__(self, max_blocking_time):
         try:
             import gevent.events
@@ -55,26 +51,15 @@ class _BlockedGeventHubReporter(object):
             batch.timer("hub_blocked").send(time_blocked)
 
 
-class _GCStatsReporter(object):
-    def __init__(self):
-        try:
-            gc.get_stats
-        except AttributeError:
-            raise Exception("Python >=3.4 required")
-
+class _GCStatsReporter:
     def report(self, batch):
         for generation, stats in enumerate(gc.get_stats()):
             for name, value in stats.items():
                 batch.gauge("gc.gen{}.{}".format(generation, name)).replace(value)
 
 
-class _GCTimingReporter(object):
+class _GCTimingReporter:
     def __init__(self):
-        try:
-            gc.callbacks
-        except AttributeError:
-            raise Exception("Python >=3.3 required")
-
         gc.callbacks.append(self._on_gc_event)
 
         self.gc_durations = []

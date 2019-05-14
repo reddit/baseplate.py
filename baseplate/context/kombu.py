@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from kombu import Connection
 from kombu import Exchange
@@ -106,7 +102,7 @@ class KombuProducerContextFactory(ContextFactory):
             name, span, self.connection, self.exchange, self.producers)
 
 
-class KombuProducer(object):
+class KombuProducer:
     def __init__(self, name, span, connection, exchange, producers):
         self.name = name
         self.span = span

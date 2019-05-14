@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import logging
 from threading import Event
@@ -13,7 +9,6 @@ from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
 
 from . import ContextFactory
 from .. import config
-from .._compat import string_types
 
 
 logger = logging.getLogger(__name__)
@@ -160,7 +155,7 @@ def _on_execute_failed(exc, span, event):
         event.set()
 
 
-class CassandraSessionAdapter(object):
+class CassandraSessionAdapter:
     def __init__(self, context_name, server_span, session, prepared_statements):
         self.context_name = context_name
         self.server_span = server_span
@@ -195,7 +190,7 @@ class CassandraSessionAdapter(object):
         span = self.server_span.make_child(trace_name)
         span.start()
         # TODO: include custom payload
-        if isinstance(query, string_types):
+        if isinstance(query, str):
             span.set_tag("statement", query)
         elif isinstance(query, (SimpleStatement, PreparedStatement)):
             span.set_tag("statement", query.query_string)

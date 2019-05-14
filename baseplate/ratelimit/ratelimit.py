@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from .backends import RateLimitBackend
 from ..context import ContextFactory
@@ -39,7 +35,7 @@ class RateLimiterContextFactory(ContextFactory):
         return RateLimiter(backend, self.allowance, self.interval)
 
 
-class RateLimiter(object):
+class RateLimiter:
     """A class for rate limiting actions.
 
     :param `RateLimitBackend` backend: The backend to use for storing rate

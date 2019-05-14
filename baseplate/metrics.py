@@ -42,10 +42,6 @@ ends.
 .. _statsd: https://github.com/etsy/statsd
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import logging
 import socket
@@ -61,7 +57,7 @@ def _metric_join(*nodes):
     return b".".join(node.strip(b".") for node in nodes)
 
 
-class Transport(object):
+class Transport:
     def send(self, serialized_metric):
         raise NotImplementedError
 
@@ -85,7 +81,7 @@ class RawTransport(Transport):
         self.socket.sendall(serialized_metric)
 
 
-class BufferedTransport(object):
+class BufferedTransport:
     """A transport which wraps another transport and buffers before sending."""
 
     def __init__(self, transport):
@@ -111,7 +107,7 @@ class BufferedTransport(object):
             logger.exception("counters: %s", partial_message)
 
 
-class BaseClient(object):
+class BaseClient:
     def __init__(self, transport, namespace):
         self.transport = transport
         self.namespace = namespace.encode("ascii")
@@ -227,7 +223,7 @@ class Batch(BaseClient):
         return batch_counter
 
 
-class Timer(object):
+class Timer:
     """A timer for recording elapsed times.
 
     The timer also supports the `context manager protocol`_, for use with
@@ -283,7 +279,7 @@ class Timer(object):
         self.stop()
 
 
-class Counter(object):
+class Counter:
     """A counter for counting events over time."""
 
     def __init__(self, transport, name):
@@ -372,7 +368,7 @@ class BatchCounter(Counter):
             super(BatchCounter, self).send(delta, sample_rate)
 
 
-class Histogram(object):
+class Histogram:
     """A bucketed distribution of integer values across a specific range.
 
     Records data value counts across a configurable integer value range
@@ -398,7 +394,7 @@ class Histogram(object):
         self.transport.send(serialized)
 
 
-class Gauge(object):
+class Gauge:
     """A gauge representing an arbitrary value.
 
     .. note:: The statsd protocol supports incrementing/decrementing gauges

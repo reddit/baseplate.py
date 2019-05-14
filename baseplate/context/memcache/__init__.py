@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 from pymemcache.client.base import PooledClient
 
@@ -91,7 +87,7 @@ class MemcacheContextFactory(ContextFactory):
         return MonitoredMemcacheConnection(name, span, self.pooled_client)
 
 
-class MonitoredMemcacheConnection(object):
+class MonitoredMemcacheConnection:
     """Memcache connection that collects diagnostic information.
 
     This connection acts like a

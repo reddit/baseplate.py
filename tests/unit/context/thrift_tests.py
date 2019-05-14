@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import unittest
 
@@ -14,7 +10,7 @@ from ... import mock
 
 class EnumerateServiceMethodsTests(unittest.TestCase):
     def test_enumerate_none(self):
-        class Iface(object):
+        class Iface:
             pass
 
         class ExampleClient(Iface):
@@ -25,7 +21,7 @@ class EnumerateServiceMethodsTests(unittest.TestCase):
         self.assertEqual(methods, [])
 
     def test_enumerate_some(self):
-        class Iface(object):
+        class Iface:
             def some_method(self):
                 pass
 
@@ -37,7 +33,7 @@ class EnumerateServiceMethodsTests(unittest.TestCase):
         self.assertEqual(set(methods), {"some_method"})
 
     def test_inherited(self):
-        class Iface(object):
+        class Iface:
             def local_method(self):
                 pass
 
@@ -49,7 +45,7 @@ class EnumerateServiceMethodsTests(unittest.TestCase):
         self.assertEqual(set(methods), {"is_healthy", "local_method"})
 
     def test_not_subclass_of_iface(self):
-        class ExampleClient(object):
+        class ExampleClient:
             pass
 
         with self.assertRaises(AssertionError):

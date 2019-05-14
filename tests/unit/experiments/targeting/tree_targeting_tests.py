@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import collections
 import math
@@ -12,7 +8,6 @@ import copy
 
 from datetime import datetime, timedelta
 
-from baseplate._compat import iteritems, long, range
 from baseplate.core import ServerSpan
 from baseplate.experiments.targeting.tree_targeting import (
     create_targeting_tree,

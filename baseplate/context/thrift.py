@@ -1,7 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-# from __future__ import unicode_literals type() is finnicky about the class name
 
 import contextlib
 import inspect
@@ -76,7 +72,7 @@ def _enumerate_service_methods(client):
     assert ifaces_found > 0, "class is not a thrift client; it has no Iface"
 
 
-class _PooledClientProxy(object):
+class _PooledClientProxy:
     """A proxy which acts like a thrift client but uses a connection pool."""
 
     # pylint: disable=too-many-arguments

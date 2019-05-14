@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
+import builtins
 import json
 import os
 import sys
@@ -12,7 +9,6 @@ import unittest
 
 from baseplate import file_watcher
 from baseplate.retry import RetryPolicy
-from baseplate._compat import builtins
 
 from .. import mock
 
@@ -158,21 +154,6 @@ class FileWatcherTests(unittest.TestCase):
             self.assertEqual(watcher.get_data(), "foo")
 
 
-@unittest.skipIf(sys.version_info.major >= 3, "Skipping Python 2 only tests")
-class Py2FileWatcherTests(unittest.TestCase):
-
-    def test_encoding_option_not_supported(self):
-        mock_parser = mock.Mock()
-        with self.assertRaises(TypeError):
-            file_watcher.FileWatcher("/does_not_exist", mock_parser, encoding='utf-8')
-
-    def test_newline_option_not_supported(self):
-        mock_parser = mock.Mock()
-        with self.assertRaises(TypeError):
-            file_watcher.FileWatcher("/does_not_exist", mock_parser, newline='utf-8')
-
-
-@unittest.skipIf(sys.version_info.major < 3, "Skipping Python 3 only tests.")
 class Py3FileWatcherTests(unittest.TestCase):
 
     def test_cant_set_encoding_and_binary(self):

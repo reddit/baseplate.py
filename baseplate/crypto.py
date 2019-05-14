@@ -29,10 +29,6 @@
 
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import base64
 import binascii
@@ -46,30 +42,7 @@ from baseplate._utils import warn_deprecated
 from baseplate.secrets import VersionedSecret
 
 
-if hasattr(hmac, "compare_digest"):
-    # This was added in Python 2.7.7 and 3.3
-    # pylint: disable=invalid-name,no-member
-    constant_time_compare = hmac.compare_digest
-else:
-    def constant_time_compare(actual, expected):
-        """Return whether or not two strings match.
-
-        The time taken is dependent on the number of characters provided
-        instead of the number of characters that match which makes this
-        function resistant to timing attacks.
-
-        """
-        if type(actual) != type(expected):  # pylint: disable=unidiomatic-typecheck
-            warn_deprecated("Future versions of constant_time_compare require that both "
-                "parameters are of the same type.")
-
-        actual_len = len(actual)
-        expected_len = len(expected)
-        result = actual_len ^ expected_len
-        if expected_len > 0:
-            for i in xrange(actual_len):  # noqa: F821 pylint: disable=undefined-variable
-                result |= ord(actual[i]) ^ ord(expected[i % expected_len])
-        return result == 0
+constant_time_compare = hmac.compare_digest
 
 
 class SignatureError(Exception):
@@ -188,7 +161,7 @@ def validate_signature(secret, message, signature):
 
     for secret_value in secret.all_versions:
         digest = _compute_digest(secret_value, header, message)
-        if constant_time_compare(digest, signature_digest):
+        if hmac.compare_digest(digest, signature_digest):
             break
     else:
         raise IncorrectSignatureError
@@ -199,7 +172,7 @@ def validate_signature(secret, message, signature):
     return SignatureInfo(version, expiration)
 
 
-class MessageSigner(object):
+class MessageSigner:
     """Helper which signs messages and validates signatures given a secret.
 
     This is for backwards compatibility. Use the secret store and proper

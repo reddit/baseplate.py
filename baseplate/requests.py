@@ -3,17 +3,12 @@
 This stuff is not stable yet, so it's only for baseplate-internal use.
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import socket
+import urllib.parse
 
 import requests.adapters
 import urllib3.connectionpool
-
-from ._compat import unquote, urlparse
 
 # the adapter code below is inspired by similar code in
 # https://github.com/msabramo/requests-unixsocket/blob/master/requests_unixsocket/adapters.py
@@ -24,10 +19,10 @@ class _UNIXConnection(urllib3.connectionpool.HTTPConnection):
     # pylint: disable=super-init-not-called
     def __init__(self, url):
         urllib3.connectionpool.HTTPConnection.__init__(self, "localhost")
-        self.url = urlparse(url)
+        self.url = urllib.parse.urlparse(url)
 
     def connect(self):
-        socket_path = unquote(self.url.netloc)
+        socket_path = urllib.parse.unquote(self.url.netloc)
 
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.settimeout(1)

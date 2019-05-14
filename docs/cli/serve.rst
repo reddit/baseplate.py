@@ -191,8 +191,6 @@ The following reporters are available:
    At each report interval, this will update gauges with the current values
    returned by :py:func:`gc.get_stats()`.
 
-   Note: this only works on Python 3.4 and newer.
-
 ``monitoring.gc.timing``
    Enabled if ``true``, disabled if ``false``. Defaults to disabled.
 

@@ -3,13 +3,10 @@
 This command serves your application from the given configuration file.
 
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-from __future__ import unicode_literals
 
 import argparse
 import collections
+import configparser
 import fcntl
 import importlib
 import logging
@@ -21,7 +18,6 @@ import traceback
 import warnings
 
 from . import einhorn, reloader
-from .._compat import configparser
 from ..config import Endpoint
 from ..integration.thrift import RequestContext
 
