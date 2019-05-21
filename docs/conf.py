@@ -20,6 +20,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
+    "sphinx_autodoc_typehints",
 ]
 
 intersphinx_mapping = {
