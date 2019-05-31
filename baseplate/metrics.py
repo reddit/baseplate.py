@@ -301,7 +301,7 @@ class Counter:
         self.transport = transport
         self.name = name
 
-    def increment(self, delta: float = 1, sample_rate: float = 1.0) -> None:
+    def increment(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
         """Increment the counter.
 
         :param delta: The amount to increase the counter by.
@@ -310,7 +310,7 @@ class Counter:
         """
         self.send(delta, sample_rate)
 
-    def decrement(self, delta: float = 1, sample_rate: float = 1.0) -> None:
+    def decrement(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
         """Decrement the counter.
 
         This is equivalent to :py:meth:`increment` with delta negated.
@@ -356,9 +356,9 @@ class BatchCounter(Counter):
 
     def __init__(self, transport: Transport, name: bytes):
         super(BatchCounter, self).__init__(transport, name)
-        self.packets: DefaultDict[float, float] = collections.defaultdict(int)
+        self.packets: DefaultDict[float, float] = collections.defaultdict(float)
 
-    def increment(self, delta: float = 1, sample_rate: float = 1.0) -> None:
+    def increment(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
         """Increment the counter.
 
         :param delta: The amount to increase the counter by.
@@ -367,7 +367,7 @@ class BatchCounter(Counter):
         """
         self.packets[sample_rate] += delta
 
-    def decrement(self, delta: float = 1, sample_rate: float = 1.0) -> None:
+    def decrement(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
         """Decrement the counter.
 
         This is equivalent to :py:meth:`increment` with delta negated.
