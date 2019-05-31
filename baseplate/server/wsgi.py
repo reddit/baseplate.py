@@ -11,10 +11,10 @@ from baseplate.server import runtime_monitor, _load_factory
 
 try:
     # pylint: disable=no-name-in-module
-    from gevent.pywsgi import LoggingLogAdapter
+    from gevent.pywsgi import LoggingLogAdapter  # type: ignore
 except ImportError:
     # LoggingLogAdapter is from gevent 1.1+
-    class LoggingLogAdapter:
+    class LoggingLogAdapter:  # type: ignore
         def __init__(self, logger_, level):
             self._logger = logger_
             self._level = level

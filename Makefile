@@ -33,6 +33,7 @@ test:
 lint:
 	flake8
 	pylint baseplate/
+	mypy baseplate/
 
 checks: tests lint spelling
 
