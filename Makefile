@@ -31,6 +31,7 @@ test:
 	tox
 
 lint:
+	black --diff --check .
 	flake8
 	pylint baseplate/
 	mypy baseplate/

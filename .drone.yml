@@ -10,6 +10,7 @@ steps:
               from_secret: pip_options
       commands:
           - pip install $PIP_OPTIONS -r requirements-lint.txt
+          - black --diff --check .
           - flake8
           - pylint baseplate/
           - mypy baseplate/
