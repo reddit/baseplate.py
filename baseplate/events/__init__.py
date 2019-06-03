@@ -1,4 +1,4 @@
-from .queue import (
+from baseplate.events.queue import (
     DebugLogger,
     Event,
     EventError,

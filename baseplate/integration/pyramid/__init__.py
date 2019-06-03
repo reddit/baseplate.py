@@ -34,9 +34,9 @@ import sys
 import pyramid.events
 import pyramid.tweens
 
-from ...core import TraceInfo
-from ...server import make_app
-from ..._utils import warn_deprecated
+from baseplate.core import TraceInfo
+from baseplate.server import make_app
+from baseplate._utils import warn_deprecated
 
 TRACE_HEADER_NAMES = {
     "trace_id": ("X-Trace", "X-B3-TraceId"),

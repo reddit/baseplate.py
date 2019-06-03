@@ -1,4 +1,4 @@
-from .base import VariantSet
+from baseplate.experiments.variant_sets.base import VariantSet
 
 
 class RangeVariantSet(VariantSet):

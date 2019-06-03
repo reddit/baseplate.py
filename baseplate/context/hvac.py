@@ -20,8 +20,8 @@ import datetime
 import hvac
 import requests
 
-from . import ContextFactory
-from .. import config
+from baseplate import config
+from baseplate.context import ContextFactory
 
 
 def hvac_factory_from_config(app_config, secrets_store, prefix="vault."):

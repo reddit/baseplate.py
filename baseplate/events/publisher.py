@@ -10,11 +10,11 @@ from io import BytesIO
 
 import requests
 
-from .queue import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
-from .. import config, metrics_client_from_config
-from .._utils import Batch, BatchFull, RawJSONBatch, SerializedBatch, TimeLimitedBatch
-from ..message_queue import MessageQueue, TimedOutError
-from ..retry import RetryPolicy
+from baseplate import config, metrics_client_from_config
+from baseplate.events.queue import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
+from baseplate.message_queue import MessageQueue, TimedOutError
+from baseplate.retry import RetryPolicy
+from baseplate._utils import Batch, BatchFull, RawJSONBatch, SerializedBatch, TimeLimitedBatch
 
 
 logger = logging.getLogger(__name__)

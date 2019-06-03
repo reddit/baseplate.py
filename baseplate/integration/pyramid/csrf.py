@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from zope.interface import implementer
 
-from ...crypto import make_signature, SignatureError, validate_signature
+from baseplate.crypto import make_signature, SignatureError, validate_signature
 
 
 logger = logging.getLogger(__name__)

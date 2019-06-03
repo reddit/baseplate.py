@@ -1,7 +1,7 @@
 import logging
 import operator
 
-from .base import Targeting
+from baseplate.experiments.targeting.base import Targeting
 
 
 logger = logging.getLogger(__name__)

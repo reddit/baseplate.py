@@ -1,6 +1,8 @@
-from .ratelimit import RateLimiter
-from .ratelimit import RateLimitExceededException
-from .ratelimit import RateLimiterContextFactory
+from baseplate.ratelimit.ratelimit import (
+    RateLimiter,
+    RateLimiterContextFactory,
+    RateLimitExceededException,
+)
 
 
 __all__ = ["RateLimiter", "RateLimitExceededException", "RateLimiterContextFactory"]

@@ -67,7 +67,7 @@ import uuid
 
 import requests
 
-from .. import config
+from baseplate import config
 
 
 logger = logging.getLogger(__name__)

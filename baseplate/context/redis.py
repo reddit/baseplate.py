@@ -3,8 +3,8 @@ from math import ceil
 import redis
 import redis.client
 
-from . import ContextFactory
-from .. import config, message_queue
+from baseplate import config, message_queue
+from baseplate.context import ContextFactory
 
 
 def pool_from_config(app_config, prefix="redis.", **kwargs):

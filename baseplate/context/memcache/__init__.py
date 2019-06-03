@@ -1,7 +1,7 @@
 from pymemcache.client.base import PooledClient
 
-from ...context import ContextFactory
-from ... import config
+from baseplate import config
+from baseplate.context import ContextFactory
 
 
 def pool_from_config(app_config, prefix="memcache.", serializer=None, deserializer=None):

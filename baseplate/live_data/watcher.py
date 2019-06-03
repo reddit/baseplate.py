@@ -7,9 +7,9 @@ import os
 import sys
 import time
 
-from .. import config
-from ..secrets import secrets_store_from_config
-from .zookeeper import zookeeper_client_from_config
+from baseplate import config
+from baseplate.live_data.zookeeper import zookeeper_client_from_config
+from baseplate.secrets import secrets_store_from_config
 
 
 logger = logging.getLogger(__name__)

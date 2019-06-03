@@ -2,7 +2,7 @@
 
 from kazoo.client import KazooClient
 
-from .. import config
+from baseplate import config
 
 
 def zookeeper_client_from_config(secrets, app_config, read_only=None):

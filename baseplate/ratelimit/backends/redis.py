@@ -1,7 +1,7 @@
-from baseplate.ratelimit.backends import RateLimitBackend
+from baseplate.context import ContextFactory
+from baseplate.context.redis import RedisContextFactory
 from baseplate.ratelimit.backends import _get_current_bucket
-from ...context import ContextFactory
-from ...context.redis import RedisContextFactory
+from baseplate.ratelimit.backends import RateLimitBackend
 
 
 class RedisRateLimitBackendContextFactory(ContextFactory):
