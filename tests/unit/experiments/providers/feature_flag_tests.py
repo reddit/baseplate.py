@@ -8,7 +8,7 @@ from datetime import timedelta
 from baseplate.core import ServerSpan
 from baseplate.events import EventQueue
 from baseplate.experiments import Experiments
-from baseplate.experiments.providers import ISO_DATE_FMT, parse_experiment
+from baseplate.experiments.providers import parse_experiment
 from baseplate.file_watcher import FileWatcher
 
 from .... import mock

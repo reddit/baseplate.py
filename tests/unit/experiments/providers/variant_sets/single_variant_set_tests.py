@@ -1,9 +1,5 @@
 import logging
-import collections
-import time
 import unittest
-
-from datetime import timedelta
 
 from baseplate.experiments.variant_sets.single_variant_set import SingleVariantSet
 
@@ -38,28 +34,22 @@ class TestSingleVariantSet(unittest.TestCase):
 
         variant_set_cfg_1 = [{"name": "variant_1", "size": 0.25}]
 
-        variant_set_cfg_3 = [
-            {"name": "variant_1", "size": 0.25},
-            {"name": "variant_2", "size": 0.25},
-            {"name": "variant_3", "size": 0.25},
-        ]
-
         variant_set_cfg_too_big = [
             {"name": "variant_1", "size": 0.75},
             {"name": "variant_2", "size": 0.75},
         ]
 
         with self.assertRaises(ValueError):
-            variant_set_none = SingleVariantSet(variant_set_cfg_none)
+            SingleVariantSet(variant_set_cfg_none)
 
         with self.assertRaises(ValueError):
-            variant_set_0 = SingleVariantSet(variant_set_cfg_0)
+            SingleVariantSet(variant_set_cfg_0)
 
         with self.assertRaises(ValueError):
-            variant_set_1 = SingleVariantSet(variant_set_cfg_1)
+            SingleVariantSet(variant_set_cfg_1)
 
         with self.assertRaises(ValueError):
-            variant_set_too_big = SingleVariantSet(variant_set_cfg_too_big)
+            SingleVariantSet(variant_set_cfg_too_big)
 
     def test_distribution_def_buckets(self):
         variant_set = create_single_variant_set()

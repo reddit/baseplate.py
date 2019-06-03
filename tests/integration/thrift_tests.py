@@ -6,17 +6,13 @@ import unittest
 import gevent
 import gevent.monkey
 
-from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
 from thrift.Thrift import TApplicationException
-from thrift.transport.TTransport import TMemoryBuffer, TTransportException
 
 from baseplate import config
 from baseplate.core import (
     Baseplate,
     BaseplateObserver,
-    EdgeRequestContext,
     EdgeRequestContextFactory,
-    NoAuthenticationError,
     ServerSpan,
     ServerSpanObserver,
     SpanObserver,
@@ -29,14 +25,14 @@ from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 from baseplate.thrift_pool import ThriftConnectionPool
 
-from .test_thrift import TestService, ttypes
+from .test_thrift import TestService
 from .. import mock, AUTH_TOKEN_PUBLIC_KEY, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 
 
 cryptography_installed = True
 try:
     import cryptography
-except:
+except ImportError:
     cryptography_installed = False
 else:
     del cryptography

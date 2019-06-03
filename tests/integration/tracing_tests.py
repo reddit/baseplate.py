@@ -5,9 +5,7 @@ from baseplate.diagnostics.tracing import (
     TraceBaseplateObserver,
     TraceServerSpanObserver,
     TraceLocalSpanObserver,
-    TraceSpanObserver,
     NullRecorder,
-    RemoteRecorder,
     make_client,
 )
 
@@ -37,7 +35,7 @@ def local_parent_trace_within_context(request):
     # For testing embedded tracing contexts
     #  See `TracingTests.test_local_tracing_embedded`
     with request.trace.make_child("local-req", local=True, component_name="in-context") as span:
-        with span.make_child("local-req", local=True, component_name="in-context") as child_span:
+        with span.make_child("local-req", local=True, component_name="in-context"):
             pass
 
 
@@ -88,7 +86,7 @@ class TracingTests(unittest.TestCase):
     def test_trace_on_inbound_request(self):
         with mock.patch.object(
             TraceBaseplateObserver, "on_server_span_created", side_effect=self._register_server_mock
-        ) as mocked:
+        ):
             self.test_app.get("/example")
             span = self.server_span_observer._serialize()
             self.assertEqual(span["name"], "example")
@@ -98,11 +96,11 @@ class TracingTests(unittest.TestCase):
     def test_local_tracing_embedded(self):
         with mock.patch.object(
             TraceBaseplateObserver, "on_server_span_created", side_effect=self._register_server_mock
-        ) as mocked, mock.patch.object(
+        ), mock.patch.object(
             TraceServerSpanObserver, "on_child_span_created", side_effect=self._register_local_mock
-        ) as server_child_mocked, mock.patch.object(
+        ), mock.patch.object(
             TraceLocalSpanObserver, "on_child_span_created", side_effect=self._register_local_mock
-        ) as local_child_mocked:
+        ):
 
             self.test_app.get("/local_test")
             # Verify that child span can be created within a local span context

@@ -1,9 +1,5 @@
 import logging
-import collections
-import time
 import unittest
-
-from datetime import timedelta
 
 from baseplate.experiments.variant_sets.rollout_variant_set import RolloutVariantSet
 
@@ -44,16 +40,16 @@ class TestRolloutVariantSet(unittest.TestCase):
         variant_set_cfg_too_big = [{"name": "variant_1", "size": 1.05}]
 
         with self.assertRaises(ValueError):
-            variant_set_none = RolloutVariantSet(variant_set_cfg_none)
+            RolloutVariantSet(variant_set_cfg_none)
 
         with self.assertRaises(ValueError):
-            variant_set_0 = RolloutVariantSet(variant_set_cfg_0)
+            RolloutVariantSet(variant_set_cfg_0)
 
         with self.assertRaises(ValueError):
-            variant_set_2 = RolloutVariantSet(variant_set_cfg_2)
+            RolloutVariantSet(variant_set_cfg_2)
 
         with self.assertRaises(ValueError):
-            variant_set_too_big = RolloutVariantSet(variant_set_cfg_too_big)
+            RolloutVariantSet(variant_set_cfg_too_big)
 
     def test_distribution_def_buckets(self):
         variant_set = create_rollout_variant_set()

@@ -51,7 +51,7 @@ class MemcacheRateLimitBackendTest(unittest.TestCase):
     def setUp(self):
         self.amount = 10
         memcache = mock.create_autospec(PooledClient)
-        pipeline_context = memcache.incr.return_value = self.amount
+        memcache.incr.return_value = self.amount
         self.ratelimit_backend = MemcacheRateLimitBackend(memcache)
 
     def test_consume(self):

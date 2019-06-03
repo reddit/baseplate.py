@@ -1,5 +1,4 @@
 import contextlib
-import time
 import unittest
 
 try:

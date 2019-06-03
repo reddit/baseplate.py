@@ -1,20 +1,10 @@
-import collections
-import math
-import os
-import time
 import unittest
-import copy
 
-from datetime import datetime, timedelta
-
-from baseplate.core import ServerSpan
 from baseplate.experiments.targeting.tree_targeting import (
     create_targeting_tree,
     TargetingNodeError,
     UnknownTargetingOperatorError,
 )
-
-from .... import mock
 
 
 def get_simple_config():
@@ -74,14 +64,14 @@ class TestTreeTargeting(unittest.TestCase):
         ]
 
         with self.assertRaises(TargetingNodeError):
-            targeting_tree = create_targeting_tree(config)
+            create_targeting_tree(config)
 
     def test_create_tree_unknown_operator(self):
         config = get_simple_config()
         config["UNKNOWN"] = config.pop("ALL")
 
         with self.assertRaises(UnknownTargetingOperatorError):
-            targeting_tree = create_targeting_tree(config)
+            create_targeting_tree(config)
 
 
 class TestEqualNode(unittest.TestCase):
@@ -171,25 +161,25 @@ class TestEqualNode(unittest.TestCase):
     def test_equal_node_bad_inputs(self):
         targeting_config_empty = {"EQ": {}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_empty)
+            create_targeting_tree(targeting_config_empty)
 
         targeting_config_one_arg = {"EQ": {"field": "some_field"}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_one_arg)
+            create_targeting_tree(targeting_config_one_arg)
 
         targeting_config_three_args = {
             "EQ": {"field": "some_field", "values": ["one", True], "value": "str_arg"}
         }
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_three_args)
+            create_targeting_tree(targeting_config_three_args)
 
         targeting_config_no_field = {"EQ": {"fields": "some_field", "value": "str_arg"}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_no_field)
+            create_targeting_tree(targeting_config_no_field)
 
         targeting_config_no_value = {"EQ": {"field": "some_field", "valu": "str_arg"}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_no_value)
+            create_targeting_tree(targeting_config_no_value)
 
 
 class TestNotNode(unittest.TestCase):
@@ -208,7 +198,7 @@ class TestNotNode(unittest.TestCase):
     def test_not_node_bad_inputs(self):
         targeting_config_empty = {"NOT": {}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_empty)
+            create_targeting_tree(targeting_config_empty)
 
         targeting_config_multiple_args = {
             "NOT": {
@@ -217,7 +207,7 @@ class TestNotNode(unittest.TestCase):
             }
         }
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_empty)
+            create_targeting_tree(targeting_config_multiple_args)
 
 
 class TestOverrideNode(unittest.TestCase):
@@ -282,7 +272,7 @@ class TestAnyNode(unittest.TestCase):
     def test_any_node_invalid_inputs(self):
         targeting_config_not_list = {"ANY": {"field": "fieldname", "value": "notalist"}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_not_list = create_targeting_tree(targeting_config_not_list)
+            create_targeting_tree(targeting_config_not_list)
 
 
 class TestAllNode(unittest.TestCase):
@@ -339,7 +329,7 @@ class TestAllNode(unittest.TestCase):
     def test_all_node_invalid_inputs(self):
         targeting_config_not_list = {"ALL": {"field": "fieldname", "value": "notalist"}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_not_list = create_targeting_tree(targeting_config_not_list)
+            create_targeting_tree(targeting_config_not_list)
 
 
 class TestComparisonNode(unittest.TestCase):
@@ -496,22 +486,22 @@ class TestComparisonNode(unittest.TestCase):
     def test_comparison_node_bad_inputs(self):
         targeting_config_empty = {"LE": {}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_empty)
+            create_targeting_tree(targeting_config_empty)
 
         targeting_config_one_arg = {"LE": {"field": "some_field"}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_one_arg)
+            create_targeting_tree(targeting_config_one_arg)
 
         targeting_config_three_args = {
             "LE": {"field": "some_field", "values": ["one", True], "value": "str_arg"}
         }
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_three_args)
+            create_targeting_tree(targeting_config_three_args)
 
         targeting_config_no_field = {"LE": {"fields": "some_field", "value": "str_arg"}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_no_field)
+            create_targeting_tree(targeting_config_no_field)
 
         targeting_config_no_value = {"LE": {"field": "some_field", "valu": "str_arg"}}
         with self.assertRaises(TargetingNodeError):
-            targeting_tree_empty = create_targeting_tree(targeting_config_no_value)
+            create_targeting_tree(targeting_config_no_value)

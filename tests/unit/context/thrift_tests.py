@@ -1,10 +1,7 @@
 import unittest
 
-from baseplate import core, thrift_pool
 from baseplate.context import thrift
 from baseplate.thrift import BaseplateService
-
-from ... import mock
 
 
 class EnumerateServiceMethodsTests(unittest.TestCase):

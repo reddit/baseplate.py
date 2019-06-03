@@ -30,7 +30,12 @@ class WeightedChoiceTests(unittest.TestCase):
 
     @mock.patch("random.random")
     def test_choice(self, mock_random):
-        weight_fn = lambda i: 3 if i == "c" else 1
+        def weight_fn(i):
+            if i == "c":
+                return 3
+            else:
+                return 1
+
         items = ["a", "b", "c", "d"]  # 1  # 1  # 3  # 1
 
         mock_random.return_value = 0.5
@@ -39,7 +44,9 @@ class WeightedChoiceTests(unittest.TestCase):
         self.assertEqual(choice, "c")
 
     def test_distribution(self):
-        weight_fn = lambda i: ord(i) - 96
+        def weight_fn(i):
+            return ord(i) - 96
+
         items = ["a", "b", "c", "d"]  # 1  # 2  # 3  # 4
         lottery = random.WeightedLottery(items, weight_fn)
 
@@ -57,7 +64,12 @@ class WeightedChoiceTests(unittest.TestCase):
         self.assertLess(abs(4000 - choices["d"]), 150)
 
     def test_sample_errors(self):
-        weight_fn = lambda i: 3 if i == "c" else 1
+        def weight_fn(i):
+            if i == "c":
+                return 3
+            else:
+                return 1
+
         items = ["a", "b", "c", "d"]  # 1  # 1  # 3  # 1
         lottery = random.WeightedLottery(items, weight_fn)
 
@@ -68,7 +80,12 @@ class WeightedChoiceTests(unittest.TestCase):
             lottery.sample(5)
 
     def test_sample(self):
-        weight_fn = lambda i: 3 if i == "c" else 1
+        def weight_fn(i):
+            if i == "c":
+                return 3
+            else:
+                return 1
+
         items = ["a", "b", "c", "d"]  # 1  # 1  # 3  # 1
         lottery = random.WeightedLottery(items, weight_fn)
 

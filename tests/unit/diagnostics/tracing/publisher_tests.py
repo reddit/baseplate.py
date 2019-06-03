@@ -2,7 +2,7 @@ import unittest
 
 import requests
 
-from baseplate import config, metrics
+from baseplate import metrics
 from baseplate._utils import SerializedBatch
 from baseplate.diagnostics.tracing import publisher
 
