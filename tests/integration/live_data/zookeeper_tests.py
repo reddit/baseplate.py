@@ -1,4 +1,3 @@
-
 import unittest
 
 try:
@@ -18,9 +17,9 @@ zookeeper_endpoint = get_endpoint_or_skip_container("zookeeper", 2181)
 class ZooKeeperTests(unittest.TestCase):
     def test_create_client_no_secrets(self):
         secrets = mock.Mock(spec=SecretsStore)
-        client = zookeeper_client_from_config(secrets, {
-            "zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address,
-        })
+        client = zookeeper_client_from_config(
+            secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
+        )
 
         client.start()
 
@@ -33,10 +32,13 @@ class ZooKeeperTests(unittest.TestCase):
         secrets = mock.Mock(spec=SecretsStore)
         secrets.get_simple.return_value = b"myzkuser:hunter2"
 
-        client = zookeeper_client_from_config(secrets, {
-            "zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address,
-            "zookeeper.credentials": "secret/zk-user",
-        })
+        client = zookeeper_client_from_config(
+            secrets,
+            {
+                "zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address,
+                "zookeeper.credentials": "secret/zk-user",
+            },
+        )
 
         client.start()
         with self.assertRaises(NoNodeError):

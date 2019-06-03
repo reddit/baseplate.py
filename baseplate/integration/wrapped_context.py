@@ -9,7 +9,7 @@ class WrappedRequestContext:
     """
 
     def __init__(self, context):
-        self.__dict__['_context'] = context
+        self.__dict__["_context"] = context
 
     def __getattr__(self, attr):
         return getattr(self._context, attr)

@@ -1,4 +1,3 @@
-
 import sys
 import unittest
 
@@ -28,7 +27,7 @@ class BaseKombuConsumerTests(unittest.TestCase):
         self.assertEqual(ret, message)
         worker.get_message.assert_called_once_with(block=True, timeout=None)
 
-    @mock.patch('baseplate.queue_consumer.RetryPolicy')
+    @mock.patch("baseplate.queue_consumer.RetryPolicy")
     def test_get_batch(self, RetryPolicy):
         m1 = mock.Mock()
         m2 = mock.Mock()
@@ -45,10 +44,12 @@ class BaseKombuConsumerTests(unittest.TestCase):
 
         self.assertEqual(ret, [m1, m2, m3])
         RetryPolicy.new.assert_called_once_with(attempts=10, budget=10)
-        worker.get_message.assert_has_calls([
-            mock.call(block=True, timeout=10),
-            mock.call(block=True, timeout=9),
-            mock.call(block=True, timeout=8),
-            mock.call(block=True, timeout=7),
-        ])
+        worker.get_message.assert_has_calls(
+            [
+                mock.call(block=True, timeout=10),
+                mock.call(block=True, timeout=9),
+                mock.call(block=True, timeout=8),
+                mock.call(block=True, timeout=7),
+            ]
+        )
         self.assertEqual(worker.get_message.call_count, 4)

@@ -1,4 +1,3 @@
-
 import unittest
 
 try:
@@ -13,6 +12,7 @@ from baseplate.secrets.store import SecretsStore
 
 from ... import mock
 
+
 class EngineFromConfigTests(unittest.TestCase):
     def setUp(self):
         mock_filewatcher = mock.Mock(spec=FileWatcher)
@@ -22,12 +22,9 @@ class EngineFromConfigTests(unittest.TestCase):
                     "type": "credential",
                     "username": "reddit",
                     "password": "password",
-                },
+                }
             },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
+            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
         secrets = SecretsStore("/secrets")
         secrets._filewatcher = mock_filewatcher
@@ -37,26 +34,33 @@ class EngineFromConfigTests(unittest.TestCase):
         engine = engine_from_config({"database.url": "sqlite://"})
         self.assertEqual(engine.url, URL("sqlite"))
 
-    @mock.patch('baseplate.context.sqlalchemy.create_engine')
+    @mock.patch("baseplate.context.sqlalchemy.create_engine")
     def test_credentials(self, create_engine_mock):
-        engine = engine_from_config({
-            "database.url": "postgresql://fizz:buzz@localhost:9000/db",
-            "database.credentials_secret": "secret/sql/account",
-        }, self.secrets)
-        create_engine_mock.assert_called_once_with(URL(
-            drivername="postgresql",
-            username="reddit",
-            password="password",
-            host="localhost",
-            port="9000",
-            database="db",
-        ))
-
-    @mock.patch('baseplate.context.sqlalchemy.create_engine')
-    def test_credentials_no_secrets(self, create_engine_mock):
-        with self.assertRaises(TypeError):
-            engine_from_config({
+        engine = engine_from_config(
+            {
                 "database.url": "postgresql://fizz:buzz@localhost:9000/db",
                 "database.credentials_secret": "secret/sql/account",
-            })
+            },
+            self.secrets,
+        )
+        create_engine_mock.assert_called_once_with(
+            URL(
+                drivername="postgresql",
+                username="reddit",
+                password="password",
+                host="localhost",
+                port="9000",
+                database="db",
+            )
+        )
+
+    @mock.patch("baseplate.context.sqlalchemy.create_engine")
+    def test_credentials_no_secrets(self, create_engine_mock):
+        with self.assertRaises(TypeError):
+            engine_from_config(
+                {
+                    "database.url": "postgresql://fizz:buzz@localhost:9000/db",
+                    "database.credentials_secret": "secret/sql/account",
+                }
+            )
         self.assertEqual(create_engine_mock.call_count, 0)

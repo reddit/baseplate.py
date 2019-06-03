@@ -66,10 +66,10 @@ def decompress_and_load(key, serialized, flags):  # pylint: disable=unused-argum
         try:
             return json.loads(serialized)
         except ValueError:
-            logging.info('json error', exc_info=True)
+            logging.info("json error", exc_info=True)
             return None
 
-    logging.info('unrecognized flags')
+    logging.info("unrecognized flags")
     return serialized
 
 
@@ -113,9 +113,7 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
             serialized = json.dumps(value)
             flags = Flags.JSON
 
-        if (compress_level and
-                min_compress_length and
-                len(serialized) > min_compress_length):
+        if compress_level and min_compress_length and len(serialized) > min_compress_length:
             compressed = zlib.compress(serialized, compress_level)
             flags |= Flags.ZLIB
             return compressed, flags
@@ -174,10 +172,10 @@ def decompress_and_unpickle(key, serialized, flags):  # pylint: disable=unused-a
         try:
             return pickle.loads(serialized)
         except Exception:
-            logging.info('Pickle error', exc_info=True)
+            logging.info("Pickle error", exc_info=True)
             return None
 
-    logging.info('unrecognized flags')
+    logging.info("unrecognized flags")
     return serialized
 
 
@@ -222,9 +220,7 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
             serialized = pickle.dumps(value, protocol=2)
             flags = PickleFlags.PICKLE
 
-        if (compress_level and
-                min_compress_length and
-                len(serialized) > min_compress_length):
+        if compress_level and min_compress_length and len(serialized) > min_compress_length:
             compressed = zlib.compress(serialized, compress_level)
             flags |= PickleFlags.ZLIB
             return compressed, flags

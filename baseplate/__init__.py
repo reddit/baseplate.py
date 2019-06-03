@@ -1,4 +1,3 @@
-
 import os
 import sys
 
@@ -25,20 +24,20 @@ def metrics_client_from_config(raw_config):
     :rtype: :py:class:`baseplate.metrics.Client`
 
     """
-    cfg = config.parse_config(raw_config, {
-        "metrics": {
-            "namespace": config.String,
-            "endpoint": config.Optional(config.Endpoint),
-        },
-    })
+    cfg = config.parse_config(
+        raw_config,
+        {"metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint)}},
+    )
 
     # pylint: disable=maybe-no-member
     return metrics.make_client(cfg.metrics.namespace, cfg.metrics.endpoint)
 
 
 def make_metrics_client(raw_config):
-    warn_deprecated("make_metrics_client is deprecated in favor of the more "
-                    "consistently named metrics_client_from_config")
+    warn_deprecated(
+        "make_metrics_client is deprecated in favor of the more "
+        "consistently named metrics_client_from_config"
+    )
     return metrics_client_from_config(raw_config)
 
 
@@ -72,21 +71,25 @@ def tracing_client_from_config(raw_config, log_if_unconfigured=True):
     :rtype: :py:class:`baseplate.diagnostics.tracing.TracingClient`
 
     """
-    cfg = config.parse_config(raw_config, {
-        "tracing": {
-            "service_name": config.String,
-            "endpoint": config.Optional(config.Endpoint),
-            "queue_name": config.Optional(config.String),
-            "max_span_queue_size": config.Optional(
-                config.Integer, default=50000),
-            "num_span_workers": config.Optional(config.Integer, default=5),
-            "span_batch_interval": config.Optional(
-                config.Timespan, default=config.Timespan("500 milliseconds")),
-            "num_conns": config.Optional(config.Integer, default=100),
-            "sample_rate": config.Optional(
-                config.Fallback(config.Percent, config.Float), default=0.1),
+    cfg = config.parse_config(
+        raw_config,
+        {
+            "tracing": {
+                "service_name": config.String,
+                "endpoint": config.Optional(config.Endpoint),
+                "queue_name": config.Optional(config.String),
+                "max_span_queue_size": config.Optional(config.Integer, default=50000),
+                "num_span_workers": config.Optional(config.Integer, default=5),
+                "span_batch_interval": config.Optional(
+                    config.Timespan, default=config.Timespan("500 milliseconds")
+                ),
+                "num_conns": config.Optional(config.Integer, default=100),
+                "sample_rate": config.Optional(
+                    config.Fallback(config.Percent, config.Float), default=0.1
+                ),
+            }
         },
-    })
+    )
 
     # pylint: disable=maybe-no-member
     return tracing.make_client(
@@ -103,8 +106,10 @@ def tracing_client_from_config(raw_config, log_if_unconfigured=True):
 
 
 def make_tracing_client(raw_config, log_if_unconfigured=True):
-    warn_deprecated("make_tracing_client is deprecated in favor of the more "
-                    "consistently named tracing_client_from_config")
+    warn_deprecated(
+        "make_tracing_client is deprecated in favor of the more "
+        "consistently named tracing_client_from_config"
+    )
     return tracing_client_from_config(raw_config, log_if_unconfigured)
 
 
@@ -146,23 +151,24 @@ def error_reporter_from_config(raw_config, module_name):
     """
     import raven
 
-    cfg = config.parse_config(raw_config, {
-        "sentry": {
-            "dsn": config.Optional(config.String, default=None),
-            "site": config.Optional(config.String, default=None),
-            "environment": config.Optional(config.String, default=None),
-            "include_paths": config.Optional(config.String, default=None),
-            "exclude_paths": config.Optional(config.String, default=None),
-            "ignore_exceptions": config.Optional(
-                config.TupleOf(config.String), default=[]),
-            "sample_rate": config.Optional(config.Percent, default=1),
-            "processors": config.Optional(
-                config.TupleOf(config.String), default=[
-                    "raven.processors.SanitizePasswordsProcessor",
-                ],
-            ),
+    cfg = config.parse_config(
+        raw_config,
+        {
+            "sentry": {
+                "dsn": config.Optional(config.String, default=None),
+                "site": config.Optional(config.String, default=None),
+                "environment": config.Optional(config.String, default=None),
+                "include_paths": config.Optional(config.String, default=None),
+                "exclude_paths": config.Optional(config.String, default=None),
+                "ignore_exceptions": config.Optional(config.TupleOf(config.String), default=[]),
+                "sample_rate": config.Optional(config.Percent, default=1),
+                "processors": config.Optional(
+                    config.TupleOf(config.String),
+                    default=["raven.processors.SanitizePasswordsProcessor"],
+                ),
+            }
         },
-    })
+    )
 
     application_module = sys.modules[module_name]
     directory = os.path.dirname(application_module.__file__)

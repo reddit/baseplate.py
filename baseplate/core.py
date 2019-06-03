@@ -1,4 +1,3 @@
-
 import collections
 import logging
 import random
@@ -65,8 +64,7 @@ class ServerSpanObserver(SpanObserver):
     """Interface for an observer that watches the server span."""
 
 
-_TraceInfo = collections.namedtuple("_TraceInfo",
-                                    "trace_id parent_id span_id sampled flags")
+_TraceInfo = collections.namedtuple("_TraceInfo", "trace_id parent_id span_id sampled flags")
 
 
 class NoAuthenticationError(Exception):
@@ -91,8 +89,7 @@ class TraceInfo(_TraceInfo):
 
         """
         trace_id = random.getrandbits(64)
-        return cls(trace_id=trace_id, parent_id=None,
-                   span_id=trace_id, sampled=None, flags=None)
+        return cls(trace_id=trace_id, parent_id=None, span_id=trace_id, sampled=None, flags=None)
 
     @classmethod
     def from_upstream(cls, trace_id, parent_id, span_id, sampled, flags):
@@ -107,20 +104,20 @@ class TraceInfo(_TraceInfo):
         :raises: :py:exc:`ValueError` if any of the values are inappropriate.
 
         """
-        if trace_id is None or not 0 <= trace_id < 2**64:
+        if trace_id is None or not 0 <= trace_id < 2 ** 64:
             raise ValueError("invalid trace_id")
 
-        if span_id is None or not 0 <= span_id < 2**64:
+        if span_id is None or not 0 <= span_id < 2 ** 64:
             raise ValueError("invalid span_id")
 
-        if parent_id is None or not 0 <= parent_id < 2**64:
+        if parent_id is None or not 0 <= parent_id < 2 ** 64:
             raise ValueError("invalid parent_id")
 
         if sampled is not None and not isinstance(sampled, bool):
             raise ValueError("invalid sampled value")
 
         if flags is not None:
-            if not 0 <= flags < 2**64:
+            if not 0 <= flags < 2 ** 64:
                 raise ValueError("invalid flags value")
 
         return cls(trace_id, parent_id, span_id, sampled, flags)
@@ -278,10 +275,8 @@ class InvalidAuthenticationToken(AuthenticationToken):
         raise NoAuthenticationError
 
 
-_User = collections.namedtuple(
-    "_User", ["authentication_token", "loid", "cookie_created_ms"])
-_OAuthClient = collections.namedtuple(
-    "_OAuthClient", ["authentication_token"])
+_User = collections.namedtuple("_User", ["authentication_token", "loid", "cookie_created_ms"])
+_OAuthClient = collections.namedtuple("_OAuthClient", ["authentication_token"])
 Session = collections.namedtuple("Session", ["id"])
 _Service = collections.namedtuple("_Service", ["authentication_token"])
 
@@ -399,9 +394,7 @@ class OAuthClient(_OAuthClient):
         except NoAuthenticationError:
             oauth_client_id = None
 
-        return {
-            "oauth_client_id": oauth_client_id,
-        }
+        return {"oauth_client_id": oauth_client_id}
 
 
 class Service(_Service):
@@ -421,7 +414,7 @@ class Service(_Service):
         if not (subject and subject.startswith("service/")):
             raise NoAuthenticationError
 
-        name = subject[len("service/"):]
+        name = subject[len("service/") :]
         return name
 
 
@@ -441,10 +434,7 @@ class EdgeRequestContextFactory:
     def __init__(self, secrets):
         self.authn_token_validator = AuthenticationTokenValidator(secrets)
 
-    def new(self,
-            authentication_token=None,
-            loid_id=None, loid_created_ms=None,
-            session_id=None):
+    def new(self, authentication_token=None, loid_id=None, loid_created_ms=None, session_id=None):
         """Return a new EdgeRequestContext object made from scratch.
 
         Services at the edge that communicate directly with clients should use
@@ -495,8 +485,7 @@ class EdgeRequestContextFactory:
             session=TSession(id=session_id),
             authentication_token=authentication_token,
         )
-        header = TSerialization.serialize(
-            t_request, EdgeRequestContext._HEADER_PROTOCOL_FACTORY)
+        header = TSerialization.serialize(t_request, EdgeRequestContext._HEADER_PROTOCOL_FACTORY)
 
         context = EdgeRequestContext(self.authn_token_validator, header)
         # Set the _t_request property so we can skip the deserialization step
@@ -542,9 +531,7 @@ class EdgeRequestContext:
 
     def event_fields(self):
         """Return fields to be added to events."""
-        fields = {
-            "session_id": self.session.id,
-        }
+        fields = {"session_id": self.session.id}
         fields.update(self.user.event_fields())
         fields.update(self.oauth_client.event_fields())
         return fields
@@ -584,21 +571,15 @@ class EdgeRequestContext:
         from .thrift.ttypes import Loid as TLoid
         from .thrift.ttypes import Request as TRequest
         from .thrift.ttypes import Session as TSession
+
         _t_request = TRequest()
         _t_request.loid = TLoid()
         _t_request.session = TSession()
         if self._header:
             try:
-                TSerialization.deserialize(
-                    _t_request,
-                    self._header,
-                    self._HEADER_PROTOCOL_FACTORY,
-                )
+                TSerialization.deserialize(_t_request, self._header, self._HEADER_PROTOCOL_FACTORY)
             except Exception:
-                logger.debug(
-                    "Invalid Edge-Request header. %s",
-                    self._header,
-                )
+                logger.debug("Invalid Edge-Request header. %s", self._header)
         return _t_request
 
 
@@ -627,6 +608,7 @@ class Baseplate:
         """Add request context to the logging system."""
         # pylint: disable=cyclic-import
         from .diagnostics.logging import LoggingBaseplateObserver
+
         self.register(LoggingBaseplateObserver())
 
     def configure_metrics(self, metrics_client):
@@ -643,6 +625,7 @@ class Baseplate:
         """
         # pylint: disable=cyclic-import
         from .diagnostics.metrics import MetricsBaseplateObserver
+
         self._metrics_client = metrics_client
         self.register(MetricsBaseplateObserver(metrics_client))
 
@@ -657,20 +640,18 @@ class Baseplate:
 
         """
         # pylint: disable=cyclic-import
-        from .diagnostics.tracing import (
-            make_client,
-            TraceBaseplateObserver,
-            TracingClient,
-        )
+        from .diagnostics.tracing import make_client, TraceBaseplateObserver, TracingClient
 
         # the first parameter was service_name before, so if it's not a client
         # object we'll act like this is the old-style invocation and use the
         # first parameter as service_name instead, passing on the old arguments
         if not isinstance(tracing_client, TracingClient):
-            warn_deprecated("Passing tracing configuration directly to "
-                            "configure_tracing is deprecated in favor of "
-                            "using baseplate.tracing_client_from_config and "
-                            "passing the constructed client on.")
+            warn_deprecated(
+                "Passing tracing configuration directly to "
+                "configure_tracing is deprecated in favor of "
+                "using baseplate.tracing_client_from_config and "
+                "passing the constructed client on."
+            )
             tracing_client = make_client(tracing_client, *args, **kwargs)
 
         self.register(TraceBaseplateObserver(tracing_client))
@@ -686,12 +667,10 @@ class Baseplate:
 
         """
         # pylint: disable=cyclic-import
-        from .diagnostics.sentry import (
-            SentryBaseplateObserver,
-            SentryUnhandledErrorReporter,
-        )
+        from .diagnostics.sentry import SentryBaseplateObserver, SentryUnhandledErrorReporter
 
         from gevent import get_hub
+
         hub = get_hub()
         hub.print_exception = SentryUnhandledErrorReporter(hub, client)
 
@@ -711,6 +690,7 @@ class Baseplate:
         """
         # pylint: disable=cyclic-import
         from .context import ContextObserver
+
         self.register(ContextObserver(name, context_factory))
 
     def make_server_span(self, context, name, trace_info=None):
@@ -732,9 +712,15 @@ class Baseplate:
         if trace_info is None:
             trace_info = TraceInfo.new()
 
-        server_span = ServerSpan(trace_info.trace_id, trace_info.parent_id,
-                                 trace_info.span_id, trace_info.sampled,
-                                 trace_info.flags, name, WrappedRequestContext(context))
+        server_span = ServerSpan(
+            trace_info.trace_id,
+            trace_info.parent_id,
+            trace_info.span_id,
+            trace_info.sampled,
+            trace_info.flags,
+            name,
+            WrappedRequestContext(context),
+        )
 
         for observer in self.observers:
             observer.on_server_span_created(context, server_span)
@@ -854,16 +840,17 @@ class LocalSpan(Span):
 
         if local:
             context_copy = self.context.clone()
-            span = LocalSpan(self.trace_id, self.id, span_id, self.sampled,
-                             self.flags, name, context_copy)
+            span = LocalSpan(
+                self.trace_id, self.id, span_id, self.sampled, self.flags, name, context_copy
+            )
             if component_name is None:
                 raise ValueError("Cannot create local span without component name.")
             span.component_name = component_name
-            context_copy.shadow_context_attr('trace', span)
+            context_copy.shadow_context_attr("trace", span)
         else:
             span = Span(
-                self.trace_id, self.id, span_id, self.sampled,
-                self.flags, name, self.context)
+                self.trace_id, self.id, span_id, self.sampled, self.flags, name, self.context
+            )
         for observer in self.observers:
             observer.on_child_span_created(span)
         return span

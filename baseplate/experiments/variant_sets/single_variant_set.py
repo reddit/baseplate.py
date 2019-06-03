@@ -28,26 +28,27 @@ class SingleVariantSet(VariantSet):
         self._validate_variants()
 
     def __contains__(self, item):
-        if self.variants[0].get('name') == item or self.variants[1].get('name') == item:
+        if self.variants[0].get("name") == item or self.variants[1].get("name") == item:
             return True
 
         return False
 
     def _validate_variants(self):
         if self.variants is None:
-            raise ValueError('No variants provided')
+            raise ValueError("No variants provided")
 
         if len(self.variants) != 2:
-            raise ValueError("Single Variant experiments expect only one "
-                "variant and one control.")
+            raise ValueError(
+                "Single Variant experiments expect only one " "variant and one control."
+            )
 
-        if self.variants[0].get('size') is None or self.variants[1].get('size') is None:
-            raise ValueError('Variant size not provided: {}'.format(self.variants))
+        if self.variants[0].get("size") is None or self.variants[1].get("size") is None:
+            raise ValueError("Variant size not provided: {}".format(self.variants))
 
-        total_size = self.variants[0].get('size') + self.variants[1].get('size')
+        total_size = self.variants[0].get("size") + self.variants[1].get("size")
 
         if total_size < 0.0 or total_size > 1.0:
-            raise ValueError('Sum of all variants must be between 0 and 1.')
+            raise ValueError("Sum of all variants must be between 0 and 1.")
 
     def choose_variant(self, bucket):
         """Deterministically choose a variant.

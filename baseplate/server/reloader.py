@@ -49,13 +49,12 @@ def _reload_when_files_change(extra_files):
                 logger.debug("Reloading, %s changed", filename)
                 os.execl(sys.executable, sys.executable, *sys.argv)
 
-        time.sleep(.25)
+        time.sleep(0.25)
 
 
 def start_reload_watcher(extra_files):
     """Start a task that will restart the server if any source files change."""
-    thread = threading.Thread(
-        target=_reload_when_files_change, args=(extra_files,))
+    thread = threading.Thread(target=_reload_when_files_change, args=(extra_files,))
     thread.name = "baseplate reloader"
     thread.daemon = True
     thread.start()

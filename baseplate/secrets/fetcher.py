@@ -81,7 +81,9 @@ Authenication failed! If this instance previously authenticated with a
 different nonce, a vault operator may need to remove the instance ID from the
 identity whitelist. See
 https://www.vaultproject.io/docs/auth/aws.html#client-nonce
-""".replace("\n", " ")
+""".replace(
+    "\n", " "
+)
 
 
 def fetch_instance_identity():
@@ -141,12 +143,7 @@ class VaultClientFactory:
         """Obtain a client token from an auth backend and return a Vault client with it."""
         client_token, lease_duration = self.auth_type(self)
 
-        return VaultClient(
-            self.session,
-            self.base_url,
-            client_token,
-            lease_duration,
-        )
+        return VaultClient(self.session, self.base_url, client_token, lease_duration)
 
     def _vault_kubernetes_auth(self):
         r"""Get a client token from Vault through the Kubernetes auth backend.
@@ -173,14 +170,12 @@ class VaultClientFactory:
             with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE, "r") as f:
                 token = f.read()
         except IOError:
-            logger.error("Could not read Kubernetes token file '%s'",
-                         K8S_SERVICE_ACCOUNT_TOKEN_FILE)
+            logger.error(
+                "Could not read Kubernetes token file '%s'", K8S_SERVICE_ACCOUNT_TOKEN_FILE
+            )
             raise
 
-        login_data = {
-            "jwt": token,
-            "role": self.role,
-        }
+        login_data = {"jwt": token, "role": self.role}
 
         logger.debug("Obtaining Vault token via kubernetes auth.")
         response = self.session.post(
@@ -224,11 +219,7 @@ class VaultClientFactory:
             nonce = generate_nonce()
             store_nonce(nonce)
 
-        login_data = {
-            "role": self.role,
-            "pkcs7": identity_document,
-            "nonce": nonce,
-        }
+        login_data = {"role": self.role, "pkcs7": identity_document, "nonce": nonce}
 
         logger.debug("Obtaining Vault token via aws auth.")
         response = self.session.post(
@@ -282,14 +273,11 @@ class VaultClient:
         try:
             response = self.session.get(
                 urllib.parse.urljoin(self.base_url, posixpath.join("v1", secret_name)),
-                headers={
-                    "X-Vault-Token": self.token,
-                },
+                headers={"X-Vault-Token": self.token},
             )
             response.raise_for_status()
         except requests.HTTPError as e:
-            logger.error("Vault client failed to get secret: %s: %s",
-                         secret_name, e)
+            logger.error("Vault client failed to get secret: %s: %s", secret_name, e)
             raise
 
         payload = response.json()
@@ -309,17 +297,18 @@ def fetch_secrets(cfg, client_factory):
         os.fchown(f.fileno(), cfg.output.owner, cfg.output.group)
         os.fchmod(f.fileno(), cfg.output.mode)
 
-        json.dump({
-            "secrets": secrets,
-            "vault": {
-                "token": client.token,
-                "url": cfg.vault.url,
+        json.dump(
+            {
+                "secrets": secrets,
+                "vault": {"token": client.token, "url": cfg.vault.url},
+                # this is here to allow an upgrade path. the fetcher should
+                # be upgraded first followed by the application workers.
+                "vault_token": client.token,
             },
-
-            # this is here to allow an upgrade path. the fetcher should
-            # be upgraded first followed by the application workers.
-            "vault_token": client.token,
-        }, f, indent=2, sort_keys=True)
+            f,
+            indent=2,
+            sort_keys=True,
+        )
 
     # swap out the file contents atomically
     os.rename(cfg.output.path + ".tmp", cfg.output.path)
@@ -329,12 +318,18 @@ def fetch_secrets(cfg, client_factory):
 
 def main():
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("config_file", type=argparse.FileType("r"),
-        help="path to a configuration file")
-    arg_parser.add_argument("--debug", default=False, action="store_true",
-        help="enable debug logging")
-    arg_parser.add_argument("--once", default=False, action="store_true",
-        help="only run the fetcher once rather than as a daemon")
+    arg_parser.add_argument(
+        "config_file", type=argparse.FileType("r"), help="path to a configuration file"
+    )
+    arg_parser.add_argument(
+        "--debug", default=False, action="store_true", help="enable debug logging"
+    )
+    arg_parser.add_argument(
+        "--once",
+        default=False,
+        action="store_true",
+        help="only run the fetcher once rather than as a daemon",
+    )
     args = arg_parser.parse_args()
 
     if args.debug:
@@ -342,35 +337,37 @@ def main():
     else:
         level = logging.INFO
 
-    logging.basicConfig(
-        format='%(asctime)s:%(levelname)s:%(message)s',
-        level=level)
+    logging.basicConfig(format="%(asctime)s:%(levelname)s:%(message)s", level=level)
     parser = configparser.RawConfigParser()
     parser.readfp(args.config_file)  # pylint: disable=deprecated-method
     fetcher_config = dict(parser.items("secret-fetcher"))
 
-    cfg = config.parse_config(fetcher_config, {
-        "vault": {
-            "url": config.String,
-            "role": config.String,
-            "auth_type": config.Optional(config.OneOf(**VaultClientFactory.auth_types()),
-                                         default=VaultClientFactory.auth_types()["aws"]),
-            "mount_point": config.Optional(config.String, default="aws-ec2"),
+    cfg = config.parse_config(
+        fetcher_config,
+        {
+            "vault": {
+                "url": config.String,
+                "role": config.String,
+                "auth_type": config.Optional(
+                    config.OneOf(**VaultClientFactory.auth_types()),
+                    default=VaultClientFactory.auth_types()["aws"],
+                ),
+                "mount_point": config.Optional(config.String, default="aws-ec2"),
+            },
+            "output": {
+                "path": config.Optional(config.String, default="/var/local/secrets.json"),
+                "owner": config.Optional(config.UnixUser, default=0),
+                "group": config.Optional(config.UnixGroup, default=0),
+                "mode": config.Optional(config.Integer(base=8), default=0o400),
+            },
+            "secrets": config.Optional(config.TupleOf(config.String), default=[]),
         },
-
-        "output": {
-            "path": config.Optional(config.String, default="/var/local/secrets.json"),
-            "owner": config.Optional(config.UnixUser, default=0),
-            "group": config.Optional(config.UnixGroup, default=0),
-            "mode": config.Optional(config.Integer(base=8), default=0o400),
-        },
-
-        "secrets": config.Optional(config.TupleOf(config.String), default=[]),
-    })
+    )
 
     # pylint: disable=maybe-no-member
-    client_factory = VaultClientFactory(cfg.vault.url, cfg.vault.role,
-                                        cfg.vault.auth_type, cfg.vault.mount_point)
+    client_factory = VaultClientFactory(
+        cfg.vault.url, cfg.vault.role, cfg.vault.auth_type, cfg.vault.mount_point
+    )
 
     if args.once:
         logger.info("Running secret fetcher once")

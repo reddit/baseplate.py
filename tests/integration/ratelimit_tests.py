@@ -1,10 +1,10 @@
-
 from time import sleep
 import unittest
 from uuid import uuid4
 
 from baseplate.core import Baseplate
 from baseplate.ratelimit import RateLimiterContextFactory, RateLimitExceededException
+
 try:
     from pymemcache.client.base import PooledClient
     from baseplate.ratelimit.backends.memcache import MemcacheRateLimitBackendContextFactory
@@ -29,7 +29,8 @@ class RateLimiterBackendTests:
         self.allowance = 10
         self.interval = 1
         ratelimiter_factory = RateLimiterContextFactory(
-            self.backend_factory, self.allowance, self.interval)
+            self.backend_factory, self.allowance, self.interval
+        )
 
         self.baseplate_observer = TestBaseplateObserver()
 
@@ -61,8 +62,7 @@ class RateLimiterBackendTests:
 
 class RedisRateLimitBackendTests(RateLimiterBackendTests, unittest.TestCase):
     def setUp(self):
-        pool = ConnectionPool(host=redis_endpoint.address.host,
-                              port=redis_endpoint.address.port)
+        pool = ConnectionPool(host=redis_endpoint.address.host, port=redis_endpoint.address.port)
         self.backend_factory = RedisRateLimitBackendContextFactory(pool)
         super(RedisRateLimitBackendTests, self).setUp()
 

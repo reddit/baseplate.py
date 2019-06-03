@@ -1,4 +1,3 @@
-
 import logging
 import hashlib
 import time
@@ -17,10 +16,10 @@ logger = logging.getLogger(__name__)
 
 
 variant_type_map = {
-    'single_variant': SingleVariantSet,
-    'multi_variant': MultiVariantSet,
-    'feature_rollout': RolloutVariantSet,
-    'range_variant': RangeVariantSet,
+    "single_variant": SingleVariantSet,
+    "multi_variant": MultiVariantSet,
+    "feature_rollout": RolloutVariantSet,
+    "range_variant": RangeVariantSet,
 }
 
 
@@ -55,8 +54,11 @@ def _generate_overrides(override_config):
 
     for override_entry in override_config:
         if not isinstance(override_entry, dict) or len(override_entry) > 1:
-            logger.error("Invalid override configuration. Not applying override. "
-                "Expected dictionary with single entry: %s", override_entry)
+            logger.error(
+                "Invalid override configuration. Not applying override. "
+                "Expected dictionary with single entry: %s",
+                override_entry,
+            )
             continue
 
         for treatment, targeting_tree_cfg in override_entry.items():
@@ -73,13 +75,13 @@ def _generate_targeting(targeting_config):
     config is provided, then target none.
     """
     if targeting_config is None:
-        return create_targeting_tree({'OVERRIDE': True})
+        return create_targeting_tree({"OVERRIDE": True})
 
     try:
         return create_targeting_tree(targeting_config)
     except Exception:
         logger.error("Unable to create targeting tree. No targeting applied.")
-        return create_targeting_tree({'OVERRIDE': False})
+        return create_targeting_tree({"OVERRIDE": False})
 
 
 class SimpleExperiment(Experiment):
@@ -125,10 +127,25 @@ class SimpleExperiment(Experiment):
     """
 
     # pylint: disable=redefined-builtin, unused-argument
-    def __init__(self, id, name, owner, start_ts, stop_ts, config,
-                 experiment_version, shuffle_version, variant_set,
-                 bucket_seed, bucket_val, targeting, overrides,
-                 enabled=True, log_bucketing=True, num_buckets=1000):
+    def __init__(
+        self,
+        id,
+        name,
+        owner,
+        start_ts,
+        stop_ts,
+        config,
+        experiment_version,
+        shuffle_version,
+        variant_set,
+        bucket_seed,
+        bucket_val,
+        targeting,
+        overrides,
+        enabled=True,
+        log_bucketing=True,
+        num_buckets=1000,
+    ):
         self.id = id
         self.name = name
         self.owner = owner
@@ -149,7 +166,7 @@ class SimpleExperiment(Experiment):
         self._overrides = overrides
 
         if not self.experiment_version:
-            raise ValueError('Experiment version must be provided.')
+            raise ValueError("Experiment version must be provided.")
 
         self.variant_set = variant_set
 
@@ -158,8 +175,7 @@ class SimpleExperiment(Experiment):
             self._seed = "{}.{}.{}".format(id, name, shuffle_version)
 
     @classmethod
-    def from_dict(cls, id, name, owner, start_ts, stop_ts, config,
-                  variant_type, enabled=True):
+    def from_dict(cls, id, name, owner, start_ts, stop_ts, config, variant_type, enabled=True):
         bucket_val = config.get("bucket_val", "user_id")
         version = config.get("experiment_version")
         shuffle_version = config.get("shuffle_version")
@@ -170,7 +186,7 @@ class SimpleExperiment(Experiment):
         variant_type_cls = variant_type_map.get(variant_type)
 
         if variant_type_cls is None:
-            raise ValueError('Invalid experiment type: {}'.format(variant_type))
+            raise ValueError("Invalid experiment type: {}".format(variant_type))
 
         variant_set = variant_type_cls(variants, num_buckets=num_buckets)
 
@@ -209,9 +225,7 @@ class SimpleExperiment(Experiment):
 
     def get_unique_id(self, **kwargs):
         if kwargs.get(self.bucket_val):
-            return ":".join(
-                [self.name, self.bucket_val, str(kwargs[self.bucket_val])]
-            )
+            return ":".join([self.name, self.bucket_val, str(kwargs[self.bucket_val])])
         return None
 
     def should_log_bucketing(self):
@@ -242,16 +256,13 @@ class SimpleExperiment(Experiment):
 
         if self.bucket_val not in lower_kwargs:
             logger.info(
-                "Must specify %s in call to variant for experiment %s.",
-                self.bucket_val,
-                self.name,
+                "Must specify %s in call to variant for experiment %s.", self.bucket_val, self.name
             )
             return None
 
         if lower_kwargs[self.bucket_val] is None:
             logger.info(
-                "Cannot choose a variant for bucket value %s = %s "
-                "for experiment %s.",
+                "Cannot choose a variant for bucket value %s = %s " "for experiment %s.",
                 self.bucket_val,
                 lower_kwargs[self.bucket_val],
                 self.name,

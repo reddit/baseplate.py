@@ -70,6 +70,7 @@ class _ContextAwareHandler:
                 # a normal result
                 span.finish()
                 return result
+
         return call_with_context
 
 
@@ -98,6 +99,7 @@ def baseplateify_processor(processor, logger, baseplate, edge_context_factory=No
         configured factory for handling edge request context.
 
     """
+
     def make_processor_fn(fn_name, processor_fn):
         def call_processor_with_span_context(self, seqid, iprot, oprot):
             context = RequestContext()
@@ -119,11 +121,7 @@ def baseplateify_processor(processor, logger, baseplate, edge_context_factory=No
                 # downstream even if we don't know how to handle it.
                 context.raw_request_context = edge_payload
 
-            server_span = baseplate.make_server_span(
-                context,
-                name=fn_name,
-                trace_info=trace_info,
-            )
+            server_span = baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
 
             context.headers = headers
             context.trace = server_span
@@ -132,6 +130,7 @@ def baseplateify_processor(processor, logger, baseplate, edge_context_factory=No
             context_aware_handler = _ContextAwareHandler(handler, context, logger)
             context_aware_processor = processor.__class__(context_aware_handler)
             return processor_fn(context_aware_processor, seqid, iprot, oprot)
+
         return call_processor_with_span_context
 
     instrumented_process_map = {}

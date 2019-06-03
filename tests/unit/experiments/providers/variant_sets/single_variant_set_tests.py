@@ -1,4 +1,3 @@
-
 import logging
 import collections
 import time
@@ -16,12 +15,10 @@ NUM_BUCKETS_ODD = 1037
 
 
 def generate_variant_config():
-    cfg = [
-        {"name": "variant_1", "size": 0.25},
-        {"name": "variant_2", "size": 0.25},
-    ]
+    cfg = [{"name": "variant_1", "size": 0.25}, {"name": "variant_2", "size": 0.25}]
 
     return cfg
+
 
 def create_single_variant_set():
     cfg = generate_variant_config()
@@ -29,7 +26,6 @@ def create_single_variant_set():
 
 
 class TestSingleVariantSet(unittest.TestCase):
-
     def test_validation_passes(self):
         variant_set = create_single_variant_set()
 
@@ -38,12 +34,9 @@ class TestSingleVariantSet(unittest.TestCase):
     def test_validation_fails(self):
         variant_set_cfg_none = None
 
-        variant_set_cfg_0 = [
-        ]
+        variant_set_cfg_0 = []
 
-        variant_set_cfg_1 = [
-            {"name": "variant_1", "size": 0.25},
-        ]
+        variant_set_cfg_1 = [{"name": "variant_1", "size": 0.25}]
 
         variant_set_cfg_3 = [
             {"name": "variant_1", "size": 0.25},
@@ -61,21 +54,17 @@ class TestSingleVariantSet(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             variant_set_0 = SingleVariantSet(variant_set_cfg_0)
-        
+
         with self.assertRaises(ValueError):
             variant_set_1 = SingleVariantSet(variant_set_cfg_1)
-        
+
         with self.assertRaises(ValueError):
             variant_set_too_big = SingleVariantSet(variant_set_cfg_too_big)
 
     def test_distribution_def_buckets(self):
         variant_set = create_single_variant_set()
 
-        variant_counts = {
-            "variant_1": 0,
-            "variant_2": 0,
-            None: 0,
-        }
+        variant_counts = {"variant_1": 0, "variant_2": 0, None: 0}
 
         for bucket in range(0, NUM_BUCKETS_DEFAULT):
             variant = variant_set.choose_variant(bucket)
@@ -83,26 +72,16 @@ class TestSingleVariantSet(unittest.TestCase):
 
         self.assertEqual(len(variant_counts), 3)
 
-        self.assertEqual(variant_counts['variant_1'], 250)
-        self.assertEqual(variant_counts['variant_2'], 250)
+        self.assertEqual(variant_counts["variant_1"], 250)
+        self.assertEqual(variant_counts["variant_2"], 250)
         self.assertEqual(variant_counts[None], 500)
 
     def test_distribution_single_bucket(self):
-        cfg = [
-            {"name": "variant_1", "size": 0.001},
-            {"name": "variant_2", "size": 0},
-        ]
+        cfg = [{"name": "variant_1", "size": 0.001}, {"name": "variant_2", "size": 0}]
 
-        variant_set = SingleVariantSet(
-            variants=cfg, 
-            num_buckets=NUM_BUCKETS_DEFAULT
-        )
+        variant_set = SingleVariantSet(variants=cfg, num_buckets=NUM_BUCKETS_DEFAULT)
 
-        variant_counts = {
-            "variant_1": 0,
-            "variant_2": 0,
-            None: 0,
-        }
+        variant_counts = {"variant_1": 0, "variant_2": 0, None: 0}
 
         for bucket in range(0, NUM_BUCKETS_DEFAULT):
             variant = variant_set.choose_variant(bucket)
@@ -110,27 +89,17 @@ class TestSingleVariantSet(unittest.TestCase):
 
         self.assertEqual(len(variant_counts), 3)
 
-        self.assertEqual(variant_counts['variant_1'], 1)
-        self.assertEqual(variant_counts['variant_2'], 0)
+        self.assertEqual(variant_counts["variant_1"], 1)
+        self.assertEqual(variant_counts["variant_2"], 0)
         self.assertEqual(variant_counts[None], 999)
 
     def test_distribution_def_odd(self):
-        variant_cfg = [
-            {"name": "variant_1", "size": 0.5},
-            {"name": "variant_2", "size": 0.5},
-        ]
-        variant_set = SingleVariantSet(
-            variants=variant_cfg, 
-            num_buckets=NUM_BUCKETS_ODD,
-        )
+        variant_cfg = [{"name": "variant_1", "size": 0.5}, {"name": "variant_2", "size": 0.5}]
+        variant_set = SingleVariantSet(variants=variant_cfg, num_buckets=NUM_BUCKETS_ODD)
 
-        variant_counts = {
-            "variant_1": 0,
-            "variant_2": 0,
-            None: 0,
-        }
+        variant_counts = {"variant_1": 0, "variant_2": 0, None: 0}
 
-        for bucket in range(0,NUM_BUCKETS_ODD):
+        for bucket in range(0, NUM_BUCKETS_ODD):
             variant = variant_set.choose_variant(bucket)
             variant_counts[variant] += 1
 

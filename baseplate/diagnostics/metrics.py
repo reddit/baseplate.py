@@ -1,9 +1,4 @@
-
-from ..core import (
-    BaseplateObserver,
-    LocalSpan,
-    SpanObserver,
-)
+from ..core import BaseplateObserver, LocalSpan, SpanObserver
 
 
 class MetricsBaseplateObserver(BaseplateObserver):

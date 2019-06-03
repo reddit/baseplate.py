@@ -1,4 +1,3 @@
-
 import collections
 import math
 import os
@@ -13,7 +12,10 @@ from baseplate.events import EventLogger
 from baseplate.experiments import ExperimentsContextFactory
 from baseplate.experiments.providers import ISO_DATE_FMT, parse_experiment
 from baseplate.experiments.providers.simple_experiment import SimpleExperiment
-from baseplate.experiments.providers.simple_experiment import _generate_targeting, _generate_overrides
+from baseplate.experiments.providers.simple_experiment import (
+    _generate_targeting,
+    _generate_overrides,
+)
 from baseplate.experiments.targeting.base import Targeting
 from baseplate.experiments.targeting.tree_targeting import OverrideNode, EqualNode
 from baseplate.file_watcher import FileWatcher
@@ -32,11 +34,7 @@ def get_users(num_users, logged_in=True):
             name = str(i)
         else:
             name = None
-        users.append(dict(
-            name=name,
-            id="t2_%s" % str(i),
-            logged_in=logged_in,
-        ))
+        users.append(dict(name=name, id="t2_%s" % str(i), logged_in=logged_in))
     return users
 
 
@@ -55,18 +53,9 @@ def get_simple_config():
         "stop_ts": time.time() + THIRTY_DAYS,
         "enabled": True,
         "experiment": {
-            "variants": [
-                {
-                    "name":"variant_1",
-                    "size": 0.1,
-                },
-                {
-                    "name":"variant_2",
-                    "size": 0.1,
-                },
-            ],
+            "variants": [{"name": "variant_1", "size": 0.1}, {"name": "variant_2", "size": 0.1}],
             "experiment_version": 1,
-        }
+        },
     }
     return cfg
 
@@ -78,56 +67,52 @@ def create_simple_experiment():
 
     return experiment
 
+
 def get_targeting_config():
     targeting_cfg = {
-        'ALL':[
-            {'ANY':[
-                {'EQ': {'field': 'is_mod', 'value': True}},
-                {'EQ': {'field': 'user_id', 'values':['t2_1','t2_2','t2_3','t2_4']}},
-            ]},
-            {'NOT': {
-                'EQ': {'field': 'is_pita', 'value': True}}},
-            {'EQ': {'field': 'is_logged_in', 'values': [True, False]}},
-            {'NOT': {
-                'EQ': {'field': 'subreddit_id', 'values': ['t5_1','t5_2']}}},
-            {'ALL':[
-                {'EQ':{'field':'random_numeric', 'values':[1,2,3,4,5]}},
-                {'EQ':{'field':'random_numeric', 'value':5}}
-            ]}
+        "ALL": [
+            {
+                "ANY": [
+                    {"EQ": {"field": "is_mod", "value": True}},
+                    {"EQ": {"field": "user_id", "values": ["t2_1", "t2_2", "t2_3", "t2_4"]}},
+                ]
+            },
+            {"NOT": {"EQ": {"field": "is_pita", "value": True}}},
+            {"EQ": {"field": "is_logged_in", "values": [True, False]}},
+            {"NOT": {"EQ": {"field": "subreddit_id", "values": ["t5_1", "t5_2"]}}},
+            {
+                "ALL": [
+                    {"EQ": {"field": "random_numeric", "values": [1, 2, 3, 4, 5]}},
+                    {"EQ": {"field": "random_numeric", "value": 5}},
+                ]
+            },
         ]
     }
     return targeting_cfg
 
+
 def get_simple_override_config():
     override_config = [
-        {
-            'override_variant_1':{'EQ': {'field':'user_id', 'value':'t2_1'}}
-        },
-        {
-            'override_variant_2':{'EQ': {'field':'user_id', 'value':'t2_2'}}
-        },
-        {
-            'override_variant_3':{'EQ': {'field':'user_id', 'values':['t2_2', 't2_3']}},
-        },
-        {
-            'override_variant_1':{'EQ': {'field':'user_id', 'values':['t2_1', 't2_4']}},
-        }
+        {"override_variant_1": {"EQ": {"field": "user_id", "value": "t2_1"}}},
+        {"override_variant_2": {"EQ": {"field": "user_id", "value": "t2_2"}}},
+        {"override_variant_3": {"EQ": {"field": "user_id", "values": ["t2_2", "t2_3"]}}},
+        {"override_variant_1": {"EQ": {"field": "user_id", "values": ["t2_1", "t2_4"]}}},
     ]
 
     return override_config
 
+
 def get_dict_override_config():
     override_config = {
-        'override_variant_1':{'EQ': {'field':'user_id', 'value':'t2_1'}},
-        'override_variant_2':{'EQ': {'field':'user_id', 'value':'t2_2'}},
-        'override_variant_3':{'EQ': {'field':'user_id', 'values':['t2_2', 't2_3']}},
+        "override_variant_1": {"EQ": {"field": "user_id", "value": "t2_1"}},
+        "override_variant_2": {"EQ": {"field": "user_id", "value": "t2_2"}},
+        "override_variant_3": {"EQ": {"field": "user_id", "values": ["t2_2", "t2_3"]}},
     }
-    
+
     return override_config
 
 
 class TestSimpleExperiment(unittest.TestCase):
-
     def test_calculate_bucket_value(self):
         experiment = create_simple_experiment()
         experiment.num_buckets = 1000
@@ -144,19 +129,13 @@ class TestSimpleExperiment(unittest.TestCase):
             "enabled": True,
             "experiment": {
                 "variants": [
-                    {
-                        "name":"variant_1",
-                        "size":0.1,
-                    },
-                    {
-                        "name":"variant_2",
-                        "size":0.1,
-                    },
+                    {"name": "variant_1", "size": 0.1},
+                    {"name": "variant_2", "size": 0.1},
                 ],
-                "experiment_version":1,
-                "shuffle_version":1,
+                "experiment_version": 1,
+                "shuffle_version": 1,
                 "bucket_seed": "some new seed",
-            }
+            },
         }
 
         seeded_experiment = parse_experiment(seeded_cfg)
@@ -164,13 +143,11 @@ class TestSimpleExperiment(unittest.TestCase):
         self.assertNotEqual(seeded_experiment.seed, experiment.seed)
         self.assertIsNot(seeded_experiment.seed, None)
         seeded_experiment.num_buckets = 1000
-        self.assertEqual(
-            seeded_experiment._calculate_bucket("t2_1"),
-            int(924),
-        )
+        self.assertEqual(seeded_experiment._calculate_bucket("t2_1"), int(924))
 
-    @unittest.skipIf("CI" not in os.environ,
-                     "test takes too long to run for normal local iteration")
+    @unittest.skipIf(
+        "CI" not in os.environ, "test takes too long to run for normal local iteration"
+    )
     def test_calculate_bucket(self):
         experiment = create_simple_experiment()
 
@@ -195,11 +172,11 @@ class TestSimpleExperiment(unittest.TestCase):
             # Calculating the percentage difference instead of looking at the
             # raw difference scales better as we change num_users.
             percent_equal = float(actual) / expected
-            self.assertAlmostEqual(percent_equal, 1.0, delta=.10,
-                                   msg='bucket: %s' % bucket)
+            self.assertAlmostEqual(percent_equal, 1.0, delta=0.10, msg="bucket: %s" % bucket)
 
-    @unittest.skipIf("CI" not in os.environ,
-                     "test takes too long to run for normal local iteration")
+    @unittest.skipIf(
+        "CI" not in os.environ, "test takes too long to run for normal local iteration"
+    )
     def test_calculate_bucket_with_seed(self):
         seeded_cfg = {
             "id": 1,
@@ -212,19 +189,13 @@ class TestSimpleExperiment(unittest.TestCase):
             "enabled": True,
             "experiment": {
                 "variants": [
-                    {
-                        "name":"variant_1",
-                        "size":0.1,
-                    },
-                    {
-                        "name":"variant_2",
-                        "size":0.1,
-                    },
+                    {"name": "variant_1", "size": 0.1},
+                    {"name": "variant_2", "size": 0.1},
                 ],
-                "experiment_version":1,
-                "shuffle_version":1,
+                "experiment_version": 1,
+                "shuffle_version": 1,
                 "bucket_seed": "some_new_seed",
-            }
+            },
         }
 
         experiment = parse_experiment(seeded_cfg)
@@ -251,7 +222,7 @@ class TestSimpleExperiment(unittest.TestCase):
             experiment._seed = current_seed
             # check that the bucketing changed at some point. Can't compare
             # bucket1 to bucket2 inline because sometimes the user will fall
-            # into both buckets, and test will fail. 
+            # into both buckets, and test will fail.
             if bucket1 != bucket2:
                 bucketing_changed = True
 
@@ -264,21 +235,22 @@ class TestSimpleExperiment(unittest.TestCase):
             # Calculating the percentage difference instead of looking at the
             # raw difference scales better as we change NUM_USERS.
             percent_equal = float(actual) / expected
-            self.assertAlmostEqual(percent_equal, 1.0, delta=.10,
-                                   msg='bucket: %s' % bucket)
+            self.assertAlmostEqual(percent_equal, 1.0, delta=0.10, msg="bucket: %s" % bucket)
 
-    @mock.patch('baseplate.experiments.providers.simple_experiment.SimpleExperiment._choose_variant')
+    @mock.patch(
+        "baseplate.experiments.providers.simple_experiment.SimpleExperiment._choose_variant"
+    )
     def test_variant_returns_none_if_out_of_time_window(self, choose_variant_mock):
-        choose_variant_mock.return_value = 'fake_variant'
+        choose_variant_mock.return_value = "fake_variant"
         valid_cfg = get_simple_config()
         experiment_valid = parse_experiment(valid_cfg)
 
         expired_cfg = get_simple_config()
-        expired_cfg['stop_ts'] = time.time() - FIVE_DAYS
+        expired_cfg["stop_ts"] = time.time() - FIVE_DAYS
         experiment_expired = parse_experiment(expired_cfg)
 
         experiment_not_started_cfg = get_simple_config()
-        experiment_not_started_cfg['start_ts'] = time.time() + FIVE_DAYS
+        experiment_not_started_cfg["start_ts"] = time.time() + FIVE_DAYS
         experiment_not_started = parse_experiment(experiment_not_started_cfg)
 
         variant_valid = experiment_valid.variant(user_id="t2_1")
@@ -309,17 +281,11 @@ class TestSimpleExperiment(unittest.TestCase):
             "enabled": False,
             "experiment": {
                 "variants": [
-                    {
-                        "name":"variant_1",
-                        "size":0.5,
-                    },
-                    {
-                        "name":"variant_2",
-                        "size":0.5,
-                    },
+                    {"name": "variant_1", "size": 0.5},
+                    {"name": "variant_2", "size": 0.5},
                 ],
-                "experiment_version":1,
-            }
+                "experiment_version": 1,
+            },
         }
 
         experiment = parse_experiment(experiments_cfg)
@@ -327,9 +293,11 @@ class TestSimpleExperiment(unittest.TestCase):
         variant = experiment.variant(user_id="t2_1")
         self.assertIs(variant, None)
 
-    @mock.patch('baseplate.experiments.providers.simple_experiment.SimpleExperiment._choose_variant')
+    @mock.patch(
+        "baseplate.experiments.providers.simple_experiment.SimpleExperiment._choose_variant"
+    )
     def test_bucket_val(self, choose_variant_mock):
-        choose_variant_mock.return_value = 'fake_variant'
+        choose_variant_mock.return_value = "fake_variant"
         cfg = {
             "id": 1,
             "name": "test_experiment",
@@ -341,18 +309,12 @@ class TestSimpleExperiment(unittest.TestCase):
             "enabled": True,
             "experiment": {
                 "variants": [
-                    {
-                        "name":"variant_1",
-                        "size":0.5,
-                    },
-                    {
-                        "name":"variant_2",
-                        "size":0.5,
-                    },
+                    {"name": "variant_1", "size": 0.5},
+                    {"name": "variant_2", "size": 0.5},
                 ],
-                "experiment_version":1,
-                "bucket_val":"new_bucket_val",
-            }
+                "experiment_version": 1,
+                "bucket_val": "new_bucket_val",
+            },
         }
 
         experiment = parse_experiment(cfg)
@@ -370,7 +332,7 @@ class TestSimpleExperiment(unittest.TestCase):
         experiment_version_1 = parse_experiment(cfg)
 
         shuffle_cfg = get_simple_config()
-        shuffle_cfg['experiment']['shuffle_version'] = 2
+        shuffle_cfg["experiment"]["shuffle_version"] = 2
 
         experiment_version_2 = parse_experiment(shuffle_cfg)
 
@@ -419,7 +381,7 @@ class TestSimpleExperiment(unittest.TestCase):
 
     def test_generate_targeting_invalid_config(self):
         targeting_cfg = get_targeting_config()
-        targeting_cfg['ALL'][0]['ANY'][0] = {'EQUAL': {'field': 'is_mod', 'value': True}}
+        targeting_cfg["ALL"][0]["ANY"][0] = {"EQUAL": {"field": "is_mod", "value": True}}
 
         experiment_correct_targeting = _generate_targeting(targeting_cfg)
         self.assertTrue(isinstance(experiment_correct_targeting, Targeting))
@@ -430,27 +392,25 @@ class TestSimpleExperiment(unittest.TestCase):
     def test_targeting_in_config(self):
         cfg = get_simple_config()
         targeting_cfg = get_targeting_config()
-        cfg['experiment']['targeting'] = targeting_cfg
+        cfg["experiment"]["targeting"] = targeting_cfg
 
         experiment_with_targeting = parse_experiment(cfg)
 
-        self.assertTrue(experiment_with_targeting.is_targeted(
-            is_mod=True,
-            is_logged_in=True,
-            random_numeric=5,
-        ))
+        self.assertTrue(
+            experiment_with_targeting.is_targeted(is_mod=True, is_logged_in=True, random_numeric=5)
+        )
 
     def test_construct_override(self):
         cfg = get_simple_override_config()
         overrides = _generate_overrides(cfg)
 
         self.assertEqual(len(overrides), 4)
-        
+
         override_names_and_types = [
-            ('override_variant_1', EqualNode),
-            ('override_variant_2', EqualNode),
-            ('override_variant_3', EqualNode),
-            ('override_variant_1', EqualNode),
+            ("override_variant_1", EqualNode),
+            ("override_variant_2", EqualNode),
+            ("override_variant_3", EqualNode),
+            ("override_variant_1", EqualNode),
         ]
 
         for i, override in enumerate(overrides):
@@ -466,99 +426,82 @@ class TestSimpleExperiment(unittest.TestCase):
 
     def test_construct_invalid_override(self):
         cfg = get_simple_override_config()
-        cfg[1]['override_variant_2'] = {'EQUAL': {'field':'user_id', 'value':'t2_1'}}
+        cfg[1]["override_variant_2"] = {"EQUAL": {"field": "user_id", "value": "t2_1"}}
         overrides = _generate_overrides(cfg)
 
         override_names_and_types = [
-            ('override_variant_1', EqualNode),
-            ('override_variant_2', OverrideNode),
-            ('override_variant_3', EqualNode),
-            ('override_variant_1', EqualNode),
+            ("override_variant_1", EqualNode),
+            ("override_variant_2", OverrideNode),
+            ("override_variant_3", EqualNode),
+            ("override_variant_1", EqualNode),
         ]
 
         for i, override in enumerate(overrides):
-            self.assertEqual(len(overrides[i]),1)
+            self.assertEqual(len(overrides[i]), 1)
             variant_name, override_type = override_names_and_types[i]
             self.assertTrue(isinstance(override[variant_name], override_type))
 
-        self.assertEqual(len(overrides),4)
+        self.assertEqual(len(overrides), 4)
 
     def test_construct_invalid_overrides(self):
         cfg = get_simple_override_config()
-        cfg[0] = 'not a dictionary'
+        cfg[0] = "not a dictionary"
         overrides = _generate_overrides(cfg)
 
         override_names_and_types = [
-            ('override_variant_2', EqualNode),
-            ('override_variant_3', EqualNode),
-            ('override_variant_1', EqualNode),
+            ("override_variant_2", EqualNode),
+            ("override_variant_3", EqualNode),
+            ("override_variant_1", EqualNode),
         ]
 
         for i, override in enumerate(overrides):
-            self.assertEqual(len(overrides[i]),1)
+            self.assertEqual(len(overrides[i]), 1)
             variant_name, override_type = override_names_and_types[i]
             self.assertTrue(isinstance(override[variant_name], override_type))
 
         self.assertEqual(len(overrides), 3)
-    
+
     def test_get_override(self):
         exp_config = get_simple_config()
         override_config = get_simple_override_config()
-        exp_config['experiment']['overrides'] = override_config
+        exp_config["experiment"]["overrides"] = override_config
 
         experiment_with_overrides = parse_experiment(exp_config)
 
         self.assertEqual(
-            experiment_with_overrides.get_override(user_id='t2_1'),
-            'override_variant_1'
+            experiment_with_overrides.get_override(user_id="t2_1"), "override_variant_1"
         )
 
         self.assertEqual(
-            experiment_with_overrides.get_override(user_id='t2_2'),
-            'override_variant_2'
+            experiment_with_overrides.get_override(user_id="t2_2"), "override_variant_2"
         )
 
         self.assertEqual(
-            experiment_with_overrides.get_override(user_id='t2_3'),
-            'override_variant_3'
+            experiment_with_overrides.get_override(user_id="t2_3"), "override_variant_3"
         )
 
         self.assertEqual(
-            experiment_with_overrides.get_override(user_id='t2_4'),
-            'override_variant_1'
+            experiment_with_overrides.get_override(user_id="t2_4"), "override_variant_1"
         )
 
-    @mock.patch('baseplate.experiments.providers.simple_experiment.SimpleExperiment._choose_variant')
+    @mock.patch(
+        "baseplate.experiments.providers.simple_experiment.SimpleExperiment._choose_variant"
+    )
     def test_variant_call_with_overrides(self, choose_variant_mock):
         choose_variant_mock.return_value = "mocked_variant"
 
         exp_config = get_simple_config()
         override_config = get_simple_override_config()
-        exp_config['experiment']['overrides'] = override_config
+        exp_config["experiment"]["overrides"] = override_config
 
         experiment_with_overrides = parse_experiment(exp_config)
 
-        self.assertEqual(
-            experiment_with_overrides.variant(user_id='t2_1'),
-            'override_variant_1'
-        )
+        self.assertEqual(experiment_with_overrides.variant(user_id="t2_1"), "override_variant_1")
 
-        self.assertEqual(
-            experiment_with_overrides.variant(user_id='t2_2'),
-            'override_variant_2'
-        )
+        self.assertEqual(experiment_with_overrides.variant(user_id="t2_2"), "override_variant_2")
 
-        self.assertEqual(
-            experiment_with_overrides.variant(user_id='t2_3'),
-            'override_variant_3'
-        )
+        self.assertEqual(experiment_with_overrides.variant(user_id="t2_3"), "override_variant_3")
 
-        self.assertEqual(
-            experiment_with_overrides.variant(user_id='t2_4'),
-            'override_variant_1'
-        )
+        self.assertEqual(experiment_with_overrides.variant(user_id="t2_4"), "override_variant_1")
 
-        self.assertEqual(
-            experiment_with_overrides.variant(user_id='t2_5'),
-            'mocked_variant'
-        )
+        self.assertEqual(experiment_with_overrides.variant(user_id="t2_5"), "mocked_variant")

@@ -1,4 +1,3 @@
-
 from baseplate.ratelimit.backends import RateLimitBackend
 from baseplate.ratelimit.backends import _get_current_bucket
 from ...context import ContextFactory
@@ -16,7 +15,7 @@ class MemcacheRateLimitBackendContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, memcache_pool, prefix='rl:'):
+    def __init__(self, memcache_pool, prefix="rl:"):
         self.memcache_context_factory = MemcacheContextFactory(memcache_pool)
         self.prefix = prefix
 
@@ -36,7 +35,7 @@ class MemcacheRateLimitBackend(RateLimitBackend):
 
     """
 
-    def __init__(self, memcache, prefix='rl:'):
+    def __init__(self, memcache, prefix="rl:"):
         self.memcache = memcache
         self.prefix = prefix
 

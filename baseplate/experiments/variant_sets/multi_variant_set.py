@@ -25,7 +25,7 @@ class MultiVariantSet(VariantSet):
 
     def __contains__(self, item):
         for variant in self.variants:
-            if variant.get('name') == item:
+            if variant.get("name") == item:
                 return True
 
         return False
@@ -33,20 +33,19 @@ class MultiVariantSet(VariantSet):
     def _validate_variants(self):
 
         if self.variants is None:
-            raise ValueError('No variants provided')
+            raise ValueError("No variants provided")
 
         if len(self.variants) < 3:
-            raise ValueError("MultiVariant experiments expect three or "
-                "more variants.")
+            raise ValueError("MultiVariant experiments expect three or " "more variants.")
 
         total_size = 0
         for variant in self.variants:
-            if variant.get('size') is None:
-                raise ValueError('Variant size not provided: {}'.format(self.variants))
-            total_size += int(variant.get('size') * self.num_buckets)
+            if variant.get("size") is None:
+                raise ValueError("Variant size not provided: {}".format(self.variants))
+            total_size += int(variant.get("size") * self.num_buckets)
 
         if total_size > self.num_buckets:
-            raise ValueError('Sum of all variants is greater than 100%')
+            raise ValueError("Sum of all variants is greater than 100%")
 
     def choose_variant(self, bucket):
         """Deterministically choose a variant.
@@ -61,8 +60,8 @@ class MultiVariantSet(VariantSet):
         current_offset = 0
 
         for variant in self.variants:
-            current_offset += int(variant['size'] * self.num_buckets)
+            current_offset += int(variant["size"] * self.num_buckets)
             if bucket < current_offset:
-                return variant['name']
+                return variant["name"]
 
         return None

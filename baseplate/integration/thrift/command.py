@@ -1,4 +1,3 @@
-
 import glob
 import os
 import subprocess
@@ -11,17 +10,13 @@ import baseplate.thrift
 
 class BuildThriftCommand(Command):
     description = "Generate Python code from Thrift IDL."
-    user_options = [
-        ("build-base=", "b", "base directory for build library"),
-    ]
+    user_options = [("build-base=", "b", "base directory for build library")]
 
     def initialize_options(self):
         self.build_base = None
 
     def finalize_options(self):
-        self.set_undefined_options("build",
-            ("build_base", "build_base"),
-        )
+        self.set_undefined_options("build", ("build_base", "build_base"))
 
     def run(self):
         if self.dry_run:
@@ -34,14 +29,19 @@ class BuildThriftCommand(Command):
             package_dir = os.path.join(*package.split("."))
 
             for thriftfile in glob.glob(os.path.join(package_dir, "*.thrift")):
-                subprocess.check_call([
-                    "thrift",
-                    "-strict",
-                    "-gen", "py:slots",
-                    "-out", temp_dir,
-                    "-I", os.path.dirname(baseplate.thrift.__file__),
-                    thriftfile,
-                ])
+                subprocess.check_call(
+                    [
+                        "thrift",
+                        "-strict",
+                        "-gen",
+                        "py:slots",
+                        "-out",
+                        temp_dir,
+                        "-I",
+                        os.path.dirname(baseplate.thrift.__file__),
+                        thriftfile,
+                    ]
+                )
 
                 module_name = os.path.splitext(os.path.basename(thriftfile))[0]
                 input_package = os.path.join(temp_dir, module_name)
@@ -61,7 +61,7 @@ class BuildThriftCommand(Command):
                         for line in lines:
                             prefix = "from " + module_name
                             if line.startswith(prefix):
-                                f.write("from " + full_package_name + line[len(prefix):])
+                                f.write("from " + full_package_name + line[len(prefix) :])
                             else:
                                 f.write(line)
 

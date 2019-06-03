@@ -1,4 +1,3 @@
-
 import unittest
 
 from baseplate import core, thrift_pool

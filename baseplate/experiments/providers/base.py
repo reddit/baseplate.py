@@ -1,5 +1,3 @@
-
-
 class Experiment:
     """Base interface for experiment objects."""
 

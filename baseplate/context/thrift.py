@@ -1,4 +1,3 @@
-
 import contextlib
 import inspect
 import sys
@@ -45,7 +44,7 @@ class ThriftContextFactory(ContextFactory):
             {
                 fn_name: _build_thrift_proxy_method(fn_name)
                 for fn_name in _enumerate_service_methods(client_cls)
-                if not (fn_name.startswith('__') and fn_name.endswith('__'))
+                if not (fn_name.startswith("__") and fn_name.endswith("__"))
             },
         )
 
@@ -151,6 +150,7 @@ def _build_thrift_proxy_method(name):
         raise TTransportException(
             type=TTransportException.TIMED_OUT,
             message="retry policy exhausted while attempting {}.{}, "
-                    "last error was: {}".format(self.namespace, name, last_error),
+            "last error was: {}".format(self.namespace, name, last_error),
         )
+
     return _call_thrift_method

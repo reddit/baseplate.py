@@ -13,17 +13,20 @@ from thrift.TRecursive import fix_spec
 import sys
 
 from thrift.transport import TTransport
+
 all_structs = []
 
 
 class ExpectedException(TException):
 
-    __slots__ = (
-    )
-
+    __slots__ = ()
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -40,7 +43,7 @@ class ExpectedException(TException):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('ExpectedException')
+        oprot.writeStructBegin("ExpectedException")
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -51,9 +54,8 @@ class ExpectedException(TException):
         return repr(self)
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -67,8 +69,9 @@ class ExpectedException(TException):
 
     def __ne__(self, other):
         return not (self == other)
+
+
 all_structs.append(ExpectedException)
-ExpectedException.thrift_spec = (
-)
+ExpectedException.thrift_spec = ()
 fix_spec(all_structs)
 del all_structs

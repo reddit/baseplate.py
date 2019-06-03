@@ -1,4 +1,3 @@
-
 import logging
 import queue
 from threading import Thread
@@ -45,11 +44,7 @@ def consume(baseplate, exchange, connection, queue_name, routing_keys, handler):
     """
     queues = []
     for routing_key in routing_keys:
-        queues.append(Queue(
-            name=queue_name,
-            exchange=exchange,
-            routing_key=routing_key,
-        ))
+        queues.append(Queue(name=queue_name, exchange=exchange, routing_key=routing_key))
 
     logger.info("registering %s as a handler for %r", handler.__name__, queues)
     kombu_consumer = KombuConsumer.new(connection, queues)
@@ -70,10 +65,7 @@ class _ConsumerWorker(ConsumerMixin):
         self.work_queue = work_queue
 
     def get_consumers(self, Consumer, channel):
-        return [Consumer(
-            queues=self.queues,
-            on_message=self.on_message,
-        )]
+        return [Consumer(queues=self.queues, on_message=self.on_message)]
 
     def on_message(self, message):
         self.work_queue.put(message)
@@ -172,20 +164,19 @@ class KombuConsumer(BaseKombuConsumer):
         child_span.set_tag("kind", "consumer")
 
         with child_span:
-            messages = BaseKombuConsumer.get_batch(
-                self, max_items=1, timeout=None)
+            messages = BaseKombuConsumer.get_batch(self, max_items=1, timeout=None)
             message = messages[0]
 
-            routing_key = message.delivery_info.get("routing_key", '')
+            routing_key = message.delivery_info.get("routing_key", "")
             child_span.set_tag("routing_key", routing_key)
 
-            consumer_tag = message.delivery_info.get("consumer_tag", '')
+            consumer_tag = message.delivery_info.get("consumer_tag", "")
             child_span.set_tag("consumer_tag", consumer_tag)
 
-            delivery_tag = message.delivery_info.get("delivery_tag", '')
+            delivery_tag = message.delivery_info.get("delivery_tag", "")
             child_span.set_tag("delivery_tag", delivery_tag)
 
-            exchange = message.delivery_info.get("exchange", '')
+            exchange = message.delivery_info.get("exchange", "")
             child_span.set_tag("exchange", exchange)
 
             return message

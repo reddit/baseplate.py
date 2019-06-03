@@ -1,4 +1,3 @@
-
 import socket
 import unittest
 
@@ -7,8 +6,7 @@ from baseplate import config, server
 from ... import mock
 
 
-EXAMPLE_ENDPOINT = config.EndpointConfiguration(
-    socket.AF_INET, ("127.0.0.1", 1234))
+EXAMPLE_ENDPOINT = config.EndpointConfiguration(socket.AF_INET, ("127.0.0.1", 1234))
 
 
 class ParseArgsTests(unittest.TestCase):
@@ -27,18 +25,22 @@ class ParseArgsTests(unittest.TestCase):
 
     @mock.patch("argparse.FileType", autospec=True)
     def test_options(self, make_file):
-        args = server.parse_args([
-            "filename",
-            "--debug",
-            "--app-name", "app",
-            "--server-name", "server",
-            "--bind", "1.2.3.4:81",
-        ])
+        args = server.parse_args(
+            [
+                "filename",
+                "--debug",
+                "--app-name",
+                "app",
+                "--server-name",
+                "server",
+                "--bind",
+                "1.2.3.4:81",
+            ]
+        )
         self.assertTrue(args.debug)
         self.assertEqual(args.app_name, "app")
         self.assertEqual(args.server_name, "server")
-        self.assertEqual(args.bind,
-            config.EndpointConfiguration(socket.AF_INET, ("1.2.3.4", 81)))
+        self.assertEqual(args.bind, config.EndpointConfiguration(socket.AF_INET, ("1.2.3.4", 81)))
 
 
 class MakeListenerTests(unittest.TestCase):
@@ -57,8 +59,7 @@ class MakeListenerTests(unittest.TestCase):
     def test_manually_bound(self, mocket, fcntl):
         listener = server.make_listener(EXAMPLE_ENDPOINT)
 
-        self.assertEqual(mocket.call_args,
-            mock.call(socket.AF_INET, socket.SOCK_STREAM))
+        self.assertEqual(mocket.call_args, mock.call(socket.AF_INET, socket.SOCK_STREAM))
         self.assertEqual(listener, mocket.return_value)
 
         self.assertEqual(listener.bind.call_args, mock.call(("127.0.0.1", 1234)))

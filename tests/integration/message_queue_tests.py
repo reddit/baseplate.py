@@ -1,4 +1,3 @@
-
 import contextlib
 import time
 import unittest
@@ -41,7 +40,7 @@ class TestMessageQueueCreation(unittest.TestCase):
         with contextlib.closing(message_queue) as mq:
             start = time.time()
             with self.assertRaises(TimedOutError):
-                mq.get(timeout=.1)
+                mq.get(timeout=0.1)
             elapsed = time.time() - start
             self.assertAlmostEqual(elapsed, 0.1, places=2)
 
@@ -52,7 +51,7 @@ class TestMessageQueueCreation(unittest.TestCase):
             mq.put(b"x")
             start = time.time()
             with self.assertRaises(TimedOutError):
-                mq.put(b"x", timeout=.1)
+                mq.put(b"x", timeout=0.1)
             elapsed = time.time() - start
             self.assertAlmostEqual(elapsed, 0.1, places=2)
 

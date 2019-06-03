@@ -14,8 +14,7 @@ try:
     from pyramid.interfaces import ICSRFStoragePolicy  # pylint: disable=no-name-in-module
 except ImportError:
     logger.error(
-        "baseplate.integration.pyramid.csrf requires that you use a version "
-        "of pyramid >= 1.9"
+        "baseplate.integration.pyramid.csrf requires that you use a version " "of pyramid >= 1.9"
     )
     raise
 
@@ -73,8 +72,7 @@ class TokenCSRFStoragePolicy:
 
     VERSION = 1
 
-    def __init__(self, secrets, secret_path, param="csrf_token",
-                 max_age=timedelta(hours=1)):
+    def __init__(self, secrets, secret_path, param="csrf_token", max_age=timedelta(hours=1)):
         self._secrets = secrets
         self._secret_path = secret_path
         self._param = param
@@ -92,8 +90,7 @@ class TokenCSRFStoragePolicy:
         difficult to selectively invalidate.
         """
         prefix, payload = _make_csrf_token_payload(
-            version=self.VERSION,
-            account_id=request.authenticated_userid,
+            version=self.VERSION, account_id=request.authenticated_userid
         )
         signature = make_signature(self._get_secret(), payload, self._max_age)
         return ".".join([prefix, signature.decode("utf-8")])
@@ -124,8 +121,7 @@ class TokenCSRFStoragePolicy:
             return False
 
         _, payload = _make_csrf_token_payload(
-            version=token_version,
-            account_id=request.authenticated_userid,
+            version=token_version, account_id=request.authenticated_userid
         )
 
         try:

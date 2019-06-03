@@ -65,7 +65,6 @@ def ack_startup():
     control_sock.connect(control_sock_name)
 
     with contextlib.closing(control_sock):
-        control_sock.sendall((json.dumps({
-            "command": "worker:ack",
-            "pid": os.getpid(),
-        }) + "\n").encode("utf-8"))
+        control_sock.sendall(
+            (json.dumps({"command": "worker:ack", "pid": os.getpid()}) + "\n").encode("utf-8")
+        )

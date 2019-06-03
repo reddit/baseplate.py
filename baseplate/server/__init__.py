@@ -31,25 +31,44 @@ def parse_args(args):
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument("--debug", action="store_true", default=False,
-        help="enable extra-verbose debug logging")
-    parser.add_argument("--reload", action="store_true", default=False,
-        help="restart the server when code changes (development only)")
-    parser.add_argument("--app-name", default="main", metavar="NAME",
-        help="name of app to load from config_file (default: main)")
-    parser.add_argument("--server-name", default="main", metavar="NAME",
-        help="name of server to load from config_file (default: main)")
-    parser.add_argument("--bind", type=Endpoint,
-        default=Endpoint("localhost:9090"), metavar="ENDPOINT",
-        help="endpoint to bind to (ignored if under Einhorn)")
-    parser.add_argument("config_file", type=argparse.FileType("r"),
-        help="path to a configuration file")
+    parser.add_argument(
+        "--debug", action="store_true", default=False, help="enable extra-verbose debug logging"
+    )
+    parser.add_argument(
+        "--reload",
+        action="store_true",
+        default=False,
+        help="restart the server when code changes (development only)",
+    )
+    parser.add_argument(
+        "--app-name",
+        default="main",
+        metavar="NAME",
+        help="name of app to load from config_file (default: main)",
+    )
+    parser.add_argument(
+        "--server-name",
+        default="main",
+        metavar="NAME",
+        help="name of server to load from config_file (default: main)",
+    )
+    parser.add_argument(
+        "--bind",
+        type=Endpoint,
+        default=Endpoint("localhost:9090"),
+        metavar="ENDPOINT",
+        help="endpoint to bind to (ignored if under Einhorn)",
+    )
+    parser.add_argument(
+        "config_file", type=argparse.FileType("r"), help="path to a configuration file"
+    )
 
     return parser.parse_args(args)
 
 
 Configuration = collections.namedtuple(
-    "Configuration", ["filename", "server", "app", "has_logging_options", "tshell"])
+    "Configuration", ["filename", "server", "app", "has_logging_options", "tshell"]
+)
 
 
 def read_config(config_file, server_name, app_name):
@@ -59,21 +78,14 @@ def read_config(config_file, server_name, app_name):
     parser.readfp(config_file)  # pylint: disable=deprecated-method
 
     filename = config_file.name
-    server_config = (dict(parser.items("server:" + server_name))
-                     if server_name else None)
+    server_config = dict(parser.items("server:" + server_name)) if server_name else None
     app_config = dict(parser.items("app:" + app_name))
     has_logging_config = parser.has_section("loggers")
     tshell_config = None
     if parser.has_section("tshell"):
         tshell_config = dict(parser.items("tshell"))
 
-    return Configuration(
-        filename,
-        server_config,
-        app_config,
-        has_logging_config,
-        tshell_config,
-    )
+    return Configuration(filename, server_config, app_config, has_logging_config, tshell_config)
 
 
 def configure_logging(config, debug):
@@ -81,12 +93,11 @@ def configure_logging(config, debug):
 
     if debug:
         logging_level = logging.DEBUG
-        warnings.simplefilter('always')  # enable DeprecationWarning etc.
+        warnings.simplefilter("always")  # enable DeprecationWarning etc.
     else:
         logging_level = logging.INFO
 
-    formatter = logging.Formatter(
-        "%(process)s:%(threadName)s:%(name)s:%(levelname)s:%(message)s")
+    formatter = logging.Formatter("%(process)s:%(threadName)s:%(name)s:%(levelname)s:%(message)s")
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -195,14 +206,21 @@ def load_and_run_script():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument("--debug", action="store_true", default=False,
-        help="enable extra-verbose debug logging")
-    parser.add_argument("--app-name", default="main", metavar="NAME",
-        help="name of app to load from config_file (default: main)")
-    parser.add_argument("config_file", type=argparse.FileType("r"),
-        help="path to a configuration file")
-    parser.add_argument("entrypoint", type=_load_factory,
-        help="function to call, e.g. module.path:fn_name")
+    parser.add_argument(
+        "--debug", action="store_true", default=False, help="enable extra-verbose debug logging"
+    )
+    parser.add_argument(
+        "--app-name",
+        default="main",
+        metavar="NAME",
+        help="name of app to load from config_file (default: main)",
+    )
+    parser.add_argument(
+        "config_file", type=argparse.FileType("r"), help="path to a configuration file"
+    )
+    parser.add_argument(
+        "entrypoint", type=_load_factory, help="function to call, e.g. module.path:fn_name"
+    )
 
     args = parser.parse_args(sys.argv[1:])
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
@@ -217,12 +235,18 @@ def load_and_run_tshell():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    parser.add_argument("--debug", action="store_true", default=False,
-        help="enable extra-verbose debug logging")
-    parser.add_argument("--app-name", default="main", metavar="NAME",
-        help="name of app to load from config_file (default: main)")
-    parser.add_argument("config_file", type=argparse.FileType("r"),
-        help="path to a configuration file")
+    parser.add_argument(
+        "--debug", action="store_true", default=False, help="enable extra-verbose debug logging"
+    )
+    parser.add_argument(
+        "--app-name",
+        default="main",
+        metavar="NAME",
+        help="name of app to load from config_file (default: main)",
+    )
+    parser.add_argument(
+        "config_file", type=argparse.FileType("r"), help="path to a configuration file"
+    )
 
     args = parser.parse_args(sys.argv[1:])
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
@@ -230,33 +254,35 @@ def load_and_run_tshell():
 
     env = dict()
     env_banner = {
-        'app': "This project's app instance",
-        'context': "The context for this shell instance's span",
+        "app": "This project's app instance",
+        "context": "The context for this shell instance's span",
     }
 
     app = make_app(config.app)
-    env['app'] = app
+    env["app"] = app
 
-    span = app.baseplate.make_server_span(RequestContext(), 'shell')
-    env['context'] = span.context
+    span = app.baseplate.make_server_span(RequestContext(), "shell")
+    env["context"] = span.context
 
-    if config.tshell and 'setup' in config.tshell:
-        setup = _load_factory(config.tshell['setup'])
+    if config.tshell and "setup" in config.tshell:
+        setup = _load_factory(config.tshell["setup"])
         setup(env, env_banner)
 
     # generate banner text
     banner = "Available Objects:\n"
     for var in sorted(env_banner.keys()):
-        banner += '\n  %-12s %s' % (var, env_banner[var])
+        banner += "\n  %-12s %s" % (var, env_banner[var])
 
     try:
         # try to use IPython if possible
         from IPython.terminal.embed import InteractiveShellEmbed
         from IPython.core.interactiveshell import DummyMod
+
         shell = InteractiveShellEmbed(banner2=banner)
         shell(local_ns=env, module=DummyMod())
     except ImportError:
         import code
+
         newbanner = "Baseplate Interactive Shell\nPython {}\n\n".format(sys.version)
         banner = newbanner + banner
 
@@ -264,6 +290,7 @@ def load_and_run_tshell():
         # movement while editing text)
         try:
             import readline
+
             del readline
         except ImportError:
             pass

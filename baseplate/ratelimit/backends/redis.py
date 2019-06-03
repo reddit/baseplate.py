@@ -1,4 +1,3 @@
-
 from baseplate.ratelimit.backends import RateLimitBackend
 from baseplate.ratelimit.backends import _get_current_bucket
 from ...context import ContextFactory
@@ -15,7 +14,7 @@ class RedisRateLimitBackendContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, redis_pool, prefix='rl:'):
+    def __init__(self, redis_pool, prefix="rl:"):
         self.redis_context_factory = RedisContextFactory(redis_pool)
         self.prefix = prefix
 
@@ -35,7 +34,7 @@ class RedisRateLimitBackend(RateLimitBackend):
 
     """
 
-    def __init__(self, redis, prefix='rl:'):
+    def __init__(self, redis, prefix="rl:"):
         self.redis = redis
         self.prefix = prefix
 
@@ -54,7 +53,7 @@ class RedisRateLimitBackend(RateLimitBackend):
         current_bucket = _get_current_bucket(interval)
         key = self.prefix + key + current_bucket
         ttl = interval * 2
-        with self.redis.pipeline('ratelimit') as pipe:
+        with self.redis.pipeline("ratelimit") as pipe:
             pipe.incr(key, amount)
             pipe.expire(key, time=ttl)
             responses = pipe.execute()

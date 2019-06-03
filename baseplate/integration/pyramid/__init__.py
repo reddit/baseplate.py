@@ -60,11 +60,11 @@ def _make_baseplate_tween(handler, _registry):
                 request.trace.set_tag("http.status_code", response.status_code)
                 request.trace.finish()
         return response
+
     return baseplate_tween
 
 
 class BaseplateEvent:
-
     def __init__(self, request):
         self.request = request
 
@@ -147,8 +147,13 @@ class BaseplateConfigurator:
         the default implementation.
     """
 
-    def __init__(self, baseplate, trust_trace_headers=None,
-                 edge_context_factory=None, header_trust_handler=None):
+    def __init__(
+        self,
+        baseplate,
+        trust_trace_headers=None,
+        edge_context_factory=None,
+        header_trust_handler=None,
+    ):
         self.baseplate = baseplate
         self.trust_trace_headers = bool(trust_trace_headers)
         if trust_trace_headers is not None:
@@ -161,9 +166,7 @@ class BaseplateConfigurator:
         if header_trust_handler:
             self.header_trust_handler = header_trust_handler
         else:
-            self.header_trust_handler = StaticTrustHandler(
-                trust_headers=self.trust_trace_headers,
-            )
+            self.header_trust_handler = StaticTrustHandler(trust_headers=self.trust_trace_headers)
 
     def _on_application_created(self, event):
         # attach the baseplate object to the application the server gets
@@ -188,8 +191,7 @@ class BaseplateConfigurator:
             try:
                 edge_payload = request.headers.get("X-Edge-Request", None)
                 if self.edge_context_factory:
-                    edge_context = self.edge_context_factory.from_upstream(
-                        edge_payload)
+                    edge_context = self.edge_context_factory.from_upstream(edge_payload)
                     edge_context.attach_context(request)
                 else:
                     # just attach the raw context so it gets passed on
@@ -204,11 +206,7 @@ class BaseplateConfigurator:
         request.trace.set_tag("peer.ipv4", request.remote_addr)
 
     def _start_server_span(self, request, name, trace_info=None):
-        request.trace = self.baseplate.make_server_span(
-            request,
-            name=name,
-            trace_info=trace_info,
-        )
+        request.trace = self.baseplate.make_server_span(request, name=name, trace_info=trace_info)
         request.trace.start()
         request.registry.notify(ServerSpanInitialized(request))
 
@@ -238,8 +236,9 @@ class BaseplateConfigurator:
         # 2. baseplate tween
         # 3. Exception view handler (tweens.EXCVIEW)
         # 4. App handler code (tweens.MAIN)
-        config.add_tween("baseplate.integration.pyramid._make_baseplate_tween",
-                         over=pyramid.tweens.EXCVIEW)
+        config.add_tween(
+            "baseplate.integration.pyramid._make_baseplate_tween", over=pyramid.tweens.EXCVIEW
+        )
 
         # the pyramid "scripting context" (e.g. pshell) sets up a
         # psuedo-request environment but does not call NewRequest. it does,
@@ -253,6 +252,7 @@ class BaseplateConfigurator:
         # the bound method in a simple function prevents that behavior
         def start_server_span(*args, **kwargs):
             return self._start_server_span(*args, **kwargs)
+
         config.add_request_method(start_server_span, "start_server_span")
 
 

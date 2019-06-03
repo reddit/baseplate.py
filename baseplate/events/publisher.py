@@ -12,12 +12,9 @@ import requests
 
 from .queue import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
 from .. import config, metrics_client_from_config
-from .. _utils import (
-    Batch, BatchFull, RawJSONBatch,
-    SerializedBatch, TimeLimitedBatch,
-)
-from .. message_queue import MessageQueue, TimedOutError
-from .. retry import RetryPolicy
+from .._utils import Batch, BatchFull, RawJSONBatch, SerializedBatch, TimeLimitedBatch
+from ..message_queue import MessageQueue, TimedOutError
+from ..retry import RetryPolicy
 
 
 logger = logging.getLogger(__name__)
@@ -55,7 +52,7 @@ class V2Batch(Batch):
     # kept a similar number of bytes to the output of the formatting so the
     # initial size estimate is OK. 4 digits should be plenty.
     _header = '{"1":{"lst":["rec",%01d,'
-    _end = b']}}'
+    _end = b"]}}"
 
     def __init__(self, max_size=MAX_BATCH_SIZE):
         self.max_size = max_size
@@ -76,8 +73,7 @@ class V2Batch(Batch):
     def serialize(self):
         header = (self._header % len(self._items)).encode()
         return SerializedBatch(
-            count=len(self._items),
-            bytes=header + b",".join(self._items) + self._end,
+            count=len(self._items), bytes=header + b",".join(self._items) + self._end
         )
 
     def reset(self):
@@ -126,7 +122,6 @@ class BatchPublisher:
                         headers=headers,
                         data=compressed_payload,
                         timeout=POST_TIMEOUT,
-
                         # http://docs.python-requests.org/en/latest/user/advanced/#keep-alive
                         stream=False,
                     )
@@ -147,23 +142,25 @@ class BatchPublisher:
                 self.metrics.counter("sent").increment(payload.count)
                 return
 
-        raise MaxRetriesError('could not sent batch')
+        raise MaxRetriesError("could not sent batch")
 
 
-SERIALIZER_BY_VERSION = {
-    1: V1Batch,
-    2: V2Batch,
-}
+SERIALIZER_BY_VERSION = {1: V1Batch, 2: V2Batch}
 
 
 def publish_events():
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("config_file", type=argparse.FileType("r"),
-        help="path to a configuration file")
-    arg_parser.add_argument("--queue-name", default="main",
-        help="name of event queue / publisher config (default: main)")
-    arg_parser.add_argument("--debug", default=False, action="store_true",
-        help="enable debug logging")
+    arg_parser.add_argument(
+        "config_file", type=argparse.FileType("r"), help="path to a configuration file"
+    )
+    arg_parser.add_argument(
+        "--queue-name",
+        default="main",
+        help="name of event queue / publisher config (default: main)",
+    )
+    arg_parser.add_argument(
+        "--debug", default=False, action="store_true", help="enable debug logging"
+    )
     args = arg_parser.parse_args()
 
     if args.debug:
@@ -175,24 +172,21 @@ def publish_events():
     config_parser = configparser.RawConfigParser()
     config_parser.readfp(args.config_file)  # pylint: disable=deprecated-method
     raw_config = dict(config_parser.items("event-publisher:" + args.queue_name))
-    cfg = config.parse_config(raw_config, {
-        "collector": {
-            "hostname": config.String,
-            "version": config.Optional(config.Integer, default=1),
+    cfg = config.parse_config(
+        raw_config,
+        {
+            "collector": {
+                "hostname": config.String,
+                "version": config.Optional(config.Integer, default=1),
+            },
+            "key": {"name": config.String, "secret": config.Base64},
         },
-
-        "key": {
-            "name": config.String,
-            "secret": config.Base64,
-        },
-    })
+    )
 
     metrics_client = metrics_client_from_config(raw_config)
 
     event_queue = MessageQueue(
-        "/events-" + args.queue_name,
-        max_messages=MAX_QUEUE_SIZE,
-        max_message_size=MAX_EVENT_SIZE,
+        "/events-" + args.queue_name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE
     )
 
     # pylint: disable=maybe-no-member
@@ -202,7 +196,7 @@ def publish_events():
 
     while True:
         try:
-            message = event_queue.get(timeout=.2)
+            message = event_queue.get(timeout=0.2)
         except TimedOutError:
             message = None
 

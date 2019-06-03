@@ -1,4 +1,3 @@
-
 import unittest
 
 try:
@@ -7,8 +6,11 @@ try:
 except ImportError:
     raise unittest.SkipTest("pymemcache is not installed")
 
-from baseplate.context.memcache import (MemcacheContextFactory,
-    MonitoredMemcacheConnection, make_keys_str)
+from baseplate.context.memcache import (
+    MemcacheContextFactory,
+    MonitoredMemcacheConnection,
+    make_keys_str,
+)
 from baseplate.core import Baseplate, LocalSpan, ServerSpan
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
@@ -65,7 +67,8 @@ class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
         self.local_span.__enter__.return_value = self.local_span
         self.server_span.make_child.return_value = self.local_span
         self.connection = MonitoredMemcacheConnection(
-            self.context_name, self.server_span, self.mocked_pool)
+            self.context_name, self.server_span, self.mocked_pool
+        )
 
         self.key = b"key"
         self.value = b"value"
@@ -80,32 +83,37 @@ class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
     def test_set(self):
         self.connection.set(self.key, self.value, expire=self.expire, noreply=self.noreply)
         self.mocked_pool.set.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply)
+            self.key, self.value, expire=self.expire, noreply=self.noreply
+        )
         self.assertEqual(self.local_span.set_tag.call_count, 4)
 
     def test_replace(self):
         self.connection.replace(self.key, self.value, expire=self.expire, noreply=self.noreply)
         self.mocked_pool.replace.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply)
+            self.key, self.value, expire=self.expire, noreply=self.noreply
+        )
         self.assertEqual(self.local_span.set_tag.call_count, 4)
 
     def test_append(self):
         self.connection.append(self.key, self.value, expire=self.expire, noreply=self.noreply)
         self.mocked_pool.append.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply)
+            self.key, self.value, expire=self.expire, noreply=self.noreply
+        )
         self.assertEqual(self.local_span.set_tag.call_count, 4)
 
     def test_prepend(self):
         self.connection.prepend(self.key, self.value, expire=self.expire, noreply=self.noreply)
         self.mocked_pool.prepend.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply)
+            self.key, self.value, expire=self.expire, noreply=self.noreply
+        )
         self.assertEqual(self.local_span.set_tag.call_count, 4)
 
     def test_cas(self):
         cas = b"cascas"
         self.connection.cas(self.key, self.value, cas, expire=self.expire, noreply=self.noreply)
         self.mocked_pool.cas.assert_called_with(
-            self.key, self.value, cas, expire=self.expire, noreply=self.noreply)
+            self.key, self.value, cas, expire=self.expire, noreply=self.noreply
+        )
         self.assertEqual(self.local_span.set_tag.call_count, 5)
 
     def test_get(self):
@@ -138,13 +146,14 @@ class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
     def test_add(self):
         self.connection.add(self.key, self.value, expire=self.expire, noreply=self.noreply)
         self.mocked_pool.add.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply)
+            self.key, self.value, expire=self.expire, noreply=self.noreply
+        )
         self.assertEqual(self.local_span.set_tag.call_count, 4)
 
     def test_incr(self):
         value = 1
         self.connection.incr(self.key, value, noreply=self.noreply)
-        self.mocked_pool.incr.assert_called_with( self.key, value, noreply=self.noreply)
+        self.mocked_pool.incr.assert_called_with(self.key, value, noreply=self.noreply)
         self.assertEqual(self.local_span.set_tag.call_count, 3)
 
     def test_decr(self):
@@ -156,7 +165,8 @@ class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
     def test_touch(self):
         self.connection.touch(self.key, expire=self.expire, noreply=self.noreply)
         self.mocked_pool.touch.assert_called_with(
-            self.key, expire=self.expire, noreply=self.noreply)
+            self.key, expire=self.expire, noreply=self.noreply
+        )
         self.assertEqual(self.local_span.set_tag.call_count, 4)
 
     def test_flush_all(self):

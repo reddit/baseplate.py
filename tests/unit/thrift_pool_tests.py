@@ -1,4 +1,3 @@
-
 import queue
 import socket
 import unittest
@@ -11,28 +10,24 @@ from thrift.protocol import THeaderProtocol, TBinaryProtocol
 from .. import mock
 
 
-EXAMPLE_ENDPOINT = config.EndpointConfiguration(
-    socket.AF_INET, ("127.0.0.1", 1234))
+EXAMPLE_ENDPOINT = config.EndpointConfiguration(socket.AF_INET, ("127.0.0.1", 1234))
 
 
 class MakeTransportTests(unittest.TestCase):
     def test_inet(self):
-        endpoint = config.EndpointConfiguration(
-            socket.AF_INET, ("localhost", 1234))
+        endpoint = config.EndpointConfiguration(socket.AF_INET, ("localhost", 1234))
         socket_transport = thrift_pool._make_transport(endpoint)
 
         self.assertFalse(socket_transport._unix_socket)
 
     def test_unix(self):
-        endpoint = config.EndpointConfiguration(
-            socket.AF_UNIX, "/tmp/socket")
+        endpoint = config.EndpointConfiguration(socket.AF_UNIX, "/tmp/socket")
         socket_transport = thrift_pool._make_transport(endpoint)
 
         self.assertTrue(socket_transport._unix_socket)
 
     def test_unknown(self):
-        endpoint = config.EndpointConfiguration(
-            socket.AF_UNSPEC, None)
+        endpoint = config.EndpointConfiguration(socket.AF_UNSPEC, None)
 
         with self.assertRaises(Exception):
             thrift_pool._make_transport(endpoint)
@@ -51,13 +46,13 @@ class ThriftConnectionPoolTests(unittest.TestCase):
             self.pool._acquire()
 
     def test_pool_with_framed_protocol_factory(self):
-
         def framed_protocol_factory(trans):
             trans = TTransport.TFramedTransport(trans)
             return TBinaryProtocol.TBinaryProtocol(trans)
 
         framed_pool = thrift_pool.ThriftConnectionPool(
-            EXAMPLE_ENDPOINT, protocol_factory=framed_protocol_factory)
+            EXAMPLE_ENDPOINT, protocol_factory=framed_protocol_factory
+        )
         trans = thrift_pool._make_transport(EXAMPLE_ENDPOINT)
         prot = framed_pool.protocol_factory(trans)
 

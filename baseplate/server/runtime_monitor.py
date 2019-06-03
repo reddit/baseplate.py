@@ -1,4 +1,3 @@
-
 import gc
 import logging
 import os
@@ -99,8 +98,11 @@ def _report_runtime_metrics_periodically(metrics_client, reporters):
                     try:
                         reporter.report(batch)
                     except Exception as exc:
-                        logging.debug("Error generating server metrics: %s: %s",
-                                      reporter.__class__.__name__, exc)
+                        logging.debug(
+                            "Error generating server metrics: %s: %s",
+                            reporter.__class__.__name__,
+                            exc,
+                        )
         except Exception as exc:
             logging.debug("Error while sending server metrics: %s", exc)
 
@@ -110,16 +112,19 @@ def start(server_config, application, pool):
         logging.info("No metrics client configured. Server metrics will not be sent.")
         return
 
-    cfg = config.parse_config(server_config, {
-        "monitoring": {
-            "blocked_hub": config.Optional(config.Timespan, default=None),
-            "concurrency": config.Optional(config.Boolean, default=True),
-            "gc": {
-                "stats": config.Optional(config.Boolean, default=True),
-                "timing": config.Optional(config.Boolean, default=False),
-            },
+    cfg = config.parse_config(
+        server_config,
+        {
+            "monitoring": {
+                "blocked_hub": config.Optional(config.Timespan, default=None),
+                "concurrency": config.Optional(config.Boolean, default=True),
+                "gc": {
+                    "stats": config.Optional(config.Boolean, default=True),
+                    "timing": config.Optional(config.Boolean, default=False),
+                },
+            }
         },
-    })
+    )
 
     reporters = []
 

@@ -9,8 +9,7 @@ from baseplate import metrics, config
 from .. import mock
 
 
-EXAMPLE_ENDPOINT = config.EndpointConfiguration(
-    socket.AF_INET, ("127.0.0.1", 1234))
+EXAMPLE_ENDPOINT = config.EndpointConfiguration(socket.AF_INET, ("127.0.0.1", 1234))
 
 
 class MetricJoinTests(unittest.TestCase):
@@ -45,8 +44,7 @@ class RawTransportTests(unittest.TestCase):
         mocket = mock_make_socket.return_value
         transport = metrics.RawTransport(EXAMPLE_ENDPOINT)
 
-        self.assertEqual(mocket.connect.call_args,
-            mock.call(("127.0.0.1", 1234)))
+        self.assertEqual(mocket.connect.call_args, mock.call(("127.0.0.1", 1234)))
 
         transport.send(b"metric")
 
@@ -67,14 +65,12 @@ class BufferedTransportTests(unittest.TestCase):
         transport.flush()
 
         self.assertEqual(mocket.sendall.call_count, 1)
-        self.assertEqual(mocket.sendall.call_args,
-            mock.call(b"a\nb\nc"))
+        self.assertEqual(mocket.sendall.call_args, mock.call(b"a\nb\nc"))
 
     @mock.patch("socket.socket")
     def test_buffered_exception_is_caught(self, mock_make_socket):
         mocket = mock_make_socket.return_value
-        mocket.sendall.side_effect = mock.Mock(
-            side_effect=socket.error('Test'))
+        mocket.sendall.side_effect = mock.Mock(side_effect=socket.error("Test"))
         raw_transport = metrics.RawTransport(EXAMPLE_ENDPOINT)
         transport = metrics.BufferedTransport(raw_transport)
         for i in range(10000):
@@ -145,8 +141,7 @@ class ClientTests(unittest.TestCase):
 
 class BatchTests(unittest.TestCase):
     def setUp(self):
-        self.patcher = mock.patch("baseplate.metrics.BufferedTransport",
-                                  autospec=True)
+        self.patcher = mock.patch("baseplate.metrics.BufferedTransport", autospec=True)
         self.mock_buffer = self.patcher.start().return_value
         self.mock_transport = mock.Mock(spec=metrics.NullTransport)
 
@@ -210,8 +205,7 @@ class TimerTests(unittest.TestCase):
         mock_time.return_value = 1004
         timer.stop()
         self.assertEqual(self.transport.send.call_count, 1)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:4000|ms"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:4000|ms"))
 
         with self.assertRaises(Exception):
             timer.start()
@@ -227,8 +221,7 @@ class TimerTests(unittest.TestCase):
             mock_time.return_value = 1003
 
         self.assertEqual(self.transport.send.call_count, 1)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:3000|ms"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:3000|ms"))
 
     def test_send(self):
         timer = metrics.Timer(self.transport, b"example")
@@ -246,36 +239,30 @@ class CounterTests(unittest.TestCase):
 
         counter.increment()
         self.assertEqual(self.transport.send.call_count, 1)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:1|c"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:1|c"))
 
         counter.increment(delta=10)
         self.assertEqual(self.transport.send.call_count, 2)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:10|c"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:10|c"))
 
         counter.increment(delta=-20)
         self.assertEqual(self.transport.send.call_count, 3)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:-20|c"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:-20|c"))
 
-        counter.increment(delta=2, sample_rate=.5)
+        counter.increment(delta=2, sample_rate=0.5)
         self.assertEqual(self.transport.send.call_count, 4)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:2|c|@0.5"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:2|c|@0.5"))
 
     def test_decr(self):
         counter = metrics.Counter(self.transport, b"example")
 
         counter.decrement()
         self.assertEqual(self.transport.send.call_count, 1)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:-1|c"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:-1|c"))
 
         counter.decrement(delta=3)
         self.assertEqual(self.transport.send.call_count, 2)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:-3|c"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:-3|c"))
 
 
 class BatchCounterTests(unittest.TestCase):
@@ -304,8 +291,7 @@ class BatchCounterTests(unittest.TestCase):
         self.assertEqual(batch_counter.packets[1.0], 4)
         batch_counter.flush()
         self.assertEqual(self.transport.send.call_count, 1)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:4|c"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:4|c"))
 
     def test_multiple_sample_rates(self):
         batch_counter = metrics.BatchCounter(self.transport, b"example")
@@ -318,7 +304,7 @@ class BatchCounterTests(unittest.TestCase):
         self.assertEqual(batch_counter.packets[1.0], 2)
         self.assertEqual(batch_counter.packets[0.5], 1)
         self.assertEqual(self.transport.send.call_count, 2)
-        expected_call_args = [mock.call(b"example:2|c",), mock.call(b"example:1|c|@0.5",)]
+        expected_call_args = [mock.call(b"example:2|c"), mock.call(b"example:1|c|@0.5")]
         for expected in expected_call_args:
             self.assertTrue(expected in self.transport.send.call_args_list)
 
@@ -331,8 +317,7 @@ class GaugeTests(unittest.TestCase):
         gauge = metrics.Gauge(self.transport, b"example")
         gauge.replace(33)
         self.assertEqual(self.transport.send.call_count, 1)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example:33|g"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example:33|g"))
 
     def test_replace_disallow_negative(self):
         gauge = metrics.Gauge(self.transport, b"example")
@@ -348,8 +333,7 @@ class HistogramTests(unittest.TestCase):
         histogram = metrics.Histogram(self.transport, b"example_hist")
         histogram.add_sample(33)
         self.assertEqual(self.transport.send.call_count, 1)
-        self.assertEqual(self.transport.send.call_args,
-            mock.call(b"example_hist:33|h"))
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example_hist:33|h"))
 
 
 class MakeClientTests(unittest.TestCase):

@@ -1,14 +1,10 @@
-
 import base64
 import unittest
 import sys
 
 has_csrf_policy = True
 try:
-    from baseplate.integration.pyramid.csrf import (
-        _make_csrf_token_payload,
-        TokenCSRFStoragePolicy,
-    )
+    from baseplate.integration.pyramid.csrf import _make_csrf_token_payload, TokenCSRFStoragePolicy
 except ImportError:
     has_csrf_policy = False
 
@@ -30,19 +26,13 @@ class TokenCSRFStoragePolicyTests(unittest.TestCase):
                     "type": "versioned",
                     "current": base64.b64encode(b"test"),
                     "encoding": "base64",
-                },
+                }
             },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
+            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
         secrets = SecretsStore("/secrets")
         secrets._filewatcher = mock_filewatcher
-        self.policy = TokenCSRFStoragePolicy(
-            secrets=secrets,
-            secret_path="secret/csrf/signing-key",
-        )
+        self.policy = TokenCSRFStoragePolicy(secrets=secrets, secret_path="secret/csrf/signing-key")
 
     def test_make_csrf_token_payload(self, _):
         prefix, payload = _make_csrf_token_payload(version=1, account_id="t2_1")
@@ -56,13 +46,13 @@ class TokenCSRFStoragePolicyTests(unittest.TestCase):
         token = self.policy.new_csrf_token(request)
         self.assertTrue(token.startswith("1."))
         self.assertEqual(token, "1.AQAA-BEAAF-br-ovnk0q8Wd0kA98-jsak9elbMqo0WbjT0GuyRTD")
-        signature = token.split('.')[-1]
+        signature = token.split(".")[-1]
         validate_signature(self.policy._get_secret(), "1.t2_1", signature)
 
     def test_get_csrf_token(self, _):
         request = mock.Mock()
-        request.params = {'csrf_token': 'token'}
-        self.assertEqual(self.policy.get_csrf_token(request), 'token')
+        request.params = {"csrf_token": "token"}
+        self.assertEqual(self.policy.get_csrf_token(request), "token")
 
     def test_get_csrf_token_missing(self, _):
         request = mock.Mock()

@@ -1,4 +1,3 @@
-
 from .backends import RateLimitBackend
 from ..context import ContextFactory
 
@@ -20,11 +19,11 @@ class RateLimiterContextFactory(ContextFactory):
 
     def __init__(self, backend_factory, allowance, interval):
         if allowance < 1:
-            raise ValueError('minimum allowance is 1')
+            raise ValueError("minimum allowance is 1")
         if interval < 1:
-            raise ValueError('minimum interval is 1')
+            raise ValueError("minimum interval is 1")
         if not isinstance(backend_factory, ContextFactory):
-            raise TypeError('backend_factory must be an instance of ContextFactory')
+            raise TypeError("backend_factory must be an instance of ContextFactory")
 
         self.backend_factory = backend_factory
         self.allowance = allowance
@@ -47,11 +46,11 @@ class RateLimiter:
 
     def __init__(self, backend, allowance, interval):
         if allowance < 1:
-            raise ValueError('minimum allowance is 1')
+            raise ValueError("minimum allowance is 1")
         if interval < 1:
-            raise ValueError('minimum interval is 1')
+            raise ValueError("minimum interval is 1")
         if not isinstance(backend, RateLimitBackend):
-            raise TypeError('backend must be an instance of RateLimitBackend')
+            raise TypeError("backend must be an instance of RateLimitBackend")
 
         self.backend = backend
         self.allowance = allowance
@@ -69,4 +68,4 @@ class RateLimiter:
 
         """
         if not self.backend.consume(key, amount, self.allowance, self.interval):
-            raise RateLimitExceededException('Rate limit exceeded.')
+            raise RateLimitExceededException("Rate limit exceeded.")

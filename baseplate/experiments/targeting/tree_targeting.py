@@ -46,14 +46,14 @@ class EqualNode(Targeting):
         if len(input_node) != 2:
             raise ValueError("EqualNode expects exactly two fields.")
 
-        if 'field' not in input_node:
+        if "field" not in input_node:
             raise ValueError("EqualNode expects input key 'field'.")
 
-        if 'value' not in input_node and 'values' not in input_node:
+        if "value" not in input_node and "values" not in input_node:
             raise ValueError("EqualNode expects input key 'value' or 'values'.")
 
-        self._accepted_key = input_node.get('field').lower()
-        self._accepted_values = input_node.get('values') or [input_node.get('value')]
+        self._accepted_key = input_node.get("field").lower()
+        self._accepted_values = input_node.get("values") or [input_node.get("value")]
 
     def evaluate(self, **kwargs):
         candidate_value = kwargs.get(self._accepted_key)
@@ -154,14 +154,14 @@ class ComparisonNode(Targeting):
         if len(input_node) != 2:
             raise ValueError("ComparisonNode expects exactly two fields.")
 
-        if 'field' not in input_node:
+        if "field" not in input_node:
             raise ValueError("ComparisonNode expects input key 'field'.")
 
-        if 'value' not in input_node:
+        if "value" not in input_node:
             raise ValueError("ComparisonNode expects input key 'value'.")
 
-        self._accepted_key = input_node.get('field').lower()
-        self._accepted_value = input_node.get('value')
+        self._accepted_key = input_node.get("field").lower()
+        self._accepted_value = input_node.get("value")
         self.comparator = comparator
 
     def evaluate(self, **kwargs):
@@ -244,8 +244,10 @@ def create_targeting_tree(input_node):
                 subnode = operator_node_type(input_node_value)
             return subnode
         except (TypeError, ValueError) as e:
-            raise TargetingNodeError("Error while constructing targeting "
-                "tree: {}".format(getattr(e, 'message', None)))
+            raise TargetingNodeError(
+                "Error while constructing targeting " "tree: {}".format(getattr(e, "message", None))
+            )
     else:
-        raise UnknownTargetingOperatorError("Unrecognized operator while constructing targeting "
-            "tree: {}".format(operator_name))
+        raise UnknownTargetingOperatorError(
+            "Unrecognized operator while constructing targeting " "tree: {}".format(operator_name)
+        )

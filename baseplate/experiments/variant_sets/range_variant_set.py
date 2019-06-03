@@ -1,4 +1,3 @@
-
 from .base import VariantSet
 
 
@@ -29,7 +28,7 @@ class RangeVariantSet(VariantSet):
 
     def __contains__(self, item):
         for variant in self.variants:
-            if variant.get('name') == item:
+            if variant.get("name") == item:
                 return True
 
         return False
@@ -37,7 +36,7 @@ class RangeVariantSet(VariantSet):
     def _validate_variants(self):
 
         if not self.variants:
-            raise ValueError('No variants provided')
+            raise ValueError("No variants provided")
 
         total_size = 0
         for variant in self.variants:
@@ -49,7 +48,7 @@ class RangeVariantSet(VariantSet):
             total_size += int(range_size * self.num_buckets)
 
         if total_size > self.num_buckets:
-            raise ValueError('Sum of all variants is greater than 100%')
+            raise ValueError("Sum of all variants is greater than 100%")
 
     def choose_variant(self, bucket):
         """Deterministically choose a variant.
@@ -60,9 +59,9 @@ class RangeVariantSet(VariantSet):
                           any of the variants
         """
         for variant in self.variants:
-            bucket_lower = int(variant['range_start'] * self.num_buckets)
-            bucket_upper = int(variant['range_end'] * self.num_buckets)
+            bucket_lower = int(variant["range_start"] * self.num_buckets)
+            bucket_upper = int(variant["range_end"] * self.num_buckets)
             if bucket_lower <= bucket < bucket_upper:
-                return variant['name']
+                return variant["name"]
 
         return None

@@ -39,15 +39,16 @@ class TraceBatch(RawJSONBatch):
 class ZipkinPublisher:
     """Zipkin trace publisher."""
 
-    def __init__(self,
-            zipkin_api_url,
-            metrics_client,
-            post_timeout=POST_TIMEOUT_DEFAULT,
-            retry_limit=RETRY_LIMIT_DEFAULT,
-            num_conns=5):
+    def __init__(
+        self,
+        zipkin_api_url,
+        metrics_client,
+        post_timeout=POST_TIMEOUT_DEFAULT,
+        retry_limit=RETRY_LIMIT_DEFAULT,
+        num_conns=5,
+    ):
 
-        adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns,
-                                                pool_maxsize=num_conns)
+        adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         parsed_url = urllib.parse.urlparse(zipkin_api_url)
         self.session = requests.Session()
         self.session.mount("{}://".format(parsed_url.scheme), adapter)
@@ -98,20 +99,30 @@ class ZipkinPublisher:
                 self.metrics.counter("sent").increment(payload.count)
                 return
 
-        raise MaxRetriesError("ZipkinPublisher exhausted allowance of %d retries." %
-            self.retry_limit)
+        raise MaxRetriesError(
+            "ZipkinPublisher exhausted allowance of %d retries." % self.retry_limit
+        )
 
 
 def publish_traces():
     arg_parser = argparse.ArgumentParser()
-    arg_parser.add_argument("config_file", type=argparse.FileType("r"),
-        help="path to a configuration file")
-    arg_parser.add_argument("--queue-name", default="main",
-        help="name of trace queue / publisher config (default: main)")
-    arg_parser.add_argument("--debug", default=False, action="store_true",
-        help="enable debug logging")
-    arg_parser.add_argument("--app-name", default="main", metavar="NAME",
-        help="name of app to load from config_file (default: main)")
+    arg_parser.add_argument(
+        "config_file", type=argparse.FileType("r"), help="path to a configuration file"
+    )
+    arg_parser.add_argument(
+        "--queue-name",
+        default="main",
+        help="name of trace queue / publisher config (default: main)",
+    )
+    arg_parser.add_argument(
+        "--debug", default=False, action="store_true", help="enable debug logging"
+    )
+    arg_parser.add_argument(
+        "--app-name",
+        default="main",
+        metavar="NAME",
+        help="name of app to load from config_file (default: main)",
+    )
     args = arg_parser.parse_args()
 
     if args.debug:
@@ -124,17 +135,18 @@ def publish_traces():
     config_parser.readfp(args.config_file)  # pylint: disable=deprecated-method
 
     publisher_raw_cfg = dict(config_parser.items("trace-publisher:" + args.queue_name))
-    publisher_cfg = config.parse_config(publisher_raw_cfg, {
-        "zipkin_api_url": config.Endpoint,
-        "post_timeout": config.Optional(config.Integer, POST_TIMEOUT_DEFAULT),
-        "max_batch_size": config.Optional(config.Integer, MAX_BATCH_SIZE_DEFAULT),
-        "retry_limit": config.Optional(config.Integer, RETRY_LIMIT_DEFAULT),
-    })
+    publisher_cfg = config.parse_config(
+        publisher_raw_cfg,
+        {
+            "zipkin_api_url": config.Endpoint,
+            "post_timeout": config.Optional(config.Integer, POST_TIMEOUT_DEFAULT),
+            "max_batch_size": config.Optional(config.Integer, MAX_BATCH_SIZE_DEFAULT),
+            "retry_limit": config.Optional(config.Integer, RETRY_LIMIT_DEFAULT),
+        },
+    )
 
     trace_queue = MessageQueue(
-        "/traces-" + args.queue_name,
-        max_messages=MAX_QUEUE_SIZE,
-        max_message_size=MAX_SPAN_SIZE,
+        "/traces-" + args.queue_name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_SPAN_SIZE
     )
 
     # pylint: disable=maybe-no-member
@@ -149,7 +161,7 @@ def publish_traces():
 
     while True:
         try:
-            message = trace_queue.get(timeout=.2)
+            message = trace_queue.get(timeout=0.2)
         except TimedOutError:
             message = None
 

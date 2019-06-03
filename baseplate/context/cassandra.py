@@ -1,9 +1,9 @@
-
 import logging
 from threading import Event
 
 # pylint: disable=no-name-in-module
 from cassandra.cluster import Cluster, _NOT_SET, ResponseFuture
+
 # pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
 
@@ -34,12 +34,15 @@ def cluster_from_config(app_config, prefix="cassandra.", **kwargs):
     """
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "contact_points": config.TupleOf(config.String),
-            "port": config.Optional(config.Integer, default=None),
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "contact_points": config.TupleOf(config.String),
+                "port": config.Optional(config.Integer, default=None),
+            }
         },
-    })
+    )
 
     options = getattr(cfg, config_prefix)
 
@@ -86,10 +89,8 @@ class CQLMapperContextFactory(CassandraContextFactory):
         # Import inline so you can still use the regular Cassandra integration
         # without installing cqlmapper
         import cqlmapper.connection
-        session_adapter = super(
-            CQLMapperContextFactory,
-            self,
-        ).make_object_for_context(name, span)
+
+        session_adapter = super(CQLMapperContextFactory, self).make_object_for_context(name, span)
         return cqlmapper.connection.Connection(session_adapter)
 
 
@@ -127,7 +128,7 @@ def wrap_future(response_future, callback_fn, callback_args, errback_fn, errback
             logger.warning("Cassandra metrics callback took too long. Some metrics may be lost.")
 
         if exc:
-            raise exc   # pylint: disable=E0702
+            raise exc  # pylint: disable=E0702
 
         return result
 
@@ -196,11 +197,7 @@ class CassandraSessionAdapter:
             span.set_tag("statement", query.query_string)
         elif isinstance(query, BoundStatement):
             span.set_tag("statement", query.prepared_statement.query_string)
-        future = self.session.execute_async(
-            query,
-            parameters=parameters,
-            timeout=timeout,
-        )
+        future = self.session.execute_async(query, parameters=parameters, timeout=timeout)
         future = wrap_future(
             response_future=future,
             callback_fn=_on_execute_complete,

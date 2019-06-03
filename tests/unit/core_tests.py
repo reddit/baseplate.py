@@ -1,4 +1,3 @@
-
 import unittest
 
 from baseplate.core import (
@@ -63,8 +62,9 @@ class BaseplateTests(unittest.TestCase):
 
         self.assertEqual(baseplate.observers, [mock_observer])
         self.assertEqual(mock_observer.on_server_span_created.call_count, 1)
-        self.assertEqual(mock_observer.on_server_span_created.call_args,
-            mock.call(mock_context, server_span))
+        self.assertEqual(
+            mock_observer.on_server_span_created.call_args, mock.call(mock_context, server_span)
+        )
 
     def test_null_server_observer(self):
         mock_context = mock.Mock()
@@ -110,7 +110,7 @@ class SpanTests(unittest.TestCase):
     def test_context_with_exception(self):
         mock_observer = mock.Mock(spec=SpanObserver)
 
-        #span = Span(1, 2, 3, None, 0, "name")
+        # span = Span(1, 2, 3, None, 0, "name")
         span = make_test_span()
         span.register(mock_observer)
 
@@ -143,15 +143,14 @@ class ServerSpanTests(unittest.TestCase):
         self.assertEqual(child_span.trace_id, "trace")
         self.assertEqual(child_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
-        self.assertEqual(mock_observer.on_child_span_created.call_args,
-            mock.call(child_span))
+        self.assertEqual(mock_observer.on_child_span_created.call_args, mock.call(child_span))
 
     def test_null_child(self):
         mock_observer = mock.Mock(spec=ServerSpanObserver)
         mock_observer.on_child_span_created.return_value = None
 
         server_span = make_test_server_span()
-        #server_span = ServerSpan("trace", "parent", "id", None, 0, "name")
+        # server_span = ServerSpan("trace", "parent", "id", None, 0, "name")
         server_span.register(mock_observer)
         child_span = server_span.make_child("child_name")
 
@@ -167,16 +166,14 @@ class ServerSpanTests(unittest.TestCase):
 
         server_span = ServerSpan("trace", "parent", "id", None, 0, "name", mock_context)
         server_span.register(mock_observer)
-        local_span = server_span.make_child("test_op", local=True,
-                                            component_name="test_component")
+        local_span = server_span.make_child("test_op", local=True, component_name="test_component")
 
         self.assertEqual(local_span.name, "test_op")
         self.assertEqual(local_span.id, 0xCAFE)
         self.assertEqual(local_span.trace_id, "trace")
         self.assertEqual(local_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
-        self.assertEqual(mock_observer.on_child_span_created.call_args,
-                         mock.call(local_span))
+        self.assertEqual(mock_observer.on_child_span_created.call_args, mock.call(local_span))
 
     @mock.patch("random.getrandbits", autospec=True)
     def test_make_local_span_copies_context(self, mock_getrandbits):
@@ -188,8 +185,7 @@ class ServerSpanTests(unittest.TestCase):
 
         server_span = ServerSpan("trace", "parent", "id", None, 0, "name", mock_context)
         server_span.register(mock_observer)
-        local_span = server_span.make_child("test_op", local=True,
-                                            component_name="test_component")
+        local_span = server_span.make_child("test_op", local=True, component_name="test_component")
         self.assertNotEqual(local_span.context, mock_context)
 
 
@@ -209,7 +205,7 @@ class LocalSpanTests(unittest.TestCase):
         span.log("name", "payload")
         mock_observer.on_log("name", "payload")
 
-        span.make_child('local_child')
+        span.make_child("local_child")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
         span.finish()
         mock_observer.on_finish(exc_info=None)
@@ -230,12 +226,10 @@ class LocalSpanTests(unittest.TestCase):
         self.assertEqual(child_span.trace_id, "trace")
         self.assertEqual(child_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
-        self.assertEqual(mock_observer.on_child_span_created.call_args,
-            mock.call(child_span))
+        self.assertEqual(mock_observer.on_child_span_created.call_args, mock.call(child_span))
 
 
 class TraceInfoTests(unittest.TestCase):
-
     def test_new_does_not_have_parent_id(self):
         new_trace_info = TraceInfo.new()
         self.assertIsNone(new_trace_info.parent_id)
@@ -250,7 +244,7 @@ class TraceInfoTests(unittest.TestCase):
 
     def test_from_upstream_fails_on_invalid_sampled(self):
         with self.assertRaises(ValueError) as e:
-            TraceInfo.from_upstream(1, 2, 3, 'True', None)
+            TraceInfo.from_upstream(1, 2, 3, "True", None)
         self.assertEqual(str(e.exception), "invalid sampled value")
 
     def test_from_upstream_fails_on_invalid_flags(self):
@@ -276,12 +270,9 @@ class EdgeRequestContextTests(unittest.TestCase):
                 "secret/authentication/public-key": {
                     "type": "versioned",
                     "current": AUTH_TOKEN_PUBLIC_KEY,
-                },
+                }
             },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
+            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
         self.store = store.SecretsStore("/secrets")
         self.store._filewatcher = mock_filewatcher
@@ -308,7 +299,7 @@ class EdgeRequestContextTests(unittest.TestCase):
 
     def test_create_empty_context(self):
         request_context = self.factory.new()
-        self.assertEqual(request_context._header, b'\x0c\x00\x01\x00\x0c\x00\x02\x00\x00')
+        self.assertEqual(request_context._header, b"\x0c\x00\x01\x00\x0c\x00\x02\x00\x00")
 
     def test_logged_out_user(self):
         request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_NO_AUTH)
@@ -316,7 +307,7 @@ class EdgeRequestContextTests(unittest.TestCase):
         with self.assertRaises(NoAuthenticationError):
             request_context.user.id
         with self.assertRaises(NoAuthenticationError):
-           request_context.user.roles
+            request_context.user.roles
 
         self.assertFalse(request_context.user.is_logged_in)
         self.assertEqual(request_context.user.loid, self.LOID_ID)

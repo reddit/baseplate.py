@@ -14,11 +14,7 @@ import requests
 from requests.exceptions import RequestException
 
 from baseplate.message_queue import MessageQueue, TimedOutError
-from baseplate.core import (
-    BaseplateObserver,
-    LocalSpan,
-    SpanObserver,
-)
+from baseplate.core import BaseplateObserver, LocalSpan, SpanObserver
 from baseplate._utils import warn_deprecated
 
 
@@ -29,17 +25,17 @@ logging.getLogger("urllib3.connectionpool").setLevel(logging.WARNING)
 
 # Span annotation types
 ANNOTATIONS = {
-    'CLIENT_SEND': 'cs',
-    'CLIENT_RECEIVE': 'cr',
-    'SERVER_SEND': 'ss',
-    'SERVER_RECEIVE': 'sr',
-    'LOCAL_COMPONENT': 'lc',
+    "CLIENT_SEND": "cs",
+    "CLIENT_RECEIVE": "cr",
+    "SERVER_SEND": "ss",
+    "SERVER_RECEIVE": "sr",
+    "LOCAL_COMPONENT": "lc",
 }
 
 # Feature flags
 FLAGS = {
     # Ensures the trace passes ALL samplers
-    'DEBUG': 1,
+    "DEBUG": 1
 }
 
 
@@ -52,17 +48,23 @@ MAX_QUEUE_SIZE = 10000
 def current_epoch_microseconds():
     """Return current UTC time since epoch in microseconds."""
     epoch_ts = datetime.utcfromtimestamp(0)
-    return int((datetime.utcnow() - epoch_ts).
-               total_seconds() * 1000 * 1000)
+    return int((datetime.utcnow() - epoch_ts).total_seconds() * 1000 * 1000)
 
 
-TracingClient = collections.namedtuple(
-    "TracingClient", "service_name sample_rate recorder")
+TracingClient = collections.namedtuple("TracingClient", "service_name sample_rate recorder")
 
 
-def make_client(service_name, tracing_endpoint=None, tracing_queue_name=None,
-                max_span_queue_size=50000, num_span_workers=5, span_batch_interval=0.5,
-                num_conns=100, sample_rate=0.1, log_if_unconfigured=True):
+def make_client(
+    service_name,
+    tracing_endpoint=None,
+    tracing_queue_name=None,
+    max_span_queue_size=50000,
+    num_span_workers=5,
+    span_batch_interval=0.5,
+    num_conns=100,
+    sample_rate=0.1,
+    log_if_unconfigured=True,
+):
     """Create and return a tracing client based on configuration options.
 
     This client can be used by the :py:class:`TraceBaseplateObserver`.
@@ -84,7 +86,7 @@ def make_client(service_name, tracing_endpoint=None, tracing_queue_name=None,
         recorder = SidecarRecorder(tracing_queue_name)
     elif tracing_endpoint:
         warn_deprecated("In-app trace publishing is deprecated in favor of the sidecar model.")
-        remote_addr = '%s:%s' % tracing_endpoint.address
+        remote_addr = "%s:%s" % tracing_endpoint.address
         logger.info("Recording spans to %s", remote_addr)
         recorder = RemoteRecorder(
             remote_addr,
@@ -131,11 +133,11 @@ class TraceBaseplateObserver(BaseplateObserver):
             self.hostname = socket.gethostbyname(socket.gethostname())
         except socket.gaierror as e:
             logger.error("Hostname could not be resolved, error=%s", e)
-            self.hostname = 'undefined'
+            self.hostname = "undefined"
 
     @classmethod
     def force_sampling(cls, span):
-        return span.flags and (span.flags & FLAGS['DEBUG'])
+        return span.flags and (span.flags & FLAGS["DEBUG"])
 
     def should_sample(self, span):
         should_sample = False
@@ -148,10 +150,9 @@ class TraceBaseplateObserver(BaseplateObserver):
     def on_server_span_created(self, context, server_span):
         if self.should_sample(server_span):
             server_span.sampled = True
-            observer = TraceServerSpanObserver(self.service_name,
-                                               self.hostname,
-                                               server_span,
-                                               self.recorder)
+            observer = TraceServerSpanObserver(
+                self.service_name, self.hostname, server_span, self.recorder
+            )
             server_span.register(observer)
         else:
             server_span.sampled = False
@@ -191,15 +192,10 @@ class TraceSpanObserver(SpanObserver):
 
         Number-type values are coerced to strings.
         """
-        self.binary_annotations.append(
-            self._create_binary_annotation(key, value),
-        )
+        self.binary_annotations.append(self._create_binary_annotation(key, value))
 
     def _endpoint_info(self):
-        return {
-            'serviceName': self.service_name,
-            'ipv4': self.hostname,
-        }
+        return {"serviceName": self.service_name, "ipv4": self.hostname}
 
     def _create_time_annotation(self, annotation_type, timestamp):
         """Create Zipkin-compatible Annotation for a span.
@@ -207,11 +203,7 @@ class TraceSpanObserver(SpanObserver):
         This should be used for generating span annotations with a time component,
         e.g. the core "cs", "cr", "ss", and "sr" Zipkin Annotations
         """
-        return {
-            'endpoint': self._endpoint_info(),
-            'timestamp': timestamp,
-            'value': annotation_type,
-        }
+        return {"endpoint": self._endpoint_info(), "timestamp": timestamp, "value": annotation_type}
 
     def _create_binary_annotation(self, annotation_type, annotation_value):
         """Create Zipkin-compatible BinaryAnnotation for a span.
@@ -225,11 +217,7 @@ class TraceSpanObserver(SpanObserver):
         if not isinstance(annotation_value, (bool, str)):
             annotation_value = str(annotation_value)
 
-        return {
-            'key': annotation_type,
-            'value': annotation_value,
-            'endpoint': endpoint_info,
-        }
+        return {"key": annotation_type, "value": annotation_value, "endpoint": endpoint_info}
 
     def _to_span_obj(self, annotations, binary_annotations):
         span = {
@@ -242,26 +230,16 @@ class TraceSpanObserver(SpanObserver):
             "binaryAnnotations": binary_annotations,
         }
 
-        span['parentId'] = self.span.parent_id or 0
+        span["parentId"] = self.span.parent_id or 0
         return span
 
     def _serialize(self):
         """Serialize span information into Zipkin-accepted format."""
         annotations = []
 
-        annotations.append(
-            self._create_time_annotation(
-                ANNOTATIONS['CLIENT_SEND'],
-                self.start,
-            )
-        )
+        annotations.append(self._create_time_annotation(ANNOTATIONS["CLIENT_SEND"], self.start))
 
-        annotations.append(
-            self._create_time_annotation(
-                ANNOTATIONS['CLIENT_RECEIVE'],
-                self.end,
-            )
-        )
+        annotations.append(self._create_time_annotation(ANNOTATIONS["CLIENT_RECEIVE"], self.end))
 
         return self._to_span_obj(annotations, self.binary_annotations)
 
@@ -282,22 +260,11 @@ class TraceLocalSpanObserver(TraceSpanObserver):
     :param baseplate.diagnostics.tracing.Recorder: Recorder for span trace.
     """
 
-    def __init__(self,
-                 service_name,
-                 component_name,
-                 hostname,
-                 span,
-                 recorder):
+    def __init__(self, service_name, component_name, hostname, span, recorder):
         self.component_name = component_name
-        super(TraceLocalSpanObserver, self).__init__(service_name,
-                                                     hostname,
-                                                     span,
-                                                     recorder)
+        super(TraceLocalSpanObserver, self).__init__(service_name, hostname, span, recorder)
         self.binary_annotations.append(
-            self._create_binary_annotation(
-                ANNOTATIONS['LOCAL_COMPONENT'],
-                self.component_name,
-            )
+            self._create_binary_annotation(ANNOTATIONS["LOCAL_COMPONENT"], self.component_name)
         )
 
     def on_start(self):
@@ -310,17 +277,14 @@ class TraceLocalSpanObserver(TraceSpanObserver):
         being created so span start and finish get properly recorded.
         """
         if isinstance(span, LocalSpan):
-            trace_observer = TraceLocalSpanObserver(self.service_name,
-                                                    span.component_name,
-                                                    self.hostname,
-                                                    span,
-                                                    self.recorder)
+            trace_observer = TraceLocalSpanObserver(
+                self.service_name, span.component_name, self.hostname, span, self.recorder
+            )
 
         else:
-            trace_observer = TraceSpanObserver(self.service_name,
-                                               self.hostname,
-                                               span,
-                                               self.recorder)
+            trace_observer = TraceSpanObserver(
+                self.service_name, self.hostname, span, self.recorder
+            )
         span.register(trace_observer)
 
     def _serialize(self):
@@ -339,10 +303,7 @@ class TraceServerSpanObserver(TraceSpanObserver):
         self.service_name = service_name
         self.span = span
         self.recorder = recorder
-        super(TraceServerSpanObserver, self).__init__(service_name,
-                                                      hostname,
-                                                      span,
-                                                      recorder)
+        super(TraceServerSpanObserver, self).__init__(service_name, hostname, span, recorder)
 
     def on_start(self):
         self.start = current_epoch_microseconds()
@@ -354,44 +315,28 @@ class TraceServerSpanObserver(TraceSpanObserver):
         being created so span start and finish get properly recorded.
         """
         if isinstance(span, LocalSpan):
-            trace_observer = TraceLocalSpanObserver(self.service_name,
-                                                    span.component_name,
-                                                    self.hostname,
-                                                    span,
-                                                    self.recorder)
+            trace_observer = TraceLocalSpanObserver(
+                self.service_name, span.component_name, self.hostname, span, self.recorder
+            )
 
         else:
-            trace_observer = TraceSpanObserver(self.service_name,
-                                               self.hostname,
-                                               span,
-                                               self.recorder)
+            trace_observer = TraceSpanObserver(
+                self.service_name, self.hostname, span, self.recorder
+            )
         span.register(trace_observer)
 
     def _serialize(self):
         """Serialize span information into Zipkin-accepted format."""
         annotations = []
 
-        annotations.append(
-            self._create_time_annotation(
-                ANNOTATIONS['SERVER_RECEIVE'],
-                self.start,
-            )
-        )
-        annotations.append(
-            self._create_time_annotation(
-                ANNOTATIONS['SERVER_SEND'],
-                self.end,
-            )
-        )
+        annotations.append(self._create_time_annotation(ANNOTATIONS["SERVER_RECEIVE"], self.start))
+        annotations.append(self._create_time_annotation(ANNOTATIONS["SERVER_SEND"], self.end))
 
         return self._to_span_obj(annotations, self.binary_annotations)
 
 
 class BaseBatchRecorder:
-    def __init__(self, max_queue_size,
-                 num_workers,
-                 max_span_batch,
-                 batch_wait_interval):
+    def __init__(self, max_queue_size, num_workers, max_span_batch, batch_wait_interval):
         self.span_queue = queue.Queue(maxsize=max_queue_size)
         self.batch_wait_interval = batch_wait_interval
         self.max_span_batch = max_span_batch
@@ -433,15 +378,11 @@ class BaseBatchRecorder:
 class LoggingRecorder(BaseBatchRecorder):
     """Interface for recording spans to the debug log."""
 
-    def __init__(self, max_queue_size=50000,
-                 num_workers=5,
-                 max_span_batch=100,
-                 batch_wait_interval=0.5):
+    def __init__(
+        self, max_queue_size=50000, num_workers=5, max_span_batch=100, batch_wait_interval=0.5
+    ):
         super(LoggingRecorder, self).__init__(
-            max_queue_size,
-            num_workers,
-            max_span_batch,
-            batch_wait_interval,
+            max_queue_size, num_workers, max_span_batch, batch_wait_interval
         )
 
     def flush_func(self, spans):
@@ -453,15 +394,11 @@ class LoggingRecorder(BaseBatchRecorder):
 class NullRecorder(BaseBatchRecorder):
     """Noop recorder."""
 
-    def __init__(self, max_queue_size=50000,
-                 num_workers=5,
-                 max_span_batch=100,
-                 batch_wait_interval=0.5):
+    def __init__(
+        self, max_queue_size=50000, num_workers=5, max_span_batch=100, batch_wait_interval=0.5
+    ):
         super(NullRecorder, self).__init__(
-            max_queue_size,
-            num_workers,
-            max_span_batch,
-            batch_wait_interval,
+            max_queue_size, num_workers, max_span_batch, batch_wait_interval
         )
 
     def flush_func(self, spans):
@@ -476,23 +413,22 @@ class RemoteRecorder(BaseBatchRecorder):
     in the event of parent process exit, any remaining spans will be discarded.
     """
 
-    def __init__(self, endpoint,
-                 num_conns=5,
-                 num_workers=5,
-                 max_queue_size=50000,
-                 max_span_batch=100,
-                 batch_wait_interval=0.5):
+    def __init__(
+        self,
+        endpoint,
+        num_conns=5,
+        num_workers=5,
+        max_queue_size=50000,
+        max_span_batch=100,
+        batch_wait_interval=0.5,
+    ):
 
         super(RemoteRecorder, self).__init__(
-            max_queue_size,
-            num_workers,
-            max_span_batch,
-            batch_wait_interval,
+            max_queue_size, num_workers, max_span_batch, batch_wait_interval
         )
-        adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns,
-                                                pool_maxsize=num_conns)
+        adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         self.session = requests.Session()
-        self.session.mount('http://', adapter)
+        self.session.mount("http://", adapter)
         self.endpoint = "http://%s/api/v1/spans" % endpoint
 
     def flush_func(self, spans):
@@ -501,9 +437,7 @@ class RemoteRecorder(BaseBatchRecorder):
             self.session.post(
                 self.endpoint,
                 data=json.dumps(spans),
-                headers={
-                    'Content-Type': 'application/json',
-                },
+                headers={"Content-Type": "application/json"},
                 timeout=1,
             )
         except RequestException as e:
