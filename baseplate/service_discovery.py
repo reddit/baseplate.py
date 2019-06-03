@@ -21,9 +21,9 @@ A basic example of usage::
 import collections
 import json
 
-from .config import Endpoint
-from .file_watcher import FileWatcher, WatchedFileNotAvailableError
-from .random import WeightedLottery
+from baseplate.config import Endpoint
+from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate.random import WeightedLottery
 
 
 Backend_ = collections.namedtuple("Backend", "id name endpoint weight")

@@ -1,7 +1,7 @@
 import logging
 import hashlib
 
-from .base import Experiment
+from baseplate.experiments.providers.base import Experiment
 
 
 logger = logging.getLogger(__name__)

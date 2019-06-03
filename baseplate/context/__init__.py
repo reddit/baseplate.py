@@ -19,7 +19,7 @@ and then a context-aware version of the client will show up on the
 
 """
 
-from ..core import BaseplateObserver, LocalSpan, SpanObserver
+from baseplate.core import BaseplateObserver, LocalSpan, SpanObserver
 
 
 class ContextFactory:

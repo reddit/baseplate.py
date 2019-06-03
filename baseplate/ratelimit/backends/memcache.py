@@ -1,7 +1,6 @@
-from baseplate.ratelimit.backends import RateLimitBackend
-from baseplate.ratelimit.backends import _get_current_bucket
-from ...context import ContextFactory
-from ...context.memcache import MemcacheContextFactory
+from baseplate.context import ContextFactory
+from baseplate.context.memcache import MemcacheContextFactory
+from baseplate.ratelimit.backends import _get_current_bucket, RateLimitBackend
 
 
 class MemcacheRateLimitBackendContextFactory(ContextFactory):

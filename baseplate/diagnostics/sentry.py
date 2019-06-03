@@ -1,4 +1,4 @@
-from ..core import BaseplateObserver, ServerSpanObserver
+from baseplate.core import BaseplateObserver, ServerSpanObserver
 
 
 class SentryBaseplateObserver(BaseplateObserver):

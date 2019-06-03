@@ -4,7 +4,7 @@ import select
 
 import posix_ipc
 
-from .retry import RetryPolicy
+from baseplate.retry import RetryPolicy
 
 
 class MessageQueueError(Exception):

@@ -1,10 +1,10 @@
 import os
 import sys
 
-from . import config, metrics
-from .core import Baseplate
-from .diagnostics import tracing
-from ._utils import warn_deprecated
+from baseplate import config, metrics
+from baseplate.core import Baseplate
+from baseplate.diagnostics import tracing
+from baseplate._utils import warn_deprecated
 
 
 def metrics_client_from_config(raw_config):

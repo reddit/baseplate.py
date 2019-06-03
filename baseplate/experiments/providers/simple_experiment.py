@@ -2,14 +2,12 @@ import logging
 import hashlib
 import time
 
-from .base import Experiment
-
-from ..variant_sets.single_variant_set import SingleVariantSet
-from ..variant_sets.multi_variant_set import MultiVariantSet
-from ..variant_sets.rollout_variant_set import RolloutVariantSet
-from ..variant_sets.range_variant_set import RangeVariantSet
-
-from ..targeting.tree_targeting import create_targeting_tree
+from baseplate.experiments.providers.base import Experiment
+from baseplate.experiments.targeting.tree_targeting import create_targeting_tree
+from baseplate.experiments.variant_sets.multi_variant_set import MultiVariantSet
+from baseplate.experiments.variant_sets.range_variant_set import RangeVariantSet
+from baseplate.experiments.variant_sets.rollout_variant_set import RolloutVariantSet
+from baseplate.experiments.variant_sets.single_variant_set import SingleVariantSet
 
 
 logger = logging.getLogger(__name__)

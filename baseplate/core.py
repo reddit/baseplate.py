@@ -6,8 +6,8 @@ import jwt
 from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 
-from .integration.wrapped_context import WrappedRequestContext
-from ._utils import warn_deprecated, cached_property
+from baseplate.integration.wrapped_context import WrappedRequestContext
+from baseplate._utils import warn_deprecated, cached_property
 
 
 logger = logging.getLogger(__name__)
@@ -470,9 +470,9 @@ class EdgeRequestContextFactory:
         """
         # Importing the Thrift models inline so that building them is not a
         # hard, import-time dependency for tasks like building the docs.
-        from .thrift.ttypes import Loid as TLoid
-        from .thrift.ttypes import Request as TRequest
-        from .thrift.ttypes import Session as TSession
+        from baseplate.thrift.ttypes import Loid as TLoid
+        from baseplate.thrift.ttypes import Request as TRequest
+        from baseplate.thrift.ttypes import Session as TSession
 
         if loid_id is not None and not loid_id.startswith("t2_"):
             raise ValueError(
@@ -568,9 +568,9 @@ class EdgeRequestContext:
     def _t_request(self):  # pylint: disable=method-hidden
         # Importing the Thrift models inline so that building them is not a
         # hard, import-time dependency for tasks like building the docs.
-        from .thrift.ttypes import Loid as TLoid
-        from .thrift.ttypes import Request as TRequest
-        from .thrift.ttypes import Session as TSession
+        from baseplate.thrift.ttypes import Loid as TLoid
+        from baseplate.thrift.ttypes import Request as TRequest
+        from baseplate.thrift.ttypes import Session as TSession
 
         _t_request = TRequest()
         _t_request.loid = TLoid()
@@ -607,7 +607,7 @@ class Baseplate:
     def configure_logging(self):
         """Add request context to the logging system."""
         # pylint: disable=cyclic-import
-        from .diagnostics.logging import LoggingBaseplateObserver
+        from baseplate.diagnostics.logging import LoggingBaseplateObserver
 
         self.register(LoggingBaseplateObserver())
 
@@ -624,7 +624,7 @@ class Baseplate:
 
         """
         # pylint: disable=cyclic-import
-        from .diagnostics.metrics import MetricsBaseplateObserver
+        from baseplate.diagnostics.metrics import MetricsBaseplateObserver
 
         self._metrics_client = metrics_client
         self.register(MetricsBaseplateObserver(metrics_client))
@@ -640,7 +640,7 @@ class Baseplate:
 
         """
         # pylint: disable=cyclic-import
-        from .diagnostics.tracing import make_client, TraceBaseplateObserver, TracingClient
+        from baseplate.diagnostics.tracing import make_client, TraceBaseplateObserver, TracingClient
 
         # the first parameter was service_name before, so if it's not a client
         # object we'll act like this is the old-style invocation and use the
@@ -667,7 +667,10 @@ class Baseplate:
 
         """
         # pylint: disable=cyclic-import
-        from .diagnostics.sentry import SentryBaseplateObserver, SentryUnhandledErrorReporter
+        from baseplate.diagnostics.sentry import (
+            SentryBaseplateObserver,
+            SentryUnhandledErrorReporter,
+        )
 
         from gevent import get_hub
 
@@ -689,7 +692,7 @@ class Baseplate:
 
         """
         # pylint: disable=cyclic-import
-        from .context import ContextObserver
+        from baseplate.context import ContextObserver
 
         self.register(ContextObserver(name, context_factory))
 

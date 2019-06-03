@@ -1,5 +1,5 @@
-from .backends import RateLimitBackend
-from ..context import ContextFactory
+from baseplate.context import ContextFactory
+from baseplate.ratelimit.backends import RateLimitBackend
 
 
 class RateLimitExceededException(Exception):

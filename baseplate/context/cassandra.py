@@ -7,8 +7,8 @@ from cassandra.cluster import Cluster, _NOT_SET, ResponseFuture
 # pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
 
-from . import ContextFactory
-from .. import config
+from baseplate import config
+from baseplate.context import ContextFactory
 
 
 logger = logging.getLogger(__name__)

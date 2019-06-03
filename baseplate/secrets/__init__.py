@@ -1,7 +1,7 @@
 """Secure access to secret tokens stored in Vault."""
 
 
-from .store import (
+from baseplate.secrets.store import (
     CorruptSecretError,
     CredentialSecret,
     SecretNotFoundError,

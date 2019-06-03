@@ -3,12 +3,11 @@ import time
 
 from datetime import datetime
 
-from .feature_flag import FeatureFlag
-from .forced_variant import ForcedVariantExperiment
-from .r2 import R2Experiment
-from .simple_experiment import SimpleExperiment
-
-from ..._utils import warn_deprecated
+from baseplate.experiments.providers.feature_flag import FeatureFlag
+from baseplate.experiments.providers.forced_variant import ForcedVariantExperiment
+from baseplate.experiments.providers.r2 import R2Experiment
+from baseplate.experiments.providers.simple_experiment import SimpleExperiment
+from baseplate._utils import warn_deprecated
 
 logger = logging.getLogger(__name__)
 

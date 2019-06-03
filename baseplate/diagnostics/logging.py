@@ -1,6 +1,6 @@
 import threading
 
-from ..core import BaseplateObserver
+from baseplate.core import BaseplateObserver
 
 
 class LoggingBaseplateObserver(BaseplateObserver):

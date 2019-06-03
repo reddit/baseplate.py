@@ -17,9 +17,9 @@ import sys
 import traceback
 import warnings
 
-from . import einhorn, reloader
-from ..config import Endpoint
-from ..integration.thrift import RequestContext
+from baseplate.config import Endpoint
+from baseplate.integration.thrift import RequestContext
+from baseplate.server import einhorn, reloader
 
 
 logger = logging.getLogger(__name__)

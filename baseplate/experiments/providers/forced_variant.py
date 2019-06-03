@@ -1,4 +1,4 @@
-from .base import Experiment
+from baseplate.experiments.providers.base import Experiment
 
 
 class ForcedVariantExperiment(Experiment):

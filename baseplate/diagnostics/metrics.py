@@ -1,4 +1,4 @@
-from ..core import BaseplateObserver, LocalSpan, SpanObserver
+from baseplate.core import BaseplateObserver, LocalSpan, SpanObserver
 
 
 class MetricsBaseplateObserver(BaseplateObserver):

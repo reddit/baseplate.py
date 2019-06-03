@@ -6,8 +6,8 @@ from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException, TException
 from thrift.transport.TTransport import TTransportException
 
-from . import ContextFactory
-from ..retry import RetryPolicy
+from baseplate.context import ContextFactory
+from baseplate.retry import RetryPolicy
 
 
 class ThriftContextFactory(ContextFactory):
