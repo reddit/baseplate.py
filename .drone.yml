@@ -12,7 +12,7 @@ steps:
           - pip install $PIP_OPTIONS -r requirements-lint.txt
           - black --diff --check .
           - flake8
-          - pylint baseplate/
+          - PYTHONPATH=. pylint baseplate/
           - mypy baseplate/
 
 ---
