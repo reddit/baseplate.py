@@ -1,24 +1,17 @@
 import collections
-import math
 import os
 import time
 import unittest
-import copy
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-from baseplate.core import ServerSpan
-from baseplate.events import EventLogger
-from baseplate.experiments import ExperimentsContextFactory
-from baseplate.experiments.providers import ISO_DATE_FMT, parse_experiment
-from baseplate.experiments.providers.simple_experiment import SimpleExperiment
+from baseplate.experiments.providers import parse_experiment
 from baseplate.experiments.providers.simple_experiment import (
     _generate_targeting,
     _generate_overrides,
 )
 from baseplate.experiments.targeting.base import Targeting
 from baseplate.experiments.targeting.tree_targeting import OverrideNode, EqualNode
-from baseplate.file_watcher import FileWatcher
 
 from .... import mock
 

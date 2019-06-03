@@ -4,10 +4,10 @@ from ... import mock
 
 try:
     import cassandra
+
+    del cassandra
 except ImportError:
     raise unittest.SkipTest("cassandra-driver is not installed")
-except:
-    del cassandra
 
 from baseplate import core
 from baseplate.config import ConfigurationError

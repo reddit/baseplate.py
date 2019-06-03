@@ -1,9 +1,5 @@
 import logging
-import collections
-import time
 import unittest
-
-from datetime import timedelta
 
 from baseplate.experiments.variant_sets.range_variant_set import RangeVariantSet
 
@@ -43,7 +39,7 @@ class TestRangeVariantSet(unittest.TestCase):
             {"name": "variant_3", "range_start": 0.35, "range_end": 0.6},
         ]
 
-        variant_set_overlap = RangeVariantSet(variant_set_cfg_overlap)
+        RangeVariantSet(variant_set_cfg_overlap)
 
     def test_validation_fails(self):
         variant_set_cfg_none = None
@@ -57,13 +53,13 @@ class TestRangeVariantSet(unittest.TestCase):
         ]
 
         with self.assertRaises(ValueError):
-            variant_set_none = RangeVariantSet(variant_set_cfg_none)
+            RangeVariantSet(variant_set_cfg_none)
 
         with self.assertRaises(ValueError):
-            variant_set_0 = RangeVariantSet(variant_set_cfg_0)
+            RangeVariantSet(variant_set_cfg_0)
 
         with self.assertRaises(ValueError):
-            variant_set_too_big = RangeVariantSet(variant_set_cfg_too_big)
+            RangeVariantSet(variant_set_cfg_too_big)
 
     def test_distribution_def_buckets(self):
         variant_set = create_range_variant_set()

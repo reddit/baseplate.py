@@ -1,18 +1,18 @@
 import base64
 import unittest
-import sys
+
+from baseplate.crypto import validate_signature
+from baseplate.file_watcher import FileWatcher
+from baseplate.secrets.store import SecretsStore
+
+from .... import mock
+
 
 has_csrf_policy = True
 try:
     from baseplate.integration.pyramid.csrf import _make_csrf_token_payload, TokenCSRFStoragePolicy
 except ImportError:
     has_csrf_policy = False
-
-from baseplate.crypto import make_signature, SignatureError, validate_signature
-from baseplate.file_watcher import FileWatcher
-from baseplate.secrets.store import SecretsStore
-
-from .... import mock
 
 
 @unittest.skipIf(not has_csrf_policy, "Does not have the required pyramid version")

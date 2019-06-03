@@ -293,7 +293,7 @@ class TestExperiments(unittest.TestCase):
             self.assertEqual("test2" in experiment_names, True)
 
     def test_that_bucketing_events_are_not_sent_with_override_false(self):
-        """Don't send events when override is False"""
+        """Don't send events when override is False."""
         self.mock_filewatcher.get_data.return_value = {
             "test": {
                 "id": 1,

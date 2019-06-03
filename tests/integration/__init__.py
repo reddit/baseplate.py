@@ -43,12 +43,10 @@ class TestSpanObserver(SpanObserver):
         self.children = []
 
     def on_start(self):
-        """Called when the observed span is started."""
         assert not self.on_start_called, "start was already called on this span"
         self.on_start_called = True
 
     def on_set_tag(self, key, value):
-        """Called when a tag is set on the observed span."""
         self.tags[key] = value
 
     def assert_tag(self, key, value):
@@ -58,16 +56,9 @@ class TestSpanObserver(SpanObserver):
         )
 
     def on_log(self, name, payload):
-        """Called when a log entry is added to the span."""
         self.logs.append((name, payload))
 
     def on_finish(self, exc_info):
-        """Called when the observed span is finished.
-
-        :param exc_info: If the span ended because of an exception, the
-            exception info. Otherwise, :py:data:`None`.
-
-        """
         assert not self.on_finish_called, "finish was already called on this span"
         self.on_finish_called = True
         self.on_finish_exc_info = exc_info

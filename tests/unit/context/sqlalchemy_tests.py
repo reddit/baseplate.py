@@ -5,7 +5,6 @@ try:
 except ImportError:
     raise unittest.SkipTest("sqlalchemy is not installed")
 
-from baseplate.config import ConfigurationError
 from baseplate.context.sqlalchemy import engine_from_config
 from baseplate.file_watcher import FileWatcher
 from baseplate.secrets.store import SecretsStore
@@ -36,7 +35,7 @@ class EngineFromConfigTests(unittest.TestCase):
 
     @mock.patch("baseplate.context.sqlalchemy.create_engine")
     def test_credentials(self, create_engine_mock):
-        engine = engine_from_config(
+        engine_from_config(
             {
                 "database.url": "postgresql://fizz:buzz@localhost:9000/db",
                 "database.credentials_secret": "secret/sql/account",

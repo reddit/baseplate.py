@@ -3,7 +3,6 @@ import unittest
 from baseplate.core import (
     Baseplate,
     BaseplateObserver,
-    EdgeRequestContext,
     EdgeRequestContextFactory,
     LocalSpan,
     NoAuthenticationError,
@@ -30,10 +29,10 @@ from .. import (
 cryptography_installed = True
 try:
     import cryptography
-except:
-    cryptography_installed = False
-else:
+
     del cryptography
+except ImportError:
+    cryptography_installed = False
 
 
 def make_test_server_span(context=None):

@@ -1,4 +1,3 @@
-import logging
 import time
 import unittest
 
@@ -92,8 +91,6 @@ class CassandraTests(unittest.TestCase):
 
         # mock the on_execute_complete callback to be slow
         def on_execute_complete(result, span, event):
-            import time
-
             time.sleep(0.005)
             span.finish()
             event.set()
@@ -115,8 +112,6 @@ class CassandraTests(unittest.TestCase):
     def test_async_callback_pass(self):
         # mock the on_execute_complete callback to be slow
         def on_execute_complete(result, span, event):
-            import time
-
             time.sleep(0.005)
             span.finish()
             event.set()
@@ -138,8 +133,6 @@ class CassandraTests(unittest.TestCase):
     def test_async_callback_too_slow(self):
         # mock the on_execute_complete callback to be slow
         def on_execute_complete(result, span, event):
-            import time
-
             time.sleep(0.02)
             span.finish()
             event.set()

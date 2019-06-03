@@ -3,7 +3,6 @@
 import builtins
 import json
 import os
-import sys
 import tempfile
 import unittest
 
@@ -125,7 +124,7 @@ class FileWatcherTests(unittest.TestCase):
             with mock.patch.object(
                 builtins, "open", mock.mock_open(read_data="foo"), create=True
             ) as open_mock:
-                data = watcher.get_data()
+                watcher.get_data()
             open_mock.assert_called_once_with(watched_file.name, "rb")
 
             watcher = file_watcher.FileWatcher(
@@ -146,7 +145,7 @@ class FileWatcherTests(unittest.TestCase):
             with mock.patch.object(
                 builtins, "open", mock.mock_open(read_data="foo"), create=True
             ) as open_mock:
-                data = watcher.get_data()
+                watcher.get_data()
             open_mock.assert_called_once_with(watched_file.name, "r")
 
             watcher = file_watcher.FileWatcher(
@@ -178,7 +177,9 @@ class Py3FileWatcherTests(unittest.TestCase):
         self.assertEqual(result, {"a": "☃️"})
 
     def test_newline_option(self):
-        parser = lambda f: f.readlines()
+        def parser(f):
+            return f.readlines()
+
         with tempfile.NamedTemporaryFile() as watched_file:
             watched_file.write(b"A\nB\rC\r\nD")
             watched_file.flush()

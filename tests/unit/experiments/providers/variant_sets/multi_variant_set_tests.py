@@ -1,9 +1,5 @@
 import logging
-import collections
-import time
 import unittest
-
-from datetime import timedelta
 
 from baseplate.experiments.variant_sets.multi_variant_set import MultiVariantSet
 
@@ -52,13 +48,16 @@ class TestMultiVariantSet(unittest.TestCase):
         ]
 
         with self.assertRaises(ValueError):
-            variant_set_none = MultiVariantSet(variant_set_cfg_none)
+            MultiVariantSet(variant_set_cfg_none)
 
         with self.assertRaises(ValueError):
-            variant_set_2 = MultiVariantSet(variant_set_cfg_2)
+            MultiVariantSet(variant_set_cfg_0)
 
         with self.assertRaises(ValueError):
-            variant_set_too_big = MultiVariantSet(variant_set_cfg_too_big)
+            MultiVariantSet(variant_set_cfg_2)
+
+        with self.assertRaises(ValueError):
+            MultiVariantSet(variant_set_cfg_too_big)
 
     def test_distribution_def_buckets(self):
         variant_set = create_multi_variant_set()
