@@ -1,4 +1,3 @@
-
 from math import ceil
 
 import redis
@@ -29,14 +28,17 @@ def pool_from_config(app_config, prefix="redis.", **kwargs):
     """
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "url": config.String,
-            "max_connections": config.Optional(config.Integer, default=None),
-            "socket_connect_timeout": config.Optional(config.Timespan, default=None),
-            "socket_timeout": config.Optional(config.Timespan, default=None),
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "url": config.String,
+                "max_connections": config.Optional(config.Integer, default=None),
+                "socket_connect_timeout": config.Optional(config.Timespan, default=None),
+                "socket_timeout": config.Optional(config.Timespan, default=None),
+            }
         },
-    })
+    )
 
     options = getattr(cfg, config_prefix)
 
@@ -92,16 +94,14 @@ class MonitoredRedisConnection(redis.StrictRedis):
         self.context_name = context_name
         self.server_span = server_span
 
-        super(MonitoredRedisConnection, self).__init__(
-            connection_pool=connection_pool)
+        super(MonitoredRedisConnection, self).__init__(connection_pool=connection_pool)
 
     # pylint: disable=arguments-differ
     def execute_command(self, command, *args, **kwargs):
         trace_name = "{}.{}".format(self.context_name, command)
 
         with self.server_span.make_child(trace_name):
-            return super(MonitoredRedisConnection, self).execute_command(
-                command, *args, **kwargs)
+            return super(MonitoredRedisConnection, self).execute_command(command, *args, **kwargs)
 
     # pylint: disable=arguments-differ
     def pipeline(self, name, transaction=True, shard_hint=None):
@@ -137,12 +137,10 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
 
 class MonitoredRedisPipeline(redis.client.StrictPipeline):
-    def __init__(self, trace_name, server_span, connection_pool,
-                 response_callbacks, **kwargs):
+    def __init__(self, trace_name, server_span, connection_pool, response_callbacks, **kwargs):
         self.trace_name = trace_name
         self.server_span = server_span
-        super(MonitoredRedisPipeline, self).__init__(
-            connection_pool, response_callbacks, **kwargs)
+        super(MonitoredRedisPipeline, self).__init__(connection_pool, response_callbacks, **kwargs)
 
     def execute(self, **kwargs):  # pylint: disable=arguments-differ
         with self.server_span.make_child(self.trace_name):

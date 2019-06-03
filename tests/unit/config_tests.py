@@ -1,4 +1,3 @@
-
 import socket
 import tempfile
 import unittest
@@ -163,7 +162,7 @@ class TimespanTests(unittest.TestCase):
 
 class PercentTests(unittest.TestCase):
     def test_percentage(self):
-        self.assertAlmostEqual(config.Percent("37.2%"), .372)
+        self.assertAlmostEqual(config.Percent("37.2%"), 0.372)
         self.assertAlmostEqual(config.Percent("100%"), 1.0)
 
     def test_invalid_percentage(self):
@@ -249,11 +248,11 @@ class OptionalTests(unittest.TestCase):
 class FallbackTests(unittest.TestCase):
     def test_primary_option_works(self):
         parser = config.Fallback(config.Percent, config.Float)
-        self.assertAlmostEqual(parser("33%"), .33)
+        self.assertAlmostEqual(parser("33%"), 0.33)
 
     def test_fallback_option_works(self):
         parser = config.Fallback(config.Percent, config.Float)
-        self.assertAlmostEqual(parser(".44"), .44)
+        self.assertAlmostEqual(parser(".44"), 0.44)
 
 
 class DictOfTests(unittest.TestCase):
@@ -264,53 +263,36 @@ class DictOfTests(unittest.TestCase):
 
     def test_scalar_children(self):
         parser = config.DictOf(config.Integer)
-        result = parser.parse("my_key", {
-            "my_key.a": "1",
-            "my_key.b": "2",
-        })
+        result = parser.parse("my_key", {"my_key.a": "1", "my_key.b": "2"})
         self.assertEqual(result, {"a": 1, "b": 2})
 
     def test_vector_children(self):
         parser = config.DictOf({"a": config.Integer, "b": config.String})
-        result = parser.parse("my_key", {
-            "my_key.first.a": "1",
-            "my_key.first.b": "test",
-            "my_key.first.c": "ignored",
-            "my_key.second.a": "2",
-            "my_key.second.b": "test",
-        })
-        self.assertEqual(result, {
-            "first": {
-                "a": 1,
-                "b": "test",
+        result = parser.parse(
+            "my_key",
+            {
+                "my_key.first.a": "1",
+                "my_key.first.b": "test",
+                "my_key.first.c": "ignored",
+                "my_key.second.a": "2",
+                "my_key.second.b": "test",
             },
-
-            "second": {
-                "a": 2,
-                "b": "test",
-            },
-        })
+        )
+        self.assertEqual(result, {"first": {"a": 1, "b": "test"}, "second": {"a": 2, "b": "test"}})
 
     def test_root_level(self):
         parser = config.DictOf({"a": config.Integer, "b": config.String})
-        result = parser.parse("", {
-            "first.a": "1",
-            "first.b": "test",
-            "first.c": "ignored",
-            "second.a": "2",
-            "second.b": "test",
-        })
-        self.assertEqual(result, {
-            "first": {
-                "a": 1,
-                "b": "test",
+        result = parser.parse(
+            "",
+            {
+                "first.a": "1",
+                "first.b": "test",
+                "first.c": "ignored",
+                "second.a": "2",
+                "second.b": "test",
             },
-
-            "second": {
-                "a": 2,
-                "b": "test",
-            },
-        })
+        )
+        self.assertEqual(result, {"first": {"a": 1, "b": "test"}, "second": {"a": 2, "b": "test"}})
 
 
 class TestParseConfig(unittest.TestCase):
@@ -324,23 +306,15 @@ class TestParseConfig(unittest.TestCase):
         }
 
     def test_simple_config(self):
-        result = config.parse_config(self.config, {
-            "simple": config.String,
-
-            "foo": {
-                "bar": config.Integer,
+        result = config.parse_config(
+            self.config,
+            {
+                "simple": config.String,
+                "foo": {"bar": config.Integer},
+                "noo": {"bar": config.Optional(config.String, default="")},
+                "deep": {"so": {"deep": config.String}},
             },
-
-            "noo": {
-                "bar": config.Optional(config.String, default=""),
-            },
-
-            "deep": {
-                "so": {
-                    "deep": config.String,
-                },
-            },
-        })
+        )
 
         self.assertEqual(result.simple, "oink")
         self.assertEqual(result.foo.bar, 33)
@@ -349,39 +323,20 @@ class TestParseConfig(unittest.TestCase):
 
     def test_missing_key(self):
         with self.assertRaises(config.ConfigurationError):
-            config.parse_config(self.config, {
-                "foo": {
-                    "not_here": config.Integer,
-                },
-            })
+            config.parse_config(self.config, {"foo": {"not_here": config.Integer}})
 
     def test_bad_value(self):
         with self.assertRaises(config.ConfigurationError):
-            config.parse_config(self.config, {
-                "foo": {
-                    "baz": config.Integer,
-                },
-            })
+            config.parse_config(self.config, {"foo": {"baz": config.Integer}})
 
     def test_dot_in_key(self):
         with self.assertRaises(AssertionError):
-            config.parse_config(self.config, {
-                "foo.bar": {},
-            })
+            config.parse_config(self.config, {"foo.bar": {}})
 
     def test_spec_contains_invalid_object(self):
         with self.assertRaises(AssertionError):
-            config.parse_config(self.config, {
-                "tree_people": 37,
-            })
+            config.parse_config(self.config, {"tree_people": 37})
 
     def test_subparsers(self):
-        result = config.parse_config(self.config, {
-            "foo": config.DictOf(config.String),
-        })
-        self.assertEqual(result, {
-            "foo": {
-                "bar": "33",
-                "baz": "a cool guy",
-            },
-        })
+        result = config.parse_config(self.config, {"foo": config.DictOf(config.String)})
+        self.assertEqual(result, {"foo": {"bar": "33", "baz": "a cool guy"}})

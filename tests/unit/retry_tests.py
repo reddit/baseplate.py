@@ -1,4 +1,3 @@
-
 import itertools
 import unittest
 
@@ -56,28 +55,28 @@ class RetryPolicyTests(unittest.TestCase):
     @mock.patch("time.sleep", autospec=True)
     def test_exponential_backoff(self, sleep):
         base_policy = mock.MagicMock()
-        base_policy.__iter__.return_value = itertools.repeat(.9)
-        policy = ExponentialBackoffRetryPolicy(base_policy, base=.1)
+        base_policy.__iter__.return_value = itertools.repeat(0.9)
+        policy = ExponentialBackoffRetryPolicy(base_policy, base=0.1)
 
         retries = iter(policy)
         next(retries)
         self.assertEqual(sleep.call_count, 0)
 
         next(retries)
-        sleep.assert_called_with(.1)
+        sleep.assert_called_with(0.1)
 
         next(retries)
-        sleep.assert_called_with(.2)
+        sleep.assert_called_with(0.2)
 
         next(retries)
-        sleep.assert_called_with(.4)
+        sleep.assert_called_with(0.4)
 
         next(retries)
-        sleep.assert_called_with(.8)
+        sleep.assert_called_with(0.8)
 
         # the base policy's lower time remaining takes over here
         next(retries)
-        sleep.assert_called_with(.9)
+        sleep.assert_called_with(0.9)
 
 
 class ComplexPolicyTests(unittest.TestCase):
@@ -108,12 +107,12 @@ class ComplexPolicyTests(unittest.TestCase):
         self.assertAlmostEqual(time_remaining, 1)
         self.assertEqual(sleep.call_count, 0)
 
-        time.return_value = .5
+        time.return_value = 0.5
         time_remaining = next(retries)
-        self.assertAlmostEqual(time_remaining, .4)
-        sleep.assert_called_with(.1)
+        self.assertAlmostEqual(time_remaining, 0.4)
+        sleep.assert_called_with(0.1)
 
-        time.return_value = .9
+        time.return_value = 0.9
         time_remaining = next(retries)
         self.assertAlmostEqual(time_remaining, 0)
         self.assertAlmostEqual(sleep.call_args[0][0], 0.1, places=2)

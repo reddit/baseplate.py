@@ -1,4 +1,3 @@
-
 import unittest
 
 from baseplate.core import ServerSpan, Span, LocalSpan
@@ -80,7 +79,7 @@ class ClientSpanObserverTests(unittest.TestCase):
         self.assertEqual(mock_counter.increment.call_count, 1)
 
         mock_counter.reset_mock()
-        observer.on_log(name='error.object', payload=TestException())
+        observer.on_log(name="error.object", payload=TestException())
         self.assertEqual(mock_counter.increment.call_count, 1)
         self.assertEqual(mock_batch.counter.call_args, mock.call("errors.TestException"))
 

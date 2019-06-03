@@ -1,4 +1,3 @@
-
 import logging
 import collections
 import time
@@ -24,13 +23,13 @@ def generate_variant_config():
 
     return cfg
 
+
 def create_multi_variant_set():
     cfg = generate_variant_config()
     return MultiVariantSet(variants=cfg, num_buckets=NUM_BUCKETS_DEFAULT)
 
 
 class TestMultiVariantSet(unittest.TestCase):
-
     def test_validation_passes(self):
         variant_set = create_multi_variant_set()
 
@@ -39,8 +38,7 @@ class TestMultiVariantSet(unittest.TestCase):
     def test_validation_fails(self):
         variant_set_cfg_none = None
 
-        variant_set_cfg_0 = [
-        ]
+        variant_set_cfg_0 = []
 
         variant_set_cfg_2 = [
             {"name": "variant_1", "size": 0.25},
@@ -55,22 +53,17 @@ class TestMultiVariantSet(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             variant_set_none = MultiVariantSet(variant_set_cfg_none)
-        
+
         with self.assertRaises(ValueError):
             variant_set_2 = MultiVariantSet(variant_set_cfg_2)
-        
+
         with self.assertRaises(ValueError):
             variant_set_too_big = MultiVariantSet(variant_set_cfg_too_big)
 
     def test_distribution_def_buckets(self):
         variant_set = create_multi_variant_set()
 
-        variant_counts = {
-            "variant_1": 0,
-            "variant_2": 0,
-            "variant_3": 0,
-            None: 0,
-        }
+        variant_counts = {"variant_1": 0, "variant_2": 0, "variant_3": 0, None: 0}
 
         for bucket in range(0, NUM_BUCKETS_DEFAULT):
             variant = variant_set.choose_variant(bucket)
@@ -88,17 +81,9 @@ class TestMultiVariantSet(unittest.TestCase):
             {"name": "variant_3", "size": 0},
         ]
 
-        variant_set = MultiVariantSet(
-            variants=cfg, 
-            num_buckets=NUM_BUCKETS_DEFAULT
-        )
+        variant_set = MultiVariantSet(variants=cfg, num_buckets=NUM_BUCKETS_DEFAULT)
 
-        variant_counts = {
-            "variant_1": 0,
-            "variant_2": 0,
-            "variant_3": 0,
-            None: 0,
-        }
+        variant_counts = {"variant_1": 0, "variant_2": 0, "variant_3": 0, None: 0}
 
         for bucket in range(0, NUM_BUCKETS_DEFAULT):
             variant = variant_set.choose_variant(bucket)
@@ -106,28 +91,19 @@ class TestMultiVariantSet(unittest.TestCase):
 
         self.assertEqual(len(variant_counts), 4)
 
-        self.assertEqual(variant_counts['variant_1'], 1)
-        self.assertEqual(variant_counts['variant_2'], 0)
-        self.assertEqual(variant_counts['variant_3'], 0)
+        self.assertEqual(variant_counts["variant_1"], 1)
+        self.assertEqual(variant_counts["variant_2"], 0)
+        self.assertEqual(variant_counts["variant_3"], 0)
         self.assertEqual(variant_counts[None], 999)
 
     def test_distribution_def_odd(self):
         variant_cfg = generate_variant_config()
         variant_cfg.append({"name": "variant_4", "size": 0.25})
-        variant_set = MultiVariantSet(
-            variants=variant_cfg, 
-            num_buckets=NUM_BUCKETS_ODD,
-        )
+        variant_set = MultiVariantSet(variants=variant_cfg, num_buckets=NUM_BUCKETS_ODD)
 
-        variant_counts = {
-            "variant_1": 0,
-            "variant_2": 0,
-            "variant_3": 0,
-            "variant_4": 0,
-            None: 0,
-        }
+        variant_counts = {"variant_1": 0, "variant_2": 0, "variant_3": 0, "variant_4": 0, None: 0}
 
-        for bucket in range(0,NUM_BUCKETS_ODD):
+        for bucket in range(0, NUM_BUCKETS_ODD):
             variant = variant_set.choose_variant(bucket)
             variant_counts[variant] += 1
 

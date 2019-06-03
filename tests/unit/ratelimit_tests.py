@@ -1,4 +1,3 @@
-
 import unittest
 
 from baseplate import ratelimit
@@ -26,11 +25,11 @@ class RateLimiterTests(unittest.TestCase):
         self.ratelimiter = ratelimit.RateLimiter(ratelimit_backend, 10, 60)
 
     def test_consume(self):
-        self.ratelimiter.consume('user_12345')
+        self.ratelimiter.consume("user_12345")
 
     def test_consume_over_allowance(self):
         with self.assertRaises(ratelimit.RateLimitExceededException):
-            self.ratelimiter.consume('user_12345', amount=11)
+            self.ratelimiter.consume("user_12345", amount=11)
 
 
 class RedisRateLimitBackendTest(unittest.TestCase):
@@ -42,12 +41,11 @@ class RedisRateLimitBackendTest(unittest.TestCase):
         self.ratelimit_backend = RedisRateLimitBackend(redis)
 
     def test_consume(self):
-        self.assertTrue(self.ratelimit_backend.consume(
-            'user_12345', self.amount, 10, 60))
+        self.assertTrue(self.ratelimit_backend.consume("user_12345", self.amount, 10, 60))
 
     def test_consume_over_max(self):
-        self.assertFalse(self.ratelimit_backend.consume(
-            'user_12345', self.amount, 5, 60))
+        self.assertFalse(self.ratelimit_backend.consume("user_12345", self.amount, 5, 60))
+
 
 class MemcacheRateLimitBackendTest(unittest.TestCase):
     def setUp(self):
@@ -57,9 +55,7 @@ class MemcacheRateLimitBackendTest(unittest.TestCase):
         self.ratelimit_backend = MemcacheRateLimitBackend(memcache)
 
     def test_consume(self):
-        self.assertTrue(self.ratelimit_backend.consume(
-            'user_12345', self.amount, 10, 60))
+        self.assertTrue(self.ratelimit_backend.consume("user_12345", self.amount, 10, 60))
 
     def test_consume_over_max(self):
-        self.assertFalse(self.ratelimit_backend.consume(
-            'user_12345', self.amount, 5, 60))
+        self.assertFalse(self.ratelimit_backend.consume("user_12345", self.amount, 5, 60))

@@ -1,4 +1,3 @@
-
 import logging
 
 # pylint: disable=ungrouped-imports
@@ -29,11 +28,14 @@ logger = logging.getLogger(__name__)
 def make_server(server_config, listener, app):
     """Make a gevent server for WSGI apps."""
     # pylint: disable=maybe-no-member
-    cfg = config.parse_config(server_config, {
-        "handler": config.Optional(config.String, default=None),
-        "max_concurrency": config.Integer,
-        "stop_timeout": config.Optional(config.Integer, default=0),
-    })
+    cfg = config.parse_config(
+        server_config,
+        {
+            "handler": config.Optional(config.String, default=None),
+            "max_concurrency": config.Integer,
+            "stop_timeout": config.Optional(config.Integer, default=0),
+        },
+    )
 
     pool = Pool(size=cfg.max_concurrency)
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
@@ -45,13 +47,7 @@ def make_server(server_config, listener, app):
     if cfg.handler:
         kwargs["handler_class"] = _load_factory(cfg.handler, default_name=None)
 
-    server = WSGIServer(
-        listener,
-        application=app,
-        spawn=pool,
-        log=log,
-        **kwargs
-    )
+    server = WSGIServer(listener, application=app, spawn=pool, log=log, **kwargs)
     server.stop_timeout = cfg.stop_timeout
 
     runtime_monitor.start(server_config, app, pool)

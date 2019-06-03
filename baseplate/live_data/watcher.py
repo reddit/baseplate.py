@@ -77,12 +77,13 @@ def watch_zookeeper_nodes(zookeeper, nodes):
 
 
 def main():
-    arg_parser = argparse.ArgumentParser(
-        description=sys.modules[__name__].__doc__)
-    arg_parser.add_argument("config_file", type=argparse.FileType("r"),
-        help="path to a configuration file")
-    arg_parser.add_argument("--debug", default=False, action="store_true",
-        help="enable debug logging")
+    arg_parser = argparse.ArgumentParser(description=sys.modules[__name__].__doc__)
+    arg_parser.add_argument(
+        "config_file", type=argparse.FileType("r"), help="path to a configuration file"
+    )
+    arg_parser.add_argument(
+        "--debug", default=False, action="store_true", help="enable debug logging"
+    )
     args = arg_parser.parse_args()
 
     if args.debug:
@@ -98,21 +99,25 @@ def main():
     parser.readfp(args.config_file)  # pylint: disable=deprecated-method
     watcher_config = dict(parser.items("live-data"))
 
-    cfg = config.parse_config(watcher_config, {
-        "nodes": config.DictOf({
-            "source": config.String,
-            "dest": config.String,
-            "owner": config.Optional(config.UnixUser),
-            "group": config.Optional(config.UnixGroup),
-            "mode": config.Optional(config.Integer(base=8), default=0o400),
-        }),
-    })
+    cfg = config.parse_config(
+        watcher_config,
+        {
+            "nodes": config.DictOf(
+                {
+                    "source": config.String,
+                    "dest": config.String,
+                    "owner": config.Optional(config.UnixUser),
+                    "group": config.Optional(config.UnixGroup),
+                    "mode": config.Optional(config.Integer(base=8), default=0o400),
+                }
+            )
+        },
+    )
     # pylint: disable=maybe-no-member
     nodes = cfg.nodes.values()
 
     secrets = secrets_store_from_config(watcher_config, timeout=30)
-    zookeeper = zookeeper_client_from_config(
-        secrets, watcher_config, read_only=True)
+    zookeeper = zookeeper_client_from_config(secrets, watcher_config, read_only=True)
     zookeeper.start()
     try:
         watch_zookeeper_nodes(zookeeper, nodes)

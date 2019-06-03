@@ -1,4 +1,3 @@
-
 import unittest
 
 from io import BytesIO
@@ -70,9 +69,11 @@ class LiveDataWriterTests(unittest.TestCase):
         # effect allows us to inject some behavior into the middle of the
         # function.
         mock_file = mock.Mock()
+
         def mock_read():
             self.zookeeper.set(TEST_NODE_PATH, b"I changed!")
             return b"contents of file"
+
         mock_file.read.side_effect = mock_read
 
         with self.assertRaises(UnexpectedChangeError):

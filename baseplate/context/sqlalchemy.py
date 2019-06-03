@@ -1,4 +1,3 @@
-
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
@@ -28,18 +27,24 @@ def engine_from_config(app_config, secrets=None, prefix="database."):
     """
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "url": config.String,
-            "credentials_secret": config.Optional(config.String),
-        }})
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "url": config.String,
+                "credentials_secret": config.Optional(config.String),
+            }
+        },
+    )
     options = getattr(cfg, config_prefix)
     url = make_url(options.url)
 
     if options.credentials_secret:
         if not secrets:
-            raise TypeError("'secrets' is a required argument to 'engine_from_config' "
-                            "if 'credentials_secret' is set")
+            raise TypeError(
+                "'secrets' is a required argument to 'engine_from_config' "
+                "if 'credentials_secret' is set"
+            )
         credentials = secrets.get_credentials(options.credentials_secret)
         url.username = credentials.username
         url.password = credentials.password
@@ -75,10 +80,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         event.listen(self.engine, "dbapi_error", self.on_dbapi_error)
 
     def make_object_for_context(self, name, span):
-        engine = self.engine.execution_options(
-            context_name=name,
-            server_span=span,
-        )
+        engine = self.engine.execution_options(context_name=name, server_span=span)
         return engine
 
     # pylint: disable=unused-argument, too-many-arguments
@@ -96,8 +98,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         # add a comment to the sql statement with the trace and span ids
         # this is useful for slow query logs and active query views
-        annotated_statement = "{} -- trace:{:d},span:{:d}".format(
-            statement, span.trace_id, span.id)
+        annotated_statement = "{} -- trace:{:d},span:{:d}".format(statement, span.trace_id, span.id)
         return annotated_statement, parameters
 
     # pylint: disable=unused-argument, too-many-arguments
@@ -137,8 +138,9 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
 
     def make_object_for_context(self, name, span):
         if isinstance(span, ServerSpan):
-            engine = super(SQLAlchemySessionContextFactory,
-                           self).make_object_for_context(name, span)
+            engine = super(SQLAlchemySessionContextFactory, self).make_object_for_context(
+                name, span
+            )
             session = Session(bind=engine)
         else:
             # Reuse session in the existing context

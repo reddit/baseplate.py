@@ -21,8 +21,7 @@ class SecretNotFoundError(Exception):
     """Raised when the requested secret is not in the local vault."""
 
     def __init__(self, name):
-        super(SecretNotFoundError, self).__init__(
-            "secret not found: {!r}".format(name))
+        super(SecretNotFoundError, self).__init__("secret not found: {!r}".format(name))
         self.name = name
 
 
@@ -30,8 +29,7 @@ class CorruptSecretError(Exception):
     """Raised when the requested secret does not match the expected format."""
 
     def __init__(self, path, message):
-        super(CorruptSecretError, self).__init__(
-            "{}: {}".format(path, message))
+        super(CorruptSecretError, self).__init__("{}: {}".format(path, message))
         self.path = path
         self.message = message
 
@@ -40,13 +38,11 @@ class SecretsNotAvailableError(Exception):
     """Raised when the secrets store was not accessible."""
 
     def __init__(self, inner):
-        super(SecretsNotAvailableError, self).__init__(
-            "could not load secrets: {}".format(inner))
+        super(SecretsNotAvailableError, self).__init__("could not load secrets: {}".format(inner))
         self.inner = inner
 
 
-_VersionedSecret = collections.namedtuple(
-    "VersionedSecret", "previous current next")
+_VersionedSecret = collections.namedtuple("VersionedSecret", "previous current next")
 
 
 class VersionedSecret(_VersionedSecret):
@@ -80,11 +76,7 @@ class VersionedSecret(_VersionedSecret):
         secrets store instead.
 
         """
-        return cls(
-            previous=None,
-            current=value,
-            next=None,
-        )
+        return cls(previous=None, current=value, next=None)
 
 
 _CredentialSecret = collections.namedtuple("CredentialSecret", "username password")
@@ -184,9 +176,9 @@ class SecretsStore(ContextFactory):
         encoding = secret_attributes.get("encoding", "identity")
 
         if encoding != "identity":
-            raise CorruptSecretError(path,
-                                    "secret has encoding=%s rather than "
-                                    "encoding=identity" % encoding)
+            raise CorruptSecretError(
+                path, "secret has encoding=%s rather than " "encoding=identity" % encoding
+            )
 
         values = {}
         for key in ("username", "password"):
@@ -347,11 +339,14 @@ def secrets_store_from_config(app_config, timeout=None, prefix="secrets."):
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
 
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "path": config.Optional(config.String, default="/var/local/secrets.json"),
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "path": config.Optional(config.String, default="/var/local/secrets.json")
+            }
         },
-    })
+    )
     options = getattr(cfg, config_prefix)
 
     # pylint: disable=maybe-no-member

@@ -1,4 +1,3 @@
-
 import logging
 import time
 
@@ -17,18 +16,12 @@ logger = logging.getLogger(__name__)
 ISO_DATE_FMT = "%Y-%m-%d"
 
 
-legacy_type_class_map = {
-    'r2': R2Experiment,
-    'feature_flag': FeatureFlag,
-}
+legacy_type_class_map = {"r2": R2Experiment, "feature_flag": FeatureFlag}
 
 
-simple_type_class_list = frozenset([
-    'single_variant',
-    'multi_variant',
-    'feature_rollout',
-    'range_variant',
-])
+simple_type_class_list = frozenset(
+    ["single_variant", "multi_variant", "feature_rollout", "range_variant"]
+)
 
 
 def parse_experiment(config):
@@ -88,8 +81,7 @@ def parse_experiment(config):
             stop_ts = (expires - epoch).total_seconds()
         else:
             raise ValueError(
-                "Invalid config for experiment %s, missing start_ts and/or "
-                "stop_ts." % name
+                "Invalid config for experiment %s, missing start_ts and/or " "stop_ts." % name
             )
 
     if "version" in config:
@@ -122,11 +114,7 @@ def parse_experiment(config):
     if experiment_type in legacy_type_class_map:
         experiment_class = legacy_type_class_map[experiment_type]
         return experiment_class.from_dict(
-            id=experiment_id,
-            name=name,
-            owner=owner,
-            version=version,
-            config=experiment_config,
+            id=experiment_id, name=name, owner=owner, version=version, config=experiment_config
         )
 
     if experiment_type in simple_type_class_list:

@@ -5,6 +5,5 @@ application frameworks.
 
 """
 from .wrapped_context import WrappedRequestContext
-__all__ = [
-    "WrappedRequestContext",
-]
+
+__all__ = ["WrappedRequestContext"]

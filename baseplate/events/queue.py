@@ -99,8 +99,10 @@ class Event:
 
         if obfuscate:
             kind = FieldKind.OBFUSCATED
-            warn_deprecated("Passing obfuscate to set_field is deprecated in"
-                            " favor of passing a FieldKind value as kind.")
+            warn_deprecated(
+                "Passing obfuscate to set_field is deprecated in"
+                " favor of passing a FieldKind value as kind."
+            )
 
         self.payload[key] = value
         self.payload_types[key] = kind
@@ -117,13 +119,15 @@ class Event:
                 section = payload.setdefault(kind.value, {})
                 section[key] = value
 
-        return json.dumps({
-            "event_topic": self.topic,
-            "event_type": self.event_type,
-            "event_ts": int(self.timestamp),
-            "uuid": str(self.id),
-            "payload": payload,
-        })
+        return json.dumps(
+            {
+                "event_topic": self.topic,
+                "event_type": self.event_type,
+                "event_ts": int(self.timestamp),
+                "uuid": str(self.id),
+                "payload": payload,
+            }
+        )
 
 
 class EventError(Exception):
@@ -134,8 +138,7 @@ class EventTooLargeError(EventError):
     """Raised when a serialized event is too large to send."""
 
     def __init__(self, size):
-        super(EventTooLargeError, self).__init__(
-            "Event is too large to send (%d bytes)" % size)
+        super(EventTooLargeError, self).__init__("Event is too large to send (%d bytes)" % size)
 
 
 class EventQueueFullError(EventError):
@@ -198,9 +201,7 @@ class EventQueue(ContextFactory):
 
     def __init__(self, name, event_serializer=serialize_v1_event):
         self.queue = MessageQueue(
-            "/events-" + name,
-            max_messages=MAX_QUEUE_SIZE,
-            max_message_size=MAX_EVENT_SIZE,
+            "/events-" + name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE
         )
         self.serialize_event = event_serializer
 

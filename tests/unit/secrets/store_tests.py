@@ -1,4 +1,3 @@
-
 import unittest
 
 from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
@@ -22,10 +21,7 @@ class StoreTests(unittest.TestCase):
     def test_vault_info(self):
         self.mock_filewatcher.get_data.return_value = {
             "secrets": {},
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
+            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
 
         self.assertEqual(self.store.get_vault_token(), "test")
@@ -33,18 +29,11 @@ class StoreTests(unittest.TestCase):
 
     def test_raw_secrets(self):
         self.mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "test": {
-                    "something": "exists",
-                },
-            },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
+            "secrets": {"test": {"something": "exists"}},
+            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
 
-        self.assertEqual(self.store.get_raw("test"), {u"something": u"exists"})
+        self.assertEqual(self.store.get_raw("test"), {"something": "exists"})
 
         with self.assertRaises(store.SecretNotFoundError):
             self.store.get_raw("test_missing")
@@ -52,36 +41,18 @@ class StoreTests(unittest.TestCase):
     def test_simple_secrets(self):
         self.mock_filewatcher.get_data.return_value = {
             "secrets": {
-                "test": {
-                    "type": "simple",
-                    "value": "easy",
-                },
-                "test_base64": {
-                    "type": "simple",
-                    "value": "aHVudGVyMg==",
-                    "encoding": "base64",
-                },
+                "test": {"type": "simple", "value": "easy"},
+                "test_base64": {"type": "simple", "value": "aHVudGVyMg==", "encoding": "base64"},
                 "test_unknown_encoding": {
                     "type": "simple",
                     "value": "sdlfkj",
                     "encoding": "mystery",
                 },
-                "test_not_simple": {
-                    "something": "else",
-                },
-                "test_no_value": {
-                    "type": "simple",
-                },
-                "test_bad_base64": {
-                    "type": "simple",
-                    "value": "aHVudGVyMg",
-                    "encoding": "base64",
-                }
+                "test_not_simple": {"something": "else"},
+                "test_no_value": {"type": "simple"},
+                "test_bad_base64": {"type": "simple", "value": "aHVudGVyMg", "encoding": "base64"},
             },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
+            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
 
         self.assertEqual(self.store.get_simple("test"), b"easy")
@@ -102,10 +73,7 @@ class StoreTests(unittest.TestCase):
     def test_versioned_secrets(self):
         self.mock_filewatcher.get_data.return_value = {
             "secrets": {
-                "test": {
-                    "type": "versioned",
-                    "current": "easy",
-                },
+                "test": {"type": "versioned", "current": "easy"},
                 "test_base64": {
                     "type": "versioned",
                     "previous": "aHVudGVyMQ==",
@@ -118,22 +86,11 @@ class StoreTests(unittest.TestCase):
                     "current": "sdlfkj",
                     "encoding": "mystery",
                 },
-                "test_not_versioned": {
-                    "something": "else",
-                },
-                "test_no_value": {
-                    "type": "versioned",
-                },
-                "test_bad_base64": {
-                    "type": "simple",
-                    "value": "aHVudGVyMg",
-                    "encoding": "base64",
-                },
+                "test_not_versioned": {"something": "else"},
+                "test_no_value": {"type": "versioned"},
+                "test_bad_base64": {"type": "simple", "value": "aHVudGVyMg", "encoding": "base64"},
             },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            },
+            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
 
         simple = self.store.get_versioned("test")
@@ -144,8 +101,7 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(encoded.previous, b"hunter1")
         self.assertEqual(encoded.current, b"hunter2")
         self.assertEqual(encoded.next, b"hunter3")
-        self.assertEqual(list(encoded.all_versions),
-                         [b"hunter2", b"hunter1", b"hunter3"])
+        self.assertEqual(list(encoded.all_versions), [b"hunter2", b"hunter1", b"hunter3"])
 
         with self.assertRaises(store.CorruptSecretError):
             self.store.get_versioned("test_unknown_encoding")
@@ -162,11 +118,7 @@ class StoreTests(unittest.TestCase):
     def test_credential_secrets(self):
         self.mock_filewatcher.get_data.return_value = {
             "secrets": {
-                "test": {
-                    "type": "credential",
-                    "username": "user",
-                    "password": "password",
-                },
+                "test": {"type": "credential", "username": "user", "password": "password"},
                 "test_identity": {
                     "type": "credential",
                     "username": "spez",
@@ -185,37 +137,21 @@ class StoreTests(unittest.TestCase):
                     "password": "buzz",
                     "encoding": "something",
                 },
-                "test_not_credentials": {
-                    "type": "versioned",
-                    "current": "easy",
-                },
-                "test_no_values": {
-                    "type": "credential",
-                },
-                "test_no_username": {
-                    "type": "credential",
-                    "password": "password"
-                },
-                "test_no_password": {
-                    "type": "credential",
-                    "username": "user"
-                },
-                "test_bad_type": {
-                    "type": "credential",
-                    "username": "user",
-                    "password": 100,
-                },
+                "test_not_credentials": {"type": "versioned", "current": "easy"},
+                "test_no_values": {"type": "credential"},
+                "test_no_username": {"type": "credential", "password": "password"},
+                "test_no_password": {"type": "credential", "username": "user"},
+                "test_bad_type": {"type": "credential", "username": "user", "password": 100},
             },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
+            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
 
-        self.assertEqual(self.store.get_credentials("test"),
-                         store.CredentialSecret("user", "password"))
-        self.assertEqual(self.store.get_credentials("test_identity"),
-                         store.CredentialSecret("spez", "hunter2"))
+        self.assertEqual(
+            self.store.get_credentials("test"), store.CredentialSecret("user", "password")
+        )
+        self.assertEqual(
+            self.store.get_credentials("test_identity"), store.CredentialSecret("spez", "hunter2")
+        )
 
         with self.assertRaises(store.CorruptSecretError):
             self.store.get_credentials("test_base64")
@@ -238,15 +174,13 @@ class StoreTests(unittest.TestCase):
 
 class StoreFromConfigTests(unittest.TestCase):
     def test_make_store(self):
-        secrets = store.secrets_store_from_config({
-            "secrets.path": "/tmp/test",
-        })
+        secrets = store.secrets_store_from_config({"secrets.path": "/tmp/test"})
         self.assertIsInstance(secrets, store.SecretsStore)
 
     def test_prefix(self):
-        secrets = store.secrets_store_from_config({
-            "secrets.path": "/tmp/test",
-            "test_secrets.path": "/tmp/secrets",
-        }, prefix="test_secrets.")
+        secrets = store.secrets_store_from_config(
+            {"secrets.path": "/tmp/test", "test_secrets.path": "/tmp/secrets"},
+            prefix="test_secrets.",
+        )
         self.assertIsInstance(secrets, store.SecretsStore)
         self.assertEqual(secrets._filewatcher._path, "/tmp/secrets")

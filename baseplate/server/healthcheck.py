@@ -26,7 +26,8 @@ def check_thrift_service(endpoint):
 def check_http_service(endpoint):
     if endpoint.family == socket.AF_INET:
         url = "http://{host}:{port}/health".format(
-            host=endpoint.address.host, port=endpoint.address.port)
+            host=endpoint.address.host, port=endpoint.address.port
+        )
     elif endpoint.family == socket.AF_UNIX:
         quoted_path = urllib.parse.quote(endpoint.address, safe="")
         url = "http+unix://{path}/health".format(path=quoted_path)
@@ -40,19 +41,24 @@ def check_http_service(endpoint):
     response.json()
 
 
-CHECKERS = {
-    "thrift": check_thrift_service,
-    "wsgi": check_http_service,
-}
+CHECKERS = {"thrift": check_thrift_service, "wsgi": check_http_service}
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description=sys.modules[__name__].__doc__,)
+    parser = argparse.ArgumentParser(description=sys.modules[__name__].__doc__)
 
-    parser.add_argument("type", choices=CHECKERS.keys(), default="thrift",
-        help="The protocol of the service to check.")
-    parser.add_argument("endpoint", type=Endpoint, default=Endpoint("localhost:9090"),
-        help="The endpoint to find the service on.")
+    parser.add_argument(
+        "type",
+        choices=CHECKERS.keys(),
+        default="thrift",
+        help="The protocol of the service to check.",
+    )
+    parser.add_argument(
+        "endpoint",
+        type=Endpoint,
+        default=Endpoint("localhost:9090"),
+        help="The endpoint to find the service on.",
+    )
 
     return parser.parse_args()
 

@@ -1,4 +1,3 @@
-
 from ..core import BaseplateObserver, ServerSpanObserver
 
 
@@ -37,7 +36,7 @@ class SentryServerSpanObserver(ServerSpanObserver):
 
     def on_set_tag(self, key, value):
         if key.startswith("http"):
-            self.raven.http_context({key[len("http."):]: value})
+            self.raven.http_context({key[len("http.") :]: value})
         else:
             self.raven.tags_context({key: value})
 

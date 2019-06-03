@@ -9,46 +9,26 @@ setup(
     license="BSD",
     url="https://baseplate.readthedocs.io/en/stable/",
     use_scm_version=True,
-
     packages=find_packages(exclude=["tests", "tests.*"]),
-
     python_requires=">=3.6",
-
-    setup_requires=[
-        "setuptools_scm",
-    ],
-
-    install_requires=[
-        "posix_ipc",
-        "pyjwt",
-        "requests",
-    ],
-
+    setup_requires=["setuptools_scm"],
+    install_requires=["posix_ipc", "pyjwt", "requests"],
     scripts=[
         "bin/baseplate-serve",
         "bin/baseplate-script",
         "bin/baseplate-tshell",
         "bin/baseplate-healthcheck",
     ],
-
     # the thrift compiler must be able to find baseplate.thrift to build
     # services which extend BaseplateService.
-    package_data={
-        "baseplate.thrift": [
-            "*.thrift"
-        ],
-    },
+    package_data={"baseplate.thrift": ["*.thrift"]},
     zip_safe=False,
     entry_points={
         "distutils.commands": [
-            "build_thrift = baseplate.integration.thrift.command:BuildThriftCommand",
+            "build_thrift = baseplate.integration.thrift.command:BuildThriftCommand"
         ],
-
-        "paste.app_factory": [
-            "main = baseplate.integration.pyramid:paste_make_app",
-        ],
+        "paste.app_factory": ["main = baseplate.integration.pyramid:paste_make_app"],
     },
-
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: BSD License",

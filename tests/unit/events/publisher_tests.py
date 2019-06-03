@@ -1,4 +1,3 @@
-
 import gzip
 import unittest
 
@@ -49,7 +48,7 @@ class BatchTests(unittest.TestCase):
 
         result = batch.serialize()
         self.assertEqual(result.count, 2)
-        self.assertEqual(result.bytes, b'[1,2]')
+        self.assertEqual(result.bytes, b"[1,2]")
 
         with self.assertRaises(publisher.BatchFull):
             batch.add(b"x" * 100)
@@ -99,11 +98,10 @@ class PublisherTests(unittest.TestCase):
 
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
 
-        self.publisher = publisher.BatchPublisher(
-            self.metrics_client, self.config)
+        self.publisher = publisher.BatchPublisher(self.metrics_client, self.config)
 
     def test_empty_batch(self):
-        self.publisher.publish(SerializedBatch(count=0, bytes=b''))
+        self.publisher.publish(SerializedBatch(count=0, bytes=b""))
         self.assertEqual(self.session.post.call_count, 0)
 
     def test_publish_success(self):
@@ -119,7 +117,8 @@ class PublisherTests(unittest.TestCase):
         self.assertEqual(headers["Content-Type"], "application/json")
         self.assertEqual(
             headers["X-Signature"],
-            "key=TestKey, mac=7c46d56b99cd4cb05e08238c1d4c10a2f330795e9d7327f17cc66fd206bf1179")
+            "key=TestKey, mac=7c46d56b99cd4cb05e08238c1d4c10a2f330795e9d7327f17cc66fd206bf1179",
+        )
 
     @mock.patch("time.sleep")
     def test_publish_retry(self, mock_sleep):
@@ -134,7 +133,8 @@ class PublisherTests(unittest.TestCase):
     @mock.patch("time.sleep")
     def test_fail_on_client_error(self, mock_sleep):
         self.session.post.side_effect = [
-            requests.HTTPError(400, response=mock.Mock(status_code=400))]
+            requests.HTTPError(400, response=mock.Mock(status_code=400))
+        ]
         events = b'[{"example": "value"}]'
 
         with self.assertRaises(requests.HTTPError):

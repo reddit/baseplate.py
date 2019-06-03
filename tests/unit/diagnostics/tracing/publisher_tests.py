@@ -1,4 +1,3 @@
-
 import unittest
 
 import requests
@@ -16,10 +15,7 @@ class ZipkinPublisherTest(unittest.TestCase):
         self.session = mock_Session.return_value
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
         self.zipkin_api_url = "http://test.local/api/v2"
-        self.publisher = publisher.ZipkinPublisher(
-            self.zipkin_api_url,
-            self.metrics_client,
-        )
+        self.publisher = publisher.ZipkinPublisher(self.zipkin_api_url, self.metrics_client)
 
     def test_initialization(self):
         self.assertEqual(self.publisher.endpoint, "{}/spans".format(self.zipkin_api_url))
@@ -38,7 +34,8 @@ class ZipkinPublisherTest(unittest.TestCase):
 
     def test_client_error(self):
         self.session.post.side_effect = [
-            requests.HTTPError(400, response=mock.Mock(status_code=400))]
+            requests.HTTPError(400, response=mock.Mock(status_code=400))
+        ]
         spans = b"[]"
 
         with self.assertRaises(requests.HTTPError):

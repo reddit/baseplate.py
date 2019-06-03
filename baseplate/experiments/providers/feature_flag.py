@@ -1,4 +1,3 @@
-
 from .r2 import R2Experiment
 
 
@@ -50,11 +49,7 @@ class FeatureFlag(R2Experiment):
         variants = config.get("variants", {})
         assert not set(variants.keys()) - {"active"}
         return super(FeatureFlag, cls).from_dict(
-            id=id,
-            name=name,
-            owner=owner,
-            version=version,
-            config=config,
+            id=id, name=name, owner=owner, version=version, config=config
         )
 
     def should_log_bucketing(self):

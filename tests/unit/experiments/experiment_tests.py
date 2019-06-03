@@ -1,4 +1,3 @@
-
 import json
 import time
 import unittest
@@ -21,7 +20,6 @@ THIRTY_DAYS = timedelta(days=30).total_seconds()
 
 
 class TestExperiments(unittest.TestCase):
-
     def setUp(self):
         super(TestExperiments, self).setUp()
         self.event_logger = mock.Mock(spec=DebugLogger)
@@ -52,12 +50,8 @@ class TestExperiments(unittest.TestCase):
                 "experiment": {
                     "id": 1,
                     "name": "test",
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                    "variants": {"active": 10, "control_1": 10, "control_2": 10},
+                },
             }
         }
         experiments = Experiments(
@@ -68,8 +62,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant",
-            return_value="active",
+            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value="active"
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user=self.user, app_name="r2")
@@ -102,12 +95,8 @@ class TestExperiments(unittest.TestCase):
                 "experiment": {
                     "id": 1,
                     "name": "test",
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                    "variants": {"active": 10, "control_1": 10, "control_2": 10},
+                },
             }
         }
         experiments = Experiments(
@@ -118,8 +107,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant",
-            return_value="active",
+            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value="active"
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user_id="t2_2", app_name="r2", logged_in=True)
@@ -151,12 +139,8 @@ class TestExperiments(unittest.TestCase):
                 "experiment": {
                     "id": 1,
                     "name": "test",
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                    "variants": {"active": 10, "control_1": 10, "control_2": 10},
+                },
             }
         }
         experiments = Experiments(
@@ -167,8 +151,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant",
-            return_value="active",
+            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value="active"
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user=self.user)
@@ -189,12 +172,8 @@ class TestExperiments(unittest.TestCase):
                 "experiment": {
                     "id": 1,
                     "name": "test",
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                    "variants": {"active": 10, "control_1": 10, "control_2": 10},
+                },
             }
         }
         experiments = Experiments(
@@ -205,12 +184,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         self.assertEqual(self.event_logger.log.call_count, 0)
-        experiments.expose(
-            "test",
-            variant_name="control_1",
-            user=self.user,
-            app_name="r2"
-        )
+        experiments.expose("test", variant_name="control_1", user=self.user, app_name="r2")
         self.assertEqual(self.event_logger.log.call_count, 1)
 
         event_fields = self.event_logger.log.call_args[1]
@@ -238,13 +212,7 @@ class TestExperiments(unittest.TestCase):
                 "version": "1",
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
-                "experiment": {
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
             }
         }
         experiments = Experiments(
@@ -253,16 +221,12 @@ class TestExperiments(unittest.TestCase):
             context_name="test",
             event_logger=self.event_logger,
         )
-        with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant",
-        ) as p:
-            p.return_value="active"
+        with mock.patch("baseplate.experiments.providers.r2.R2Experiment.variant") as p:
+            p.return_value = "active"
             self.assertEqual(self.event_logger.log.call_count, 0)
-            experiments.variant("test", user=self.user,
-                                bucketing_event_override=True)
+            experiments.variant("test", user=self.user, bucketing_event_override=True)
             self.assertEqual(self.event_logger.log.call_count, 1)
-            experiments.variant("test", user=self.user,
-                                bucketing_event_override=True)
+            experiments.variant("test", user=self.user, bucketing_event_override=True)
             self.assertEqual(self.event_logger.log.call_count, 1)
 
     def test_is_valid_experiment(self):
@@ -275,13 +239,7 @@ class TestExperiments(unittest.TestCase):
                 "version": "1",
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
-                "experiment": {
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
             }
         }
         experiments = Experiments(
@@ -290,10 +248,8 @@ class TestExperiments(unittest.TestCase):
             context_name="test",
             event_logger=self.event_logger,
         )
-        with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant",
-        ) as p:
-            p.return_value="active"
+        with mock.patch("baseplate.experiments.providers.r2.R2Experiment.variant") as p:
+            p.return_value = "active"
             is_valid = experiments.is_valid_experiment("test")
             self.assertEqual(is_valid, True)
 
@@ -310,13 +266,7 @@ class TestExperiments(unittest.TestCase):
                 "version": "1",
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
-                "experiment": {
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
             },
             "test2": {
                 "id": 1,
@@ -326,14 +276,8 @@ class TestExperiments(unittest.TestCase):
                 "version": "1",
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
-                "experiment": {
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
-            }
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
+            },
         }
         experiments = Experiments(
             config_watcher=self.mock_filewatcher,
@@ -341,10 +285,8 @@ class TestExperiments(unittest.TestCase):
             context_name="test",
             event_logger=self.event_logger,
         )
-        with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant",
-        ) as p:
-            p.return_value="active"
+        with mock.patch("baseplate.experiments.providers.r2.R2Experiment.variant") as p:
+            p.return_value = "active"
             experiment_names = experiments.get_all_experiment_names()
             self.assertEqual(len(experiment_names), 2)
             self.assertEqual("test" in experiment_names, True)
@@ -361,13 +303,7 @@ class TestExperiments(unittest.TestCase):
                 "version": "1",
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
-                "experiment": {
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
             }
         }
         experiments = Experiments(
@@ -376,20 +312,15 @@ class TestExperiments(unittest.TestCase):
             context_name="test",
             event_logger=self.event_logger,
         )
-        with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant",
-        ) as p:
-            p.return_value="active"
+        with mock.patch("baseplate.experiments.providers.r2.R2Experiment.variant") as p:
+            p.return_value = "active"
             self.assertEqual(self.event_logger.log.call_count, 0)
-            experiments.variant("test", user=self.user,
-                                bucketing_event_override=False)
+            experiments.variant("test", user=self.user, bucketing_event_override=False)
             self.assertEqual(self.event_logger.log.call_count, 0)
-            experiments.variant("test", user=self.user,
-                                bucketing_event_override=False)
+            experiments.variant("test", user=self.user, bucketing_event_override=False)
             self.assertEqual(self.event_logger.log.call_count, 0)
             p.return_value = None
-            experiments.variant("test", user=self.user,
-                                bucketing_event_override=False)
+            experiments.variant("test", user=self.user, bucketing_event_override=False)
             self.assertEqual(self.event_logger.log.call_count, 0)
 
     def test_that_bucketing_events_not_sent_if_no_variant(self):
@@ -402,13 +333,7 @@ class TestExperiments(unittest.TestCase):
                 "version": "1",
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
-                "experiment": {
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
             }
         }
         experiments = Experiments(
@@ -419,8 +344,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant",
-            return_value=None,
+            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value=None
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user=self.user)
@@ -438,13 +362,7 @@ class TestExperiments(unittest.TestCase):
                 "version": "1",
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
-                "experiment": {
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
             }
         }
         experiments = Experiments(
@@ -455,8 +373,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant",
-            return_value="active",
+            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value="active"
         ), mock.patch(
             "baseplate.experiments.providers.r2.R2Experiment.should_log_bucketing",
             return_value=False,
@@ -466,12 +383,13 @@ class TestExperiments(unittest.TestCase):
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user=self.user)
             self.assertEqual(self.event_logger.log.call_count, 0)
-            experiments.variant("test", user=self.user,
-                                bucketing_event_override=True)
+            experiments.variant("test", user=self.user, bucketing_event_override=True)
             self.assertEqual(self.event_logger.log.call_count, 0)
 
     def test_that_bucketing_events_not_sent_if_cant_load_config(self):
-        self.mock_filewatcher.get_data.side_effect = WatchedFileNotAvailableError("path", None)  # noqa
+        self.mock_filewatcher.get_data.side_effect = WatchedFileNotAvailableError(
+            "path", None
+        )  # noqa
         experiments = Experiments(
             config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
@@ -508,13 +426,7 @@ class TestExperiments(unittest.TestCase):
                 "version": "1",
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
-                "experiment": {
-                    "variants": {
-                        "active": 10,
-                        "control_1": 10,
-                        "control_2": 10,
-                    }
-                }
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
             }
         }
         experiments = Experiments(
@@ -542,12 +454,8 @@ class TestExperiments(unittest.TestCase):
                 "experiment": {
                     "id": 1,
                     "name": "test",
-                    "variants": {
-                        "active": 50,
-                        "control_1": 25,
-                        "control_2": 25,
-                    }
-                }
+                    "variants": {"active": 50, "control_1": 25, "control_2": 25},
+                },
             }
         }
         experiments = Experiments(
@@ -571,12 +479,8 @@ class TestExperiments(unittest.TestCase):
                 "experiment": {
                     "id": 1,
                     "name": "test",
-                    "variants": {
-                        "active": 50,
-                        "control_1": 25,
-                        "control_2": 25,
-                    }
-                }
+                    "variants": {"active": 50, "control_1": 25, "control_2": 25},
+                },
             }
         }
         experiments = Experiments(
@@ -614,29 +518,28 @@ class TestExperiments(unittest.TestCase):
 
 @mock.patch("baseplate.experiments.FileWatcher")
 class ExperimentsClientFromConfigTests(unittest.TestCase):
-
     def test_make_clients(self, file_watcher_mock):
         event_logger = mock.Mock(spec=DebugLogger)
-        experiments = experiments_client_from_config({
-            "experiments.path": "/tmp/test",
-        }, event_logger)
+        experiments = experiments_client_from_config(
+            {"experiments.path": "/tmp/test"}, event_logger
+        )
         self.assertIsInstance(experiments, ExperimentsContextFactory)
         file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=None)
 
     def test_timeout(self, file_watcher_mock):
         event_logger = mock.Mock(spec=DebugLogger)
-        experiments = experiments_client_from_config({
-            "experiments.path": "/tmp/test",
-            "experiments.timeout": "60 seconds",
-        }, event_logger)
+        experiments = experiments_client_from_config(
+            {"experiments.path": "/tmp/test", "experiments.timeout": "60 seconds"}, event_logger
+        )
         self.assertIsInstance(experiments, ExperimentsContextFactory)
         file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=60.0)
 
     def test_prefix(self, file_watcher_mock):
         event_logger = mock.Mock(spec=DebugLogger)
-        experiments = experiments_client_from_config({
-            "r2_experiments.path": "/tmp/test",
-            "r2_experiments.timeout": "60 seconds",
-        }, event_logger, prefix="r2_experiments.")
+        experiments = experiments_client_from_config(
+            {"r2_experiments.path": "/tmp/test", "r2_experiments.timeout": "60 seconds"},
+            event_logger,
+            prefix="r2_experiments.",
+        )
         self.assertIsInstance(experiments, ExperimentsContextFactory)
         file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=60.0)

@@ -1,4 +1,3 @@
-
 import signal
 
 from gevent.pool import Pool
@@ -6,8 +5,7 @@ from gevent.server import StreamServer
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
 from thrift.transport.TSocket import TSocket
 from thrift.transport.THeaderTransport import THeaderClientType
-from thrift.transport.TTransport import (
-    TTransportException, TBufferedTransportFactory)
+from thrift.transport.TTransport import TTransportException, TBufferedTransportFactory
 
 from baseplate import config
 from baseplate.server import runtime_monitor
@@ -24,7 +22,7 @@ class GeventServer(StreamServer):
                 THeaderClientType.HEADERS,
                 THeaderClientType.FRAMED_BINARY,
                 THeaderClientType.UNFRAMED_BINARY,
-            ],
+            ]
         )
         super(GeventServer, self).__init__(*args, **kwargs)
 
@@ -52,17 +50,16 @@ class GeventServer(StreamServer):
 
 def make_server(server_config, listener, app):
     # pylint: disable=maybe-no-member
-    cfg = config.parse_config(server_config, {
-        "max_concurrency": config.Integer,
-        "stop_timeout": config.Optional(config.Integer, default=0),
-    })
+    cfg = config.parse_config(
+        server_config,
+        {
+            "max_concurrency": config.Integer,
+            "stop_timeout": config.Optional(config.Integer, default=0),
+        },
+    )
 
     pool = Pool(size=cfg.max_concurrency)
-    server = GeventServer(
-        processor=app,
-        listener=listener,
-        spawn=pool,
-    )
+    server = GeventServer(processor=app, listener=listener, spawn=pool)
     server.stop_timeout = cfg.stop_timeout
 
     runtime_monitor.start(server_config, app, pool)

@@ -1,4 +1,3 @@
-
 import datetime
 import unittest
 
@@ -57,7 +56,8 @@ class SignatureTests(unittest.TestCase):
 
     def test_invalid(self):
         bad_signature = self.signer.make_signature(
-            self.message + "bad", max_age=datetime.timedelta(seconds=30))
+            self.message + "bad", max_age=datetime.timedelta(seconds=30)
+        )
 
         with self.assertRaises(crypto.IncorrectSignatureError):
             self.signer.validate_signature(self.message, bad_signature)
@@ -81,8 +81,10 @@ class VersionedSecretTests(unittest.TestCase):
         current = VersionedSecret.from_simple_secret(versioned.current)
         next = VersionedSecret.from_simple_secret(versioned.next)
 
-        self.assertEqual(crypto.make_signature(versioned, message, max_age),
-                         crypto.make_signature(current, message, max_age))
+        self.assertEqual(
+            crypto.make_signature(versioned, message, max_age),
+            crypto.make_signature(current, message, max_age),
+        )
 
         signature = crypto.make_signature(previous, message, max_age)
         info = crypto.validate_signature(versioned, message, signature)

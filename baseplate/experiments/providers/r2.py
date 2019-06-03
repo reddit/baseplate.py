@@ -1,4 +1,3 @@
-
 import logging
 import hashlib
 
@@ -53,20 +52,28 @@ class R2Experiment(Experiment):
     """
 
     # pylint: disable=redefined-builtin
-    def __init__(self, id, name, owner, variants, seed=None,
-                 bucket_val="user_id", targeting=None, overrides=None,
-                 newer_than=None, version=None):
+    def __init__(
+        self,
+        id,
+        name,
+        owner,
+        variants,
+        seed=None,
+        bucket_val="user_id",
+        targeting=None,
+        overrides=None,
+        newer_than=None,
+        version=None,
+    ):
         targeting = dict(targeting or {})
         overrides = dict(overrides or {})
         self.targeting = {}
         self.overrides = {}
         self._case_sensitive_overrides = [
-            param_name.lower() for param_name in
-            overrides.pop("__case_sensitive__", [])
+            param_name.lower() for param_name in overrides.pop("__case_sensitive__", [])
         ]
         self._case_sensitive_targeting = [
-            param_name.lower() for param_name in
-            targeting.pop("__case_sensitive__", [])
+            param_name.lower() for param_name in targeting.pop("__case_sensitive__", [])
         ]
         for param, value in targeting.items():
             assert isinstance(param, str)
@@ -131,9 +138,7 @@ class R2Experiment(Experiment):
 
     def get_unique_id(self, **kwargs):
         if kwargs.get(self.bucket_val):
-            return ":".join(
-                [self.name, self.bucket_val, str(kwargs[self.bucket_val])]
-            )
+            return ":".join([self.name, self.bucket_val, str(kwargs[self.bucket_val])])
         return None
 
     def should_log_bucketing(self):
@@ -148,15 +153,12 @@ class R2Experiment(Experiment):
 
         if self.bucket_val not in lower_kwargs:
             logger.info(
-                "Must specify %s in call to variant for experiment %s.",
-                self.bucket_val,
-                self.name,
+                "Must specify %s in call to variant for experiment %s.", self.bucket_val, self.name
             )
             return None
         if lower_kwargs[self.bucket_val] is None:
             logger.info(
-                "Cannot choose a variant for bucket value %s = %s "
-                "for experiment %s.",
+                "Cannot choose a variant for bucket value %s = %s " "for experiment %s.",
                 self.bucket_val,
                 lower_kwargs[self.bucket_val],
                 self.name,
@@ -284,7 +286,7 @@ class R2Experiment(Experiment):
         variant_cap = 1.0 / num_variants
         if variant_fraction > variant_cap:
             logger.warning(
-                'Variant %s exceeds allowable percentage (%.2f > %.2f)',
+                "Variant %s exceeds allowable percentage (%.2f > %.2f)",
                 candidate_variant,
                 variant_fraction,
                 variant_cap,
@@ -298,11 +300,7 @@ class R2Experiment(Experiment):
         bucket_multiplier = self.num_buckets / 100
         # Now check to see if we're far enough left to be included in the
         # variant percentage.
-        bucket_limit = (
-            self.variants[candidate_variant] *
-            num_variants *
-            bucket_multiplier
-        )
+        bucket_limit = self.variants[candidate_variant] * num_variants * bucket_multiplier
         if bucket < int(bucket_limit):
             return candidate_variant
         return None

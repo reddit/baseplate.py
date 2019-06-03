@@ -1,4 +1,3 @@
-
 # webtest doesn't play well with unicode literals for headers on py2 :(
 
 import unittest
@@ -17,19 +16,12 @@ from baseplate.secrets import store
 try:
     import webtest
 
-    from baseplate.integration.pyramid import (
-        BaseplateConfigurator,
-        ServerSpanInitialized,
-    )
+    from baseplate.integration.pyramid import BaseplateConfigurator, ServerSpanInitialized
     from pyramid.config import Configurator
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
-from .. import (
-    mock,
-    AUTH_TOKEN_PUBLIC_KEY,
-    SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
-)
+from .. import mock, AUTH_TOKEN_PUBLIC_KEY, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 
 
 class TestException(Exception):
@@ -70,11 +62,10 @@ def render_bad_exception_view(request):
 
 
 def local_tracing_within_context(request):
-    with request.trace.make_child('local-req',
-                                  local=True,
-                                  component_name='in-context'):
+    with request.trace.make_child("local-req", local=True, component_name="in-context"):
         pass
-    return {'trace': 'success'}
+    return {"trace": "success"}
+
 
 class ConfiguratorTests(unittest.TestCase):
     def setUp(self):
@@ -82,22 +73,16 @@ class ConfiguratorTests(unittest.TestCase):
         configurator.add_route("example", "/example", request_method="GET")
         configurator.add_route("trace_context", "/trace_context", request_method="GET")
 
-        configurator.add_view(
-            example_application, route_name="example", renderer="json")
+        configurator.add_view(example_application, route_name="example", renderer="json")
 
         configurator.add_view(
-            local_tracing_within_context, route_name="trace_context", renderer="json")
-
-        configurator.add_view(
-            render_exception_view,
-            context=ControlFlowException,
-            renderer="json",
+            local_tracing_within_context, route_name="trace_context", renderer="json"
         )
 
+        configurator.add_view(render_exception_view, context=ControlFlowException, renderer="json")
+
         configurator.add_view(
-            render_bad_exception_view,
-            context=ControlFlowException2,
-            renderer="json",
+            render_bad_exception_view, context=ControlFlowException2, renderer="json"
         )
 
         mock_filewatcher = mock.Mock(spec=FileWatcher)
@@ -106,20 +91,19 @@ class ConfiguratorTests(unittest.TestCase):
                 "secret/authentication/public-key": {
                     "type": "versioned",
                     "current": AUTH_TOKEN_PUBLIC_KEY,
-                },
+                }
             },
-            "vault": {
-                "token": "test",
-                "url": "http://vault.example.com:8200/",
-            }
+            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
         secrets = store.SecretsStore("/secrets")
         secrets._filewatcher = mock_filewatcher
 
         self.observer = mock.Mock(spec=BaseplateObserver)
         self.server_observer = mock.Mock(spec=ServerSpanObserver)
+
         def _register_mock(context, server_span):
             server_span.register(self.server_observer)
+
         self.observer.on_server_span_created.side_effect = _register_mock
 
         self.baseplate = Baseplate()
@@ -152,13 +136,16 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.context_init_event_subscriber.called)
 
     def test_trace_headers(self):
-        self.test_app.get("/example", headers={
-            "X-Trace": "1234",
-            "X-Parent": "2345",
-            "X-Span": "3456",
-            "X-Sampled": "1",
-            "X-Flags": "1",
-        })
+        self.test_app.get(
+            "/example",
+            headers={
+                "X-Trace": "1234",
+                "X-Parent": "2345",
+                "X-Span": "3456",
+                "X-Sampled": "1",
+                "X-Flags": "1",
+            },
+        )
 
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
@@ -177,13 +164,16 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.context_init_event_subscriber.called)
 
     def test_b3_trace_headers(self):
-        self.test_app.get("/example", headers={
-            "X-B3-TraceId": "1234",
-            "X-B3-ParentSpanId": "2345",
-            "X-B3-SpanId": "3456",
-            "X-B3-Sampled": "1",
-            "X-B3-Flags": "1",
-        })
+        self.test_app.get(
+            "/example",
+            headers={
+                "X-B3-TraceId": "1234",
+                "X-B3-ParentSpanId": "2345",
+                "X-B3-SpanId": "3456",
+                "X-B3-Sampled": "1",
+                "X-B3-Flags": "1",
+            },
+        )
 
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
@@ -202,14 +192,17 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.context_init_event_subscriber.called)
 
     def test_edge_request_headers(self):
-        self.test_app.get("/example", headers={
-            "X-Trace": "1234",
-            "X-Edge-Request": SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
-            "X-Parent": "2345",
-            "X-Span": "3456",
-            "X-Sampled": "1",
-            "X-Flags": "1",
-        })
+        self.test_app.get(
+            "/example",
+            headers={
+                "X-Trace": "1234",
+                "X-Edge-Request": SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
+                "X-Parent": "2345",
+                "X-Span": "3456",
+                "X-Sampled": "1",
+                "X-Flags": "1",
+            },
+        )
         context, _ = self.observer.on_server_span_created.call_args[0]
         try:
             self.assertEqual(context.request_context.user.id, "t2_example")
@@ -263,11 +256,9 @@ class ConfiguratorTests(unittest.TestCase):
         getrandbits.return_value = 1234
         self.baseplate_configurator.header_trust_handler.trust_headers = False
 
-        self.test_app.get("/example", headers={
-            "X-Trace": "1234",
-            "X-Parent": "2345",
-            "X-Span": "3456",
-        })
+        self.test_app.get(
+            "/example", headers={"X-Trace": "1234", "X-Parent": "2345", "X-Span": "3456"}
+        )
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
         self.assertEqual(server_span.trace_id, getrandbits.return_value)
@@ -275,7 +266,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(server_span.id, getrandbits.return_value)
 
     def test_local_trace_in_context(self):
-        self.test_app.get('/trace_context')
+        self.test_app.get("/trace_context")
         self.assertEqual(self.server_observer.on_child_span_created.call_count, 1)
         child_span = self.server_observer.on_child_span_created.call_args[0][0]
         context, server_span = self.observer.on_server_span_created.call_args[0]

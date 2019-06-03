@@ -1,5 +1,3 @@
-
-
 class VariantSet:
     """Base interface for variant sets.
 

@@ -77,10 +77,7 @@ class RawJSONBatch(Batch):
         self._size += serialized_size
 
     def serialize(self):
-        return SerializedBatch(
-            count=len(self._items),
-            bytes=b"[" + b",".join(self._items) + b"]",
-        )
+        return SerializedBatch(count=len(self._items), bytes=b"[" + b",".join(self._items) + b"]")
 
     def reset(self):
         self._items = []

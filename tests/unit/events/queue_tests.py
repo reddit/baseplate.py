@@ -1,16 +1,9 @@
-
 import datetime
 import json
 import unittest
 import warnings
 
-from baseplate.events import (
-    Event,
-    EventQueue,
-    EventQueueFullError,
-    EventTooLargeError,
-    FieldKind,
-)
+from baseplate.events import Event, EventQueue, EventQueueFullError, EventTooLargeError, FieldKind
 from baseplate.events.queue import MAX_EVENT_SIZE
 from baseplate.message_queue import MessageQueue, TimedOutError
 
@@ -55,38 +48,39 @@ class EventTests(unittest.TestCase):
         event = Event("topic", "type")
         event.set_field("normal", "value1")
         event.set_field("obfuscated", "value2", kind=FieldKind.OBFUSCATED)
-        event.set_field("high_cardinality", "value3",
-                        kind=FieldKind.HIGH_CARDINALITY)
+        event.set_field("high_cardinality", "value3", kind=FieldKind.HIGH_CARDINALITY)
         event.set_field("empty", "")
         event.set_field("null", None)
 
         serialized = event.serialize()
         deserialized = json.loads(serialized)
 
-        self.assertEqual(deserialized, {
-            "event_topic": "topic",
-            "event_type": "type",
-            "event_ts": 333000,
-            "uuid": "1-2-3-4",
-            "payload": {
-                "normal": "value1",
-                "obfuscated_data": {
-                    "obfuscated": "value2",
-                },
-                "interana_excluded": {
-                    "high_cardinality": "value3",
+        self.assertEqual(
+            deserialized,
+            {
+                "event_topic": "topic",
+                "event_type": "type",
+                "event_ts": 333000,
+                "uuid": "1-2-3-4",
+                "payload": {
+                    "normal": "value1",
+                    "obfuscated_data": {"obfuscated": "value2"},
+                    "interana_excluded": {"high_cardinality": "value3"},
                 },
             },
-        })
+        )
 
     def _assert_payload(self, event, payload):
-        self.assertEqual(json.loads(event.serialize()), {
-            "event_topic": event.topic,
-            "event_type": event.event_type,
-            "event_ts": event.timestamp,
-            "uuid": event.id,
-            "payload": payload,
-        })
+        self.assertEqual(
+            json.loads(event.serialize()),
+            {
+                "event_topic": event.topic,
+                "event_type": event.event_type,
+                "event_ts": event.timestamp,
+                "uuid": event.id,
+                "payload": payload,
+            },
+        )
 
     @mock.patch("uuid.uuid4")
     @mock.patch("time.time")
@@ -105,11 +99,7 @@ class EventTests(unittest.TestCase):
             self.assertTrue(issubclass(w[-1].category, DeprecationWarning))
             self.assertIn("deprecated", str(w[-1].message))
 
-        self._assert_payload(event, {
-            "obfuscated_data": {
-                "deprecated": "value",
-            },
-        })
+        self._assert_payload(event, {"obfuscated_data": {"deprecated": "value"}})
 
     @mock.patch("uuid.uuid4")
     @mock.patch("time.time")
@@ -120,54 +110,28 @@ class EventTests(unittest.TestCase):
         event = Event("topic", "type")
 
         event.set_field("foo", "bar")
-        self._assert_payload(event, {
-            "foo": "bar",
-        })
+        self._assert_payload(event, {"foo": "bar"})
 
         event.set_field("foo", "bar", kind=FieldKind.OBFUSCATED)
-        self._assert_payload(event, {
-            "obfuscated_data": {
-                "foo": "bar",
-            },
-        })
+        self._assert_payload(event, {"obfuscated_data": {"foo": "bar"}})
 
         event.set_field("foo", "bar")
-        self._assert_payload(event, {
-            "foo": "bar",
-        })
+        self._assert_payload(event, {"foo": "bar"})
 
         event.set_field("foo", "bar", kind=FieldKind.HIGH_CARDINALITY)
-        self._assert_payload(event, {
-            "interana_excluded": {
-                "foo": "bar",
-            },
-        })
+        self._assert_payload(event, {"interana_excluded": {"foo": "bar"}})
 
         event.set_field("foo", "bar")
-        self._assert_payload(event, {
-            "foo": "bar",
-        })
+        self._assert_payload(event, {"foo": "bar"})
 
         event.set_field("foo", "bar", kind=FieldKind.HIGH_CARDINALITY)
-        self._assert_payload(event, {
-            "interana_excluded": {
-                "foo": "bar",
-            },
-        })
+        self._assert_payload(event, {"interana_excluded": {"foo": "bar"}})
 
         event.set_field("foo", "bar", kind=FieldKind.OBFUSCATED)
-        self._assert_payload(event, {
-            "obfuscated_data": {
-                "foo": "bar",
-            },
-        })
+        self._assert_payload(event, {"obfuscated_data": {"foo": "bar"}})
 
         event.set_field("foo", "bar", kind=FieldKind.HIGH_CARDINALITY)
-        self._assert_payload(event, {
-            "interana_excluded": {
-                "foo": "bar",
-            },
-        })
+        self._assert_payload(event, {"interana_excluded": {"foo": "bar"}})
 
     @mock.patch("uuid.uuid4")
     @mock.patch("time.time")
@@ -178,8 +142,7 @@ class EventTests(unittest.TestCase):
         event = Event("topic", "type")
         event.set_field("normal", "value1")
         event.set_field("obfuscated", "value2", kind=FieldKind.OBFUSCATED)
-        event.set_field("high_cardinality", "value3",
-                        kind=FieldKind.HIGH_CARDINALITY)
+        event.set_field("high_cardinality", "value3", kind=FieldKind.HIGH_CARDINALITY)
 
         self.assertEqual(event.get_field("normal"), "value1")
         self.assertEqual(event.get_field("obfuscated"), "value2")
@@ -204,7 +167,7 @@ class EventQueueTests(unittest.TestCase):
 
     def test_event_too_large(self):
         mock_event = mock.Mock(autospec=Event)
-        mock_event.serialize.return_value = "x" * (MAX_EVENT_SIZE+1)
+        mock_event.serialize.return_value = "x" * (MAX_EVENT_SIZE + 1)
 
         with self.assertRaises(EventTooLargeError):
             self.queue.put(mock_event)

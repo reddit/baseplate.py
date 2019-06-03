@@ -43,18 +43,17 @@ def hvac_factory_from_config(app_config, secrets_store, prefix="vault."):
     """
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "timeout": config.Optional(config.Timespan,
-                                       default=datetime.timedelta(seconds=1)),
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "timeout": config.Optional(config.Timespan, default=datetime.timedelta(seconds=1))
+            }
         },
-    })
+    )
     options = getattr(cfg, config_prefix)
 
-    return HvacContextFactory(
-        secrets_store,
-        options.timeout,
-    )
+    return HvacContextFactory(secrets_store, options.timeout)
 
 
 class HvacContextFactory(ContextFactory):
@@ -96,7 +95,8 @@ class InstrumentedHvacClient(hvac.Client):
         self.server_span = server_span
 
         super(InstrumentedHvacClient, self).__init__(
-            url=url, token=token, timeout=timeout, session=session)
+            url=url, token=token, timeout=timeout, session=session
+        )
 
     # this ugliness is us undoing the name mangling that __request turns into
     # inside python. this feels very dirty.
@@ -108,7 +108,8 @@ class InstrumentedHvacClient(hvac.Client):
 
             # pylint: disable=no-member
             response = super(InstrumentedHvacClient, self)._Client__request(
-                method=method, url=url, **kwargs)
+                method=method, url=url, **kwargs
+            )
 
             # this means we can't get the status code from error responses.
             # that's unfortunate, but hvac doesn't make it easy.

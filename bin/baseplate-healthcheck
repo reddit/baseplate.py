@@ -3,4 +3,5 @@
 # Perform health-checks for a baseplate service.
 
 from baseplate.server.healthcheck import run_healthchecks
+
 run_healthchecks()

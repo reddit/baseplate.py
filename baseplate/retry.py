@@ -121,7 +121,7 @@ class ExponentialBackoffRetryPolicy(RetryPolicy):
     def yield_attempts(self):
         for attempt, time_remaining in enumerate(self.subpolicy):
             if attempt > 0:
-                delay = self.base * 2**(attempt-1)
+                delay = self.base * 2 ** (attempt - 1)
                 if time_remaining:
                     delay = min(delay, time_remaining)
                     time_remaining -= delay

@@ -32,15 +32,16 @@ def zookeeper_client_from_config(secrets, app_config, read_only=None):
     :rtype: :py:class:`kazoo.client.KazooClient`
 
     """
-    full_cfg = config.parse_config(app_config, {
-        "zookeeper": {
-            "hosts": config.String,
-            "credentials": config.Optional(
-                config.TupleOf(config.String), default=[]),
-            "timeout": config.Optional(
-                config.Timespan, default=config.Timespan("5 seconds")),
+    full_cfg = config.parse_config(
+        app_config,
+        {
+            "zookeeper": {
+                "hosts": config.String,
+                "credentials": config.Optional(config.TupleOf(config.String), default=[]),
+                "timeout": config.Optional(config.Timespan, default=config.Timespan("5 seconds")),
+            }
         },
-    })
+    )
 
     # pylint: disable=maybe-no-member
     cfg = full_cfg.zookeeper
@@ -55,7 +56,6 @@ def zookeeper_client_from_config(secrets, app_config, read_only=None):
         timeout=cfg.timeout.total_seconds(),
         auth_data=auth_data,
         read_only=read_only,
-
         # this retry policy tells Kazoo how often it should attempt connections
         # to ZooKeeper from its worker thread/greenlet. when the connection is
         # lost during normal operation (i.e. after it was first established)

@@ -1,4 +1,3 @@
-
 import collections
 import math
 import os
@@ -27,11 +26,7 @@ def get_users(num_users, logged_in=True):
             name = str(i)
         else:
             name = None
-        users.append(dict(
-            name=name,
-            id="t2_%s" % str(i),
-            logged_in=logged_in,
-        ))
+        users.append(dict(name=name, id="t2_%s" % str(i), logged_in=logged_in))
     return users
 
 
@@ -54,7 +49,6 @@ def generate_content(num_content, content_type):
 
 
 class TestR2Experiment(unittest.TestCase):
-
     def test_r2_type_returns_r2_experiment(self):
         cfg = {
             "id": 1,
@@ -64,12 +58,7 @@ class TestR2Experiment(unittest.TestCase):
             "version": "1",
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertTrue(isinstance(experiment, R2Experiment))
@@ -84,12 +73,7 @@ class TestR2Experiment(unittest.TestCase):
             "type": "r2",
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertTrue(isinstance(experiment, R2Experiment))
@@ -105,12 +89,7 @@ class TestR2Experiment(unittest.TestCase):
             "version": "1",
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         experiment.num_buckets = 1000
@@ -123,25 +102,17 @@ class TestR2Experiment(unittest.TestCase):
             "version": "1",
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "seed": "test-seed",
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"seed": "test-seed", "variants": {"control_1": 10, "control_2": 10}},
         }
         seeded_experiment = parse_experiment(cfg)
         self.assertNotEqual(seeded_experiment.seed, experiment.seed)
         self.assertIsNot(seeded_experiment.seed, None)
         seeded_experiment.num_buckets = 1000
-        self.assertEqual(
-            seeded_experiment._calculate_bucket("t2_1"),
-            int(595),
-        )
+        self.assertEqual(seeded_experiment._calculate_bucket("t2_1"), int(595))
 
-    @unittest.skipIf("CI" not in os.environ,
-                     "test takes too long to run for normal local iteration")
+    @unittest.skipIf(
+        "CI" not in os.environ, "test takes too long to run for normal local iteration"
+    )
     def test_calculate_bucket(self):
         cfg = {
             "id": 1,
@@ -151,12 +122,7 @@ class TestR2Experiment(unittest.TestCase):
             "version": "1",
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
 
@@ -181,11 +147,11 @@ class TestR2Experiment(unittest.TestCase):
             # Calculating the percentage difference instead of looking at the
             # raw difference scales better as we change num_users.
             percent_equal = float(actual) / expected
-            self.assertAlmostEqual(percent_equal, 1.0, delta=.10,
-                                   msg='bucket: %s' % bucket)
+            self.assertAlmostEqual(percent_equal, 1.0, delta=0.10, msg="bucket: %s" % bucket)
 
-    @unittest.skipIf("CI" not in os.environ,
-                     "test takes too long to run for normal local iteration")
+    @unittest.skipIf(
+        "CI" not in os.environ, "test takes too long to run for normal local iteration"
+    )
     def test_calculate_bucket_with_seed(self):
         cfg = {
             "id": 1,
@@ -196,12 +162,9 @@ class TestR2Experiment(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "variants": {"control_1": 10, "control_2": 10},
                 "seed": "itscoldintheoffice",
-            }
+            },
         }
         experiment = parse_experiment(cfg)
 
@@ -240,57 +203,49 @@ class TestR2Experiment(unittest.TestCase):
             # Calculating the percentage difference instead of looking at the
             # raw difference scales better as we change NUM_USERS.
             percent_equal = float(actual) / expected
-            self.assertAlmostEqual(percent_equal, 1.0, delta=.10,
-                                   msg='bucket: %s' % bucket)
+            self.assertAlmostEqual(percent_equal, 1.0, delta=0.10, msg="bucket: %s" % bucket)
 
     def test_choose_variant(self):
-        control_only = parse_experiment({
-            "id": 1,
-            "name": "control_only",
-            "owner": "test",
-            "type": "r2",
-            "version": "1",
-            "start_ts": time.time() - THIRTY_DAYS,
-            "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
+        control_only = parse_experiment(
+            {
+                "id": 1,
+                "name": "control_only",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {"variants": {"control_1": 10, "control_2": 10}},
             }
-        })
-        three_variants = parse_experiment({
-            "id": 1,
-            "name": "three_variants",
-            "owner": "test",
-            "type": "r2",
-            "version": "1",
-            "start_ts": time.time() - THIRTY_DAYS,
-            "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "variants": {
-                    'remove_vote_counters': 5,
-                    'control_1': 10,
-                    'control_2': 5,
-                }
+        )
+        three_variants = parse_experiment(
+            {
+                "id": 1,
+                "name": "three_variants",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "variants": {"remove_vote_counters": 5, "control_1": 10, "control_2": 5}
+                },
             }
-        })
-        three_variants_more = parse_experiment({
-            "id": 1,
-            "name": "three_variants_more",
-            "owner": "test",
-            "type": "r2",
-            "version": "1",
-            "start_ts": time.time() - THIRTY_DAYS,
-            "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "variants": {
-                    'remove_vote_counters': 15.6,
-                    'control_1': 10,
-                    'control_2': 20,
-                }
+        )
+        three_variants_more = parse_experiment(
+            {
+                "id": 1,
+                "name": "three_variants_more",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "variants": {"remove_vote_counters": 15.6, "control_1": 10, "control_2": 20}
+                },
             }
-        })
+        )
 
         counters = collections.defaultdict(collections.Counter)
         for bucket in range(control_only.num_buckets):
@@ -311,10 +266,7 @@ class TestR2Experiment(unittest.TestCase):
             if variant:
                 counters[three_variants_more.name][variant] += 1
             # Ensure variant-choosing is deterministic.
-            self.assertEqual(
-                variant,
-                three_variants_more._choose_variant(bucket)
-            )
+            self.assertEqual(variant, three_variants_more._choose_variant(bucket))
             # If previously we had a variant, we should still have the same one
             # now.
             if previous_variant:
@@ -328,114 +280,94 @@ class TestR2Experiment(unittest.TestCase):
 
         # Test boundary conditions around the maximum percentage allowed for
         # variants.
-        fifty_fifty = parse_experiment({
-            "id": 1,
-            "name": "fifty_fifty",
-            "owner": "test",
-            "type": "r2",
-            "version": "1",
-            "start_ts": time.time() - THIRTY_DAYS,
-            "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "variants": {
-                    'control_1': 50,
-                    'control_2': 50,
-                }
+        fifty_fifty = parse_experiment(
+            {
+                "id": 1,
+                "name": "fifty_fifty",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {"variants": {"control_1": 50, "control_2": 50}},
             }
-        })
-        almost_fifty_fifty = parse_experiment({
-            "id": 1,
-            "name": "almost_fifty_fifty",
-            "owner": "test",
-            "type": "r2",
-            "version": "1",
-            "start_ts": time.time() - THIRTY_DAYS,
-            "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "variants": {
-                    'control_1': 49,
-                    'control_2': 51,
-                }
+        )
+        almost_fifty_fifty = parse_experiment(
+            {
+                "id": 1,
+                "name": "almost_fifty_fifty",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {"variants": {"control_1": 49, "control_2": 51}},
             }
-        })
+        )
         for bucket in range(fifty_fifty.num_buckets):
             for experiment in (fifty_fifty, almost_fifty_fifty):
                 variant = experiment._choose_variant(bucket)
                 counters[experiment.name][variant] += 1
 
-        count = counters[fifty_fifty.name]['control_1']
+        count = counters[fifty_fifty.name]["control_1"]
         scaled_percentage = float(count) / (fifty_fifty.num_buckets / 100)
         self.assertEqual(scaled_percentage, 50)
 
-        count = counters[fifty_fifty.name]['control_2']
+        count = counters[fifty_fifty.name]["control_2"]
         scaled_percentage = float(count) / (fifty_fifty.num_buckets / 100)
         self.assertEqual(scaled_percentage, 50)
 
-        count = counters[almost_fifty_fifty.name]['control_1']
+        count = counters[almost_fifty_fifty.name]["control_1"]
         scaled_percentage = float(count) / (almost_fifty_fifty.num_buckets / 100)
         self.assertEqual(scaled_percentage, 49)
 
-        count = counters[almost_fifty_fifty.name]['control_2']
+        count = counters[almost_fifty_fifty.name]["control_2"]
         scaled_percentage = float(count) / (almost_fifty_fifty.num_buckets / 100)
         self.assertEqual(scaled_percentage, 50)
 
     def test_return_override_variant_without_bucket_val(self):
-        experiment = parse_experiment({
-            "id": 1,
-            "name": "test",
-            "owner": "test",
-            "type": "r2",
-            "version": "1",
-            "start_ts": time.time() - THIRTY_DAYS,
-            "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "overrides": {
-                    "user_name": {
-                        "gary": "active",
-                    },
+        experiment = parse_experiment(
+            {
+                "id": 1,
+                "name": "test",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "overrides": {"user_name": {"gary": "active"}},
+                    "variants": {"active": 10, "control_1": 10, "control_2": 20},
                 },
-                "variants": {
-                    'active': 10,
-                    'control_1': 10,
-                    'control_2': 20,
-                }
             }
-        })
+        )
         variant = experiment.variant(user_name="gary")
         self.assertEqual(variant, "active")
         variant = experiment.variant()
         self.assertEqual(variant, None)
 
     def test_non_string_override_value(self):
-        experiment = parse_experiment({
-            "id": 1,
-            "name": "test",
-            "owner": "test",
-            "type": "r2",
-            "version": "1",
-            "start_ts": time.time() - THIRTY_DAYS,
-            "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "overrides": {
-                    "logged_in": {
-                        True: "active",
-                    },
+        experiment = parse_experiment(
+            {
+                "id": 1,
+                "name": "test",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "overrides": {"logged_in": {True: "active"}},
+                    "variants": {"active": 10, "control_1": 10, "control_2": 20},
                 },
-                "variants": {
-                    'active': 10,
-                    'control_1': 10,
-                    'control_2': 20,
-                }
             }
-        })
+        )
         variant = experiment.variant(logged_in=True)
         self.assertEqual(variant, "active")
 
 
-@unittest.skipIf("CI" not in os.environ,
-                     "test takes too long to run for normal local iteration")
+@unittest.skipIf("CI" not in os.environ, "test takes too long to run for normal local iteration")
 class TestSimulatedR2Experiments(unittest.TestCase):
-
     def setUp(self):
         super(TestSimulatedR2Experiments, self).setUp()
         self.event_logger = mock.Mock(spec=EventLogger)
@@ -466,51 +398,33 @@ class TestSimulatedR2Experiments(unittest.TestCase):
                 logged_in=user["logged_in"],
                 content_id=content["id"],
                 content_type=content["type"],
-                **experiment_vars
+                **experiment_vars,
             )
             if variant:
                 counter[variant] += 1
 
         # this test will still probabilistically fail, but we can mitigate
         # the likeliness of that happening
-        error_bar_percent = 100. / math.sqrt(num_experiments)
+        error_bar_percent = 100.0 / math.sqrt(num_experiments)
         experiment = parse_experiment(config)
         for variant, percent in experiment.variants.items():
             # Our actual percentage should be within our expected percent
             # (expressed as a part of 100 rather than a fraction of 1)
             # +- 1%.
             measured_percent = (float(counter[variant]) / num_experiments) * 100
-            self.assertAlmostEqual(
-                measured_percent, percent, delta=error_bar_percent
-            )
+            self.assertAlmostEqual(measured_percent, percent, delta=error_bar_percent)
 
     def do_user_experiment_simulation(self, users, config, content=None):
         content = content or dict(id=None, type=None)
-        static_vars = {
-            "content": content,
-            "url_params": {},
-            "subreddit": None,
-            "subdomain": None,
-        }
+        static_vars = {"content": content, "url_params": {}, "subreddit": None, "subdomain": None}
         return self._simulate_experiment(
-            config=config,
-            static_vars=static_vars,
-            target_var="user",
-            targets=users,
+            config=config, static_vars=static_vars, target_var="user", targets=users
         )
 
     def do_page_experiment_simulation(self, user, pages, config):
-        static_vars = {
-            "user": user,
-            "url_params": {},
-            "subreddit": None,
-            "subdomain": None,
-        }
+        static_vars = {"user": user, "url_params": {}, "subreddit": None, "subdomain": None}
         return self._simulate_experiment(
-            config=config,
-            static_vars=static_vars,
-            target_var="content",
-            targets=pages,
+            config=config, static_vars=static_vars, target_var="content", targets=pages
         )
 
     def assert_no_user_experiment(self, users, config, content=None):
@@ -526,7 +440,8 @@ class TestSimulatedR2Experiments(unittest.TestCase):
                     logged_in=user["logged_in"],
                     content_id=content["id"],
                     content_type=content["type"],
-                ), None
+                ),
+                None,
             )
 
     def assert_no_page_experiment(self, user, pages, config):
@@ -541,11 +456,11 @@ class TestSimulatedR2Experiments(unittest.TestCase):
                     logged_in=user["logged_in"],
                     content_id=page["id"],
                     content_type=page["type"],
-                ), None
+                ),
+                None,
             )
 
-    def assert_same_variant(self, users, config, expected, content=None,
-                            **kwargs):
+    def assert_same_variant(self, users, config, expected, content=None, **kwargs):
         self.mock_filewatcher.get_data.return_value = {config["name"]: config}
         content = content or dict(id=None, type=None)
         for user in users:
@@ -558,8 +473,9 @@ class TestSimulatedR2Experiments(unittest.TestCase):
                     logged_in=user["logged_in"],
                     content_id=content["id"],
                     content_type=content["type"],
-                    **kwargs
-                ), expected
+                    **kwargs,
+                ),
+                expected,
             )
 
     def test_experiment_overrides(self):
@@ -572,28 +488,13 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "targeting": {
-                    "logged_in": [True],
-                },
-                "overrides": {
-                    "url_features": {
-                        "test_larger": "larger",
-                        "test_smaller": "smaller",
-                    },
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [True]},
+                "overrides": {"url_features": {"test_larger": "larger", "test_smaller": "smaller"}},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
         self.assert_same_variant(
-            users=get_users(2000),
-            config=config,
-            expected="larger",
-            url_features=["test_larger"],
+            users=get_users(2000), config=config, expected="larger", url_features=["test_larger"]
         )
         self.assert_same_variant(
             users=get_users(2000),
@@ -607,10 +508,7 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             expected="smaller",
             url_features=["larger", "test_smaller"],
         )
-        self.do_user_experiment_simulation(
-            users=get_users(2000),
-            config=config,
-        )
+        self.do_user_experiment_simulation(users=get_users(2000), config=config)
 
     def test_no_targeting_no_variant(self):
         config = {
@@ -622,22 +520,11 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10}
             },
         }
-        self.assert_no_user_experiment(
-            users=get_users(2000),
-            config=config,
-        )
-        self.assert_no_user_experiment(
-            users=get_users(2000, logged_in=False),
-            config=config,
-        )
+        self.assert_no_user_experiment(users=get_users(2000), config=config)
+        self.assert_no_user_experiment(users=get_users(2000, logged_in=False), config=config)
 
     def test_loggedin_experiment(self):
         config = {
@@ -649,25 +536,12 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "targeting": {
-                    "logged_in": [True],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [True]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
-        self.do_user_experiment_simulation(
-            users=get_users(2000),
-            config=config,
-        )
-        self.assert_no_user_experiment(
-            users=get_users(2000, logged_in=False),
-            config=config,
-        )
+        self.do_user_experiment_simulation(users=get_users(2000), config=config)
+        self.assert_no_user_experiment(users=get_users(2000, logged_in=False), config=config)
 
     def test_loggedin_experiment_explicit_enable(self):
         config = {
@@ -680,25 +554,12 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": True,
             "experiment": {
-                "targeting": {
-                    "logged_in": [True],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [True]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
-        self.do_user_experiment_simulation(
-            users=get_users(2000),
-            config=config,
-        )
-        self.assert_no_user_experiment(
-            users=get_users(2000, logged_in=False),
-            config=config,
-        )
+        self.do_user_experiment_simulation(users=get_users(2000), config=config)
+        self.assert_no_user_experiment(users=get_users(2000, logged_in=False), config=config)
 
     def test_loggedin_experiment_explicit_disable(self):
         config = {
@@ -711,25 +572,12 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": False,
             "experiment": {
-                "targeting": {
-                    "logged_in": [True],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [True]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
-        self.assert_no_user_experiment(
-            users=get_users(2000),
-            config=config,
-        )
-        self.assert_no_user_experiment(
-            users=get_users(2000, logged_in=False),
-            config=config,
-        )
+        self.assert_no_user_experiment(users=get_users(2000), config=config)
+        self.assert_no_user_experiment(users=get_users(2000, logged_in=False), config=config)
 
     def test_loggedout_experiment(self):
         config = {
@@ -741,25 +589,12 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "targeting": {
-                    "logged_in": [False],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [False]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
-        self.do_user_experiment_simulation(
-            users=get_users(2000, logged_in=False),
-            config=config,
-        )
-        self.assert_no_user_experiment(
-            users=get_users(2000, logged_in=True),
-            config=config,
-        )
+        self.do_user_experiment_simulation(users=get_users(2000, logged_in=False), config=config)
+        self.assert_no_user_experiment(users=get_users(2000, logged_in=True), config=config)
 
     def test_loggedout_experiment_missing_loids(self):
         config = {
@@ -771,28 +606,15 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "targeting": {
-                    "logged_in": [False],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [False]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
         users = get_users(2000, logged_in=False)
         for user in users:
             user["id"] = None
-        self.assert_no_user_experiment(
-            users=users,
-            config=config,
-        )
-        self.assert_no_user_experiment(
-            users=get_users(2000, logged_in=True),
-            config=config,
-        )
+        self.assert_no_user_experiment(users=users, config=config)
+        self.assert_no_user_experiment(users=get_users(2000, logged_in=True), config=config)
 
     def test_loggedout_experiment_explicit_enable(self):
         config = {
@@ -805,25 +627,12 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": True,
             "experiment": {
-                "targeting": {
-                    "logged_in": [False],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [False]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
-        self.do_user_experiment_simulation(
-            users=get_users(2000, logged_in=False),
-            config=config,
-        )
-        self.assert_no_user_experiment(
-            users=get_users(2000, logged_in=True),
-            config=config,
-        )
+        self.do_user_experiment_simulation(users=get_users(2000, logged_in=False), config=config)
+        self.assert_no_user_experiment(users=get_users(2000, logged_in=True), config=config)
 
     def test_loggedout_experiment_explicit_disable(self):
         config = {
@@ -836,25 +645,12 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": False,
             "experiment": {
-                "targeting": {
-                    "logged_in": [False],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [False]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
-        self.assert_no_user_experiment(
-            users=get_users(2000, logged_in=False),
-            config=config,
-        )
-        self.assert_no_user_experiment(
-            users=get_users(2000, logged_in=True),
-            config=config,
-        )
+        self.assert_no_user_experiment(users=get_users(2000, logged_in=False), config=config)
+        self.assert_no_user_experiment(users=get_users(2000, logged_in=True), config=config)
 
     def test_mixed_experiment(self):
         config = {
@@ -866,20 +662,12 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "targeting": {
-                    "logged_in": [True, False],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [True, False]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
         self.do_user_experiment_simulation(
-            users=get_users(1000) + get_users(1000, logged_in=False),
-            config=config,
+            users=get_users(1000) + get_users(1000, logged_in=False), config=config
         )
 
     def test_mixed_experiment_disable(self):
@@ -893,20 +681,12 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": False,
             "experiment": {
-                "targeting": {
-                    "logged_in": [True, False],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"logged_in": [True, False]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
         self.assert_no_user_experiment(
-            users=get_users(1000) + get_users(1000, logged_in=False),
-            config=config,
+            users=get_users(1000) + get_users(1000, logged_in=False), config=config
         )
 
     def test_not_loggedin_or_loggedout(self):
@@ -920,17 +700,11 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "targeting": {},
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
         self.assert_no_user_experiment(
-            users=get_users(1000) + get_users(1000, logged_in=False),
-            config=config,
+            users=get_users(1000) + get_users(1000, logged_in=False), config=config
         )
 
     def test_subreddit_experiment(self):
@@ -944,35 +718,21 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "bucket_val": "content_id",
-                "targeting": {
-                    "content_type": ["subreddit"],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"content_type": ["subreddit"]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
         self.do_page_experiment_simulation(
-            user=get_users(1)[0],
-            pages=generate_content(2000, "subreddit"),
-            config=config,
+            user=get_users(1)[0], pages=generate_content(2000, "subreddit"), config=config
         )
         self.assert_no_page_experiment(
-            user=get_users(1)[0],
-            pages=generate_content(2000, "link"),
-            config=config,
+            user=get_users(1)[0], pages=generate_content(2000, "link"), config=config
         )
         self.assert_no_page_experiment(
-            user=get_users(1)[0],
-            pages=generate_content(2000, "comment"),
-            config=config,
+            user=get_users(1)[0], pages=generate_content(2000, "comment"), config=config
         )
         self.assert_no_user_experiment(
-            users=get_users(1000) + get_users(1000, logged_in=False),
-            config=config,
+            users=get_users(1000) + get_users(1000, logged_in=False), config=config
         )
 
     def test_link_experiment(self):
@@ -986,33 +746,19 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "bucket_val": "content_id",
-                "targeting": {
-                    "content_type": ["link", "comment"],
-                },
-                "variants": {
-                    "larger": 5,
-                    "smaller": 10,
-                    "control_1": 10,
-                    "control_2": 10,
-                },
+                "targeting": {"content_type": ["link", "comment"]},
+                "variants": {"larger": 5, "smaller": 10, "control_1": 10, "control_2": 10},
             },
         }
         self.do_page_experiment_simulation(
-            user=get_users(1)[0],
-            pages=generate_content(2000, "link"),
-            config=config,
+            user=get_users(1)[0], pages=generate_content(2000, "link"), config=config
         )
         self.do_page_experiment_simulation(
-            user=get_users(1)[0],
-            pages=generate_content(2000, "comment"),
-            config=config,
+            user=get_users(1)[0], pages=generate_content(2000, "comment"), config=config
         )
         self.assert_no_page_experiment(
-            user=get_users(1)[0],
-            pages=generate_content(2000, "subreddit"),
-            config=config,
+            user=get_users(1)[0], pages=generate_content(2000, "subreddit"), config=config
         )
         self.assert_no_user_experiment(
-            users=get_users(1000) + get_users(1000, logged_in=False),
-            config=config,
+            users=get_users(1000) + get_users(1000, logged_in=False), config=config
         )

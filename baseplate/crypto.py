@@ -82,8 +82,7 @@ class ExpiredSignatureError(SignatureError):
 _HEADER_FORMAT = struct.Struct("<BxxI")
 
 
-_SignatureInfo = collections.namedtuple("_SignatureInfo",
-    ["version", "expiration"])
+_SignatureInfo = collections.namedtuple("_SignatureInfo", ["version", "expiration"])
 
 
 class SignatureInfo(_SignatureInfo):
@@ -149,8 +148,8 @@ def validate_signature(secret, message, signature):
     """
     try:
         signature_bytes = base64.urlsafe_b64decode(signature)
-        header = signature_bytes[:_HEADER_FORMAT.size]
-        signature_digest = signature_bytes[_HEADER_FORMAT.size:]
+        header = signature_bytes[: _HEADER_FORMAT.size]
+        signature_digest = signature_bytes[_HEADER_FORMAT.size :]
         version, expiration = _HEADER_FORMAT.unpack(header)
         if version != 1:
             raise ValueError
@@ -181,9 +180,11 @@ class MessageSigner:
     """
 
     def __init__(self, secret_key):
-        warn_deprecated("MessageSigner is deprecated in favor of the top-level "
-                        "make_signature and validate_signature functions which "
-                        "accept versioned secrets from the secret store.")
+        warn_deprecated(
+            "MessageSigner is deprecated in favor of the top-level "
+            "make_signature and validate_signature functions which "
+            "accept versioned secrets from the secret store."
+        )
         self.secret = VersionedSecret.from_simple_secret(secret_key)
 
     def make_signature(self, message, max_age):

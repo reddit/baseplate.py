@@ -15,6 +15,7 @@ import logging
 from .ttypes import *
 from thrift.Thrift import TProcessor
 from thrift.transport import TTransport
+
 all_structs = []
 
 
@@ -27,6 +28,7 @@ class Iface(object):
 
 
     """
+
     def is_healthy(self):
         """
         Return whether or not the service is healthy.
@@ -51,6 +53,7 @@ class Client(Iface):
 
 
     """
+
     def __init__(self, iprot, oprot=None):
         self._iprot = self._oprot = iprot
         if oprot is not None:
@@ -73,7 +76,7 @@ class Client(Iface):
         return self.recv_is_healthy()
 
     def send_is_healthy(self):
-        self._oprot.writeMessageBegin('is_healthy', TMessageType.CALL, self._seqid)
+        self._oprot.writeMessageBegin("is_healthy", TMessageType.CALL, self._seqid)
         args = is_healthy_args()
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
@@ -92,7 +95,9 @@ class Client(Iface):
         iprot.readMessageEnd()
         if result.success is not None:
             return result.success
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "is_healthy failed: unknown result")
+        raise TApplicationException(
+            TApplicationException.MISSING_RESULT, "is_healthy failed: unknown result"
+        )
 
 
 class Processor(Iface, TProcessor):
@@ -106,7 +111,9 @@ class Processor(Iface, TProcessor):
         if name not in self._processMap:
             iprot.skip(TType.STRUCT)
             iprot.readMessageEnd()
-            x = TApplicationException(TApplicationException.UNKNOWN_METHOD, 'Unknown function %s' % (name))
+            x = TApplicationException(
+                TApplicationException.UNKNOWN_METHOD, "Unknown function %s" % (name)
+            )
             oprot.writeMessageBegin(name, TMessageType.EXCEPTION, seqid)
             x.write(oprot)
             oprot.writeMessageEnd()
@@ -127,29 +134,32 @@ class Processor(Iface, TProcessor):
         except TTransport.TTransportException:
             raise
         except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
+            logging.exception("TApplication exception in handler")
             msg_type = TMessageType.EXCEPTION
             result = ex
         except Exception:
-            logging.exception('Unexpected exception in handler')
+            logging.exception("Unexpected exception in handler")
             msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
+            result = TApplicationException(TApplicationException.INTERNAL_ERROR, "Internal error")
         oprot.writeMessageBegin("is_healthy", msg_type, seqid)
         result.write(oprot)
         oprot.writeMessageEnd()
         oprot.trans.flush()
+
 
 # HELPER FUNCTIONS AND STRUCTURES
 
 
 class is_healthy_args(object):
 
-    __slots__ = (
-    )
-
+    __slots__ = ()
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -166,7 +176,7 @@ class is_healthy_args(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('is_healthy_args')
+        oprot.writeStructBegin("is_healthy_args")
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -174,9 +184,8 @@ class is_healthy_args(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -190,9 +199,10 @@ class is_healthy_args(object):
 
     def __ne__(self, other):
         return not (self == other)
+
+
 all_structs.append(is_healthy_args)
-is_healthy_args.thrift_spec = (
-)
+is_healthy_args.thrift_spec = ()
 
 
 class is_healthy_result(object):
@@ -202,16 +212,17 @@ class is_healthy_result(object):
 
     """
 
-    __slots__ = (
-        'success',
-    )
+    __slots__ = ("success",)
 
-
-    def __init__(self, success=None,):
+    def __init__(self, success=None):
         self.success = success
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -233,9 +244,9 @@ class is_healthy_result(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('is_healthy_result')
+        oprot.writeStructBegin("is_healthy_result")
         if self.success is not None:
-            oprot.writeFieldBegin('success', TType.BOOL, 0)
+            oprot.writeFieldBegin("success", TType.BOOL, 0)
             oprot.writeBool(self.success)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -245,9 +256,8 @@ class is_healthy_result(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -261,10 +271,9 @@ class is_healthy_result(object):
 
     def __ne__(self, other):
         return not (self == other)
+
+
 all_structs.append(is_healthy_result)
-is_healthy_result.thrift_spec = (
-    (0, TType.BOOL, 'success', None, None, ),  # 0
-)
+is_healthy_result.thrift_spec = ((0, TType.BOOL, "success", None, None),)  # 0
 fix_spec(all_structs)
 del all_structs
-

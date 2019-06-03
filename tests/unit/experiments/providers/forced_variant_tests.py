@@ -1,4 +1,3 @@
-
 import time
 import unittest
 
@@ -11,7 +10,6 @@ THIRTY_DAYS = timedelta(days=30).total_seconds()
 
 
 class TestForcedVariantExperiment(unittest.TestCase):
-
     def test_unknown_type_returns_null_experiment(self):
         cfg = {
             "id": 1,
@@ -21,14 +19,7 @@ class TestForcedVariantExperiment(unittest.TestCase):
             "version": "1",
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "id": 1,
-                "name": "test",
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"id": 1, "name": "test", "variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertTrue(isinstance(experiment, ForcedVariantExperiment))
@@ -45,14 +36,7 @@ class TestForcedVariantExperiment(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "global_override": "foo",
-            "experiment": {
-                "id": 1,
-                "name": "test",
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"id": 1, "name": "test", "variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertTrue(isinstance(experiment, ForcedVariantExperiment))
@@ -67,14 +51,7 @@ class TestForcedVariantExperiment(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "enabled": False,
-            "experiment": {
-                "id": 1,
-                "name": "test",
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"id": 1, "name": "test", "variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertTrue(isinstance(experiment, ForcedVariantExperiment))
@@ -89,14 +66,7 @@ class TestForcedVariantExperiment(unittest.TestCase):
             "start_ts": time.time() + THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS * 2,
             "enabled": True,
-            "experiment": {
-                "id": 1,
-                "name": "test",
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"id": 1, "name": "test", "variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertTrue(isinstance(experiment, ForcedVariantExperiment))
@@ -111,14 +81,7 @@ class TestForcedVariantExperiment(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS * 2,
             "stop_ts": time.time() - THIRTY_DAYS,
             "enabled": True,
-            "experiment": {
-                "id": 1,
-                "name": "test",
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"id": 1, "name": "test", "variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertTrue(isinstance(experiment, ForcedVariantExperiment))
@@ -133,14 +96,7 @@ class TestForcedVariantExperiment(unittest.TestCase):
             "version": "1",
             "expires": expires,
             "enabled": True,
-            "experiment": {
-                "id": 1,
-                "name": "test",
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"id": 1, "name": "test", "variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertTrue(isinstance(experiment, ForcedVariantExperiment))
@@ -156,14 +112,7 @@ class TestForcedVariantExperiment(unittest.TestCase):
             "start_ts": time.time() + THIRTY_DAYS,
             "expires": expires,
             "enabled": True,
-            "experiment": {
-                "id": 1,
-                "name": "test",
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"id": 1, "name": "test", "variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertFalse(isinstance(experiment, ForcedVariantExperiment))
@@ -180,14 +129,7 @@ class TestForcedVariantExperiment(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "expires": expires,
             "enabled": True,
-            "experiment": {
-                "id": 1,
-                "name": "test",
-                "variants": {
-                    "control_1": 10,
-                    "control_2": 10,
-                }
-            }
+            "experiment": {"id": 1, "name": "test", "variants": {"control_1": 10, "control_2": 10}},
         }
         experiment = parse_experiment(cfg)
         self.assertFalse(isinstance(experiment, ForcedVariantExperiment))

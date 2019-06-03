@@ -1,12 +1,10 @@
-
 from pymemcache.client.base import PooledClient
 
 from ...context import ContextFactory
 from ... import config
 
 
-def pool_from_config(app_config, prefix="memcache.", serializer=None,
-                     deserializer=None):
+def pool_from_config(app_config, prefix="memcache.", serializer=None, deserializer=None):
     """Make a PooledClient from a configuration dictionary.
 
     The keys useful to :py:func:`pool_from_config` should be prefixed, e.g.
@@ -41,15 +39,18 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None,
     """
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "endpoint": config.Endpoint,
-            "max_pool_size": config.Optional(config.Integer, default=None),
-            "connect_timeout": config.Optional(config.Float, default=None),
-            "timeout": config.Optional(config.Float, default=None),
-            "no_delay": config.Optional(config.Boolean, default=True),
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "endpoint": config.Endpoint,
+                "max_pool_size": config.Optional(config.Integer, default=None),
+                "connect_timeout": config.Optional(config.Float, default=None),
+                "timeout": config.Optional(config.Float, default=None),
+                "no_delay": config.Optional(config.Boolean, default=True),
+            }
         },
-    })
+    )
 
     options = getattr(cfg, config_prefix)
 
@@ -112,8 +113,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.set(
-                key, value, expire=expire, noreply=noreply)
+            return self.pooled_client.set(key, value, expire=expire, noreply=noreply)
 
     def set_many(self, values, expire=0, noreply=None):
         with self._make_span("set_many") as span:
@@ -121,32 +121,28 @@ class MonitoredMemcacheConnection:
             span.set_tag("keys", make_keys_str(values.keys()))
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.set_many(
-                values, expire=expire, noreply=noreply)
+            return self.pooled_client.set_many(values, expire=expire, noreply=noreply)
 
     def replace(self, key, value, expire=0, noreply=None):
         with self._make_span("replace") as span:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.replace(
-                key, value, expire=expire, noreply=noreply)
+            return self.pooled_client.replace(key, value, expire=expire, noreply=noreply)
 
     def append(self, key, value, expire=0, noreply=None):
         with self._make_span("append") as span:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.append(
-                key, value, expire=expire, noreply=noreply)
+            return self.pooled_client.append(key, value, expire=expire, noreply=noreply)
 
     def prepend(self, key, value, expire=0, noreply=None):
         with self._make_span("prepend") as span:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.prepend(
-                key, value, expire=expire, noreply=noreply)
+            return self.pooled_client.prepend(key, value, expire=expire, noreply=noreply)
 
     def cas(self, key, value, cas, expire=0, noreply=None):
         with self._make_span("cas") as span:
@@ -154,8 +150,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("cas", cas)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.cas(
-                key, value, cas, expire=expire, noreply=noreply)
+            return self.pooled_client.cas(key, value, cas, expire=expire, noreply=noreply)
 
     def get(self, key, **kwargs):
         with self._make_span("get") as span:

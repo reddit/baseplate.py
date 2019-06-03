@@ -1,4 +1,3 @@
-
 import socket
 import unittest
 
@@ -24,14 +23,18 @@ class NotEinhornWorkerTests(unittest.TestCase):
             einhorn.ack_startup()
 
 
-@mock.patch.dict("os.environ", {
-    "EINHORN_MASTER_PID": "123",
-    "EINHORN_SOCK_PATH": "/tmp/einhorn.sock",
-    "EINHORN_FD_COUNT": "2",
-    "EINHORN_FD_0": "5",
-    "EINHORN_FD_1": "6",
-    "EINHORN_FD_FAMILY_1": "AF_UNIX",
-}, clear=True)
+@mock.patch.dict(
+    "os.environ",
+    {
+        "EINHORN_MASTER_PID": "123",
+        "EINHORN_SOCK_PATH": "/tmp/einhorn.sock",
+        "EINHORN_FD_COUNT": "2",
+        "EINHORN_FD_0": "5",
+        "EINHORN_FD_1": "6",
+        "EINHORN_FD_FAMILY_1": "AF_UNIX",
+    },
+    clear=True,
+)
 class EinhornWorkerTests(unittest.TestCase):
     def setUp(self):
         getppid_patcher = mock.patch("os.getppid")

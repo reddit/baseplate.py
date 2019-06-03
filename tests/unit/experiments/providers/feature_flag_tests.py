@@ -1,4 +1,3 @@
-
 import logging
 import collections
 import time
@@ -21,7 +20,6 @@ THIRTY_DAYS = timedelta(days=30).total_seconds()
 
 
 class TestFeatureFlag(unittest.TestCase):
-
     def setUp(self):
         super(TestFeatureFlag, self).setUp()
         self.user_id = "t2_beef"
@@ -48,26 +46,14 @@ class TestFeatureFlag(unittest.TestCase):
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
                 "experiment": {
-                    "targeting": {
-                        "logged_in": [True, False],
-                    },
-                    "variants": {
-                        "active": 100,
-                    },
+                    "targeting": {"logged_in": [True, False]},
+                    "variants": {"active": 100},
                 },
-            },
+            }
         }
-        experiments = Experiments(
-            config_watcher=filewatcher,
-            server_span=span,
-            context_name="test",
-        )
+        experiments = Experiments(config_watcher=filewatcher, server_span=span, context_name="test")
         self.assertEqual(event_queue.put.call_count, 0)
-        variant = experiments.variant(
-            "test",
-            user_id=self.user_id,
-            logged_in=True,
-        )
+        variant = experiments.variant("test", user_id=self.user_id, logged_in=True)
         self.assertEqual(variant, "active")
         self.assertEqual(event_queue.put.call_count, 0)
         experiments.variant("test", user_id=self.user_id, logged_in=True)
@@ -82,26 +68,20 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "admin": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"admin": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["admin"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["admin"]
+            ),
+            "active",
+        )
 
     def test_admin_disabled(self):
         cfg = {
@@ -112,31 +92,26 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "admin": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"admin": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=[],
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["beta"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=[]
+            ),
+            "active",
+        )
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["beta"]
+            ),
+            "active",
+        )
 
     def test_employee_enabled(self):
         cfg = {
@@ -147,26 +122,20 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "employee": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"employee": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["employee"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["employee"]
+            ),
+            "active",
+        )
 
     def test_employee_disabled(self):
         cfg = {
@@ -177,31 +146,26 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "employee": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"employee": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=[],
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["beta"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=[]
+            ),
+            "active",
+        )
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["beta"]
+            ),
+            "active",
+        )
 
     def test_beta_enabled(self):
         cfg = {
@@ -212,26 +176,20 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "beta": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"beta": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["beta"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["beta"]
+            ),
+            "active",
+        )
 
     def test_beta_disabled(self):
         cfg = {
@@ -242,31 +200,26 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "beta": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"beta": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=[],
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["admin"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=[]
+            ),
+            "active",
+        )
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["admin"]
+            ),
+            "active",
+        )
 
     def test_gold_enabled(self):
         cfg = {
@@ -277,26 +230,20 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "gold": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"gold": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["gold"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["gold"]
+            ),
+            "active",
+        )
 
     def test_gold_disabled(self):
         cfg = {
@@ -307,31 +254,26 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "gold": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"gold": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=[],
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["admin"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=[]
+            ),
+            "active",
+        )
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["admin"]
+            ),
+            "active",
+        )
 
     def test_percent_loggedin(self):
         num_users = 2000
@@ -345,20 +287,14 @@ class TestFeatureFlag(unittest.TestCase):
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
                 "experiment": {
-                    "targeting": {
-                        "logged_in": [True],
-                    },
-                    "variants": {
-                        "active": wanted_percent,
-                    },
+                    "targeting": {"logged_in": [True]},
+                    "variants": {"active": wanted_percent},
                 },
             }
             feature_flag = parse_experiment(cfg)
             return (
-                feature_flag.variant(
-                    user_id="t2_%s" % str(i),
-                    logged_in=True,
-                ) == "active" for i in range(num_users)
+                feature_flag.variant(user_id="t2_%s" % str(i), logged_in=True) == "active"
+                for i in range(num_users)
             )
 
         self.assertFalse(any(simulate_percent_loggedin(0)))
@@ -380,20 +316,14 @@ class TestFeatureFlag(unittest.TestCase):
                 "start_ts": time.time() - THIRTY_DAYS,
                 "stop_ts": time.time() + THIRTY_DAYS,
                 "experiment": {
-                    "targeting": {
-                        "logged_in": [False],
-                    },
-                    "variants": {
-                        "active": wanted_percent,
-                    },
+                    "targeting": {"logged_in": [False]},
+                    "variants": {"active": wanted_percent},
                 },
             }
             feature_flag = parse_experiment(cfg)
             return (
-                feature_flag.variant(
-                    user_id="t2_%s" % str(i),
-                    logged_in=False,
-                ) == "active" for i in range(num_users)
+                feature_flag.variant(user_id="t2_%s" % str(i), logged_in=False) == "active"
+                for i in range(num_users)
             )
 
         self.assertFalse(any(simulate_percent_loggedout(0)))
@@ -409,30 +339,28 @@ class TestFeatureFlag(unittest.TestCase):
             "name": "test_feature",
             "type": "feature_flag",
             "version": "1",
-                "start_ts": time.time() - THIRTY_DAYS,
-                "stop_ts": time.time() + THIRTY_DAYS,
+            "start_ts": time.time() - THIRTY_DAYS,
+            "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "url_features": {
-                        "test_state": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"url_features": {"test_state": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            url_features=["test_state"],
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            url_features=["x", "test_state"],
-        ), "active")
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, url_features=["test_state"]
+            ),
+            "active",
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id,
+                logged_in=self.user_logged_in,
+                url_features=["x", "test_state"],
+            ),
+            "active",
+        )
 
     def test_url_disabled(self):
         cfg = {
@@ -443,26 +371,20 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "url_features": {
-                        "test_state": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"url_features": {"test_state": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            url_features=["x"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, url_features=["x"]
+            ),
+            "active",
+        )
 
     def test_user_in(self):
         cfg = {
@@ -474,40 +396,38 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_name": {
-                        "Gary": "active",
-                        "dave": "active",
-                        "ALL_UPPERCASE": "active",
-                    },
+                    "user_name": {"Gary": "active", "dave": "active", "ALL_UPPERCASE": "active"}
                 },
-                "variants": {
-                    "active": 0,
-                },
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_name="Gary",
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_name=self.user_name,
-        ), "active")
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_name="Gary"
+            ),
+            "active",
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_name=self.user_name
+            ),
+            "active",
+        )
         all_uppercase_id = "t2_f00d"
         all_uppercase_name = "ALL_UPPERCASE"
-        self.assertEqual(feature_flag.variant(
-            user_id=all_uppercase_id,
-            logged_in=True,
-            user_name=all_uppercase_name,
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=all_uppercase_id,
-            logged_in=True,
-            user_name=all_uppercase_name.lower(),
-        ), "active")
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=all_uppercase_id, logged_in=True, user_name=all_uppercase_name
+            ),
+            "active",
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=all_uppercase_id, logged_in=True, user_name=all_uppercase_name.lower()
+            ),
+            "active",
+        )
 
     def test_user_not_in(self):
         cfg = {
@@ -517,21 +437,15 @@ class TestFeatureFlag(unittest.TestCase):
             "version": "1",
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "overrides": {
-                    "user_name": {},
-                },
-                "variants": {
-                    "active": 0,
-                },
-            },
+            "experiment": {"overrides": {"user_name": {}}, "variants": {"active": 0}},
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_name=self.user_name,
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_name=self.user_name
+            ),
+            "active",
+        )
         cfg = {
             "id": 1,
             "name": "test_feature",
@@ -540,23 +454,17 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "user_name": {
-                        "dave": "active",
-                        "joe": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_name": {"dave": "active", "joe": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_name=self.user_name,
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_name=self.user_name
+            ),
+            "active",
+        )
 
     def test_subreddit_in(self):
         cfg = {
@@ -567,28 +475,23 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "subreddit": {
-                        "WTF": "active",
-                        "aww": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"subreddit": {"WTF": "active", "aww": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            subreddit="WTF",
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            subreddit="wtf",
-        ), "active")
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, subreddit="WTF"
+            ),
+            "active",
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, subreddit="wtf"
+            ),
+            "active",
+        )
 
     def test_subreddit_not_in(self):
         cfg = {
@@ -598,21 +501,15 @@ class TestFeatureFlag(unittest.TestCase):
             "version": "1",
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "overrides": {
-                    "subreddit": {},
-                },
-                "variants": {
-                    "active": 0,
-                },
-            },
+            "experiment": {"overrides": {"subreddit": {}}, "variants": {"active": 0}},
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            subreddit="wtf",
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, subreddit="wtf"
+            ),
+            "active",
+        )
         cfg = {
             "id": 1,
             "name": "test_feature",
@@ -621,23 +518,17 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "subreddit": {
-                        "wtfoobar": "active",
-                        "aww": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"subreddit": {"wtfoobar": "active", "aww": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            subreddit="wtf",
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, subreddit="wtf"
+            ),
+            "active",
+        )
 
     def test_subdomain_in(self):
         cfg = {
@@ -648,28 +539,23 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "subdomain": {
-                        "beta": "active",
-                        "www": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"subdomain": {"beta": "active", "www": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            subdomain="beta",
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            subdomain="BETA",
-        ), "active")
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, subdomain="beta"
+            ),
+            "active",
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, subdomain="BETA"
+            ),
+            "active",
+        )
 
     def test_subdomain_not_in(self):
         cfg = {
@@ -679,26 +565,19 @@ class TestFeatureFlag(unittest.TestCase):
             "version": "1",
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
-            "experiment": {
-                "overrides": {
-                    "subdomain": {},
-                },
-                "variants": {
-                    "active": 0,
-                },
-            },
+            "experiment": {"overrides": {"subdomain": {}}, "variants": {"active": 0}},
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            subdomain="beta",
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            subdomain="",
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, subdomain="beta"
+            ),
+            "active",
+        )
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in, subdomain=""),
+            "active",
+        )
         cfg = {
             "id": 1,
             "name": "test_feature",
@@ -707,23 +586,17 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "overrides": {
-                    "subdomain": {
-                        "www": "active",
-                        "betanauts": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"subdomain": {"www": "active", "betanauts": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            subdomain="beta",
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, subdomain="beta"
+            ),
+            "active",
+        )
 
     def test_multiple(self):
         # is_admin, globally off should still be False
@@ -736,22 +609,17 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "global_override": None,
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "admin": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"admin": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["admin"],
-        ), "active")
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["admin"]
+            ),
+            "active",
+        )
 
         # globally on but not admin should still be True
         cfg = {
@@ -763,26 +631,20 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "global_override": "active",
             "experiment": {
-                "overrides": {
-                    "user_roles": {
-                        "admin": "active",
-                    },
-                },
-                "variants": {
-                    "active": 0,
-                },
+                "overrides": {"user_roles": {"admin": "active"}},
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["admin"],
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["admin"]
+            ),
+            "active",
+        )
+        self.assertEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
 
         # no URL but admin should still be True
         cfg = {
@@ -794,33 +656,30 @@ class TestFeatureFlag(unittest.TestCase):
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
                 "overrides": {
-                    "user_roles": {
-                        "admin": "active",
-                    },
-                    "url_features": {
-                        "test_featurestate": "active",
-                    },
+                    "user_roles": {"admin": "active"},
+                    "url_features": {"test_featurestate": "active"},
                 },
-                "variants": {
-                    "active": 0,
-                },
+                "variants": {"active": 0},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_roles=["admin"],
-        ), "active")
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            url_features=["test_featurestate"],
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_roles=["admin"]
+            ),
+            "active",
+        )
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id,
+                logged_in=self.user_logged_in,
+                url_features=["test_featurestate"],
+            ),
+            "active",
+        )
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
 
     def test_is_newer_than(self):
         cfg = {
@@ -831,25 +690,21 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "targeting": {
-                    "logged_in": [True],
-                },
+                "targeting": {"logged_in": [True]},
                 "newer_than": int(time.time()) - THIRTY_DAYS,
-                "variants": {
-                    "active": 100,
-                },
+                "variants": {"active": 100},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_created=int(time.time()),
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_created=int(time.time())
+            ),
+            "active",
+        )
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
 
     def test_is_not_newer_than(self):
         cfg = {
@@ -860,26 +715,21 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "targeting": {
-                    "logged_in": [True],
-                },
+                "targeting": {"logged_in": [True]},
                 "newer_than": int(time.time()) + THIRTY_DAYS,
-                "variants": {
-                    "active": 100,
-                },
+                "variants": {"active": 100},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_created=int(time.time()),
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
-
+        self.assertNotEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_created=int(time.time())
+            ),
+            "active",
+        )
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )
 
     def test_newer_than_only_on_logged_in_check(self):
         cfg = {
@@ -890,23 +740,18 @@ class TestFeatureFlag(unittest.TestCase):
             "start_ts": time.time() - THIRTY_DAYS,
             "stop_ts": time.time() + THIRTY_DAYS,
             "experiment": {
-                "targeting": {
-                    "logged_in": [True],
-                    "user_name": ["gary"],
-                },
+                "targeting": {"logged_in": [True], "user_name": ["gary"]},
                 "newer_than": int(time.time()) + THIRTY_DAYS,
-                "variants": {
-                    "active": 100,
-                },
+                "variants": {"active": 100},
             },
         }
         feature_flag = parse_experiment(cfg)
-        self.assertEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-            user_name="gary",
-        ), "active")
-        self.assertNotEqual(feature_flag.variant(
-            user_id=self.user_id,
-            logged_in=self.user_logged_in,
-        ), "active")
+        self.assertEqual(
+            feature_flag.variant(
+                user_id=self.user_id, logged_in=self.user_logged_in, user_name="gary"
+            ),
+            "active",
+        )
+        self.assertNotEqual(
+            feature_flag.variant(user_id=self.user_id, logged_in=self.user_logged_in), "active"
+        )

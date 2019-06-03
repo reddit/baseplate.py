@@ -1,4 +1,3 @@
-
 from kombu import Connection
 from kombu import Exchange
 from kombu.pools import Producers
@@ -26,20 +25,19 @@ def connection_from_config(app_config, prefix, **kwargs):
     """
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "hostname": config.String,
-            "virtual_host": config.Optional(config.String),
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "hostname": config.String,
+                "virtual_host": config.Optional(config.String),
+            }
         },
-    })
+    )
 
     options = getattr(cfg, config_prefix)
 
-    return Connection(
-        hostname=options.hostname,
-        virtual_host=options.virtual_host,
-        **kwargs
-    )
+    return Connection(hostname=options.hostname, virtual_host=options.virtual_host, **kwargs)
 
 
 def exchange_from_config(app_config, prefix, **kwargs):
@@ -61,20 +59,19 @@ def exchange_from_config(app_config, prefix, **kwargs):
     """
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "exchange_name": config.Optional(config.String),
-            "exchange_type": config.String,
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "exchange_name": config.Optional(config.String),
+                "exchange_type": config.String,
+            }
         },
-    })
+    )
 
     options = getattr(cfg, config_prefix)
 
-    return Exchange(
-        name=options.exchange_name or '',
-        type=options.exchange_type,
-        **kwargs
-    )
+    return Exchange(name=options.exchange_name or "", type=options.exchange_type, **kwargs)
 
 
 class KombuProducerContextFactory(ContextFactory):
@@ -98,8 +95,7 @@ class KombuProducerContextFactory(ContextFactory):
         self.producers = Producers(limit=max_connections)
 
     def make_object_for_context(self, name, span):
-        return KombuProducer(
-            name, span, self.connection, self.exchange, self.producers)
+        return KombuProducer(name, span, self.connection, self.exchange, self.producers)
 
 
 class KombuProducer:
@@ -133,8 +129,5 @@ class KombuProducer:
             producer_pool = self.producers[self.connection]
             with producer_pool.acquire(block=True) as producer:
                 return producer.publish(
-                    body=body,
-                    routing_key=routing_key,
-                    exchange=self.exchange,
-                    **kwargs
+                    body=body, routing_key=routing_key, exchange=self.exchange, **kwargs
                 )

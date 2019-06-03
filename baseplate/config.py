@@ -90,8 +90,7 @@ class ConfigurationError(Exception):
     """Raised when the configuration violates the spec."""
 
     def __init__(self, key, error):
-        super(ConfigurationError, self).__init__(
-            "{}: {}".format(key, error))
+        super(ConfigurationError, self).__init__("{}: {}".format(key, error))
         self.key = key
         self.error = error
 
@@ -134,8 +133,7 @@ def Boolean(text):  # noqa: D401
 InternetAddress = collections.namedtuple("InternetAddress", ("host", "port"))
 
 
-EndpointConfiguration_ = collections.namedtuple(
-    "EndpointConfiguration", ("family", "address"))
+EndpointConfiguration_ = collections.namedtuple("EndpointConfiguration", ("family", "address"))
 
 
 class EndpointConfiguration(EndpointConfiguration_):
@@ -206,11 +204,13 @@ def File(mode="r"):  # noqa: D401
         which the file is opened.
 
     """
+
     def open_file(text):
         try:
             return open(text, mode=mode)
         except IOError:
             raise ValueError("could not open file: %s" % text)
+
     return open_file
 
 
@@ -257,7 +257,7 @@ def Percent(text):  # noqa: D401
     if not text.endswith("%"):
         raise ValueError("the value is not a percentage")
 
-    percentage = float(text[:-1]) / 100.
+    percentage = float(text[:-1]) / 100.0
 
     if not 0 <= percentage <= 1:
         raise ValueError("percentage is out of valid range")
@@ -308,11 +308,13 @@ def OneOf(**options):  # noqa: D401
         "H"
 
     """
+
     def one_of(text):
         try:
             return options[text]
         except KeyError:
             raise ValueError("expected one of {!r}".format(options.keys()))
+
     return one_of
 
 
@@ -323,21 +325,25 @@ def TupleOf(T):  # noqa: D401
     to be a valid choice, wrap with :py:func:`Optional`.
 
     """
+
     def tuple_of(text):
         if not text:
             raise ValueError("no values provided")
         split = text.split(",")
         stripped = [item.strip() for item in split]
         return [T(item) for item in stripped if item]
+
     return tuple_of
 
 
 def Optional(T, default=None):  # noqa: D401
     """An option of type T, or ``default`` if not configured."""
+
     def optional(text):
         if text:
             return T(text)
         return default
+
     return optional
 
 
@@ -347,11 +353,13 @@ def Fallback(T1, T2):  # noqa: D401
     This is useful for backwards-compatible configuration changes.
 
     """
+
     def fallback(text):
         try:
             return T1(text)
         except ValueError:
             return T2(text)
+
     return fallback
 
 

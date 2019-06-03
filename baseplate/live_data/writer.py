@@ -22,14 +22,13 @@ class WriterError(Exception):
 class NodeDoesNotExistError(WriterError):
     def __init__(self):
         super(NodeDoesNotExistError, self).__init__(
-            "Target node does not exist. Please create it with appropriate "
-            "ACLs first.")
+            "Target node does not exist. Please create it with appropriate " "ACLs first."
+        )
 
 
 class UnexpectedChangeError(WriterError):
     def __init__(self):
-        super(UnexpectedChangeError, self).__init__(
-            "The data in ZooKeeper changed unexpectedly.")
+        super(UnexpectedChangeError, self).__init__("The data in ZooKeeper changed unexpectedly.")
 
 
 def write_file_to_zookeeper(zookeeper, source_file, dest_path):
@@ -53,8 +52,7 @@ def write_file_to_zookeeper(zookeeper, source_file, dest_path):
     except UnicodeDecodeError:
         logger.info("Skipping diff, data appears to be binary.")
     else:
-        diff = difflib.unified_diff(
-            current_text.splitlines(), new_text.splitlines())
+        diff = difflib.unified_diff(current_text.splitlines(), new_text.splitlines())
 
         for line in diff:
             logger.info(line)
@@ -69,14 +67,14 @@ def write_file_to_zookeeper(zookeeper, source_file, dest_path):
 
 
 def main():
-    arg_parser = argparse.ArgumentParser(
-        description=sys.modules[__name__].__doc__)
-    arg_parser.add_argument("--debug", default=False, action="store_true",
-        help="enable debug logging")
-    arg_parser.add_argument("config_file", type=argparse.FileType("r"),
-        help="path to a configuration file")
-    arg_parser.add_argument("source", type=argparse.FileType("rb"),
-                            help="file to upload")
+    arg_parser = argparse.ArgumentParser(description=sys.modules[__name__].__doc__)
+    arg_parser.add_argument(
+        "--debug", default=False, action="store_true", help="enable debug logging"
+    )
+    arg_parser.add_argument(
+        "config_file", type=argparse.FileType("r"), help="path to a configuration file"
+    )
+    arg_parser.add_argument("source", type=argparse.FileType("rb"), help="file to upload")
     arg_parser.add_argument("dest", help="path in zookeeper")
     args = arg_parser.parse_args()
 

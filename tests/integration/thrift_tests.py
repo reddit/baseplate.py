@@ -1,4 +1,3 @@
-
 import contextlib
 import jwt
 import logging
@@ -31,11 +30,7 @@ from baseplate.server.thrift import make_server
 from baseplate.thrift_pool import ThriftConnectionPool
 
 from .test_thrift import TestService, ttypes
-from .. import (
-    mock,
-    AUTH_TOKEN_PUBLIC_KEY,
-    SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
-)
+from .. import mock, AUTH_TOKEN_PUBLIC_KEY, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 
 
 cryptography_installed = True
@@ -60,12 +55,9 @@ def make_edge_context_factory():
             "secret/authentication/public-key": {
                 "type": "versioned",
                 "current": AUTH_TOKEN_PUBLIC_KEY,
-            },
+            }
         },
-        "vault": {
-            "token": "test",
-            "url": "http://vault.example.com:8200/",
-        }
+        "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
     }
     secrets = store.SecretsStore("/secrets")
     secrets._filewatcher = mock_filewatcher
@@ -77,9 +69,11 @@ def serve_thrift(handler, server_span_observer=None):
     # create baseplate root
     baseplate = Baseplate()
     if server_span_observer:
+
         class TestBaseplateObserver(BaseplateObserver):
             def on_server_span_created(self, context, server_span):
                 server_span.register(server_span_observer)
+
         baseplate.register(TestBaseplateObserver())
 
     # set up the server's processor
@@ -91,14 +85,13 @@ def serve_thrift(handler, server_span_observer=None):
     # bind a server socket on an available port
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
     listener = make_listener(server_bind_endpoint)
-    server = make_server({
-        "max_concurrency": "100",
-    }, listener, processor)
+    server = make_server({"max_concurrency": "100"}, listener, processor)
 
     # figure out what port the server ended up on
     server_address = listener.getsockname()
     server_endpoint = config.EndpointConfiguration(
-        family=server_bind_endpoint.family, address=server_address)
+        family=server_bind_endpoint.family, address=server_address
+    )
     server.endpoint = server_endpoint
 
     # run the server until our caller is done with it
@@ -132,14 +125,15 @@ def baseplate_thrift_client(endpoint, client_span_observer=None):
     )
 
     if client_span_observer:
+
         class TestServerSpanObserver(ServerSpanObserver):
             def on_child_span_created(self, span):
                 span.register(client_span_observer)
+
         server_span.register(TestServerSpanObserver())
 
     edge_context_factory = make_edge_context_factory()
-    edge_context = edge_context_factory.from_upstream(
-        SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
+    edge_context = edge_context_factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
     edge_context.attach_context(context)
 
     context_factory = ThriftContextFactory(pool, TestService.Client)
@@ -155,6 +149,7 @@ class GeventPatchedTestCase(unittest.TestCase):
 
     def tearDown(self):
         import socket
+
         reload(socket)
 
 
@@ -169,6 +164,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
             def example(self, context):
                 self.server_span = context.trace
                 return True
+
         handler = Handler()
 
         with serve_thrift(handler) as server:
@@ -195,6 +191,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
             def example(self, context):
                 self.server_span = context.trace
                 return True
+
         handler = Handler()
 
         with serve_thrift(handler) as server:
@@ -227,9 +224,11 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         class Handler(TestService.Iface):
             def __init__(self):
                 self.server_span = None
+
             def example(self, context):
                 self.server_span = context.trace
                 return True
+
         handler = Handler()
 
         with serve_thrift(handler) as server:
@@ -262,9 +261,11 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         class Handler(TestService.Iface):
             def __init__(self):
                 self.server_span = None
+
             def example(self, context):
                 self.server_span = context.trace
                 return True
+
         handler = Handler()
 
         with serve_thrift(handler) as server:
@@ -299,6 +300,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
             def example(self, context):
                 self.server_span = context.trace
                 return True
+
         handler = Handler()
 
         with serve_thrift(handler) as server:
@@ -318,7 +320,6 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         self.assertTrue(client_result)
 
 
-
 class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
     @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_edge_request_context(self):
@@ -331,6 +332,7 @@ class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
             def example(self, context):
                 self.request_context = context.request_context
                 return True
+
         handler = Handler()
 
         with serve_thrift(handler) as server:
@@ -361,6 +363,7 @@ class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
             def example(self, context):
                 self.request_context = context.request_context
                 return True
+
         handler = Handler()
 
         with serve_thrift(handler) as server:
@@ -384,9 +387,11 @@ class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
 class ThriftServerSpanTests(GeventPatchedTestCase):
     def test_server_span_starts_and_stops(self):
         """The server span should start/stop appropriately."""
+
         class Handler(TestService.Iface):
             def example(self, context):
                 return True
+
         handler = Handler()
 
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
@@ -403,6 +408,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
         class Handler(TestService.Iface):
             def example(self, context):
                 raise TestService.ExpectedException()
+
         handler = Handler()
 
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
@@ -423,6 +429,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
         class Handler(TestService.Iface):
             def example(self, context):
                 raise UnexpectedException
+
         handler = Handler()
 
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
@@ -440,9 +447,11 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
 class ThriftClientSpanTests(GeventPatchedTestCase):
     def test_client_span_starts_and_stops(self):
         """The client span should start/stop appropriately."""
+
         class Handler(TestService.Iface):
             def example(self, context):
                 return True
+
         handler = Handler()
 
         client_span_observer = mock.Mock(spec=SpanObserver)
@@ -459,6 +468,7 @@ class ThriftClientSpanTests(GeventPatchedTestCase):
         class Handler(TestService.Iface):
             def example(self, context):
                 raise TestService.ExpectedException()
+
         handler = Handler()
 
         client_span_observer = mock.Mock(spec=SpanObserver)
@@ -479,6 +489,7 @@ class ThriftClientSpanTests(GeventPatchedTestCase):
         class Handler(TestService.Iface):
             def example(self, context):
                 raise UnexpectedException
+
         handler = Handler()
 
         client_span_observer = mock.Mock(spec=SpanObserver)
@@ -502,6 +513,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
             def example(self, context):
                 self.request_context = context.request_context
                 return True
+
         handler = Handler()
 
         span_observer = mock.Mock(spec=SpanObserver)

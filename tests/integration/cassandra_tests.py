@@ -1,4 +1,3 @@
-
 import logging
 import time
 import unittest
@@ -87,19 +86,21 @@ class CassandraTests(unittest.TestCase):
 
     def test_async_callback_fail(self):
         # mock threading.Event so that Event.wait() returns immediately
-        event = mock.patch('baseplate.context.cassandra.Event')
+        event = mock.patch("baseplate.context.cassandra.Event")
         event.start()
         self.addCleanup(event.stop)
 
         # mock the on_execute_complete callback to be slow
         def on_execute_complete(result, span, event):
             import time
+
             time.sleep(0.005)
             span.finish()
             event.set()
 
         on_execute_complete = mock.patch(
-            'baseplate.context.cassandra._on_execute_complete', side_effect=on_execute_complete)
+            "baseplate.context.cassandra._on_execute_complete", side_effect=on_execute_complete
+        )
         on_execute_complete.start()
         self.addCleanup(on_execute_complete.stop)
 
@@ -115,12 +116,14 @@ class CassandraTests(unittest.TestCase):
         # mock the on_execute_complete callback to be slow
         def on_execute_complete(result, span, event):
             import time
+
             time.sleep(0.005)
             span.finish()
             event.set()
 
         on_execute_complete = mock.patch(
-            'baseplate.context.cassandra._on_execute_complete', side_effect=on_execute_complete)
+            "baseplate.context.cassandra._on_execute_complete", side_effect=on_execute_complete
+        )
         on_execute_complete.start()
         self.addCleanup(on_execute_complete.stop)
 
@@ -136,12 +139,14 @@ class CassandraTests(unittest.TestCase):
         # mock the on_execute_complete callback to be slow
         def on_execute_complete(result, span, event):
             import time
+
             time.sleep(0.02)
             span.finish()
             event.set()
 
         on_execute_complete = mock.patch(
-            'baseplate.context.cassandra._on_execute_complete', side_effect=on_execute_complete)
+            "baseplate.context.cassandra._on_execute_complete", side_effect=on_execute_complete
+        )
         on_execute_complete.start()
         self.addCleanup(on_execute_complete.stop)
 
@@ -172,7 +177,7 @@ class CassandraConcurrentTests(unittest.TestCase):
     def test_execute_concurrent_with_args(self):
         with self.server_span:
             statement = self.context.cassandra.prepare('SELECT * FROM system.local WHERE "key"=?')
-            params = [(_key,) for _key in ['local', 'other']]
+            params = [(_key,) for _key in ["local", "other"]]
             results = execute_concurrent_with_args(self.context.cassandra, statement, params)
 
         server_span_observer = self.baseplate_observer.get_only_child()

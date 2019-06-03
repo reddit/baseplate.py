@@ -1,4 +1,3 @@
-
 import json
 import logging
 
@@ -15,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class EventType(Enum):
-    EXPOSE = 'expose'
-    BUCKET = 'choose'
+    EXPOSE = "expose"
+    BUCKET = "choose"
 
 
 class ExperimentsContextFactory(ContextFactory):
@@ -75,10 +74,7 @@ class Experiments:
         except WatchedFileNotAvailableError as exc:
             logger.warning("Experiment config unavailable: %s", str(exc))
         except KeyError:
-            logger.warning(
-                "Experiment <%r> not found in experiment config",
-                name,
-            )
+            logger.warning("Experiment <%r> not found in experiment config", name)
         except TypeError as exc:
             logger.warning("Could not load experiment config: %s", str(exc))
 
@@ -116,8 +112,7 @@ class Experiments:
         """
         return self._get_experiment(name) is not None
 
-    def variant(self, name, user=None, bucketing_event_override=None,
-                **kwargs):
+    def variant(self, name, user=None, bucketing_event_override=None, **kwargs):
         r"""Return which variant, if any, is active.
 
         If a variant is active, a bucketing event will be logged to the event
@@ -196,10 +191,10 @@ class Experiments:
             self._event_logger.log(
                 experiment=experiment,
                 variant=variant,
-                user_id=inputs.get('user_id'),
-                logged_in=inputs.get('logged_in'),
-                cookie_created_timestamp=inputs.get('cookie_created_timestamp'),
-                app_name=inputs.get('app_name'),
+                user_id=inputs.get("user_id"),
+                logged_in=inputs.get("logged_in"),
+                cookie_created_timestamp=inputs.get("cookie_created_timestamp"),
+                app_name=inputs.get("app_name"),
                 event_type=EventType.BUCKET,
                 inputs=inputs,
                 span=self._span,
@@ -232,10 +227,10 @@ class Experiments:
         self._event_logger.log(
             experiment=experiment,
             variant=variant_name,
-            user_id=inputs.get('user_id'),
-            logged_in=inputs.get('logged_in'),
-            cookie_created_timestamp=inputs.get('cookie_created_timestamp'),
-            app_name=inputs.get('app_name'),
+            user_id=inputs.get("user_id"),
+            logged_in=inputs.get("logged_in"),
+            cookie_created_timestamp=inputs.get("cookie_created_timestamp"),
+            app_name=inputs.get("app_name"),
             event_type=EventType.EXPOSE,
             inputs=inputs,
             span=self._span,
@@ -267,12 +262,15 @@ def experiments_client_from_config(app_config, event_logger, prefix="experiments
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
 
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "path": config.Optional(config.String, default="/var/local/experiments.json"),
-            "timeout": config.Optional(config.Timespan),
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "path": config.Optional(config.String, default="/var/local/experiments.json"),
+                "timeout": config.Optional(config.Timespan),
+            }
         },
-    })
+    )
     options = getattr(cfg, config_prefix)
 
     # pylint: disable=maybe-no-member

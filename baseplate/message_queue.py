@@ -15,8 +15,7 @@ class TimedOutError(MessageQueueError):
     """Raised when a message queue operation times out."""
 
     def __init__(self):
-        super(TimedOutError, self).__init__(
-            "Timed out waiting for the message queue.")
+        super(TimedOutError, self).__init__("Timed out waiting for the message queue.")
 
 
 # this wrapper-exception is here just to give the user a bit more of an idea
@@ -25,7 +24,8 @@ class TimedOutError(MessageQueueError):
 class InvalidParametersError(ValueError):
     def __init__(self, inner):
         super(InvalidParametersError, self).__init__(
-            "%s (check fs.mqueue.{msg_max,msgsize_max} sysctls?)" % inner)
+            "%s (check fs.mqueue.{msg_max,msgsize_max} sysctls?)" % inner
+        )
 
 
 # this wrapper-exception is here just to give the user a bit more of an idea
@@ -33,8 +33,7 @@ class InvalidParametersError(ValueError):
 # is rather opaque.
 class MessageQueueOSError(OSError):
     def __init__(self, inner):
-        super(MessageQueueOSError, self).__init__(
-            "%s (check `ulimit -q`?)" % inner)
+        super(MessageQueueOSError, self).__init__("%s (check `ulimit -q`?)" % inner)
 
 
 class MessageQueue:
@@ -129,19 +128,42 @@ def queue_tool():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--max-messages", type=int, default=10,
-        help="if creating the queue, what to set the maximum queue length to")
-    parser.add_argument("--max-message-size", type=int, default=8096,
-        help="if creating the queue, what to set the maximum message size to")
+    parser.add_argument(
+        "--max-messages",
+        type=int,
+        default=10,
+        help="if creating the queue, what to set the maximum queue length to",
+    )
+    parser.add_argument(
+        "--max-message-size",
+        type=int,
+        default=8096,
+        help="if creating the queue, what to set the maximum message size to",
+    )
     parser.add_argument("queue_name", help="the name of the queue to consume")
 
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument("--create", action="store_const", dest="mode", const="create",
-        help="create the named queue if it doesn't exist and exit")
-    group.add_argument("--read", action="store_const", dest="mode", const="read",
-        help="read, log, and discard messages from the named queue")
-    group.add_argument("--write", action="store_const", dest="mode", const="write",
-        help="read messages from stdin and write them to the named queue")
+    group.add_argument(
+        "--create",
+        action="store_const",
+        dest="mode",
+        const="create",
+        help="create the named queue if it doesn't exist and exit",
+    )
+    group.add_argument(
+        "--read",
+        action="store_const",
+        dest="mode",
+        const="read",
+        help="read, log, and discard messages from the named queue",
+    )
+    group.add_argument(
+        "--write",
+        action="store_const",
+        dest="mode",
+        const="write",
+        help="read messages from stdin and write them to the named queue",
+    )
 
     args = parser.parse_args()
 

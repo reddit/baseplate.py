@@ -72,15 +72,18 @@ def thrift_pool_from_config(app_config, prefix, **kwargs):
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
 
-    cfg = config.parse_config(app_config, {
-        config_prefix: {
-            "endpoint": config.Endpoint,
-            "size": config.Optional(config.Integer, default=10),
-            "max_age": config.Optional(config.Timespan, default=config.Timespan("1 minute")),
-            "timeout": config.Optional(config.Timespan, default=config.Timespan("1 second")),
-            "max_retries": config.Optional(config.Integer, default=3),
+    cfg = config.parse_config(
+        app_config,
+        {
+            config_prefix: {
+                "endpoint": config.Endpoint,
+                "size": config.Optional(config.Integer, default=10),
+                "max_age": config.Optional(config.Timespan, default=config.Timespan("1 minute")),
+                "timeout": config.Optional(config.Timespan, default=config.Timespan("1 second")),
+                "max_retries": config.Optional(config.Integer, default=3),
+            }
         },
-    })
+    )
     options = getattr(cfg, config_prefix)
 
     if options.size is not None:
@@ -118,8 +121,15 @@ class ThriftConnectionPool:
     """
 
     # pylint: disable=too-many-arguments
-    def __init__(self, endpoint, size=10, max_age=120, timeout=1, max_retries=3,
-                 protocol_factory=THeaderProtocol.THeaderProtocolFactory()):
+    def __init__(
+        self,
+        endpoint,
+        size=10,
+        max_age=120,
+        timeout=1,
+        max_retries=3,
+        protocol_factory=THeaderProtocol.THeaderProtocolFactory(),
+    ):
         self.endpoint = endpoint
         self.max_age = max_age
         self.retry_policy = RetryPolicy.new(attempts=max_retries)
@@ -135,8 +145,7 @@ class ThriftConnectionPool:
             prot = self.pool.get(block=True, timeout=self.timeout)
         except queue.Empty:
             raise TTransportException(
-                type=TTransportException.NOT_OPEN,
-                message="timed out waiting for a connection slot",
+                type=TTransportException.NOT_OPEN, message="timed out waiting for a connection slot"
             )
 
         for _ in self.retry_policy:
@@ -147,14 +156,13 @@ class ThriftConnectionPool:
                 prot = None
 
             trans = _make_transport(self.endpoint)
-            trans.setTimeout(self.timeout * 1000.)
+            trans.setTimeout(self.timeout * 1000.0)
             prot = self.protocol_factory.getProtocol(trans)
 
             try:
                 prot.trans.open()
             except TTransportException as exc:
-                logger.info("Failed to connect to %r: %s",
-                    self.endpoint, exc)
+                logger.info("Failed to connect to %r: %s", self.endpoint, exc)
                 prot = None
                 continue
 
@@ -197,14 +205,10 @@ class ThriftConnectionPool:
                 # thrift doesn't re-wrap socket timeout errors appropriately so
                 # we'll do it here for a saner exception hierarchy
                 raise TTransportException(
-                    type=TTransportException.TIMED_OUT,
-                    message="timed out interacting with socket",
+                    type=TTransportException.TIMED_OUT, message="timed out interacting with socket"
                 )
             except socket.error as exc:
-                raise TTransportException(
-                    type=TTransportException.UNKNOWN,
-                    message=str(exc),
-                )
+                raise TTransportException(type=TTransportException.UNKNOWN, message=str(exc))
         except (TApplicationException, TProtocolException, TTransportException):
             # these exceptions usually indicate something low-level went wrong,
             # so it's safest to just close this connection because we don't

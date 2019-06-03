@@ -1,4 +1,3 @@
-
 import unittest
 
 try:
@@ -57,7 +56,9 @@ class SQLAlchemyEngineTests(unittest.TestCase):
 
     def test_nested_local_span(self):
         with self.server_span:
-            with self.server_span.make_child("local", local=True, component_name="example") as local:
+            with self.server_span.make_child(
+                "local", local=True, component_name="example"
+            ) as local:
                 local.context.db.execute("SELECT * FROM test;")
 
         server_span_observer = self.baseplate_observer.get_only_child()

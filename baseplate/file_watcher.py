@@ -46,8 +46,7 @@ class WatchedFileNotAvailableError(Exception):
     """Raised when the watched file could not be loaded."""
 
     def __init__(self, path, inner):
-        super(WatchedFileNotAvailableError, self).__init__(
-            "{}: {}".format(path, inner))
+        super(WatchedFileNotAvailableError, self).__init__("{}: {}".format(path, inner))
         self.path = path
         self.inner = inner
 
@@ -75,8 +74,7 @@ class FileWatcher:
 
     """
 
-    def __init__(self, path, parser, timeout=None, binary=False, encoding=None,
-                 newline=None):
+    def __init__(self, path, parser, timeout=None, binary=False, encoding=None, newline=None):
         if binary and encoding is not None:
             raise TypeError("'encoding' is not supported in binary mode.")
 
@@ -91,10 +89,10 @@ class FileWatcher:
         self._open_options = {}
 
         if encoding:
-            self._open_options['encoding'] = encoding
+            self._open_options["encoding"] = encoding
 
         if newline is not None:
-            self._open_options['newline'] = newline
+            self._open_options["newline"] = newline
 
         if timeout is not None:
             last_error = None
@@ -111,8 +109,9 @@ class FileWatcher:
 
                 logging.warning("%s: file not yet available. sleeping.", path)
             else:
-                raise WatchedFileNotAvailableError(self._path,
-                    "timed out. last error was: %s" % last_error.inner)
+                raise WatchedFileNotAvailableError(
+                    self._path, "timed out. last error was: %s" % last_error.inner
+                )
 
     def get_data(self):
         """Return the current contents of the file, parsed.
@@ -142,8 +141,7 @@ class FileWatcher:
             except Exception as exc:
                 if self._data is _NOT_LOADED:
                     raise WatchedFileNotAvailableError(self._path, exc)
-                logger.warning("%s: failed to load, using cached data: %s",
-                               self._path, exc)
+                logger.warning("%s: failed to load, using cached data: %s", self._path, exc)
             self._mtime = current_mtime
 
         return self._data
