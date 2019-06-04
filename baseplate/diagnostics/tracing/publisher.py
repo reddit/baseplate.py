@@ -153,6 +153,9 @@ def publish_traces():
         except TimedOutError:
             message = None
 
+        # batcher.add should be called even if mesage is None. Inside of the
+        # add method, the age of the batch is checked. The batch is published
+        # if it is older than MAX_BATCH_AGE.
         try:
             batcher.add(message)
         except BatchFull:
