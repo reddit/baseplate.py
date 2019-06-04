@@ -122,6 +122,11 @@ class MessageQueue:
         """
         self.queue.close()
 
+    @property
+    def current_messages(self):
+        """Get the current number of messages in the queue."""
+        return self.queue.current_messages
+
 
 def queue_tool():
     import argparse

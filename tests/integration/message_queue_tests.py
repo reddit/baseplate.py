@@ -73,6 +73,16 @@ class TestMessageQueueCreation(unittest.TestCase):
             with self.assertRaises(TimedOutError):
                 mq.put(b"2", timeout=0)
 
+    def test_current_messages(self):
+        message_queue = MessageQueue(self.qname, max_messages=2, max_message_size=1)
+        with contextlib.closing(message_queue) as mq:
+            mq.put(b"1", timeout=0)
+            self.assertEqual(mq.current_messages, 1)
+            mq.put(b"2", timeout=0)
+            self.assertEqual(mq.current_messages, 2)
+            mq.get()
+            self.assertEqual(mq.current_messages, 1)
+
     def tearDown(self):
         try:
             queue = posix_ipc.MessageQueue(self.qname)

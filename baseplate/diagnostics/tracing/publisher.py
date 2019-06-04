@@ -156,9 +156,12 @@ def publish_traces():
     while True:
         current_ts = int(round(time.time() * 1000))
         if (current_ts - last_heartbeat_ts) >= HEARTBEAT_INTERVAL:
-            logger.info("Trace publisher running")
-            metrics_client.counter("trace_publisher.heartbeat")
+            logger.info("Trace publisher running. %d messages queued", trace_queue.current_messages)
+            metrics_client.counter("trace_publisher.heartbeat").increment()
+            msg_gauge = metrics_client.gauge("trace_publisher.queue.number_of_messages")
+            msg_gauge.replace(trace_queue.current_messages)
             last_heartbeat_ts = current_ts
+
         try:
             message = trace_queue.get(timeout=.2)
         except TimedOutError:
