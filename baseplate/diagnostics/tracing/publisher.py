@@ -117,7 +117,7 @@ def publish_traces():
     if args.debug:
         level = logging.DEBUG
     else:
-        level = logging.WARNING
+        level = logging.INFO
     logging.basicConfig(level=level)
 
     config_parser = configparser.RawConfigParser()
