@@ -1,6 +1,7 @@
 import argparse
 import configparser
 import logging
+import time
 import urllib.parse
 
 import requests
@@ -25,6 +26,9 @@ MAX_BATCH_AGE = 1
 
 # maximum number of retries when publishing traces
 RETRY_LIMIT_DEFAULT = 10
+
+# number of microseconds between heartbeat metrics and logging
+HEARTBEAT_INTERVAL = 15000
 
 
 class MaxRetriesError(Exception):
@@ -147,7 +151,14 @@ def publish_traces():
         post_timeout=publisher_cfg.post_timeout,
     )
 
+    logger.info("Starting trace publisher")
+    last_heartbeat_ts = 0
     while True:
+        current_ts = int(round(time.time() * 1000))
+        if (current_ts - last_heartbeat_ts) >= HEARTBEAT_INTERVAL:
+            logger.info("Trace publisher running")
+            metrics_client.counter("trace_publisher.heartbeat")
+            last_heartbeat_ts = current_ts
         try:
             message = trace_queue.get(timeout=.2)
         except TimedOutError:
