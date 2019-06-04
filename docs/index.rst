@@ -44,6 +44,7 @@ separately from the rest of Baseplate.
    baseplate.ratelimit: Ratelimit counters in memcached or redis <baseplate/ratelimit>
    baseplate.retry: Policies for retrying operations <baseplate/retry>
    baseplate.secrets: Secure storage and access to secret tokens and credentials <baseplate/secrets>
+   baseplate.thing_id: Thing ID prefixes and validator <baseplate/thing_id>
    baseplate.thrift_pool: A Thrift client connection pool <baseplate/thrift_pool>
    baseplate.service_discovery: Integration with Synapse service discovery <baseplate/service_discovery>
 
