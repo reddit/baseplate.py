@@ -7,18 +7,6 @@ from baseplate.secrets import VersionedSecret
 from .. import mock
 
 
-class ConstantTimeCompareTests(unittest.TestCase):
-    def test_equal(self):
-        self.assertTrue(crypto.constant_time_compare("abcdefg", "abcdefg"))
-
-    def test_inequal(self):
-        self.assertFalse(crypto.constant_time_compare("abcdefg", "hijklmnop"))
-
-    def test_empty(self):
-        self.assertFalse(crypto.constant_time_compare("abcdefg", ""))
-        self.assertFalse(crypto.constant_time_compare("", "hijklmnop"))
-
-
 class SignatureTests(unittest.TestCase):
     def setUp(self):
         self.message = "Hello, this is a message."
