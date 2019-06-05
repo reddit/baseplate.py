@@ -42,9 +42,6 @@ from baseplate._utils import warn_deprecated
 from baseplate.secrets import VersionedSecret
 
 
-constant_time_compare = hmac.compare_digest
-
-
 class SignatureError(Exception):
     """Base class for all message signing related errors."""
 

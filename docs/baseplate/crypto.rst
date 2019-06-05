@@ -22,9 +22,3 @@ Exceptions
 .. autoexception:: IncorrectSignatureError
 
 .. autoexception:: ExpiredSignatureError
-
-
-Utilities
----------
-
-.. autofunction:: constant_time_compare
