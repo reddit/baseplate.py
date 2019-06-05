@@ -19,3 +19,8 @@ def datetime_to_epoch_seconds(dt: datetime) -> int:
 def epoch_seconds_to_datetime(sec: int) -> datetime:
     """Convert epoch seconds to UTC datetime."""
     return datetime.utcfromtimestamp(sec).replace(tzinfo=timezone.utc)
+
+
+def get_utc_now() -> datetime:
+    """Get current offset-aware datetime which has timezone information."""
+    return datetime.now(tz=timezone.utc)

@@ -6,6 +6,7 @@ import unittest
 from baseplate.datetime import datetime_to_epoch_milliseconds
 from baseplate.datetime import datetime_to_epoch_seconds
 from baseplate.datetime import epoch_seconds_to_datetime
+from baseplate.datetime import get_utc_now
 
 
 EXAMPLE_DATETIME = datetime.utcnow().replace(tzinfo=timezone.utc, microsecond=0)
@@ -27,3 +28,7 @@ class DatetimeTests(unittest.TestCase):
         self.assertEqual(
             datetime_to_epoch_seconds(pytz_datetime), datetime_to_epoch_seconds(EXAMPLE_DATETIME)
         )
+
+    def test_get_utc_now(self):
+        now = get_utc_now()
+        self.assertIsNotNone(now.tzinfo)
