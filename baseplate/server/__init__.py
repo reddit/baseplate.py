@@ -181,8 +181,11 @@ def register_signal_handlers():
     def _handle_shutdown_signal(_signo, _frame):
         shutdown_event.set()
 
+    # shutdown is signalled with SIGUSR2 under einhorn and SIGTERM in k8s
     signal.signal(signal.SIGUSR2, _handle_shutdown_signal)
     signal.siginterrupt(signal.SIGUSR2, False)
+    signal.signal(signal.SIGTERM, _handle_shutdown_signal)
+    signal.siginterrupt(signal.SIGTERM, False)
     return shutdown_event
 
 
