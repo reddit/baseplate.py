@@ -17,6 +17,7 @@ import logging.config
 import signal
 import socket
 import sys
+import threading
 import traceback
 import warnings
 
@@ -155,7 +156,7 @@ def make_app(app_config):
 
 
 def register_signal_handlers():
-    def _handle_debug_signal(_, frame):
+    def _handle_debug_signal(_signo, frame):
         if not frame:
             logger.warning("Received SIGUSR1, but no frame found.")
             return
@@ -168,10 +169,22 @@ def register_signal_handlers():
     signal.signal(signal.SIGUSR1, _handle_debug_signal)
     signal.siginterrupt(signal.SIGUSR1, False)
 
+    shutdown_event = threading.Event()
+
+    def _handle_shutdown_signal(_signo, _frame):
+        shutdown_event.set()
+
+    # shutdown is signalled with SIGUSR2 under einhorn and SIGTERM in k8s
+    signal.signal(signal.SIGUSR2, _handle_shutdown_signal)
+    signal.siginterrupt(signal.SIGUSR2, False)
+    signal.signal(signal.SIGTERM, _handle_shutdown_signal)
+    signal.siginterrupt(signal.SIGTERM, False)
+    return shutdown_event
+
 
 def load_app_and_run_server():
     """Parse arguments, read configuration, and start the server."""
-    register_signal_handlers()
+    shutdown_event = register_signal_handlers()
 
     args = parse_args(sys.argv[1:])
     config = read_config(args.config_file, args.server_name, args.app_name)
@@ -188,8 +201,11 @@ def load_app_and_run_server():
         reloader.start_reload_watcher(extra_files=[args.config_file.name])
 
     logger.info("Listening on %s", listener.getsockname())
-
-    server.serve_forever()
+    server.start()
+    try:
+        shutdown_event.wait()
+    finally:
+        server.stop()
 
 
 def load_and_run_script():
