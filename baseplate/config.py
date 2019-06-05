@@ -77,7 +77,6 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 """
 
 import base64
-import collections
 import datetime
 import functools
 import grp
@@ -85,29 +84,45 @@ import pwd
 import re
 import socket
 
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    IO,
+    NamedTuple,
+    Optional as OptionalType,
+    Sequence,
+    Set,
+    TypeVar,
+    Union,
+)
+
 
 class ConfigurationError(Exception):
     """Raised when the configuration violates the spec."""
 
-    def __init__(self, key, error):
-        super(ConfigurationError, self).__init__("{}: {}".format(key, error))
+    def __init__(self, key: str, error: Union[str, Exception]):
+        super().__init__(f"{key}: {error}")
         self.key = key
         self.error = error
 
 
-def String(text):  # noqa: D401
+def String(text: str) -> str:  # noqa: D401
     """A raw string."""
     if not text:
         raise ValueError("no value specified")
     return text
 
 
-def Float(text):  # noqa: D401
+def Float(text: str) -> float:  # noqa: D401
     """A floating-point number."""
     return float(text)
 
 
-def Integer(text=None, base=10):  # noqa: D401
+def Integer(
+    text: OptionalType[str] = None, base: int = 10
+) -> Union[int, Callable[[str], int]]:  # noqa: D401
     """An integer.
 
     To prevent mistakes, this will raise an error if the user attempts
@@ -124,19 +139,18 @@ def Integer(text=None, base=10):  # noqa: D401
     return functools.partial(int, base=base)
 
 
-def Boolean(text):  # noqa: D401
+def Boolean(text: str) -> bool:  # noqa: D401
     """True or False, case insensitive."""
     parser = OneOf(true=True, false=False)
     return parser(text.lower())
 
 
-InternetAddress = collections.namedtuple("InternetAddress", ("host", "port"))
+class InternetAddress(NamedTuple):
+    host: str
+    port: int
 
 
-EndpointConfiguration_ = collections.namedtuple("EndpointConfiguration", ("family", "address"))
-
-
-class EndpointConfiguration(EndpointConfiguration_):
+class EndpointConfiguration(NamedTuple):
     """A description of a remote endpoint.
 
     This is a 2-tuple of (``family`` and ``address``).
@@ -151,8 +165,11 @@ class EndpointConfiguration(EndpointConfiguration_):
 
     """
 
+    family: socket.AddressFamily  # pylint: disable=no-member
+    address: Union[InternetAddress, str]
 
-def Endpoint(text):  # noqa: D401
+
+def Endpoint(text: str) -> EndpointConfiguration:  # noqa: D401
     """A remote endpoint to connect to.
 
     Returns an :py:class:`EndpointConfiguration`.
@@ -179,7 +196,7 @@ def Endpoint(text):  # noqa: D401
     return EndpointConfiguration(socket.AF_INET, address)
 
 
-def Base64(text):  # noqa: D401
+def Base64(text: str) -> bytes:  # noqa: D401
     """A base64 encoded block of data.
 
     This is useful for arbitrary binary blobs.
@@ -194,7 +211,7 @@ def Base64(text):  # noqa: D401
         raise ValueError(*exc.args)
 
 
-def File(mode="r"):  # noqa: D401
+def File(mode: str = "r") -> Callable[[str], IO]:  # noqa: D401
     """A path to a file.
 
     This takes a path to a file and returns an open file object, like
@@ -205,7 +222,7 @@ def File(mode="r"):  # noqa: D401
 
     """
 
-    def open_file(text):
+    def open_file(text: str) -> IO:
         try:
             return open(text, mode=mode)
         except IOError:
@@ -214,7 +231,7 @@ def File(mode="r"):  # noqa: D401
     return open_file
 
 
-def Timespan(text):  # noqa: D401
+def Timespan(text: str) -> datetime.timedelta:  # noqa: D401
     """A span of time.
 
     This takes a string of the form "1 second" or "3 days" and returns a
@@ -234,9 +251,9 @@ def Timespan(text):  # noqa: D401
     parts = text.split()
     if len(parts) != 2:
         raise ValueError("invalid specification")
-    count, unit = parts
+    count_text, unit = parts
 
-    count = int(count)
+    count = int(count_text)
     unit = unit.rstrip("s")  # depluralize
 
     try:
@@ -247,7 +264,7 @@ def Timespan(text):  # noqa: D401
     return datetime.timedelta(seconds=count * scale)
 
 
-def Percent(text):  # noqa: D401
+def Percent(text: str) -> float:  # noqa: D401
     """A percentage.
 
     This takes a string of the form "37.2%" or "44%" and
@@ -265,7 +282,7 @@ def Percent(text):  # noqa: D401
     return percentage
 
 
-def UnixUser(text):  # noqa: D401
+def UnixUser(text: str) -> int:  # noqa: D401
     """A Unix user name.
 
     The parsed value will be the integer user ID.
@@ -277,7 +294,7 @@ def UnixUser(text):  # noqa: D401
         raise ValueError(exc)
 
 
-def UnixGroup(text):  # noqa: D401
+def UnixGroup(text: str) -> int:  # noqa: D401
     """A Unix group name.
 
     The parsed value will be the integer group ID.
@@ -289,7 +306,10 @@ def UnixGroup(text):  # noqa: D401
         raise ValueError(exc)
 
 
-def OneOf(**options):  # noqa: D401
+T = TypeVar("T")
+
+
+def OneOf(**options: T) -> Callable[[str], T]:  # noqa: D401
     """One of several choices.
 
     For each ``option``, the name is what should be in the configuration file
@@ -309,7 +329,7 @@ def OneOf(**options):  # noqa: D401
 
     """
 
-    def one_of(text):
+    def one_of(text: str) -> T:
         try:
             return options[text]
         except KeyError:
@@ -318,7 +338,7 @@ def OneOf(**options):  # noqa: D401
     return one_of
 
 
-def TupleOf(T):  # noqa: D401
+def TupleOf(item_parser: Callable[[str], T]) -> Callable[[str], Sequence[T]]:  # noqa: D401
     """A comma-delimited list of type T.
 
     At least one value must be provided. If you want an empty list
@@ -326,54 +346,66 @@ def TupleOf(T):  # noqa: D401
 
     """
 
-    def tuple_of(text):
+    def tuple_of(text: str) -> Sequence[T]:
         if not text:
             raise ValueError("no values provided")
         split = text.split(",")
         stripped = [item.strip() for item in split]
-        return [T(item) for item in stripped if item]
+        return [item_parser(item) for item in stripped if item]
 
     return tuple_of
 
 
-def Optional(T, default=None):  # noqa: D401
+def Optional(
+    item_parser: Callable[[str], T], default: OptionalType[T] = None
+) -> Callable[[str], OptionalType[T]]:  # noqa: D401
     """An option of type T, or ``default`` if not configured."""
 
-    def optional(text):
+    def optional(text: str) -> OptionalType[T]:
         if text:
-            return T(text)
+            return item_parser(text)
         return default
 
     return optional
 
 
-def Fallback(T1, T2):  # noqa: D401
+def Fallback(
+    primary_parser: Callable[[str], T], fallback_parser: Callable[[str], T]
+) -> Callable[[str], T]:  # noqa: D401
     """An option of type T1, or if that fails to parse, of type T2.
 
     This is useful for backwards-compatible configuration changes.
 
     """
 
-    def fallback(text):
+    def fallback(text: str) -> T:
         try:
-            return T1(text)
+            return primary_parser(text)
         except ValueError:
-            return T2(text)
+            return fallback_parser(text)
 
     return fallback
 
 
 class ConfigNamespace(dict):
     def __init__(self):
-        super(ConfigNamespace, self).__init__()
+        super().__init__()
         self.__dict__ = self
 
+    def __getattr__(self, name: str) -> Any:
+        ...
 
-class Parser:
+
+ConfigSpecItem = Union["Parser", Dict[str, Any], Callable[[str], T]]
+ConfigSpec = Dict[str, ConfigSpecItem]
+RawConfig = Dict[str, str]
+
+
+class Parser(Generic[T]):
     """Base for config parsers."""
 
     @staticmethod
-    def from_spec(spec):
+    def from_spec(spec: ConfigSpecItem) -> "Parser":
         """Return a parser for the given spec object."""
         if isinstance(spec, Parser):
             return spec
@@ -383,23 +415,23 @@ class Parser:
             return CallableParser(spec)
         raise AssertionError("invalid specification: %r" % spec)
 
-    def parse(self, key_path, raw_config):
+    def parse(self, key_path: str, raw_config: RawConfig) -> T:
         """Parse and return the relevant info for a given key.
 
-        :param str key_path: The key this parser is looking for.
-        :param dict raw_config: The full raw configuration dictionary.
+        :param key_path: The key this parser is looking for.
+        :param raw_config: The full raw configuration dictionary.
 
         """
         raise NotImplementedError
 
 
-class SpecParser(Parser):
+class SpecParser(Parser[ConfigNamespace]):
     """A parser that validates a static specification."""
 
-    def __init__(self, spec):
+    def __init__(self, spec: ConfigSpec):
         self.spec = spec
 
-    def parse(self, key_path, raw_config):
+    def parse(self, key_path: str, raw_config: RawConfig) -> ConfigNamespace:
         parsed = ConfigNamespace()
         for key, spec in self.spec.items():
             assert "." not in key, "dots are not allowed in keys"
@@ -414,13 +446,13 @@ class SpecParser(Parser):
         return parsed
 
 
-class CallableParser(Parser):
+class CallableParser(Parser[T]):
     """A parser that wraps a simple callable."""
 
-    def __init__(self, callable_):
+    def __init__(self, callable_: Callable[[str], T]):
         self.callable = callable_
 
-    def parse(self, key_path, raw_config):
+    def parse(self, key_path: str, raw_config: RawConfig) -> T:
         raw_value = raw_config.get(key_path, "")
 
         try:
@@ -429,7 +461,7 @@ class CallableParser(Parser):
             raise ConfigurationError(key_path, exc)
 
 
-class DictOf(Parser):
+class DictOf(Parser[ConfigNamespace]):
     """A group of options of a given type.
 
     This is useful for providing data to the application without the
@@ -500,10 +532,10 @@ class DictOf(Parser):
 
     """
 
-    def __init__(self, spec):
+    def __init__(self, spec: ConfigSpecItem):
         self.subparser = Parser.from_spec(spec)
 
-    def parse(self, key_path, raw_config):
+    def parse(self, key_path: str, raw_config: RawConfig) -> ConfigNamespace:
         # match keys that start out with the prefix we expect (key_path) and
         # extract the subkey from the.key.prefix.{subkey}.the.rest
         if key_path:
@@ -513,7 +545,7 @@ class DictOf(Parser):
         matcher = re.compile("^" + root.replace(".", r"\.") + r"([^.]+)")
 
         values = ConfigNamespace()
-        seen_subkeys = set()
+        seen_subkeys: Set[str] = set()
         for key in raw_config:
             m = matcher.search(key)
             if not m:
@@ -529,11 +561,11 @@ class DictOf(Parser):
         return values
 
 
-def parse_config(config, spec):
+def parse_config(config: RawConfig, spec: ConfigSpec) -> ConfigNamespace:
     """Parse options against a spec and return a structured representation.
 
-    :param dict config: The raw stringy configuration dictionary.
-    :param dict spec: A specification of what the config should look like.
+    :param config: The raw stringy configuration dictionary.
+    :param spec: A specification of what the config should look like.
     :raises: :py:exc:`ConfigurationError` The configuration violated the spec.
     :return: A structured configuration object.
 

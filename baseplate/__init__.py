@@ -1,13 +1,19 @@
 import os
 import sys
 
+from typing import TYPE_CHECKING
+
 from baseplate import config, metrics
 from baseplate.core import Baseplate
 from baseplate.diagnostics import tracing
 from baseplate._utils import warn_deprecated
 
 
-def metrics_client_from_config(raw_config):
+if TYPE_CHECKING:
+    import raven
+
+
+def metrics_client_from_config(raw_config: config.RawConfig) -> metrics.Client:
     """Configure and return a metrics client.
 
     This expects two configuration options:
@@ -33,7 +39,7 @@ def metrics_client_from_config(raw_config):
     return metrics.make_client(cfg.metrics.namespace, cfg.metrics.endpoint)
 
 
-def make_metrics_client(raw_config):
+def make_metrics_client(raw_config: config.RawConfig) -> metrics.Client:
     warn_deprecated(
         "make_metrics_client is deprecated in favor of the more "
         "consistently named metrics_client_from_config"
@@ -41,7 +47,9 @@ def make_metrics_client(raw_config):
     return metrics_client_from_config(raw_config)
 
 
-def tracing_client_from_config(raw_config, log_if_unconfigured=True):
+def tracing_client_from_config(
+    raw_config: config.RawConfig, log_if_unconfigured: bool = True
+) -> tracing.TracingClient:
     """Configure and return a tracing client.
 
     This expects one configuration option and can take many optional ones:
@@ -105,7 +113,9 @@ def tracing_client_from_config(raw_config, log_if_unconfigured=True):
     )
 
 
-def make_tracing_client(raw_config, log_if_unconfigured=True):
+def make_tracing_client(
+    raw_config: config.RawConfig, log_if_unconfigured: bool = True
+) -> tracing.TracingClient:
     warn_deprecated(
         "make_tracing_client is deprecated in favor of the more "
         "consistently named tracing_client_from_config"
@@ -113,7 +123,7 @@ def make_tracing_client(raw_config, log_if_unconfigured=True):
     return tracing_client_from_config(raw_config, log_if_unconfigured)
 
 
-def error_reporter_from_config(raw_config, module_name):
+def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -> "raven.Client":
     """Configure and return a error reporter.
 
     This expects one configuration option and can take many optional ones:
@@ -149,7 +159,7 @@ def error_reporter_from_config(raw_config, module_name):
     :rtype: :py:class:`raven.Client`
 
     """
-    import raven
+    import raven  # pylint: disable=redefined-outer-name
 
     cfg = config.parse_config(
         raw_config,

@@ -125,7 +125,9 @@ class FileWatcherTests(unittest.TestCase):
                 builtins, "open", mock.mock_open(read_data="foo"), create=True
             ) as open_mock:
                 watcher.get_data()
-            open_mock.assert_called_once_with(watched_file.name, "rb")
+            open_mock.assert_called_once_with(
+                watched_file.name, encoding=None, mode="rb", newline=None
+            )
 
             watcher = file_watcher.FileWatcher(
                 watched_file.name, parser=lambda f: f.read(), binary=True
@@ -146,7 +148,9 @@ class FileWatcherTests(unittest.TestCase):
                 builtins, "open", mock.mock_open(read_data="foo"), create=True
             ) as open_mock:
                 watcher.get_data()
-            open_mock.assert_called_once_with(watched_file.name, "r")
+            open_mock.assert_called_once_with(
+                watched_file.name, encoding=None, mode="r", newline=None
+            )
 
             watcher = file_watcher.FileWatcher(
                 watched_file.name, parser=lambda f: f.read(), binary=False

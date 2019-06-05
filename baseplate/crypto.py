@@ -32,14 +32,16 @@
 
 import base64
 import binascii
-import collections
+import datetime
 import hashlib
 import hmac
 import struct
 import time
 
-from baseplate._utils import warn_deprecated
+from typing import NamedTuple
+
 from baseplate.secrets import VersionedSecret
+from baseplate._utils import warn_deprecated
 
 
 class SignatureError(Exception):
@@ -62,9 +64,9 @@ class ExpiredSignatureError(SignatureError):
 
     """
 
-    def __init__(self, expiration):
+    def __init__(self, expiration: int):
         self.expiration = expiration
-        super(ExpiredSignatureError, self).__init__()
+        super().__init__()
 
 
 # A signature is a base64 encoded binary blob, comprised of a header and
@@ -79,26 +81,26 @@ class ExpiredSignatureError(SignatureError):
 _HEADER_FORMAT = struct.Struct("<BxxI")
 
 
-_SignatureInfo = collections.namedtuple("_SignatureInfo", ["version", "expiration"])
-
-
-class SignatureInfo(_SignatureInfo):
+class SignatureInfo(NamedTuple):
     """Information about a valid signature.
 
-    :ivar int version: The version of the packed signature format.
-    :ivar int expiration: The time, in seconds since the UNIX epoch, at which
+    :ivar version: The version of the packed signature format.
+    :ivar expiration: The time, in seconds since the UNIX epoch, at which
         the signature will expire.
 
     """
 
+    version: int
+    expiration: int
 
-def _compute_digest(secret_value, header, message):
+
+def _compute_digest(secret_value: bytes, header: bytes, message: str) -> bytes:
     payload = header + message.encode("utf8")
     digest = hmac.new(secret_value, payload, hashlib.sha256).digest()  # pylint: disable=no-member
     return digest
 
 
-def make_signature(secret, message, max_age):
+def make_signature(secret: VersionedSecret, message: str, max_age: datetime.timedelta) -> bytes:
     """Return a signature for the given message.
 
     To ensure that key rotation works automatically, always fetch the secret
@@ -106,11 +108,9 @@ def make_signature(secret, message, max_age):
     the token anywhere. The ``current`` version of the secret will be used to
     sign the token.
 
-    :param baseplate.secrets.VersionedSecret secret: The secret signing key
-        from the secret store.
-    :param str message: The message to sign.
-    :param datetime.timedelta max_age: The amount of time in the future
-        the signature will be valid for.
+    :param secret: The secret signing key from the secret store.
+    :param message: The message to sign.
+    :param max_age: The amount of time in the future the signature will be valid for.
     :return: An encoded signature.
 
     """
@@ -121,7 +121,7 @@ def make_signature(secret, message, max_age):
     return base64.urlsafe_b64encode(header + digest)
 
 
-def validate_signature(secret, message, signature):
+def validate_signature(secret: VersionedSecret, message: str, signature: bytes) -> SignatureInfo:
     """Validate and assert a message's signature is correct.
 
     If the signature is valid, the function will return normally with a
@@ -133,16 +133,17 @@ def validate_signature(secret, message, signature):
     the token anywhere. All active versions of the secret will be checked when
     validating the signature.
 
-    :param baseplate.secrets.VersionedSecret secret: The secret signing key
-        from the secret store.
-    :param str message: The message payload to validate.
-    :param str signature: The signature supplied with the message.
+    :param secret: The secret signing key from the secret store.
+    :param message: The message payload to validate.
+    :param signature: The signature supplied with the message.
     :raises: :py:exc:`UnreadableSignatureError` The signature is corrupt.
     :raises: :py:exc:`IncorrectSignatureError` The digest is incorrect.
     :raises: :py:exc:`ExpiredSignatureError` The signature expired.
-    :rtype: :py:class:`SignatureInfo`
 
     """
+    version: int
+    expiration: int
+
     try:
         signature_bytes = base64.urlsafe_b64decode(signature)
         header = signature_bytes[: _HEADER_FORMAT.size]
@@ -176,7 +177,7 @@ class MessageSigner:
 
     """
 
-    def __init__(self, secret_key):
+    def __init__(self, secret_key: bytes):
         warn_deprecated(
             "MessageSigner is deprecated in favor of the top-level "
             "make_signature and validate_signature functions which "
@@ -184,8 +185,8 @@ class MessageSigner:
         )
         self.secret = VersionedSecret.from_simple_secret(secret_key)
 
-    def make_signature(self, message, max_age):
+    def make_signature(self, message: str, max_age: datetime.timedelta) -> bytes:
         return make_signature(self.secret, message, max_age)
 
-    def validate_signature(self, message, signature):
+    def validate_signature(self, message: str, signature: bytes) -> SignatureInfo:
         return validate_signature(self.secret, message, signature)

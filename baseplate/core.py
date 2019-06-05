@@ -2,6 +2,9 @@ import collections
 import logging
 import random
 
+from types import TracebackType
+from typing import Tuple, Optional, Type, NamedTuple, Any
+
 import jwt
 from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
@@ -16,7 +19,7 @@ logger = logging.getLogger(__name__)
 class BaseplateObserver:
     """Interface for an observer that watches Baseplate."""
 
-    def on_server_span_created(self, context, server_span):
+    def on_server_span_created(self, context: Any, server_span: "Span") -> None:
         """Do something when a server span is created.
 
         :py:class:`Baseplate` calls this when a new request begins.
@@ -29,19 +32,22 @@ class BaseplateObserver:
         raise NotImplementedError
 
 
+_ExcInfo = Tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]
+
+
 class SpanObserver:
     """Interface for an observer that watches a span."""
 
-    def on_start(self):
+    def on_start(self) -> None:
         """Do something when the observed span is started."""
 
-    def on_set_tag(self, key, value):
+    def on_set_tag(self, key: str, value: str) -> None:
         """Do something when a tag is set on the observed span."""
 
-    def on_log(self, name, payload):
+    def on_log(self, name: str, payload: str) -> None:
         """Do something when a log entry is added to the span."""
 
-    def on_finish(self, exc_info):
+    def on_finish(self, exc_info: _ExcInfo) -> None:
         """Do something when the observed span is finished.
 
         :param exc_info: If the span ended because of an exception, the
@@ -49,7 +55,7 @@ class SpanObserver:
 
         """
 
-    def on_child_span_created(self, span):
+    def on_child_span_created(self, span: "Span") -> None:
         """Do something when a child span is created.
 
         :py:class:`SpanObserver` objects call this when a new child span is
@@ -64,14 +70,11 @@ class ServerSpanObserver(SpanObserver):
     """Interface for an observer that watches the server span."""
 
 
-_TraceInfo = collections.namedtuple("_TraceInfo", "trace_id parent_id span_id sampled flags")
-
-
 class NoAuthenticationError(Exception):
     """Raised when trying to use an invalid or missing authentication token."""
 
 
-class TraceInfo(_TraceInfo):
+class TraceInfo(NamedTuple):
     """Trace context for a span.
 
     If this request was made at the behest of an upstream service, the upstream
@@ -80,8 +83,14 @@ class TraceInfo(_TraceInfo):
 
     """
 
+    trace_id: int
+    parent_id: Optional[int]
+    span_id: Optional[int]
+    sampled: Optional[bool]
+    flags: Optional[int]
+
     @classmethod
-    def new(cls):
+    def new(cls) -> "TraceInfo":
         """Generate IDs for a new initial server span.
 
         This span has no parent and has a random ID. It cannot be correlated
@@ -92,14 +101,21 @@ class TraceInfo(_TraceInfo):
         return cls(trace_id=trace_id, parent_id=None, span_id=trace_id, sampled=None, flags=None)
 
     @classmethod
-    def from_upstream(cls, trace_id, parent_id, span_id, sampled, flags):
+    def from_upstream(
+        cls,
+        trace_id: Optional[int],
+        parent_id: Optional[int],
+        span_id: Optional[int],
+        sampled: Optional[bool],
+        flags: Optional[int],
+    ) -> "TraceInfo":
         """Build a TraceInfo from individual headers.
 
-        :param int trace_id: The ID of the trace.
-        :param int parent_id: The ID of the parent span.
-        :param int span_id: The ID of this span within the tree.
-        :param bool sampled: Boolean flag to determine request sampling.
-        :param int flags: Bit flags for communicating feature flags downstream
+        :param trace_id: The ID of the trace.
+        :param parent_id: The ID of the parent span.
+        :param span_id: The ID of this span within the tree.
+        :param sampled: Boolean flag to determine request sampling.
+        :param flags: Bit flags for communicating feature flags downstream
 
         :raises: :py:exc:`ValueError` if any of the values are inappropriate.
 

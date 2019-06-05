@@ -32,6 +32,9 @@ would change whenever the underlying file changes.
 
 import logging
 import os
+import typing
+
+from typing import TypeVar, Generic, Callable, Optional, IO, Union, Type, NamedTuple
 
 from baseplate.retry import RetryPolicy
 
@@ -39,42 +42,59 @@ from baseplate.retry import RetryPolicy
 logger = logging.getLogger(__name__)
 
 
-_NOT_LOADED = object()
+class _NOT_LOADED:
+    pass
 
 
 class WatchedFileNotAvailableError(Exception):
     """Raised when the watched file could not be loaded."""
 
-    def __init__(self, path, inner):
-        super(WatchedFileNotAvailableError, self).__init__("{}: {}".format(path, inner))
+    def __init__(self, path: str, inner: Union[Exception, str]):
+        super().__init__(f"{path}: {inner}")
         self.path = path
         self.inner = inner
 
 
-class FileWatcher:
+T = TypeVar("T")
+
+
+class _OpenOptions(NamedTuple):
+    mode: str
+    encoding: Optional[str]
+    newline: Optional[str]
+
+
+class FileWatcher(Generic[T]):
     r"""Watch a file and load its data when it changes.
 
-    :param str path: Full path to a file to watch.
-    :param callable parser: A callable that takes an open file object, parses
+    :param path: Full path to a file to watch.
+    :param parser: A callable that takes an open file object, parses
         or otherwise interprets the file, and returns whatever data is meaningful.
-    :param float timeout: (Optional) How long, in seconds, to block instantiation
+    :param timeout: How long, in seconds, to block instantiation
         waiting for the watched file to become available (defaults to not blocking).
-    :param bool binary: (Optionaly) Should the file be opened in binary mode. If
+    :param binary: Should the file be opened in binary mode. If
         `True` the file will be opened with the mode `"rb"`, otherwise it will be
         opened with the mode `"r"`. (defaults to `"r"`)
-    :param str encoding: (Optional) The name of the encoding used to decode
-        the file. The default encoding is platform dependent (whatever
-        locale.getpreferredencoding() returns), but any text encoding supported
-        by Python can be used.  This is not supported in Python 2 or if `binary`
-        is set to `True`.
-    :param str newline: (Optional) Controls how universal newlines mode works
+    :param encoding: The name of the encoding used to decode the file. The
+        default encoding is platform dependent (whatever
+        :py:func:`locale.getpreferredencoding` returns), but any text encoding
+        supported by Python can be used.  This is not supported if `binary` is
+        set to `True`.
+    :param newline: Controls how universal newlines mode works
         (it only applies to text mode). It can be `None`, `""`, `"\\n"`, `"\\r"`,
-        and `"\\r\\n"`.  This is not supported in Python 2 or if `binary` is set
-        to `True`.
+        and `"\\r\\n"`.  This is not supported if `binary` is set to `True`.
 
     """
 
-    def __init__(self, path, parser, timeout=None, binary=False, encoding=None, newline=None):
+    def __init__(
+        self,
+        path: str,
+        parser: Callable[[IO], T],
+        timeout: Optional[int] = None,
+        binary: bool = False,
+        encoding: Optional[str] = None,
+        newline: Optional[str] = None,
+    ):
         if binary and encoding is not None:
             raise TypeError("'encoding' is not supported in binary mode.")
 
@@ -83,16 +103,11 @@ class FileWatcher:
 
         self._path = path
         self._parser = parser
-        self._mtime = 0
-        self._data = _NOT_LOADED
-        self._mode = "rb" if binary else "r"
-        self._open_options = {}
-
-        if encoding:
-            self._open_options["encoding"] = encoding
-
-        if newline is not None:
-            self._open_options["newline"] = newline
+        self._mtime = 0.0
+        self._data: Union[T, Type[_NOT_LOADED]] = _NOT_LOADED
+        self._open_options = _OpenOptions(
+            mode="rb" if binary else "r", encoding=encoding, newline=newline
+        )
 
         if timeout is not None:
             last_error = None
@@ -109,11 +124,12 @@ class FileWatcher:
 
                 logging.warning("%s: file not yet available. sleeping.", path)
             else:
+                last_error = typing.cast(WatchedFileNotAvailableError, last_error)
                 raise WatchedFileNotAvailableError(
-                    self._path, "timed out. last error was: %s" % last_error.inner
+                    self._path, f"timed out. last error was: {last_error.inner}"
                 )
 
-    def get_data(self):
+    def get_data(self) -> T:
         """Return the current contents of the file, parsed.
 
         The watcher ensures that the file is re-loaded and parsed whenever its
@@ -131,12 +147,12 @@ class FileWatcher:
         except OSError as exc:
             if self._data is _NOT_LOADED:
                 raise WatchedFileNotAvailableError(self._path, exc)
-            return self._data
+            return typing.cast(T, self._data)
 
         if self._mtime < current_mtime:
             logger.debug("Loading %s.", self._path)
             try:
-                with open(self._path, self._mode, **self._open_options) as f:
+                with open(self._path, **self._open_options._asdict()) as f:
                     self._data = self._parser(f)
             except Exception as exc:
                 if self._data is _NOT_LOADED:
@@ -144,4 +160,4 @@ class FileWatcher:
                 logger.warning("%s: failed to load, using cached data: %s", self._path, exc)
             self._mtime = current_mtime
 
-        return self._data
+        return typing.cast(T, self._data)
