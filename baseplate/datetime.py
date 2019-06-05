@@ -13,7 +13,7 @@ def datetime_to_epoch_milliseconds(dt: datetime) -> int:
 
 def datetime_to_epoch_seconds(dt: datetime) -> int:
     """Convert datetime object to epoch seconds."""
-    return int(datetime_to_epoch_milliseconds(dt) / 1000)
+    return datetime_to_epoch_milliseconds(dt) // 1000
 
 
 def epoch_seconds_to_datetime(sec: int) -> datetime:
