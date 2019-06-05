@@ -2,6 +2,8 @@
 
 import time
 
+from typing import Iterator, Optional
+
 
 class RetryPolicy:
     """A policy for retrying operations.
@@ -19,7 +21,7 @@ class RetryPolicy:
 
     """
 
-    def yield_attempts(self):
+    def yield_attempts(self) -> Iterator[Optional[float]]:
         """Return an iterator which controls attempts.
 
         On each iteration, the iterator will yield the number of seconds left
@@ -33,7 +35,7 @@ class RetryPolicy:
         """
         raise NotImplementedError
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Optional[float]]:
         """Return the result of :py:meth:`yield_attempts`.
 
         This allows policies to be directly iterated over.
@@ -42,19 +44,23 @@ class RetryPolicy:
         return self.yield_attempts()
 
     @staticmethod
-    def new(attempts=None, budget=None, backoff=None):
+    def new(
+        attempts: Optional[int] = None,
+        budget: Optional[float] = None,
+        backoff: Optional[float] = None,
+    ) -> "RetryPolicy":
         """Create a new retry policy with the given constraints.
 
-        :param int attempts: The maximum number of times the operation can be
+        :param attempts: The maximum number of times the operation can be
             attempted.
-        :param float budget: The maximum amount of time, in seconds, that the
+        :param budget: The maximum amount of time, in seconds, that the
             local service will wait for the operation to succeed.
-        :param float backoff: The base amount of time, in seconds, for
+        :param backoff: The base amount of time, in seconds, for
             exponential backoff between attempts. ``N`` in (``N *
             2**attempts``).
 
         """
-        policy = IndefiniteRetryPolicy()
+        policy: RetryPolicy = IndefiniteRetryPolicy()
 
         if attempts is not None:
             policy = MaximumAttemptsRetryPolicy(policy, attempts)
@@ -71,7 +77,7 @@ class RetryPolicy:
 class IndefiniteRetryPolicy(RetryPolicy):  # pragma: noqa
     """Retry immediately forever."""
 
-    def yield_attempts(self):
+    def yield_attempts(self) -> Iterator[Optional[float]]:
         while True:
             yield None
 
@@ -79,11 +85,11 @@ class IndefiniteRetryPolicy(RetryPolicy):  # pragma: noqa
 class MaximumAttemptsRetryPolicy(RetryPolicy):
     """Constrain the total number of attempts."""
 
-    def __init__(self, policy, attempts):
+    def __init__(self, policy: RetryPolicy, attempts: int):
         self.subpolicy = policy
         self.attempts = attempts
 
-    def yield_attempts(self):
+    def yield_attempts(self) -> Iterator[Optional[float]]:
         for i, remaining in enumerate(self.subpolicy):
             if i == self.attempts:
                 break
@@ -93,12 +99,12 @@ class MaximumAttemptsRetryPolicy(RetryPolicy):
 class TimeBudgetRetryPolicy(RetryPolicy):
     """Constrain attempts to an overall time budget."""
 
-    def __init__(self, policy, budget):
+    def __init__(self, policy: RetryPolicy, budget: float):
         assert budget >= 0, "The time budget must not be negative."
         self.subpolicy = policy
         self.budget = budget
 
-    def yield_attempts(self):
+    def yield_attempts(self) -> Iterator[Optional[float]]:
         start_time = time.time()
 
         yield self.budget
@@ -114,14 +120,14 @@ class TimeBudgetRetryPolicy(RetryPolicy):
 class ExponentialBackoffRetryPolicy(RetryPolicy):
     """Sleep exponentially longer between attempts."""
 
-    def __init__(self, policy, base):
+    def __init__(self, policy: RetryPolicy, base: float):
         self.subpolicy = policy
         self.base = base
 
-    def yield_attempts(self):
+    def yield_attempts(self) -> Iterator[Optional[float]]:
         for attempt, time_remaining in enumerate(self.subpolicy):
             if attempt > 0:
-                delay = self.base * 2 ** (attempt - 1)
+                delay = self.base * 2.0 ** (attempt - 1.0)
                 if time_remaining:
                     delay = min(delay, time_remaining)
                     time_remaining -= delay

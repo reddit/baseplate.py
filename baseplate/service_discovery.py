@@ -18,18 +18,16 @@ A basic example of usage::
 
 """
 
-import collections
 import json
 
-from baseplate.config import Endpoint
+from typing import NamedTuple, Sequence, List, IO, Optional
+
+from baseplate.config import Endpoint, EndpointConfiguration
 from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
 from baseplate.random import WeightedLottery
 
 
-Backend_ = collections.namedtuple("Backend", "id name endpoint weight")
-
-
-class Backend(Backend_):
+class Backend(NamedTuple):
     """A description of a service backend.
 
     This is a tuple of several values:
@@ -50,11 +48,18 @@ class Backend(Backend_):
 
     """
 
+    id: int
+    name: str
+    endpoint: EndpointConfiguration
+    weight: int
 
-_Inventory = collections.namedtuple("_Inventory", "backends lottery")
+
+class _Inventory(NamedTuple):
+    backends: List[Backend]
+    lottery: Optional[WeightedLottery[Backend]]
 
 
-def _parse(watched_file):
+def _parse(watched_file: IO) -> _Inventory:
     backends = []
     for d in json.load(watched_file):
         endpoint = Endpoint("%s:%d" % (d["host"], d["port"]))
@@ -81,16 +86,14 @@ class ServiceInventory:
 
     """
 
-    def __init__(self, filename):
+    def __init__(self, filename: str):
         self._filewatcher = FileWatcher(filename, _parse)
 
-    def get_backends(self):
+    def get_backends(self) -> Sequence[Backend]:
         """Return a list of all available backends in the inventory.
 
         If the inventory file becomes unavailable, the previously seen
         inventory is returned.
-
-        :rtype: list of :py:class:`Backend` objects
 
         """
         try:
@@ -99,24 +102,25 @@ class ServiceInventory:
         except WatchedFileNotAvailableError:
             return []
 
-    def get_backend(self):
+    def get_backend(self) -> Backend:
         """Return a randomly chosen backend from the available backends.
 
         If weights are specified in the inventory, they will be
         respected when making the random selection.
 
-        :rtype: :py:class:`Backend`
         :raises: :py:exc:`NoBackendsAvailableError` if the inventory
             has no available endpoints.
 
         """
+        inventory: Optional[_Inventory]
+
         try:
             inventory = self._filewatcher.get_data()
         except WatchedFileNotAvailableError:
             inventory = None
 
         # pylint: disable=maybe-no-member
-        if not inventory or not inventory.backends:
+        if not inventory or not inventory.lottery:
             raise NoBackendsAvailableError
 
         return inventory.lottery.pick()

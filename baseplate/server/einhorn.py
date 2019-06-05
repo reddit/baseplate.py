@@ -10,12 +10,12 @@ class NotEinhornWorker(Exception):
     pass
 
 
-def is_worker():
+def is_worker() -> bool:
     """Return if this process is an Einhorn worker."""
     return os.getppid() == int(os.environ.get("EINHORN_MASTER_PID", -1))
 
 
-def get_socket_count():
+def get_socket_count() -> int:
     """Return how many sockets are bound."""
     if not is_worker():
         raise NotEinhornWorker
@@ -23,7 +23,7 @@ def get_socket_count():
     return int(os.environ.get("EINHORN_FD_COUNT", 0))
 
 
-def get_socket(index=0):
+def get_socket(index: int = 0) -> socket.socket:
     """Get an Einhorn-bound socket from the environment.
 
     Einhorn can bind multiple sockets (via multiple -b arguments), the
@@ -37,8 +37,7 @@ def get_socket(index=0):
         socket (this is a recent addition, so if it's not present default to
         AF_INET)
 
-    :param int index: The socket number to get.
-    :rtype: :py:class:`socket.socket`
+    :param index: The socket number to get.
 
     """
     if not is_worker():
@@ -55,7 +54,7 @@ def get_socket(index=0):
     return socket.fromfd(fileno, family, socket.SOCK_STREAM)
 
 
-def ack_startup():
+def ack_startup() -> None:
     """Send acknowledgement that we started up to the Einhorn master."""
     if not is_worker():
         raise NotEinhornWorker

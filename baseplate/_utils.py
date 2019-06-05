@@ -6,7 +6,7 @@ import time
 import warnings
 
 
-def warn_deprecated(message):
+def warn_deprecated(message: str) -> None:
     """Emit a deprecation warning from the caller.
 
     The stacktrace for the warning will point to the place where the function
