@@ -31,6 +31,7 @@ separately from the rest of Baseplate.
    :titlesonly:
 
    baseplate: General purpose helpers <baseplate/index>
+   baseplate.datetime: Extensions to the standard library's datetime module <baseplate/datetime>
    baseplate.config: Configuration parsing <baseplate/config>
    baseplate.crypto: Cryptographic Primitives <baseplate/crypto>
    baseplate.events: Events for the data pipeline <baseplate/events>
