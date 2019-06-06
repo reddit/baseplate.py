@@ -82,12 +82,10 @@ def make_client(
         for.
     """
     if tracing_queue_name:
-        logger.info("Recording spans to queue %s", tracing_queue_name)
         recorder = SidecarRecorder(tracing_queue_name)
     elif tracing_endpoint:
         warn_deprecated("In-app trace publishing is deprecated in favor of the sidecar model.")
         remote_addr = "%s:%s" % tracing_endpoint.address
-        logger.info("Recording spans to %s", remote_addr)
         recorder = RemoteRecorder(
             remote_addr,
             num_conns=num_conns,
