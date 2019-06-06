@@ -1,5 +1,5 @@
-baseplate.datetime
-==================
+``baseplate.datetime``
+======================
 
 .. automodule:: baseplate.datetime
    :members:
