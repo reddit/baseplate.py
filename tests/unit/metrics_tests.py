@@ -67,17 +67,13 @@ class BufferedTransportTests(unittest.TestCase):
         self.assertEqual(mocket.sendall.call_count, 1)
         self.assertEqual(mocket.sendall.call_args, mock.call(b"a\nb\nc"))
 
-    @mock.patch("socket.socket")
-    def test_buffered_exception_is_caught(self, mock_make_socket):
-        mocket = mock_make_socket.return_value
-        mocket.sendall.side_effect = mock.Mock(side_effect=socket.error("Test"))
+    def test_buffered_exception_is_caught(self):
         raw_transport = metrics.RawTransport(EXAMPLE_ENDPOINT)
         transport = metrics.BufferedTransport(raw_transport)
-        for i in range(10000):
-            transport.send(b"a")
+        transport.send(b"x" * 65536)
 
-        self.assertEqual(mocket.sendall.call_count, 0)
-        transport.flush()
+        with self.assertRaises(metrics.MessageTooBigTransportError):
+            transport.flush()
 
 
 class BaseClientTests(unittest.TestCase):
