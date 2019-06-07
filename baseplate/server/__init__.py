@@ -239,7 +239,7 @@ def load_and_run_script():
         "entrypoint", type=_load_factory, help="function to call, e.g. module.path:fn_name"
     )
     parser.add_argument(
-        'args', nargs=argparse.REMAINDER, help="arguments to pass along to the invoked script"
+        "args", nargs=argparse.REMAINDER, help="arguments to pass along to the invoked script"
     )
 
     args = parser.parse_args(sys.argv[1:])
@@ -267,12 +267,14 @@ def _fn_accepts_additional_args(script_fn, fn_args):
     allows_additional_args = allows_var_args or positional_arg_count > 1
 
     if positional_arg_count < 1 and not allows_var_args:
-        raise ValueError('script function accepts too few positional arguments')
+        raise ValueError("script function accepts too few positional arguments")
     elif positional_arg_count > 2:
-        raise ValueError('script function accepts too many positional arguments')
+        raise ValueError("script function accepts too many positional arguments")
     elif additional_args_provided and not allows_additional_args:
-        raise ValueError('script function does not accept additional arguments, '
-                         'but additional arguments were provided')
+        raise ValueError(
+            "script function does not accept additional arguments, "
+            "but additional arguments were provided"
+        )
 
     return allows_additional_args
 
