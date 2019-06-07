@@ -252,16 +252,25 @@ def load_and_run_script():
 
 
 def _check_fn_signature(script_fn, fn_args):
-    argspec = inspect.getfullargspec(script_fn)
-    func_sig_arg_count = len(argspec.args[1:])  # slice off app_config arg
-    cli_arg_count = len(fn_args)
-    if argspec.varargs:
+    signature = inspect.signature(script_fn)
+
+    func_sig_arg_count = 0
+    allows_var_args = False
+    for param in signature.parameters:
+        if param in {param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD}:
+            func_sig_arg_count += 1
+        elif param == param.VAR_POSITIONAL:
+            func_sig_arg_count += 1
+            allows_var_args = True
+
+    cli_arg_count = len(fn_args) + 1  # add one to account for app_config arg
+    if allows_var_args:
         args_match = cli_arg_count >= func_sig_arg_count
     else:
         args_match = cli_arg_count == func_sig_arg_count
     if not args_match:
         raise ValueError('additional args do not match script function signature: %s' %
-                         inspect.formatargspec(*argspec))
+                         signature)
 
 
 def load_and_run_tshell():
