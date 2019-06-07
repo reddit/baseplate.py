@@ -246,31 +246,35 @@ def load_and_run_script():
     config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
 
-    _check_fn_signature(args.entrypoint, args.args)
+    if _fn_accepts_additional_args(args.entrypoint, args.args):
+        args.entrypoint(config.app, args.args)
+    else:
+        args.entrypoint(config.app)
 
-    args.entrypoint(config.app, args.args)
 
-
-def _check_fn_signature(script_fn, fn_args):
+def _fn_accepts_additional_args(script_fn, fn_args):
+    additional_args_provided = len(fn_args) > 0
     signature = inspect.signature(script_fn)
 
-    func_sig_arg_count = 0
+    positional_arg_count = 0
     allows_var_args = False
-    for param in signature.parameters:
-        if param in {param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD}:
-            func_sig_arg_count += 1
-        elif param == param.VAR_POSITIONAL:
-            func_sig_arg_count += 1
+    for param in signature.parameters.values():
+        if param.kind in {param.POSITIONAL_ONLY, param.POSITIONAL_OR_KEYWORD}:
+            positional_arg_count += 1
+        elif param.kind == param.VAR_POSITIONAL:
             allows_var_args = True
 
-    cli_arg_count = len(fn_args) + 1  # add one to account for app_config arg
-    if allows_var_args:
-        args_match = cli_arg_count >= func_sig_arg_count
-    else:
-        args_match = cli_arg_count == func_sig_arg_count
-    if not args_match:
-        raise ValueError('additional args do not match script function signature: %s' %
-                         signature)
+    allows_additional_args = allows_var_args or positional_arg_count > 1
+
+    if positional_arg_count < 1:
+        raise ValueError('script function accepts too few positional arguments')
+    elif positional_arg_count > 2:
+        raise ValueError('script function accepts too many positional arguments')
+    elif additional_args_provided and not allows_additional_args:
+        raise ValueError('script function does not accept additional arguments, '
+                         'but additional arguments were provided')
+
+    return allows_additional_args
 
 
 def load_and_run_tshell():

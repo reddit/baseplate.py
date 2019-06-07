@@ -82,24 +82,52 @@ class LoadFactoryTests(unittest.TestCase):
 
 
 class CheckFnSignatureTests(unittest.TestCase):
-    def test_no_args(self):
-        def foo(app_config):
-            pass
-        server._check_fn_signature(foo, [])
-        with self.assertRaises(ValueError):
-            server._check_fn_signature(foo, ['extra_arg'])
 
-    def test_positional_args(self):
-        def foo(app_config, arg1, arg2):
-            pass
-        server._check_fn_signature(foo, ['arg1', 'arg2'])
-        with self.assertRaises(ValueError):
-            server._check_fn_signature(foo, ['arg1'])
+    # def test_no_args(self):
+    #     def foo():
+    #         pass
+    #     with self.assertRaises(ValueError):
+    #         server._fn_accepts_additional_args(foo, [])
 
-    def test_varargs_and_kwargs(self):
-        def foo(app_config, arg1, *arg2, **kwargs):
+    # def test_var_args(self):
+    #     def foo(*args):
+    #         pass
+    #     server._fn_accepts_additional_args(foo, [])
+    #     server._fn_accepts_additional_args(foo, ['arg1'])
+    #     server._fn_accepts_additional_args(foo, ['arg1', 'arg2'])
+
+    # def test_config_arg_only(self):
+    #     def foo(app_config):
+    #         pass
+    #     server._fn_accepts_additional_args(foo, [])
+    #     with self.assertRaises(ValueError):
+    #         server._fn_accepts_additional_args(foo, ['extra_arg'])
+
+    # def test_config_arg_with_var_args(self):
+    #     def foo(app_config, *args):
+    #         pass
+    #     server._fn_accepts_additional_args(foo, [])
+    #     server._fn_accepts_additional_args(foo, ['arg1'])
+    #     server._fn_accepts_additional_args(foo, ['arg1', 'arg2'])
+
+    def test_additional_args(self):
+        def foo(app_config, args):
             pass
-        server._check_fn_signature(foo, ['arg1', 'arg2', 'arg3'])
-        server._check_fn_signature(foo, ['arg1'])
-        with self.assertRaises(ValueError):
-            server._check_fn_signature(foo, [])
+        server._fn_accepts_additional_args(foo, [])
+        server._fn_accepts_additional_args(foo, ['arg1'])
+        server._fn_accepts_additional_args(foo, ['arg1', 'arg2'])
+
+    # def test_additional_args_with_var_args(self):
+    #     def foo(app_config, args, *extra):
+    #         pass
+    #     server._fn_accepts_additional_args(foo, [])
+    #     server._fn_accepts_additional_args(foo, ['arg1'])
+    #     server._fn_accepts_additional_args(foo, ['arg1', 'arg2'])
+
+    # def test_kwargs(self):
+    #     def foo(app_config, arg1, *, bar, **kwargs):
+    #         pass
+    #     server._fn_accepts_additional_args(foo, [])
+    #     server._fn_accepts_additional_args(foo, ['arg1', 'arg2', 'arg3'])
+    #     server._fn_accepts_additional_args(foo, ['arg1'])
+
