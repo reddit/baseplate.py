@@ -44,6 +44,7 @@ ends.
 """
 
 import collections
+import errno
 import logging
 import socket
 import time
@@ -59,6 +60,16 @@ logger = logging.getLogger(__name__)
 
 def _metric_join(*nodes: bytes) -> bytes:
     return b".".join(node.strip(b".") for node in nodes)
+
+
+class TransportError(Exception):
+    pass
+
+
+class MessageTooBigTransportError(TransportError):
+    def __init__(self, message_size: int):
+        super().__init__(f"could not send: message of {message_size} bytes too large")
+        self.message_size = message_size
 
 
 class Transport:
@@ -88,7 +99,12 @@ class RawTransport(Transport):
         self.socket.connect(endpoint.address)
 
     def send(self, serialized_metric: bytes) -> None:
-        self.socket.sendall(serialized_metric)
+        try:
+            self.socket.sendall(serialized_metric)
+        except socket.error as exc:
+            if exc.errno == errno.EMSGSIZE:
+                raise MessageTooBigTransportError(len(serialized_metric))
+            raise TransportError(exc)
 
     def flush(self) -> None:
         pass
@@ -107,19 +123,7 @@ class BufferedTransport(Transport):
     def flush(self) -> None:
         metrics, self.buffer = self.buffer, []
         message = b"\n".join(metrics)
-        try:
-            self.transport.send(message)
-        except socket.error as e:
-            logger.error(
-                "baseplate metrics batch too large: flush more often \
-                or reduce amount done in one request, length %d, count %d, %s",
-                len(message),
-                len(metrics),
-                e,
-            )
-            counters = [metric for metric in metrics if metric.split(b"|")[-1][0] == b"c"]
-            partial_message = b",".join(counters)
-            logger.exception("counters: %s", partial_message)
+        self.transport.send(message)
 
 
 class BaseClient:
@@ -211,9 +215,24 @@ class Batch(BaseClient):
 
     def flush(self) -> None:
         """Immediately send the batched metrics."""
-        for counter in self.counters.values():
+        counters = self.counters
+        for counter in counters.values():
             counter.flush()
-        self.transport.flush()
+
+        try:
+            self.transport.flush()
+        except MessageTooBigTransportError as exc:
+            counters_by_total = list(
+                sorted((c for c in counters.values()), key=lambda c: c.total, reverse=True)
+            )
+            logger.warning(
+                "Metrics batch of %d bytes is too large to send, flush more often or reduce "
+                "amount done in this request. Top counters: %s",
+                exc.message_size,
+                ", ".join(f"{c.name.decode()}={c.total:.0f}" for c in counters_by_total[:10]),
+            )
+        except TransportError as exc:
+            logger.warning("Failed to send metrics batch: %s", exc)
 
     def counter(self, name: str) -> "Counter":
         """Return a BatchCounter with the given name.
@@ -374,6 +393,10 @@ class BatchCounter(Counter):
 
         """
         self.increment(delta=-delta, sample_rate=sample_rate)
+
+    @property
+    def total(self):
+        return sum(self.packets.values())
 
     def flush(self) -> None:
         for sample_rate, delta in self.packets.items():
