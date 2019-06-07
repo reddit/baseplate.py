@@ -215,7 +215,7 @@ class Batch(BaseClient):
 
     def flush(self) -> None:
         """Immediately send the batched metrics."""
-        counters = self.counters
+        counters, self.counters = self.counters, {}
         for counter in counters.values():
             counter.flush()
 

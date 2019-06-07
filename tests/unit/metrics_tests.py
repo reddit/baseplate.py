@@ -177,6 +177,14 @@ class BatchTests(unittest.TestCase):
             batch_counter.increment()
         self.assertTrue(batch_counter.flush.called)
 
+    def test_counters_cleared_after_flush(self):
+        self.batch.counter("some_counter").increment()
+        self.batch.flush()
+        self.mock_buffer.send.assert_called()
+        self.mock_buffer.reset_mock()
+        self.batch.flush()
+        self.mock_buffer.send.assert_not_called()
+
     def tearDown(self):
         self.patcher.stop()
 
