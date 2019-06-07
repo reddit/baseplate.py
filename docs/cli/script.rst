@@ -38,7 +38,7 @@ and a small script, ``printer.py``:
 
 .. code-block:: python
 
-   def run(app_config, *args):
+   def run(app_config, args):
        parser = argparse.ArgumentParser()
        parser.add_argument("name")
        args = parser.parse_args(args)
