@@ -266,7 +266,7 @@ def _fn_accepts_additional_args(script_fn, fn_args):
 
     allows_additional_args = allows_var_args or positional_arg_count > 1
 
-    if positional_arg_count < 1:
+    if positional_arg_count < 1 and not allows_var_args:
         raise ValueError('script function accepts too few positional arguments')
     elif positional_arg_count > 2:
         raise ValueError('script function accepts too many positional arguments')
