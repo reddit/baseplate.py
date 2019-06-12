@@ -136,6 +136,7 @@ class ThriftConnectionPool:
         self.timeout = timeout
         self.protocol_factory = protocol_factory
 
+        self.size = size
         self.pool = queue.LifoQueue()
         for _ in range(size):
             self.pool.put(None)
@@ -228,3 +229,7 @@ class ThriftConnectionPool:
             raise
         finally:
             self._release(prot)
+
+    @property
+    def checkedout(self):
+        return self.size - self.pool.qsize()

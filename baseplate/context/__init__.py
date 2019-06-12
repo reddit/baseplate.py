@@ -32,6 +32,9 @@ class ContextFactory:
 
     """
 
+    def report_runtime_metrics(self, batch):
+        """Report runtime metrics to the stats sytem."""
+
     def make_object_for_context(self, name, span):
         """Return an object that can be added to the context object."""
         raise NotImplementedError

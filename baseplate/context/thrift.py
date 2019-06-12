@@ -48,6 +48,13 @@ class ThriftContextFactory(ContextFactory):
             },
         )
 
+    def report_runtime_metrics(self, batch):
+        batch.gauge("size").replace(self.pool.size)
+        batch.gauge("checkedout").replace(self.pool.checkedout)
+        # it's hard to report "checkedin" currently because we can't
+        # distinguish easily between available connection slots that aren't
+        # instantiated and ones that have actual open connections.
+
     def make_object_for_context(self, name, span):
         return self.proxy_cls(self.client_cls, self.pool, span, name)
 

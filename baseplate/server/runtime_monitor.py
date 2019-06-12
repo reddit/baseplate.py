@@ -81,6 +81,22 @@ class _GCTimingReporter:
             batch.timer("gc.elapsed").send(gc_duration)
 
 
+class _BaseplateReporter:
+    def __init__(self, reporters):
+        self.reporters = reporters
+
+    def report(self, batch):
+        for name, reporter in self.reporters.items():
+            original_namespace = batch.namespace
+            try:
+                batch.namespace = b".".join((batch.namespace, b"clients", name.encode()))
+                reporter(batch)
+            except Exception as exc:
+                logging.exception("Error generating client metrics: %s: %s", name, exc)
+            finally:
+                batch.namespace = original_namespace
+
+
 def _report_runtime_metrics_periodically(metrics_client, reporters):
     hostname = socket.gethostname()
     pid = os.getpid()
@@ -108,7 +124,8 @@ def _report_runtime_metrics_periodically(metrics_client, reporters):
 
 
 def start(server_config, application, pool):
-    if not hasattr(application, "baseplate") or not application.baseplate._metrics_client:
+    baseplate = getattr(application, "baseplate", None)
+    if not baseplate or not baseplate._metrics_client:
         logging.info("No metrics client configured. Server metrics will not be sent.")
         return
 
@@ -126,7 +143,7 @@ def start(server_config, application, pool):
         },
     )
 
-    reporters = []
+    reporters = [_BaseplateReporter(baseplate._reporters)]
 
     if cfg.monitoring.concurrency:
         reporters.append(_ConcurrencyReporter(pool))

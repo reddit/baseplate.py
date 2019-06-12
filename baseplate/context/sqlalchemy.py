@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
+from sqlalchemy.pool import QueuePool
 
 from baseplate import config
 from baseplate.context import ContextFactory
@@ -78,6 +79,16 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
         event.listen(self.engine, "dbapi_error", self.on_dbapi_error)
+
+    def report_runtime_metrics(self, batch):
+        pool = self.engine.pool
+        if not isinstance(pool, QueuePool):
+            return
+
+        batch.gauge("size").replace(pool.size())
+        batch.gauge("checkedin").replace(pool.checkedin())
+        batch.gauge("overflow").replace(max(pool.overflow(), 0))
+        batch.gauge("checkedout").replace(pool.checkedout())
 
     def make_object_for_context(self, name, span):
         engine = self.engine.execution_options(context_name=name, server_span=span)
