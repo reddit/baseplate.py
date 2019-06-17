@@ -77,7 +77,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         self.engine = engine.execution_options()
         event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
-        event.listen(self.engine, "dbapi_error", self.on_dbapi_error)
+        event.listen(self.engine, "handle_error", self.on_error)
 
     def make_object_for_context(self, name, span):
         engine = self.engine.execution_options(context_name=name, server_span=span)
@@ -107,11 +107,11 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         conn.info["span"].finish()
         conn.info["span"] = None
 
-    def on_dbapi_error(self, conn, cursor, statement, parameters, context, exception):
+    def on_error(self, context):
         """Handle the event which happens on exceptions during execution."""
-        exc_info = (type(exception), exception, None)
-        conn.info["span"].finish(exc_info=exc_info)
-        conn.info["span"] = None
+        exc_info = (type(context.original_exception), context.original_exception, None)
+        context.connection.info["span"].finish(exc_info=exc_info)
+        context.connection.info["span"] = None
 
 
 class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
