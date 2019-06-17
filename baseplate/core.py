@@ -611,6 +611,7 @@ class Baseplate:
     def __init__(self):
         self.observers = []
         self._metrics_client = None
+        self._reporters = {}
 
     def register(self, observer):
         """Register an observer.
@@ -710,6 +711,7 @@ class Baseplate:
         # pylint: disable=cyclic-import
         from baseplate.context import ContextObserver
 
+        self._reporters[name] = context_factory.report_runtime_metrics
         self.register(ContextObserver(name, context_factory))
 
     def make_server_span(self, context, name, trace_info=None):

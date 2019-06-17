@@ -138,6 +138,8 @@ Note that Einhorn will exit if you send it a ``SIGUSR1``. You can instead open u
    > signal SIGUSR1
    Successfully sent USR1s to 4 processes: [...]
 
+.. _runtime-metrics:
+
 Process-level metrics
 ---------------------
 
