@@ -85,10 +85,10 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         if not isinstance(pool, QueuePool):
             return
 
-        batch.gauge("size").replace(pool.size())
-        batch.gauge("open_and_available").replace(pool.checkedin())
-        batch.gauge("in_use").replace(pool.checkedout())
-        batch.gauge("overflow").replace(max(pool.overflow(), 0))
+        batch.gauge("pool.size").replace(pool.size())
+        batch.gauge("pool.open_and_available").replace(pool.checkedin())
+        batch.gauge("pool.in_use").replace(pool.checkedout())
+        batch.gauge("pool.overflow").replace(max(pool.overflow(), 0))
 
     def make_object_for_context(self, name, span):
         engine = self.engine.execution_options(context_name=name, server_span=span)
