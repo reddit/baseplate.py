@@ -86,9 +86,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
             return
 
         batch.gauge("size").replace(pool.size())
-        batch.gauge("checkedin").replace(pool.checkedin())
+        batch.gauge("open_and_available").replace(pool.checkedin())
+        batch.gauge("in_use").replace(pool.checkedout())
         batch.gauge("overflow").replace(max(pool.overflow(), 0))
-        batch.gauge("checkedout").replace(pool.checkedout())
 
     def make_object_for_context(self, name, span):
         engine = self.engine.execution_options(context_name=name, server_span=span)

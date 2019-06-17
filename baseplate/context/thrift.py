@@ -50,8 +50,8 @@ class ThriftContextFactory(ContextFactory):
 
     def report_runtime_metrics(self, batch):
         batch.gauge("size").replace(self.pool.size)
-        batch.gauge("checkedout").replace(self.pool.checkedout)
-        # it's hard to report "checkedin" currently because we can't
+        batch.gauge("in_use").replace(self.pool.checkedout)
+        # it's hard to report "open_and_available" currently because we can't
         # distinguish easily between available connection slots that aren't
         # instantiated and ones that have actual open connections.
 
