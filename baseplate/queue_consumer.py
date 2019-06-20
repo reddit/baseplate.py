@@ -99,14 +99,17 @@ class BaseKombuConsumer:
         self.worker_thread = worker_thread
 
     @classmethod
-    def new(cls, connection, queues):
+    def new(cls, connection, queues, queue_size=100):
         """Create and initialize a consumer.
 
         :param kombu.Exchange exchange:
         :param list queues: List of :py:class:`kombu.queue.Queue` objects.
+        :param int queue_size: (Optional) The maximum number of messages to cache
+            in the internal `queue.Queue` worker queue.  Defaults to 100.  For
+            an infinite size (not recommended), use `queue_size=0`.
 
         """
-        work_queue = queue.Queue()
+        work_queue = queue.Queue(maxsize=queue_size)
         worker = _ConsumerWorker(connection, queues, work_queue)
         worker_thread = Thread(target=worker.run)
         worker_thread.name = "consumer message pump"

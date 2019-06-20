@@ -52,3 +52,17 @@ class BaseKombuConsumerTests(unittest.TestCase):
             ]
         )
         self.assertEqual(worker.get_message.call_count, 4)
+
+    # Mock out threading.Thread so we don't actually start up phantom worker threads.
+    @mock.patch("baseplate.queue_consumer.Thread")
+    def test_queue_size(self, _):
+        consumer = queue_consumer.BaseKombuConsumer.new(mock.Mock(), mock.Mock(), queue_size=10)
+        self.assertEqual(consumer.worker.work_queue.maxsize, 10)
+
+    # Mock out threading.Thread so we don't actually start up phantom worker threads.
+    @mock.patch("baseplate.queue_consumer.Thread")
+    def test_default_queue_size_gt_zero(self, _):
+        # We don't really care to test the exact default queue size, just that
+        # it is greater than zero (which is infinite/unbounded).
+        consumer = queue_consumer.BaseKombuConsumer.new(mock.Mock(), mock.Mock())
+        self.assertGreater(consumer.worker.work_queue.maxsize, 0)
