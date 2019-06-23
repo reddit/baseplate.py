@@ -2,14 +2,14 @@ import time
 import unittest
 
 try:
-    from cassandra import InvalidRequest
-    from cassandra.cluster import Cluster
+    from cassandra import InvalidRequest, ConsistencyLevel
+    from cassandra.cluster import ExecutionProfile
     from cassandra.concurrent import execute_concurrent_with_args
     from cassandra.query import dict_factory, named_tuple_factory
 except ImportError:
     raise unittest.SkipTest("cassandra-driver is not installed")
 
-from baseplate.context.cassandra import CassandraContextFactory
+from baseplate.context.cassandra import CassandraClient
 from baseplate.core import Baseplate
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
@@ -21,15 +21,22 @@ cassandra_endpoint = get_endpoint_or_skip_container("cassandra", 9042)
 
 class CassandraTests(unittest.TestCase):
     def setUp(self):
-        cluster = Cluster([cassandra_endpoint.address.host], port=cassandra_endpoint.address.port)
-        session = cluster.connect("system")
-        factory = CassandraContextFactory(session)
-
         self.baseplate_observer = TestBaseplateObserver()
+
+        profiles = {"foo": ExecutionProfile(consistency_level=ConsistencyLevel.QUORUM)}
 
         baseplate = Baseplate()
         baseplate.register(self.baseplate_observer)
-        baseplate.add_to_context("cassandra", factory)
+        baseplate.configure_context(
+            {
+                "cassandra.contact_points": cassandra_endpoint.address.host,
+                "cassandra_no_prof.contact_points": cassandra_endpoint.address.host,
+            },
+            {
+                "cassandra_no_prof": CassandraClient(keyspace="system"),
+                "cassandra": CassandraClient(keyspace="system", execution_profiles=profiles),
+            },
+        )
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
@@ -70,13 +77,13 @@ class CassandraTests(unittest.TestCase):
 
     def test_properties(self):
         with self.server_span:
-            self.assertIsNotNone(self.context.cassandra.cluster)
-            self.assertIsNotNone(self.context.cassandra.encoder)
-            self.assertEqual(self.context.cassandra.keyspace, "system")
+            self.assertIsNotNone(self.context.cassandra_no_prof.cluster)
+            self.assertIsNotNone(self.context.cassandra_no_prof.encoder)
+            self.assertEqual(self.context.cassandra_no_prof.keyspace, "system")
 
-            self.assertEqual(self.context.cassandra.row_factory, named_tuple_factory)
-            self.context.cassandra.row_factory = dict_factory
-            self.assertEqual(self.context.cassandra.row_factory, dict_factory)
+            self.assertEqual(self.context.cassandra_no_prof.row_factory, named_tuple_factory)
+            self.context.cassandra_no_prof.row_factory = dict_factory
+            self.assertEqual(self.context.cassandra_no_prof.row_factory, dict_factory)
 
     def test_prepared_statements(self):
         with self.server_span:
@@ -154,15 +161,14 @@ class CassandraTests(unittest.TestCase):
 
 class CassandraConcurrentTests(unittest.TestCase):
     def setUp(self):
-        cluster = Cluster([cassandra_endpoint.address.host], port=cassandra_endpoint.address.port)
-        session = cluster.connect("system")
-        factory = CassandraContextFactory(session)
-
         self.baseplate_observer = TestBaseplateObserver()
 
         baseplate = Baseplate()
         baseplate.register(self.baseplate_observer)
-        baseplate.add_to_context("cassandra", factory)
+        baseplate.configure_context(
+            {"cassandra.contact_points": cassandra_endpoint.address.host},
+            {"cassandra": CassandraClient(keyspace="system")},
+        )
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")

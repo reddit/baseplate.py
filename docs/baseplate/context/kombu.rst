@@ -4,8 +4,10 @@
 .. automodule:: baseplate.context.kombu
 
 
-Configuration Parsing
----------------------
+Configuration
+-------------
+
+.. autoclass:: baseplate.context.kombu.KombuProducer
 
 .. autofunction:: baseplate.context.kombu.connection_from_config
 
@@ -16,6 +18,3 @@ Classes
 -------
 
 .. autoclass:: baseplate.context.kombu.KombuProducerContextFactory
-
-.. autoclass:: baseplate.context.kombu.KombuProducer
-   :members:

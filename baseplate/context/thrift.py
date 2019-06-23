@@ -6,8 +6,33 @@ from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException, TException
 from thrift.transport.TTransport import TTransportException
 
+from baseplate import config
 from baseplate.context import ContextFactory
 from baseplate.retry import RetryPolicy
+from baseplate.thrift_pool import thrift_pool_from_config
+
+
+class ThriftClient(config.Parser):
+    """Configure a Thrift client.
+
+    This is meant to be used with
+    :py:meth:`baseplate.core.Baseplate.configure_context`.
+
+    See :py:func:`baseplate.thrift_pool.thrift_pool_from_config` for available
+    configurables.
+
+    :param client_cls: The class object of a Thrift-generated client class,
+        e.g. ``YourService.Client``.
+
+    """
+
+    def __init__(self, client_cls, **kwargs):
+        self.client_cls = client_cls
+        self.kwargs = kwargs
+
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+        pool = thrift_pool_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
+        return ThriftContextFactory(pool, self.client_cls)
 
 
 class ThriftContextFactory(ContextFactory):

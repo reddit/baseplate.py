@@ -1,3 +1,5 @@
+from typing import Optional
+
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
@@ -5,10 +7,11 @@ from sqlalchemy.pool import QueuePool
 
 from baseplate import config
 from baseplate.context import ContextFactory
-from baseplate.core import ServerSpan, SpanObserver
+from baseplate.core import SpanObserver
+from baseplate.secrets import SecretsStore
 
 
-def engine_from_config(app_config, secrets=None, prefix="database."):
+def engine_from_config(app_config, secrets=None, prefix="database.", **kwargs):
     """Make an :py:class:`~sqlalchemy.engine.Engine` from a configuration dictionary.
 
     The keys useful to :py:func:`engine_from_config` should be prefixed, e.g.
@@ -27,30 +30,43 @@ def engine_from_config(app_config, secrets=None, prefix="database."):
 
     """
     assert prefix.endswith(".")
-    config_prefix = prefix[:-1]
-    cfg = config.parse_config(
-        app_config,
-        {
-            config_prefix: {
-                "url": config.String,
-                "credentials_secret": config.Optional(config.String),
-            }
-        },
+    parser = config.SpecParser(
+        {"url": config.String, "credentials_secret": config.Optional(config.String)}
     )
-    options = getattr(cfg, config_prefix)
+    options = parser.parse(prefix[:-1], app_config)
     url = make_url(options.url)
 
     if options.credentials_secret:
         if not secrets:
-            raise TypeError(
-                "'secrets' is a required argument to 'engine_from_config' "
-                "if 'credentials_secret' is set"
-            )
+            raise TypeError("'secrets' is required if 'credentials_secret' is set")
         credentials = secrets.get_credentials(options.credentials_secret)
         url.username = credentials.username
         url.password = credentials.password
 
-    return create_engine(url)
+    return create_engine(url, **kwargs)
+
+
+class SQLAlchemySession(config.Parser):
+    """Configure a SQLAlchemy Session.
+
+    This is meant to be used with
+    :py:meth:`baseplate.core.Baseplate.configure_context`.
+
+    See :py:func:`engine_from_config` for available configurables.
+
+    :param keyspace: Which keyspace to set as the default for operations.
+
+    """
+
+    def __init__(self, secrets: Optional[SecretsStore] = None, **kwargs):
+        self.secrets = secrets
+        self.kwargs = kwargs
+
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+        engine = engine_from_config(
+            raw_config, secrets=self.secrets, prefix=f"{key_path}.", **self.kwargs
+        )
+        return SQLAlchemySessionContextFactory(engine)
 
 
 class SQLAlchemyEngineContextFactory(ContextFactory):
@@ -148,30 +164,17 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
     """
 
     def make_object_for_context(self, name, span):
-        if isinstance(span, ServerSpan):
-            engine = super(SQLAlchemySessionContextFactory, self).make_object_for_context(
-                name, span
-            )
-            session = Session(bind=engine)
-        else:
-            # Reuse session in the existing context
-            #  There should always be one passed down from the
-            #  root ServerSpan
-            session = getattr(span.context, name)
-        span.register(SQLAlchemySessionSpanObserver(session, span))
+        engine = super().make_object_for_context(name, span)
+        session = Session(bind=engine)
+        span.register(SQLAlchemySessionSpanObserver(session))
         return session
 
 
 class SQLAlchemySessionSpanObserver(SpanObserver):
     """Automatically close the session at the end of each request."""
 
-    def __init__(self, session, span):
+    def __init__(self, session):
         self.session = session
-        self.span = span
 
     def on_finish(self, exc_info):
-        # A session is passed down to child local spans
-        #   in a request pipeline so only close the session
-        #  if the parent ServerSpan is closing.
-        if isinstance(self.span, ServerSpan):
-            self.session.close()
+        self.session.close()

@@ -3,12 +3,13 @@ import logging
 import random
 
 from types import TracebackType, SimpleNamespace
-from typing import Tuple, Optional, Type, NamedTuple, Any
+from typing import Tuple, Optional, Type, NamedTuple, Any, Dict
 
 import jwt
 from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 
+from baseplate import config
 from baseplate._utils import warn_deprecated, cached_property
 
 
@@ -599,12 +600,18 @@ class EdgeRequestContext:
 
 
 class RequestContext:
-    def __init__(self, factories, wrapped=None, span=None):
+    def __init__(self, context_config, wrapped=None, prefix=None, span=None):
         if not wrapped:
             wrapped = SimpleNamespace()
 
         super().__getattribute__("__dict__").update(
-            {"trace": span, "_factories": factories, "_wrapped": wrapped, "_cache": {}}
+            {
+                "trace": span,
+                "_context_config": context_config,
+                "_wrapped": wrapped,
+                "_prefix": prefix,
+                "_cache": {},
+            }
         )
 
     def __getattribute__(self, name):
@@ -622,13 +629,25 @@ class RequestContext:
 
         # if we have a factory of that name, we'll use it. otherwise just pass
         # the read onto the wrapped object.
-        factories = __dict__["_factories"]
-        factory = factories.get(name)
-        if not factory:
+        context_config = __dict__["_context_config"]
+        config_item = context_config.get(name)
+        if not config_item:
             return getattr(__dict__["_wrapped"], name)
 
         # build the object, save it to the cache, and return it
-        obj = factory.make_object_for_context(name, __dict__["trace"])
+        prefix = __dict__["_prefix"]
+        if prefix:
+            full_name = f"{prefix}.{name}"
+        else:
+            full_name = name
+
+        if isinstance(config_item, dict):
+            obj = RequestContext(config_item, prefix=full_name, span=__dict__["trace"])
+        elif hasattr(config_item, "make_object_for_context"):
+            obj = config_item.make_object_for_context(full_name, __dict__["trace"])
+        else:
+            obj = config_item
+
         cache[name] = obj
         return obj
 
@@ -647,7 +666,8 @@ class RequestContext:
 
     def clone(self):
         __dict__ = super().__getattribute__("__dict__")
-        return RequestContext(__dict__["_factories"], wrapped=__dict__["_wrapped"])
+        assert not __dict__["_prefix"], "only the root RequestContext can be cloned"
+        return RequestContext(__dict__["_context_config"], wrapped=__dict__["_wrapped"])
 
 
 class Baseplate:
@@ -747,6 +767,43 @@ class Baseplate:
 
         self.register(SentryBaseplateObserver(client))
 
+    def configure_context(self, app_config: config.RawConfig, context_spec: Dict) -> None:
+        """Add a number of objects to each request's context object.
+
+        Configure and attach multiple clients to the :term:`context object` in
+        one place. This takes a full configuration spec like
+        :py:func:`baseplate.config.parse_config` and will attach the specified
+        structure onto the context object each request.
+
+        For example, a configuration like::
+
+            baseplate = Baseplate()
+            baseplate.configure_context(app_config, {
+                "cfg": {
+                    "doggo_is_good": config.Boolean,
+                },
+                "cache": MemcachedClient(),
+                "cassandra": {
+                    "foo": CassandraClient(),
+                    "bar": CassandraClient(),
+                },
+            })
+
+        would build a context object that could be used like::
+
+            assert context.cfg.doggo_is_good == True
+            context.cache.get("example")
+            context.cassandra.foo.execute()
+
+        :param config: The raw stringy configuration dictionary.
+        :param context_spec: A specification of what the config should look
+            like. This should only contain context clients and nested dictionaries.
+            Unrelated configuration values should not be included.
+
+        """
+        cfg = config.parse_config(app_config, context_spec)
+        self._context_config.update(cfg)
+
     def add_to_context(self, name, context_factory):
         """Add an attribute to each request's context object.
 
@@ -810,9 +867,20 @@ class Baseplate:
         return server_span
 
     def get_runtime_metric_reporters(self):
+        specs = [(None, self._context_config)]
         result = {}
-        for name, factory in self._context_config.items():
-            result[name] = factory.report_runtime_metrics
+        while specs:
+            prefix, spec = specs.pop(0)
+            for name, value in spec.items():
+                if prefix:
+                    full_name = f"{prefix}.{name}"
+                else:
+                    full_name = name
+
+                if isinstance(value, dict):
+                    specs.append((full_name, value))
+                elif hasattr(value, "report_runtime_metrics"):
+                    result[full_name] = value.report_runtime_metrics
         return result
 
 

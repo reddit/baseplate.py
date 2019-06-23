@@ -5,7 +5,7 @@ try:
 except ImportError:
     raise unittest.SkipTest("hvac is not installed")
 
-from baseplate.context.hvac import hvac_factory_from_config
+from baseplate.context.hvac import HvacClient
 from baseplate.secrets import SecretsStore
 from baseplate.core import Baseplate
 
@@ -18,18 +18,15 @@ vault_endpoint = get_endpoint_or_skip_container("vault", 8200)
 
 class HvacTests(unittest.TestCase):
     def setUp(self):
-        app_config = {}
         secrets_store = mock.Mock(spec=SecretsStore)
         secrets_store.get_vault_url.return_value = "http://%s:%d/" % vault_endpoint.address
         secrets_store.get_vault_token.return_value = "b4c6f298-3f80-11e7-8b88-5254001e7ad3"
-
-        factory = hvac_factory_from_config(app_config, secrets_store)
 
         self.baseplate_observer = TestBaseplateObserver()
 
         baseplate = Baseplate()
         baseplate.register(self.baseplate_observer)
-        baseplate.add_to_context("vault", factory)
+        baseplate.configure_context({}, {"vault": HvacClient(secrets_store)})
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")

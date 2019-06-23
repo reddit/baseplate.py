@@ -10,6 +10,7 @@ except ImportError:
 from baseplate.context.sqlalchemy import (
     engine_from_config,
     SQLAlchemyEngineContextFactory,
+    SQLAlchemySession,
     SQLAlchemySessionContextFactory,
 )
 from baseplate.core import Baseplate
@@ -106,3 +107,13 @@ class SQLAlchemySessionTests(unittest.TestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
+
+
+class SQLAlchemySessionConfigTests(unittest.TestCase):
+    def test_simple_config(self):
+        baseplate = Baseplate()
+        baseplate.configure_context({"db.url": "sqlite://"}, {"db": SQLAlchemySession()})
+
+        context = baseplate.make_context_object()
+        with baseplate.make_server_span(context, "test"):
+            context.db.execute("SELECT 1;")

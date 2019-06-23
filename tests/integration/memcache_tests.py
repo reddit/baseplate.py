@@ -1,16 +1,11 @@
 import unittest
 
 try:
-    from pymemcache.client.base import PooledClient
     from pymemcache.exceptions import MemcacheClientError
 except ImportError:
     raise unittest.SkipTest("pymemcache is not installed")
 
-from baseplate.context.memcache import (
-    MemcacheContextFactory,
-    MonitoredMemcacheConnection,
-    make_keys_str,
-)
+from baseplate.context.memcache import MemcacheClient, MonitoredMemcacheConnection, make_keys_str
 from baseplate.core import Baseplate, LocalSpan, ServerSpan
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
@@ -22,14 +17,13 @@ memcached_endpoint = get_endpoint_or_skip_container("memcached", 11211)
 
 class MemcacheIntegrationTests(unittest.TestCase):
     def setUp(self):
-        pool = PooledClient(server=memcached_endpoint.address)
-        factory = MemcacheContextFactory(pool)
-
         self.baseplate_observer = TestBaseplateObserver()
 
         baseplate = Baseplate()
         baseplate.register(self.baseplate_observer)
-        baseplate.add_to_context("memcache", factory)
+        baseplate.configure_context(
+            {"memcache.endpoint": str(memcached_endpoint)}, {"memcache": MemcacheClient()}
+        )
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")

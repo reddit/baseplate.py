@@ -17,7 +17,7 @@ from baseplate.core import (
     SpanObserver,
     TraceInfo,
 )
-from baseplate.context.thrift import ThriftContextFactory
+from baseplate.context.thrift import ThriftClient
 from baseplate.file_watcher import FileWatcher
 from baseplate.integration.thrift import baseplateify_processor
 from baseplate.secrets import store
@@ -85,10 +85,7 @@ def serve_thrift(handler, server_span_observer=None):
 
     # figure out what port the server ended up on
     server_address = listener.getsockname()
-    server_endpoint = config.EndpointConfiguration(
-        family=server_bind_endpoint.family, address=server_address
-    )
-    server.endpoint = server_endpoint
+    server.endpoint = config.Endpoint(f"{server_address[0]}:{server_address[1]}")
 
     # run the server until our caller is done with it
     server_greenlet = gevent.spawn(server.serve_forever)
@@ -128,9 +125,10 @@ def baseplate_thrift_client(endpoint, client_span_observer=None):
         trace_id=1234, parent_id=2345, span_id=3456, flags=4567, sampled=True
     )
 
-    pool = ThriftConnectionPool(endpoint)
-    context_factory = ThriftContextFactory(pool, TestService.Client)
-    baseplate.add_to_context("example_service", context_factory)
+    baseplate.configure_context(
+        {"example_service.endpoint": str(endpoint)},
+        {"example_service": ThriftClient(TestService.Client)},
+    )
 
     baseplate.make_server_span(context, "example_service.example", trace_info)
 

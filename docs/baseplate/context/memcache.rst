@@ -3,8 +3,10 @@
 
 .. automodule:: baseplate.context.memcache
 
-Configuration Parsing
----------------------
+Configuration
+-------------
+
+.. autoclass:: baseplate.context.memcache.MemcacheClient
 
 .. autofunction:: baseplate.context.memcache.pool_from_config
 

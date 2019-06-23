@@ -3,6 +3,8 @@
 
 .. automodule:: baseplate.context.thrift
 
+.. autoclass:: baseplate.context.thrift.ThriftClient
+
 .. autoclass:: baseplate.context.thrift.ThriftContextFactory
 
 Runtime Metrics

@@ -70,21 +70,16 @@ def thrift_pool_from_config(app_config, prefix, **kwargs):
 
     """
     assert prefix.endswith(".")
-    config_prefix = prefix[:-1]
-
-    cfg = config.parse_config(
-        app_config,
+    parser = config.SpecParser(
         {
-            config_prefix: {
-                "endpoint": config.Endpoint,
-                "size": config.Optional(config.Integer, default=10),
-                "max_age": config.Optional(config.Timespan, default=config.Timespan("1 minute")),
-                "timeout": config.Optional(config.Timespan, default=config.Timespan("1 second")),
-                "max_retries": config.Optional(config.Integer, default=3),
-            }
-        },
+            "endpoint": config.Endpoint,
+            "size": config.Optional(config.Integer, default=10),
+            "max_age": config.Optional(config.Timespan, default=config.Timespan("1 minute")),
+            "timeout": config.Optional(config.Timespan, default=config.Timespan("1 second")),
+            "max_retries": config.Optional(config.Integer, default=3),
+        }
     )
-    options = getattr(cfg, config_prefix)
+    options = parser.parse(prefix[:-1], app_config)
 
     if options.size is not None:
         kwargs.setdefault("size", options.size)

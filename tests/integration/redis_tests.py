@@ -6,7 +6,7 @@ try:
 except ImportError:
     raise unittest.SkipTest("redis-py is not installed")
 
-from baseplate.context.redis import RedisContextFactory
+from baseplate.context.redis import RedisClient
 from baseplate.core import Baseplate
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
@@ -20,16 +20,13 @@ redis_endpoint = get_endpoint_or_skip_container("redis", 6379)
 
 class RedisIntegrationTests(unittest.TestCase):
     def setUp(self):
-        pool = redis.ConnectionPool(
-            host=redis_endpoint.address.host, port=redis_endpoint.address.port
-        )
-        factory = RedisContextFactory(pool)
-
         self.baseplate_observer = TestBaseplateObserver()
 
         baseplate = Baseplate()
         baseplate.register(self.baseplate_observer)
-        baseplate.add_to_context("redis", factory)
+        baseplate.configure_context(
+            {"redis.url": f"redis://{redis_endpoint}/0"}, {"redis": RedisClient()}
+        )
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")

@@ -3,8 +3,10 @@
 
 .. automodule:: baseplate.context.sqlalchemy
 
-Configuration Parsing
----------------------
+Configuration
+-------------
+
+.. autoclass:: baseplate.context.sqlalchemy.SQLAlchemySession
 
 .. autofunction:: baseplate.context.sqlalchemy.engine_from_config
 

@@ -1,5 +1,6 @@
 import unittest
 
+from baseplate import config
 from baseplate.core import (
     Baseplate,
     BaseplateObserver,
@@ -72,6 +73,34 @@ class BaseplateTests(unittest.TestCase):
         server_span = baseplate.make_server_span(mock_context, "name", TraceInfo(1, 2, 3, None, 0))
 
         self.assertEqual(server_span.observers, [])
+
+    def test_configure_context_supports_complex_specs(self):
+        from baseplate.context.thrift import ThriftClient
+        from baseplate.thrift import BaseplateService
+
+        app_config = {
+            "enable_some_fancy_feature": "true",
+            "thrift.foo.endpoint": "localhost:9090",
+            "thrift.bar.endpoint": "localhost:9091",
+        }
+
+        baseplate = Baseplate()
+        baseplate.configure_context(
+            app_config,
+            {
+                "enable_some_fancy_feature": config.Boolean,
+                "thrift": {
+                    "foo": ThriftClient(BaseplateService.Client),
+                    "bar": ThriftClient(BaseplateService.Client),
+                },
+            },
+        )
+
+        context = baseplate.make_context_object()
+        with baseplate.make_server_span(context, "test"):
+            self.assertTrue(context.enable_some_fancy_feature)
+            self.assertIsNotNone(context.thrift.foo)
+            self.assertIsNotNone(context.thrift.bar)
 
 
 class SpanTests(unittest.TestCase):

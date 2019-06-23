@@ -27,20 +27,15 @@ def pool_from_config(app_config, prefix="redis.", **kwargs):
 
     """
     assert prefix.endswith(".")
-    config_prefix = prefix[:-1]
-    cfg = config.parse_config(
-        app_config,
+    parser = config.SpecParser(
         {
-            config_prefix: {
-                "url": config.String,
-                "max_connections": config.Optional(config.Integer, default=None),
-                "socket_connect_timeout": config.Optional(config.Timespan, default=None),
-                "socket_timeout": config.Optional(config.Timespan, default=None),
-            }
-        },
+            "url": config.String,
+            "max_connections": config.Optional(config.Integer, default=None),
+            "socket_connect_timeout": config.Optional(config.Timespan, default=None),
+            "socket_timeout": config.Optional(config.Timespan, default=None),
+        }
     )
-
-    options = getattr(cfg, config_prefix)
+    options = parser.parse(prefix[:-1], app_config)
 
     if options.max_connections is not None:
         kwargs.setdefault("max_connections", options.max_connections)
@@ -50,6 +45,24 @@ def pool_from_config(app_config, prefix="redis.", **kwargs):
         kwargs.setdefault("socket_timeout", options.socket_timeout.total_seconds())
 
     return redis.BlockingConnectionPool.from_url(options.url, **kwargs)
+
+
+class RedisClient(config.Parser):
+    """Configure a Redis client.
+
+    This is meant to be used with
+    :py:meth:`baseplate.core.Baseplate.configure_context`.
+
+    See :py:func:`pool_from_config` for available configurables.
+
+    """
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+        connection_pool = pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
+        return RedisContextFactory(connection_pool)
 
 
 class RedisContextFactory(ContextFactory):
