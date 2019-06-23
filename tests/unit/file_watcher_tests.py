@@ -170,7 +170,7 @@ class Py3FileWatcherTests(unittest.TestCase):
             file_watcher.FileWatcher("/does_not_exist", mock_parser, binary=True, newline="\n")
 
     def test_encoding_option(self):
-        file_path = os.path.abspath("data/file_watcher_tests.json")
+        file_path = os.path.abspath("tests/data/file_watcher_tests.json")
 
         watcher = file_watcher.FileWatcher(file_path, parser=json.load, encoding="ANSI_X3.4-1968")
         with self.assertRaises(file_watcher.WatchedFileNotAvailableError):
