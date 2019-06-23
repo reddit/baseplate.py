@@ -32,6 +32,7 @@ An abbreviated example of it in use::
 import sys
 
 import pyramid.events
+import pyramid.request
 import pyramid.tweens
 
 from baseplate.core import TraceInfo
@@ -56,7 +57,7 @@ def _make_baseplate_tween(handler, _registry):
                 request.trace.finish(exc_info=sys.exc_info())
             raise
         else:
-            if hasattr(request, "trace"):
+            if request.trace:
                 request.trace.set_tag("http.status_code", response.status_code)
                 request.trace.finish()
         return response
@@ -172,6 +173,10 @@ class BaseplateConfigurator:
         # attach the baseplate object to the application the server gets
         event.app.baseplate = self.baseplate
 
+    def _create_request(self, environ):
+        base_request = pyramid.request.Request(environ)
+        return self.baseplate.make_context_object(wrapped=base_request)
+
     def _on_new_request(self, event):
         request = event.request
 
@@ -206,8 +211,8 @@ class BaseplateConfigurator:
         request.trace.set_tag("peer.ipv4", request.remote_addr)
 
     def _start_server_span(self, request, name, trace_info=None):
-        request.trace = self.baseplate.make_server_span(request, name=name, trace_info=trace_info)
-        request.trace.start()
+        span = self.baseplate.make_server_span(request, name=name, trace_info=trace_info)
+        span.start()
         request.registry.notify(ServerSpanInitialized(request))
 
     def _get_trace_info(self, headers):
@@ -223,6 +228,7 @@ class BaseplateConfigurator:
         )
 
     def includeme(self, config):
+        config.set_request_factory(self._create_request)
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
         config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
 

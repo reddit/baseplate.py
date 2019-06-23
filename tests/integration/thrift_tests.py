@@ -13,13 +13,13 @@ from baseplate.core import (
     Baseplate,
     BaseplateObserver,
     EdgeRequestContextFactory,
-    ServerSpan,
     ServerSpanObserver,
     SpanObserver,
+    TraceInfo,
 )
 from baseplate.context.thrift import ThriftContextFactory
 from baseplate.file_watcher import FileWatcher
-from baseplate.integration.thrift import baseplateify_processor, RequestContext
+from baseplate.integration.thrift import baseplateify_processor
 from baseplate.secrets import store
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
@@ -107,18 +107,7 @@ def raw_thrift_client(endpoint):
 
 @contextlib.contextmanager
 def baseplate_thrift_client(endpoint, client_span_observer=None):
-    pool = ThriftConnectionPool(endpoint)
-
-    context = RequestContext()
-    server_span = ServerSpan(
-        trace_id=1234,
-        parent_id=2345,
-        span_id=3456,
-        flags=4567,
-        sampled=1,
-        name="example_service.example",
-        context=context,
-    )
+    baseplate = Baseplate()
 
     if client_span_observer:
 
@@ -126,15 +115,28 @@ def baseplate_thrift_client(endpoint, client_span_observer=None):
             def on_child_span_created(self, span):
                 span.register(client_span_observer)
 
-        server_span.register(TestServerSpanObserver())
+        observer = TestServerSpanObserver()
+
+        class TestBaseplateObserver(BaseplateObserver):
+            def on_server_span_created(self, context, span):
+                span.register(observer)
+
+        baseplate.register(TestBaseplateObserver())
+
+    context = baseplate.make_context_object()
+    trace_info = TraceInfo.from_upstream(
+        trace_id=1234, parent_id=2345, span_id=3456, flags=4567, sampled=True
+    )
+
+    pool = ThriftConnectionPool(endpoint)
+    context_factory = ThriftContextFactory(pool, TestService.Client)
+    baseplate.add_to_context("example_service", context_factory)
+
+    baseplate.make_server_span(context, "example_service.example", trace_info)
 
     edge_context_factory = make_edge_context_factory()
     edge_context = edge_context_factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
     edge_context.attach_context(context)
-
-    context_factory = ThriftContextFactory(pool, TestService.Client)
-    client = context_factory.make_object_for_context("example_service", server_span)
-    setattr(context, "example_service", client)
 
     yield context
 
