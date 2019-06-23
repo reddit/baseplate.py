@@ -19,7 +19,6 @@ import traceback
 import warnings
 
 from baseplate.config import Endpoint
-from baseplate.integration.thrift import RequestContext
 from baseplate.server import einhorn, reloader
 
 
@@ -279,7 +278,8 @@ def load_and_run_tshell():
     app = make_app(config.app)
     env["app"] = app
 
-    span = app.baseplate.make_server_span(RequestContext(), "shell")
+    context = app.baseplate.make_context_object()
+    span = app.baseplate.make_server_span(context, "shell")
     env["context"] = span.context
 
     if config.tshell and "setup" in config.tshell:

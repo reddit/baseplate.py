@@ -10,7 +10,6 @@ from baseplate.context.redis import RedisContextFactory
 from baseplate.core import Baseplate
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
-from .. import mock
 
 from baseplate.context.redis import MessageQueue
 from baseplate.message_queue import TimedOutError
@@ -32,7 +31,7 @@ class RedisIntegrationTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("redis", factory)
 
-        self.context = mock.Mock()
+        self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple_command(self):

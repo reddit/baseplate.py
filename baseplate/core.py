@@ -2,14 +2,13 @@ import collections
 import logging
 import random
 
-from types import TracebackType
+from types import TracebackType, SimpleNamespace
 from typing import Tuple, Optional, Type, NamedTuple, Any
 
 import jwt
 from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 
-from baseplate.integration.wrapped_context import WrappedRequestContext
 from baseplate._utils import warn_deprecated, cached_property
 
 
@@ -599,6 +598,58 @@ class EdgeRequestContext:
         return _t_request
 
 
+class RequestContext:
+    def __init__(self, factories, wrapped=None, span=None):
+        if not wrapped:
+            wrapped = SimpleNamespace()
+
+        super().__getattribute__("__dict__").update(
+            {"trace": span, "_factories": factories, "_wrapped": wrapped, "_cache": {}}
+        )
+
+    def __getattribute__(self, name):
+        __dict__ = super().__getattribute__("__dict__")
+
+        # if we've already instantiated the object, return it immediately
+        cache = __dict__["_cache"]
+        cached_value = cache.get(name)
+        if cached_value:
+            return cached_value
+
+        # return instance attributes from ourselves
+        if name in ("clone", "trace"):
+            return super().__getattribute__(name)
+
+        # if we have a factory of that name, we'll use it. otherwise just pass
+        # the read onto the wrapped object.
+        factories = __dict__["_factories"]
+        factory = factories.get(name)
+        if not factory:
+            return getattr(__dict__["_wrapped"], name)
+
+        # build the object, save it to the cache, and return it
+        obj = factory.make_object_for_context(name, __dict__["trace"])
+        cache[name] = obj
+        return obj
+
+    def __setattr__(self, name, value):
+        __dict__ = super().__getattribute__("__dict__")
+
+        if name == "trace":
+            __dict__["trace"] = value
+            return
+
+        # it's important to proxy writes down to the underlying object as the
+        # underlying object might try to use self.foo to access something added
+        # via setattr(). that'd fail if we didn't proxy because the write would
+        # never have made it onto that object's self.
+        setattr(__dict__["_wrapped"], name, value)
+
+    def clone(self):
+        __dict__ = super().__getattribute__("__dict__")
+        return RequestContext(__dict__["_factories"], wrapped=__dict__["_wrapped"])
+
+
 class Baseplate:
     """The core of the Baseplate diagnostics framework.
 
@@ -611,7 +662,7 @@ class Baseplate:
     def __init__(self):
         self.observers = []
         self._metrics_client = None
-        self._reporters = {}
+        self._context_config = {}
 
     def register(self, observer):
         """Register an observer.
@@ -708,11 +759,18 @@ class Baseplate:
         :param baseplate.context.ContextFactory context_factory: A factory.
 
         """
-        # pylint: disable=cyclic-import
-        from baseplate.context import ContextObserver
+        self._context_config[name] = context_factory
 
-        self._reporters[name] = context_factory.report_runtime_metrics
-        self.register(ContextObserver(name, context_factory))
+    def make_context_object(self, wrapped=None):
+        """Make a context object for the request.
+
+        :param wrapped: (Optional) a request context object to wrap and proxy
+            data access through to. If the framework you're integrating with
+            already has its own request object, this would be where to integrate it
+            in.
+
+        """
+        return RequestContext(self._context_config, wrapped=wrapped)
 
     def make_server_span(self, context, name, trace_info=None):
         """Return a server span representing the request we are handling.
@@ -722,7 +780,8 @@ class Baseplate:
         child spans of the server span, and the server span will in turn be the
         child span of whatever upstream request it is part of, if any.
 
-        :param context: The :term:`context object` for this request.
+        :param RequestContext context: The :term:`context object` for this
+            request. Must have been created using :py:meth:`make_context_object`.
         :param str name: A name to identify the type of this request, e.g.
             a route or RPC method name.
         :param baseplate.core.TraceInfo trace_info: The trace context of this
@@ -730,6 +789,8 @@ class Baseplate:
             context will be generated.
 
         """
+        assert isinstance(context, RequestContext)
+
         if trace_info is None:
             trace_info = TraceInfo.new()
 
@@ -740,12 +801,19 @@ class Baseplate:
             trace_info.sampled,
             trace_info.flags,
             name,
-            WrappedRequestContext(context),
+            context,
         )
+        context.trace = server_span
 
         for observer in self.observers:
             observer.on_server_span_created(context, server_span)
         return server_span
+
+    def get_runtime_metric_reporters(self):
+        result = {}
+        for name, factory in self._context_config.items():
+            result[name] = factory.report_runtime_metrics
+        return result
 
 
 class Span:
@@ -859,19 +927,18 @@ class LocalSpan(Span):
         """
         span_id = random.getrandbits(64)
 
+        context_copy = self.context.clone()
         if local:
-            context_copy = self.context.clone()
             span = LocalSpan(
                 self.trace_id, self.id, span_id, self.sampled, self.flags, name, context_copy
             )
-            if component_name is None:
-                raise ValueError("Cannot create local span without component name.")
             span.component_name = component_name
-            context_copy.shadow_context_attr("trace", span)
         else:
             span = Span(
-                self.trace_id, self.id, span_id, self.sampled, self.flags, name, self.context
+                self.trace_id, self.id, span_id, self.sampled, self.flags, name, context_copy
             )
+        context_copy.trace = span
+
         for observer in self.observers:
             observer.on_child_span_created(span)
         return span

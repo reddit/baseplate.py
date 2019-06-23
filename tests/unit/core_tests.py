@@ -12,7 +12,6 @@ from baseplate.core import (
     SpanObserver,
     TraceInfo,
 )
-from baseplate.integration import WrappedRequestContext
 from baseplate.file_watcher import FileWatcher
 from baseplate.secrets import store
 
@@ -52,10 +51,9 @@ def make_test_span(context=None, local=False):
 
 class BaseplateTests(unittest.TestCase):
     def test_server_observer_made(self):
-        mock_context = mock.Mock()
-        mock_observer = mock.Mock(spec=BaseplateObserver)
-
         baseplate = Baseplate()
+        mock_context = baseplate.make_context_object()
+        mock_observer = mock.Mock(spec=BaseplateObserver)
         baseplate.register(mock_observer)
         server_span = baseplate.make_server_span(mock_context, "name", TraceInfo(1, 2, 3, None, 0))
 
@@ -66,11 +64,10 @@ class BaseplateTests(unittest.TestCase):
         )
 
     def test_null_server_observer(self):
-        mock_context = mock.Mock()
+        baseplate = Baseplate()
+        mock_context = baseplate.make_context_object()
         mock_observer = mock.Mock(spec=BaseplateObserver)
         mock_observer.on_server_span_created.return_value = None
-
-        baseplate = Baseplate()
         baseplate.register(mock_observer)
         server_span = baseplate.make_server_span(mock_context, "name", TraceInfo(1, 2, 3, None, 0))
 
@@ -160,7 +157,7 @@ class ServerSpanTests(unittest.TestCase):
         mock_getrandbits.return_value = 0xCAFE
         mock_observer = mock.Mock(spec=ServerSpanObserver)
         mock_context = mock.Mock()
-        mock_cloned_context = mock.Mock(spec=WrappedRequestContext)
+        mock_cloned_context = mock.Mock()
         mock_context.clone.return_value = mock_cloned_context
 
         server_span = ServerSpan("trace", "parent", "id", None, 0, "name", mock_context)
@@ -179,7 +176,7 @@ class ServerSpanTests(unittest.TestCase):
         mock_getrandbits.return_value = 0xCAFE
         mock_observer = mock.Mock(spec=ServerSpanObserver)
         mock_context = mock.Mock()
-        mock_cloned_context = mock.Mock(spec=WrappedRequestContext)
+        mock_cloned_context = mock.Mock()
         mock_context.clone.return_value = mock_cloned_context
 
         server_span = ServerSpan("trace", "parent", "id", None, 0, "name", mock_context)

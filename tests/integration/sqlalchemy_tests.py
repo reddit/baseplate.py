@@ -15,7 +15,6 @@ from baseplate.context.sqlalchemy import (
 from baseplate.core import Baseplate
 
 from . import TestBaseplateObserver
-from .. import mock
 
 
 Base = declarative_base()
@@ -40,7 +39,7 @@ class SQLAlchemyEngineTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("db", factory)
 
-        self.context = mock.Mock()
+        self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple_query(self):
@@ -93,7 +92,7 @@ class SQLAlchemySessionTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("db", factory)
 
-        self.context = mock.Mock()
+        self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple_session(self):

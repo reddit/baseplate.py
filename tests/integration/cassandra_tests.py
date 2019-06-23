@@ -31,7 +31,7 @@ class CassandraTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("cassandra", factory)
 
-        self.context = mock.Mock()
+        self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple_query(self):
@@ -164,7 +164,7 @@ class CassandraConcurrentTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("cassandra", factory)
 
-        self.context = mock.Mock()
+        self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_execute_concurrent_with_args(self):

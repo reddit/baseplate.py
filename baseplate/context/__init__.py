@@ -19,8 +19,6 @@ and then a context-aware version of the client will show up on the
 
 """
 
-from baseplate.core import BaseplateObserver, LocalSpan, SpanObserver
-
 
 class ContextFactory:
     """An interface for adding stuff to the context object.
@@ -38,25 +36,3 @@ class ContextFactory:
     def make_object_for_context(self, name, span):
         """Return an object that can be added to the context object."""
         raise NotImplementedError
-
-
-class ContextObserver(BaseplateObserver):
-    def __init__(self, name, context_factory):
-        self.name = name
-        self.context_factory = context_factory
-
-    def on_server_span_created(self, context, server_span):
-        context_attr = self.context_factory.make_object_for_context(self.name, server_span)
-        setattr(context, self.name, context_attr)
-        server_span.register(ContextSpanObserver(self.name, self.context_factory))
-
-
-class ContextSpanObserver(SpanObserver):
-    def __init__(self, name, context_factory):
-        self.name = name
-        self.context_factory = context_factory
-
-    def on_child_span_created(self, span):
-        if isinstance(span, LocalSpan):
-            context_attr = self.context_factory.make_object_for_context(self.name, span)
-            span.context.shadow_context_attr(self.name, context_attr)

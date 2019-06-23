@@ -33,10 +33,6 @@ TRACE_HEADER_NAMES = {
 }
 
 
-class RequestContext:
-    pass
-
-
 class _ContextAwareHandler:
     def __init__(self, handler, context, logger):
         self.handler = handler
@@ -102,7 +98,7 @@ def baseplateify_processor(processor, logger, baseplate, edge_context_factory=No
 
     def make_processor_fn(fn_name, processor_fn):
         def call_processor_with_span_context(self, seqid, iprot, oprot):
-            context = RequestContext()
+            context = baseplate.make_context_object()
 
             # Allow case-insensitivity for THeader headers
             headers = CaseInsensitiveDict(data=iprot.get_headers())
@@ -121,10 +117,9 @@ def baseplateify_processor(processor, logger, baseplate, edge_context_factory=No
                 # downstream even if we don't know how to handle it.
                 context.raw_request_context = edge_payload
 
-            server_span = baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
+            baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
 
             context.headers = headers
-            context.trace = server_span
 
             handler = processor._handler
             context_aware_handler = _ContextAwareHandler(handler, context, logger)

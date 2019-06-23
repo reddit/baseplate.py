@@ -31,7 +31,7 @@ class HvacTests(unittest.TestCase):
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("vault", factory)
 
-        self.context = mock.Mock()
+        self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple(self):

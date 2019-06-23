@@ -143,7 +143,7 @@ def start(server_config, application, pool):
         },
     )
 
-    reporters = [_BaseplateReporter(baseplate._reporters)]
+    reporters = [_BaseplateReporter(baseplate.get_runtime_metric_reporters())]
 
     if cfg.monitoring.concurrency:
         reporters.append(_ConcurrencyReporter(pool))

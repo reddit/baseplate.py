@@ -51,7 +51,7 @@ def consume(baseplate, exchange, connection, queue_name, routing_keys, handler):
 
     logger.info("waiting for messages")
     while True:
-        context = ConsumerContext()
+        context = baseplate.make_context_object()
         with baseplate.make_server_span(context, queue_name) as span:
             message = kombu_consumer.get_message(span)
             handler(context, message.body, message)
@@ -75,10 +75,6 @@ class _ConsumerWorker(ConsumerMixin):
             return self.work_queue.get(block=block, timeout=timeout)
         except queue.Empty:
             return None
-
-
-class ConsumerContext:
-    pass
 
 
 class BaseKombuConsumer:

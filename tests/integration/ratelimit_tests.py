@@ -17,7 +17,6 @@ except ImportError:
     raise unittest.SkipTest("redis-py is not installed")
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
-from .. import mock
 
 
 redis_endpoint = get_endpoint_or_skip_container("redis", 6379)
@@ -38,7 +37,7 @@ class RateLimiterBackendTests:
         baseplate.register(self.baseplate_observer)
         baseplate.add_to_context("ratelimiter", ratelimiter_factory)
 
-        self.context = mock.Mock()
+        self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_ratelimiter_consume(self):
