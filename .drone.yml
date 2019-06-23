@@ -32,7 +32,7 @@ steps:
               from_secret: pip_options
       commands:
           - pip install $PIP_OPTIONS -r requirements-test.txt
-          - nosetests -v
+          - pytest
       depends_on: [clone]
 
     - name: "Python 3.7"
@@ -47,7 +47,7 @@ steps:
               from_secret: pip_options
       commands:
           - pip install $PIP_OPTIONS -r requirements-test.txt
-          - nosetests -v
+          - pytest
       depends_on: [clone]
 
 services:
