@@ -42,18 +42,33 @@ def hvac_factory_from_config(app_config, secrets_store, prefix="vault."):
 
     """
     assert prefix.endswith(".")
-    config_prefix = prefix[:-1]
-    cfg = config.parse_config(
-        app_config,
-        {
-            config_prefix: {
-                "timeout": config.Optional(config.Timespan, default=datetime.timedelta(seconds=1))
-            }
-        },
+    parser = config.SpecParser(
+        {"timeout": config.Optional(config.Timespan, default=datetime.timedelta(seconds=1))}
     )
-    options = getattr(cfg, config_prefix)
+    options = parser.parse(prefix[:-1], app_config)
 
     return HvacContextFactory(secrets_store, options.timeout)
+
+
+class HvacClient(config.Parser):
+    """Configure an HVAC client.
+
+    This is meant to be used with
+    :py:meth:`baseplate.core.Baseplate.configure_context`.
+
+    See :py:func:`hvac_factory_from_config` for available configurables.
+
+    :param secrets: The configured secrets store for this application.
+
+    """
+
+    def __init__(self, secrets):
+        self.secrets = secrets
+
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+        return hvac_factory_from_config(
+            raw_config, secrets_store=self.secrets, prefix=f"{key_path}."
+        )
 
 
 class HvacContextFactory(ContextFactory):

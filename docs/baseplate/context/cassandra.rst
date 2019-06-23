@@ -3,8 +3,12 @@
 
 .. automodule:: baseplate.context.cassandra
 
-Configuration Parsing
----------------------
+Configuration
+-------------
+
+.. autoclass:: baseplate.context.cassandra.CassandraClient
+
+.. autoclass:: baseplate.context.cassandra.CQLMapperClient
 
 .. autofunction:: baseplate.context.cassandra.cluster_from_config
 

@@ -1,20 +1,30 @@
 import logging
 from threading import Event
+from typing import Optional, Dict, Any
+
+from cassandra.auth import PlainTextAuthProvider
 
 # pylint: disable=no-name-in-module
-from cassandra.cluster import Cluster, _NOT_SET, ResponseFuture
+from cassandra.cluster import Cluster, _NOT_SET, ResponseFuture, ExecutionProfile
 
 # pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
 
 from baseplate import config
 from baseplate.context import ContextFactory
+from baseplate.secrets import SecretsStore
 
 
 logger = logging.getLogger(__name__)
 
 
-def cluster_from_config(app_config, prefix="cassandra.", **kwargs):
+def cluster_from_config(
+    app_config: config.RawConfig,
+    secrets: Optional[SecretsStore] = None,
+    prefix: str = "cassandra.",
+    execution_profiles: Optional[Dict[str, ExecutionProfile]] = None,
+    **kwargs: Any,
+):
     """Make a Cluster from a configuration dictionary.
 
     The keys useful to :py:func:`cluster_from_config` should be prefixed, e.g.
@@ -30,26 +40,58 @@ def cluster_from_config(app_config, prefix="cassandra.", **kwargs):
     * ``contact_points`` (required): comma delimited list of contact points to
       try connecting for cluster discovery
     * ``port``: The server-side port to open connections to.
+    * ``credentials_secret`` (optional): the key used to retrieve the database
+        credentials from ``secrets`` as a :py:class:`~baseplate.secrets.CredentialSecret`.
+
+    :param execution_profiles: Configured execution profiles to provide to the
+        rest of the application.
 
     """
     assert prefix.endswith(".")
-    config_prefix = prefix[:-1]
-    cfg = config.parse_config(
-        app_config,
+    parser = config.SpecParser(
         {
-            config_prefix: {
-                "contact_points": config.TupleOf(config.String),
-                "port": config.Optional(config.Integer, default=None),
-            }
-        },
+            "contact_points": config.TupleOf(config.String),
+            "port": config.Optional(config.Integer, default=None),
+            "credentials_secret": config.Optional(config.String),
+        }
     )
-
-    options = getattr(cfg, config_prefix)
+    options = parser.parse(prefix[:-1], app_config)
 
     if options.port:
         kwargs.setdefault("port", options.port)
 
-    return Cluster(options.contact_points, **kwargs)
+    if options.credentials_secret:
+        if not secrets:
+            raise TypeError("'secrets' is required if 'credentials_secret' is set")
+        credentials = secrets.get_credentials(options.credentials_secret)
+        kwargs.setdefault(
+            "auth_provider",
+            PlainTextAuthProvider(username=credentials.username, password=credentials.password),
+        )
+
+    return Cluster(options.contact_points, execution_profiles=execution_profiles, **kwargs)
+
+
+class CassandraClient(config.Parser):
+    """Configure a Cassandra client.
+
+    This is meant to be used with
+    :py:meth:`baseplate.core.Baseplate.configure_context`.
+
+    See :py:func:`cluster_from_config` for available configurables.
+
+    :param keyspace: Which keyspace to set as the default for operations.
+
+    """
+
+    def __init__(self, keyspace: str, **kwargs):
+        self.keyspace = keyspace
+        self.kwargs = kwargs
+
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+        cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
+        session = cluster.connect(keyspace=self.keyspace)
+        return CassandraContextFactory(session)
 
 
 class CassandraContextFactory(ContextFactory):
@@ -70,6 +112,28 @@ class CassandraContextFactory(ContextFactory):
 
     def make_object_for_context(self, name, span):
         return CassandraSessionAdapter(name, span, self.session, self.prepared_statements)
+
+
+class CQLMapperClient(config.Parser):
+    """Configure a CQLMapper client.
+
+    This is meant to be used with
+    :py:meth:`baseplate.core.Baseplate.configure_context`.
+
+    See :py:func:`cluster_from_config` for available configurables.
+
+    :param keyspace: Which keyspace to set as the default for operations.
+
+    """
+
+    def __init__(self, keyspace: str, **kwargs):
+        self.keyspace = keyspace
+        self.kwargs = kwargs
+
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+        cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
+        session = cluster.connect(keyspace=self.keyspace)
+        return CQLMapperContextFactory(session)
 
 
 class CQLMapperContextFactory(CassandraContextFactory):

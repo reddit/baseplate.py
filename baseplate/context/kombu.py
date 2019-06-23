@@ -24,19 +24,10 @@ def connection_from_config(app_config, prefix, **kwargs):
 
     """
     assert prefix.endswith(".")
-    config_prefix = prefix[:-1]
-    cfg = config.parse_config(
-        app_config,
-        {
-            config_prefix: {
-                "hostname": config.String,
-                "virtual_host": config.Optional(config.String),
-            }
-        },
+    parser = config.SpecParser(
+        {"hostname": config.String, "virtual_host": config.Optional(config.String)}
     )
-
-    options = getattr(cfg, config_prefix)
-
+    options = parser.parse(prefix[:-1], app_config)
     return Connection(hostname=options.hostname, virtual_host=options.virtual_host, **kwargs)
 
 
@@ -58,20 +49,35 @@ def exchange_from_config(app_config, prefix, **kwargs):
 
     """
     assert prefix.endswith(".")
-    config_prefix = prefix[:-1]
-    cfg = config.parse_config(
-        app_config,
-        {
-            config_prefix: {
-                "exchange_name": config.Optional(config.String),
-                "exchange_type": config.String,
-            }
-        },
+    parser = config.SpecParser(
+        {"exchange_name": config.Optional(config.String), "exchange_type": config.String}
     )
-
-    options = getattr(cfg, config_prefix)
-
+    options = parser.parse(prefix[:-1], app_config)
     return Exchange(name=options.exchange_name or "", type=options.exchange_type, **kwargs)
+
+
+class KombuProducer(config.Parser):
+    """Configure a Kombu producer.
+
+    This is meant to be used with
+    :py:meth:`baseplate.core.Baseplate.configure_context`.
+
+    See :py:func:`connection_from_config` and :py:func:`exchange_from_config`
+    for available configurables.
+
+    :param max_connections: The maximum number of connections.
+
+    """
+
+    def __init__(self, max_connections=None):
+        self.max_connections = max_connections
+
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+        connection = connection_from_config(raw_config, prefix=f"{key_path}.")
+        exchange = exchange_from_config(raw_config, prefix=f"{key_path}.")
+        return KombuProducerContextFactory(
+            connection, exchange, max_connections=self.max_connections
+        )
 
 
 class KombuProducerContextFactory(ContextFactory):
@@ -95,10 +101,10 @@ class KombuProducerContextFactory(ContextFactory):
         self.producers = Producers(limit=max_connections)
 
     def make_object_for_context(self, name, span):
-        return KombuProducer(name, span, self.connection, self.exchange, self.producers)
+        return _KombuProducer(name, span, self.connection, self.exchange, self.producers)
 
 
-class KombuProducer:
+class _KombuProducer:
     def __init__(self, name, span, connection, exchange, producers):
         self.name = name
         self.span = span
@@ -107,17 +113,6 @@ class KombuProducer:
         self.producers = producers
 
     def publish(self, body, routing_key=None, **kwargs):
-        """Publish a message to the routing_key.
-
-        :param str body: The message body.
-        :param str routing_key: The routing key to publish to.
-
-        See `Kombu Documentation`_ for other arguments.
-
-        .. _Kombu Documentation:
-            http://docs.celeryproject.org/projects/kombu/en/latest/reference/kombu.html#kombu.Producer.publish # noqa
-
-        """
         trace_name = "{}.{}".format(self.name, "publish")
         child_span = self.span.make_child(trace_name)
 

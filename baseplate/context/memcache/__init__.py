@@ -38,21 +38,16 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None, deserializ
 
     """
     assert prefix.endswith(".")
-    config_prefix = prefix[:-1]
-    cfg = config.parse_config(
-        app_config,
+    parser = config.SpecParser(
         {
-            config_prefix: {
-                "endpoint": config.Endpoint,
-                "max_pool_size": config.Optional(config.Integer, default=None),
-                "connect_timeout": config.Optional(config.Float, default=None),
-                "timeout": config.Optional(config.Float, default=None),
-                "no_delay": config.Optional(config.Boolean, default=True),
-            }
-        },
+            "endpoint": config.Endpoint,
+            "max_pool_size": config.Optional(config.Integer, default=None),
+            "connect_timeout": config.Optional(config.Float, default=None),
+            "timeout": config.Optional(config.Float, default=None),
+            "no_delay": config.Optional(config.Boolean, default=True),
+        }
     )
-
-    options = getattr(cfg, config_prefix)
+    options = parser.parse(prefix[:-1], app_config)
 
     return PooledClient(
         server=options.endpoint.address,
@@ -63,6 +58,37 @@ def pool_from_config(app_config, prefix="memcache.", serializer=None, deserializ
         no_delay=options.no_delay,
         max_pool_size=options.max_pool_size,
     )
+
+
+class MemcacheClient(config.Parser):
+    """Configure a Memcached client.
+
+    This is meant to be used with
+    :py:meth:`baseplate.core.Baseplate.configure_context`.
+
+    See :py:func:`pool_from_config` for available configurables.
+
+    :param callable serializer: function to serialize values to strings suitable
+        for being stored in memcached. An example is
+        :py:func:`~baseplate.context.memcache.lib.make_dump_and_compress_fn`.
+    :param callable deserializer: function to convert strings returned from
+        memcached to arbitrary objects, must be compatible with ``serializer``.
+        An example is :py:func:`~baseplate.context.memcache.lib.decompress_and_load`.
+
+    """
+
+    def __init__(self, serializer=None, deserializer=None):
+        self.serializer = serializer
+        self.deserializer = deserializer
+
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+        pool = pool_from_config(
+            raw_config,
+            prefix=f"{key_path}.",
+            serializer=self.serializer,
+            deserializer=self.deserializer,
+        )
+        return MemcacheContextFactory(pool)
 
 
 class MemcacheContextFactory(ContextFactory):

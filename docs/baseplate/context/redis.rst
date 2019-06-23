@@ -3,8 +3,10 @@
 
 .. automodule:: baseplate.context.redis
 
-Configuration Parsing
----------------------
+Configuration
+-------------
+
+.. autoclass:: baseplate.context.redis.RedisClient
 
 .. autofunction:: baseplate.context.redis.pool_from_config
 

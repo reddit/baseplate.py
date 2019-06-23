@@ -3,8 +3,10 @@
 
 .. automodule:: baseplate.context.hvac
 
-Configuration Parsing
----------------------
+Configuration
+-------------
+
+.. autoclass:: baseplate.context.hvac.HvacClient
 
 .. autofunction:: baseplate.context.hvac.hvac_factory_from_config
 

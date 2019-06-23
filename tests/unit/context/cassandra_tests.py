@@ -12,6 +12,7 @@ except ImportError:
 from baseplate import core
 from baseplate.config import ConfigurationError
 from baseplate.context.cassandra import cluster_from_config, CassandraSessionAdapter
+from baseplate.secrets import SecretsStore
 
 
 class ClusterFromConfigTests(unittest.TestCase):
@@ -42,6 +43,26 @@ class ClusterFromConfigTests(unittest.TestCase):
         )
 
         self.assertEqual(cluster.contact_points, ["127.0.1.1", "127.0.1.2"])
+
+    def test_credentials_but_no_secrets(self):
+        with self.assertRaises(TypeError):
+            cluster_from_config(
+                {
+                    "cassandra.contact_points": "127.0.0.1",
+                    "cassandra.credentials_secret": "secret/foo/bar",
+                }
+            )
+
+    def test_credentials(self):
+        secrets = mock.Mock(autospec=SecretsStore)
+        cluster = cluster_from_config(
+            {
+                "cassandra.contact_points": "127.0.0.1",
+                "cassandra.credentials_secret": "secret/foo/bar",
+            },
+            secrets=secrets,
+        )
+        self.assertIsNotNone(cluster.auth_provider)
 
 
 class CassandraSessionAdapterTests(unittest.TestCase):
