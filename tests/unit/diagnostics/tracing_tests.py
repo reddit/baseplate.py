@@ -126,7 +126,7 @@ class TraceSpanObserverTests(TraceTestBase):
     def test_component_set_on_initialization(self):
         component_set = False
         for annotation in self.test_span_observer.binary_annotations:
-            if annotation['key'] == ANNOTATIONS['COMPONENT'] and annotation['value'] == 'baseplate':
+            if annotation["key"] == ANNOTATIONS["COMPONENT"] and annotation["value"] == "baseplate":
                 component_set = True
                 break
         self.assertTrue(component_set)
@@ -284,15 +284,17 @@ class TraceLocalSpanObserverTests(TraceTestBase):
         self.assertListEqual(
             local_trace_observer.binary_annotations,
             [
-                {'key': ANNOTATIONS['COMPONENT'],
-                 'value': 'baseplate',
-                 'endpoint': {'ipv4': 'test-host', 'serviceName': 'test-service'},
+                {
+                    "key": ANNOTATIONS["COMPONENT"],
+                    "value": "baseplate",
+                    "endpoint": {"ipv4": "test-host", "serviceName": "test-service"},
                 },
-                {'key': ANNOTATIONS['LOCAL_COMPONENT'],
-                 'value': 'test-component',
-                 'endpoint': {'ipv4': 'test-host', 'serviceName': 'test-service'},
+                {
+                    "key": ANNOTATIONS["LOCAL_COMPONENT"],
+                    "value": "test-component",
+                    "endpoint": {"ipv4": "test-host", "serviceName": "test-service"},
                 },
-            ]
+            ],
         )
 
     def test_serialize(self):
@@ -306,9 +308,9 @@ class TraceLocalSpanObserverTests(TraceTestBase):
         self.assertEqual(serialized_span["name"], self.span.name)
         annotations = serialized_span["binaryAnnotations"]
         for annotation in annotations:
-            self.assertTrue('key' in annotation)
-            self.assertTrue('value' in annotation)
-            self.assertTrue('endpoint' in annotation)
+            self.assertTrue("key" in annotation)
+            self.assertTrue("value" in annotation)
+            self.assertTrue("endpoint" in annotation)
 
 
 class NullRecorderTests(TraceTestBase):
