@@ -30,6 +30,7 @@ ANNOTATIONS = {
     "SERVER_SEND": "ss",
     "SERVER_RECEIVE": "sr",
     "LOCAL_COMPONENT": "lc",
+    "COMPONENT": "component",
 }
 
 # Feature flags
@@ -172,6 +173,7 @@ class TraceSpanObserver(SpanObserver):
         self.end = None
         self.elapsed = None
         self.binary_annotations = []
+        self.on_set_tag(ANNOTATIONS['COMPONENT'], 'baseplate')
         super(TraceSpanObserver, self).__init__()
 
     def on_start(self):

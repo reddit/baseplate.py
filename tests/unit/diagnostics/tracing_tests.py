@@ -123,6 +123,14 @@ class TraceSpanObserverTests(TraceTestBase):
             "test-service", "test-hostname", self.span, self.recorder
         )
 
+    def test_component_set_on_initialization(self):
+        component_set = False
+        for annotation in self.test_span_observer.binary_annotations:
+            if annotation['key'] == ANNOTATIONS['COMPONENT'] and annotation['value'] == 'baseplate':
+                component_set = True
+                break
+        self.assertTrue(component_set)
+
     def test_serialize_uses_span_info(self):
         serialized_span = self.test_span_observer._serialize()
         self.assertEqual(serialized_span["traceId"], self.span.trace_id)
@@ -146,6 +154,9 @@ class TraceSpanObserverTests(TraceTestBase):
         self.assertTrue(cr_in_annotation)
 
     def test_serialize_adds_binary_annotations(self):
+        # Reset in case initialization annotations exist.
+        self.test_span_observer.binary_annotations = []
+
         self.test_span_observer.on_set_tag("test-key", "test-value")
         serialized_span = self.test_span_observer._serialize()
         self.assertEqual(len(serialized_span["binaryAnnotations"]), 1)
@@ -184,9 +195,9 @@ class TraceSpanObserverTests(TraceTestBase):
         self.assertTrue(annotation["endpoint"])
 
     def test_on_set_tag_adds_binary_annotation(self):
+        self.test_span_observer.binary_annotations = []
         self.assertFalse(self.test_span_observer.binary_annotations)
         self.test_span_observer.on_set_tag("test-key", "test-value")
-        self.assertTrue(self.test_span_observer.binary_annotations)
         annotation = self.test_span_observer.binary_annotations[0]
         self.assertEquals(annotation["key"], "test-key")
         self.assertEquals(annotation["value"], "test-value")
@@ -270,10 +281,19 @@ class TraceLocalSpanObserverTests(TraceTestBase):
         local_trace_observer = TraceLocalSpanObserver(
             "test-service", "test-component", "test-host", self.span, self.recorder
         )
-        self.assertEqual(len(local_trace_observer.binary_annotations), 1)
-        annotation = local_trace_observer.binary_annotations[0]
-        self.assertEqual(annotation["key"], ANNOTATIONS["LOCAL_COMPONENT"])
-        self.assertEqual(annotation["value"], "test-component")
+        self.assertListEqual(
+            local_trace_observer.binary_annotations,
+            [
+                {'key': ANNOTATIONS['COMPONENT'],
+                 'value': 'baseplate',
+                 'endpoint': {'ipv4': 'test-host', 'serviceName': 'test-service'},
+                },
+                {'key': ANNOTATIONS['LOCAL_COMPONENT'],
+                 'value': 'test-component',
+                 'endpoint': {'ipv4': 'test-host', 'serviceName': 'test-service'},
+                },
+            ]
+        )
 
     def test_serialize(self):
         local_trace_observer = TraceLocalSpanObserver(
@@ -284,9 +304,11 @@ class TraceLocalSpanObserverTests(TraceTestBase):
         serialized_span = local_trace_observer._serialize()
         self.assertIsNotNone(serialized_span["duration"])
         self.assertEqual(serialized_span["name"], self.span.name)
-        lc_annotation = serialized_span["binaryAnnotations"][0]
-        self.assertEqual(lc_annotation["endpoint"]["serviceName"], "test-service")
-        self.assertEqual(lc_annotation["value"], "test-component")
+        annotations = serialized_span["binaryAnnotations"]
+        for annotation in annotations:
+            self.assertTrue('key' in annotation)
+            self.assertTrue('value' in annotation)
+            self.assertTrue('endpoint' in annotation)
 
 
 class NullRecorderTests(TraceTestBase):
