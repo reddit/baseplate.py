@@ -149,6 +149,9 @@ class InternetAddress(NamedTuple):
     host: str
     port: int
 
+    def __str__(self):
+        return f"{self.host}:{self.port}"
+
 
 class EndpointConfiguration(NamedTuple):
     """A description of a remote endpoint.
@@ -167,6 +170,9 @@ class EndpointConfiguration(NamedTuple):
 
     family: socket.AddressFamily  # pylint: disable=no-member
     address: Union[InternetAddress, str]
+
+    def __str__(self):
+        return str(self.address)
 
 
 def Endpoint(text: str) -> EndpointConfiguration:  # noqa: D401
