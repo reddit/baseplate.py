@@ -738,6 +738,56 @@ class Baseplate:
 
         self.register(SentryBaseplateObserver(client))
 
+    def configure_observers(self, app_config: config.RawConfig, module_name: str) -> None:
+        """Configure diagnostics observers based on application config file.
+
+        This installs all the currently supported observers that have settings
+        in the configuration file.
+
+        For the individual configurables, see the documentation for:
+
+        * :py:func:`~baseplate.error_reporter_from_config`
+        * :py:func:`~baseplate.metrics_client_from_config`
+        * :py:func:`~baseplate.tracing_client_from_config`
+
+        :param raw_config: The application configuration which should have
+            settings for the error reporter.
+        :param module_name: ``__name__`` of the root module of the application.
+
+        """
+        # pylint: disable=cyclic-import
+        from baseplate import (
+            metrics_client_from_config,
+            tracing_client_from_config,
+            error_reporter_from_config,
+        )
+
+        skipped = []
+
+        self.configure_logging()
+
+        if "metrics.namespace" in app_config:
+            metrics_client = metrics_client_from_config(app_config)
+            self.configure_metrics(metrics_client)
+        else:
+            skipped.append("metrics")
+
+        if "tracing.service_name" in app_config:
+            tracing_client = tracing_client_from_config(app_config)
+            self.configure_tracing(tracing_client)
+        else:
+            skipped.append("tracing")
+
+        if "sentry.dsn" in app_config:
+            error_reporter = error_reporter_from_config(app_config, module_name)
+            self.configure_error_reporting(error_reporter)
+        else:
+            skipped.append("error_reporter")
+
+        logger.debug(
+            "The following observers are unconfigured and won't run: %s", ",".join(skipped)
+        )
+
     def configure_context(self, app_config: config.RawConfig, context_spec: Dict) -> None:
         """Add a number of objects to each request's context object.
 
