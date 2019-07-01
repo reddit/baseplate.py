@@ -11,7 +11,6 @@ So a file named ``foo/bar/baz.thrift``` is accessed as a python module named
 If the baz.thrift file already has a ``namespace py quux`` declaration. It will be
 accessed in python as ``foo.bar.quux``, not the thrift default of ``quux``.
 
-
 Install this behavior by including
 ``baseplate.integration.command.ThriftBuildPyCommand`` as the ``build_py`` command in
 your ``setup.py``.

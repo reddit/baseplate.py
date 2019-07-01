@@ -52,7 +52,8 @@ class BuildThriftCommand(Command):
         return False
 
     def copy_with_namespace(self, thrift_file, buildfile):
-        """
+        """Copy source to working directory, with adjusted namespace declarations.
+        
         Patch or create the namespace declaration to include the path from the
         source root to this file.  If it didn't already exist, the base name
         will be set to (module name)_thrift, not the thrift default of (module
@@ -93,7 +94,6 @@ class BuildThriftCommand(Command):
     def build(self, thrift_file, build_dir, package_dir, python_namespace):
         print(f"building {thrift_file} -> {python_namespace}")
         # named 'module', unless there is a namespace declaration.
-        filename = os.path.basename(thrift_file)
         package = python_namespace.replace(".", "/")
         built_package = os.path.join(build_dir, package)
 
@@ -109,9 +109,7 @@ class BuildThriftCommand(Command):
         self.copy_tree(built_package, output_package)
 
     def find_thrift_files(self):
-        """
-        Returns: [(thrift file path, containing package root)]
-        """
+        """Returns: [(thrift file path, package root path)]."""
         thrift_packages = []
         for package in self.distribution.packages:
             package_dir = os.path.join(*package.split("."))
