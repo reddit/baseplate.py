@@ -20,6 +20,7 @@ from baseplate.core import (
 from baseplate.context.thrift import ThriftClient
 from baseplate.file_watcher import FileWatcher
 from baseplate.integration.thrift import baseplateify_processor
+from baseplate.integration.thrift import command as thrift_command
 from baseplate.secrets import store
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
@@ -528,3 +529,83 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
             self.assertEqual(handler.request_context.session.id, "beefdead")
         except jwt.exceptions.InvalidAlgorithmError:
             raise unittest.SkipTest("cryptography is not installed")
+
+
+import tempfile
+import pkg_resources
+
+
+class TestBuildThriftCommand(thrift_command.BuildThriftCommand):
+    def __init__(self, target_files):
+        self.target_files = target_files
+
+    def find_thrift_files(self):
+        return self.target_files
+
+
+class CompilerCommandTests(unittest.TestCase):
+    def test_build_thrift_default_namespace(self):
+        with tempfile.TemporaryDirectory() as build_base:
+            cmd = TestBuildThriftCommand(
+                [
+                    (
+                        "tests/integration/thrift_modules/test_include.thrift",
+                        "tests/integration/thrift_modules",
+                    ),
+                    (
+                        "tests/integration/thrift_modules/include_target.thrift",
+                        "tests/integration/thrift_modules",
+                    ),
+                ]
+            )
+
+            cmd.initialize_options()
+            cmd.build_base = build_base
+            cmd.finalize_options()
+            cmd.run()
+
+            from tests.integration.thrift_modules import test_include_thrift
+
+    def test_build_thrift_local_namespace(self):
+        with tempfile.TemporaryDirectory() as build_base:
+            cmd = TestBuildThriftCommand(
+                [
+                    (
+                        "tests/integration/thrift_modules/test_include_local_namespace.thrift",
+                        "tests/integration/thrift_modules",
+                    ),
+                    (
+                        "tests/integration/thrift_modules/include_target.thrift",
+                        "tests/integration/thrift_modules",
+                    ),
+                ]
+            )
+
+            cmd.initialize_options()
+            cmd.build_base = build_base
+            cmd.finalize_options()
+            cmd.run()
+
+            from tests.integration.thrift_modules import test_local_namespace
+
+    def test_build_thrift_include_has_namespace(self):
+        with tempfile.TemporaryDirectory() as build_base:
+            cmd = TestBuildThriftCommand(
+                [
+                    (
+                        "tests/integration/thrift_modules/test_include_remote_namespace.thrift",
+                        "tests/integration/thrift_modules",
+                    ),
+                    (
+                        "tests/integration/thrift_modules/include_target_with_namespace.thrift",
+                        "tests/integration/thrift_modules",
+                    ),
+                ]
+            )
+
+            cmd.initialize_options()
+            cmd.build_base = build_base
+            cmd.finalize_options()
+            cmd.run()
+
+            from tests.integration.thrift_modules import test_include_remote_namespace
