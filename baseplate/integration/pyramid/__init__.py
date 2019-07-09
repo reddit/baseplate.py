@@ -34,8 +34,9 @@ import sys
 import pyramid.events
 import pyramid.request
 import pyramid.tweens
+import webob.request
 
-from baseplate.core import TraceInfo
+from baseplate.core import RequestContext, TraceInfo
 from baseplate.server import make_app
 from baseplate._utils import warn_deprecated
 
@@ -135,6 +136,25 @@ class StaticTrustHandler(HeaderTrustHandler):
         return self.trust_headers
 
 
+# pylint: disable=too-many-ancestors
+class BaseplateRequest(RequestContext, pyramid.request.Request):
+    def __init__(self, context_config, environ):
+        RequestContext.__init__(self, context_config)
+        pyramid.request.Request.__init__(self, environ)
+
+
+class RequestFactory:
+    def __init__(self, baseplate):
+        self.baseplate = baseplate
+
+    def __call__(self, environ):
+        return BaseplateRequest(self.baseplate._context_config, environ)
+
+    def blank(self, path):
+        environ = webob.request.environ_from_url(path)
+        return BaseplateRequest(self.baseplate._context_config, environ)
+
+
 class BaseplateConfigurator:
     """Config extension to integrate Baseplate into Pyramid.
 
@@ -172,10 +192,6 @@ class BaseplateConfigurator:
     def _on_application_created(self, event):
         # attach the baseplate object to the application the server gets
         event.app.baseplate = self.baseplate
-
-    def _create_request(self, environ):
-        base_request = pyramid.request.Request(environ)
-        return self.baseplate.make_context_object(wrapped=base_request)
 
     def _on_new_request(self, event):
         request = event.request
@@ -228,7 +244,7 @@ class BaseplateConfigurator:
         )
 
     def includeme(self, config):
-        config.set_request_factory(self._create_request)
+        config.set_request_factory(RequestFactory(self.baseplate))
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
         config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
 

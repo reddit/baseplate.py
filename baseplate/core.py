@@ -2,7 +2,7 @@ import collections
 import logging
 import random
 
-from types import TracebackType, SimpleNamespace
+from types import TracebackType
 from typing import Tuple, Optional, Type, NamedTuple, Any, Dict
 
 import jwt
@@ -600,74 +600,45 @@ class EdgeRequestContext:
 
 
 class RequestContext:
-    def __init__(self, context_config, wrapped=None, prefix=None, span=None):
-        if not wrapped:
-            wrapped = SimpleNamespace()
+    def __init__(self, context_config, prefix=None, span=None, wrapped=None):
+        self.__context_config = context_config
+        self.__prefix = prefix
+        self.__wrapped = wrapped
+        self.trace: ServerSpan = span
 
-        super().__getattribute__("__dict__").update(
-            {
-                "trace": span,
-                "_context_config": context_config,
-                "_wrapped": wrapped,
-                "_prefix": prefix,
-                "_cache": {},
-            }
-        )
+    def __getattr__(self, name: str) -> Any:
+        try:
+            config_item = self.__context_config[name]
+        except KeyError:
+            try:
+                return getattr(self.__wrapped, name)
+            except AttributeError:
+                raise AttributeError(
+                    f"{repr(self.__class__.__name__)} object has no attribute {repr(name)}"
+                ) from None
 
-    def __getattribute__(self, name):
-        __dict__ = super().__getattribute__("__dict__")
-
-        # if we've already instantiated the object, return it immediately
-        cache = __dict__["_cache"]
-        cached_value = cache.get(name)
-        if cached_value:
-            return cached_value
-
-        # return instance attributes from ourselves
-        if name in ("clone", "trace"):
-            return super().__getattribute__(name)
-
-        # if we have a factory of that name, we'll use it. otherwise just pass
-        # the read onto the wrapped object.
-        context_config = __dict__["_context_config"]
-        config_item = context_config.get(name)
-        if not config_item:
-            return getattr(__dict__["_wrapped"], name)
-
-        # build the object, save it to the cache, and return it
-        prefix = __dict__["_prefix"]
-        if prefix:
-            full_name = f"{prefix}.{name}"
+        if self.__prefix:
+            full_name = f"{self.__prefix}.{name}"
         else:
             full_name = name
 
         if isinstance(config_item, dict):
-            obj = RequestContext(config_item, prefix=full_name, span=__dict__["trace"])
+            obj = RequestContext(context_config=config_item, prefix=full_name, span=self.trace)
         elif hasattr(config_item, "make_object_for_context"):
-            obj = config_item.make_object_for_context(full_name, __dict__["trace"])
+            obj = config_item.make_object_for_context(full_name, self.trace)
         else:
             obj = config_item
 
-        cache[name] = obj
+        setattr(self, name, obj)
         return obj
 
-    def __setattr__(self, name, value):
-        __dict__ = super().__getattribute__("__dict__")
-
-        if name == "trace":
-            __dict__["trace"] = value
-            return
-
-        # it's important to proxy writes down to the underlying object as the
-        # underlying object might try to use self.foo to access something added
-        # via setattr(). that'd fail if we didn't proxy because the write would
-        # never have made it onto that object's self.
-        setattr(__dict__["_wrapped"], name, value)
-
-    def clone(self):
-        __dict__ = super().__getattribute__("__dict__")
-        assert not __dict__["_prefix"], "only the root RequestContext can be cloned"
-        return RequestContext(__dict__["_context_config"], wrapped=__dict__["_wrapped"])
+    def clone(self) -> "RequestContext":
+        return RequestContext(
+            context_config=self.__context_config,
+            prefix=self.__prefix,
+            span=self.trace,
+            wrapped=self,
+        )
 
 
 class Baseplate:
@@ -818,16 +789,9 @@ class Baseplate:
         """
         self._context_config[name] = context_factory
 
-    def make_context_object(self, wrapped=None):
-        """Make a context object for the request.
-
-        :param wrapped: (Optional) a request context object to wrap and proxy
-            data access through to. If the framework you're integrating with
-            already has its own request object, this would be where to integrate it
-            in.
-
-        """
-        return RequestContext(self._context_config, wrapped=wrapped)
+    def make_context_object(self):
+        """Make a context object for the request."""
+        return RequestContext(self._context_config)
 
     def make_server_span(self, context, name, trace_info=None):
         """Return a server span representing the request we are handling.
