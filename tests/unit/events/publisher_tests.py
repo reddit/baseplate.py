@@ -121,16 +121,6 @@ class PublisherTests(unittest.TestCase):
         )
 
     @mock.patch("time.sleep")
-    def test_publish_retry(self, mock_sleep):
-        self.session.post.side_effect = [requests.HTTPError(504), IOError, mock.Mock()]
-        events = b'[{"example": "value"}]'
-
-        self.publisher.publish(SerializedBatch(count=1, bytes=events))
-
-        self.assertEqual(mock_sleep.call_count, 2)
-        self.assertEqual(self.session.post.call_count, 3)
-
-    @mock.patch("time.sleep")
     def test_fail_on_client_error(self, mock_sleep):
         self.session.post.side_effect = [
             requests.HTTPError(400, response=mock.Mock(status_code=400))
