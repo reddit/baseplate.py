@@ -11,6 +11,9 @@ from baseplate import config
 REPORT_INTERVAL_SECONDS = 10
 
 
+logger = logging.getLogger(__name__)
+
+
 class _ConcurrencyReporter:
     def __init__(self, pool):
         self.pool = pool
@@ -92,9 +95,43 @@ class _BaseplateReporter:
                 batch.namespace = b".".join((batch.namespace, b"clients", name.encode()))
                 reporter(batch)
             except Exception as exc:
-                logging.exception("Error generating client metrics: %s: %s", name, exc)
+                logger.exception("Error generating client metrics: %s: %s", name, exc)
             finally:
                 batch.namespace = original_namespace
+
+
+class _RefCycleReporter:
+    def __init__(self, root):
+        assert os.path.isdir(root), f"{root} is not a directory"
+        self.root = root
+
+        # test that this is available up front
+        import objgraph
+
+        del objgraph
+
+        logger.warning("Disabling automatic garbage collection to watch for reference cycles.")
+        gc.disable()
+
+    def report(self, _batch):
+        # run a garbage collection but keep everything we found in gc.garbage
+        gc.set_debug(gc.DEBUG_SAVEALL)
+        gc.collect()
+
+        if gc.garbage:
+            import objgraph
+
+            logger.warning("%d objects garbage collected. Writing objgraph...", len(gc.garbage))
+            objgraph.show_backrefs(
+                gc.garbage, filename=f"{self.root}/backrefs-{int(time.time())}.png"
+            )
+
+            # clean out the garbage altogether
+            gc.garbage.clear()
+            gc.set_debug(0)
+            gc.collect()
+        else:
+            logger.debug("No garbage yet!")
 
 
 def _report_runtime_metrics_periodically(metrics_client, reporters):
@@ -114,19 +151,19 @@ def _report_runtime_metrics_periodically(metrics_client, reporters):
                     try:
                         reporter.report(batch)
                     except Exception as exc:
-                        logging.debug(
+                        logger.debug(
                             "Error generating server metrics: %s: %s",
                             reporter.__class__.__name__,
                             exc,
                         )
         except Exception as exc:
-            logging.debug("Error while sending server metrics: %s", exc)
+            logger.debug("Error while sending server metrics: %s", exc)
 
 
 def start(server_config, application, pool):
     baseplate = getattr(application, "baseplate", None)
     if not baseplate or not baseplate._metrics_client:
-        logging.info("No metrics client configured. Server metrics will not be sent.")
+        logger.info("No metrics client configured. Server metrics will not be sent.")
         return
 
     cfg = config.parse_config(
@@ -138,6 +175,7 @@ def start(server_config, application, pool):
                 "gc": {
                     "stats": config.Optional(config.Boolean, default=True),
                     "timing": config.Optional(config.Boolean, default=False),
+                    "refcycle": config.Optional(config.String, default=None),
                 },
             }
         },
@@ -152,19 +190,25 @@ def start(server_config, application, pool):
         try:
             reporters.append(_BlockedGeventHubReporter(cfg.monitoring.blocked_hub.total_seconds()))
         except Exception as exc:
-            logging.info("monitoring.blocked_hub disabled: %s", exc)
+            logger.info("monitoring.blocked_hub disabled: %s", exc)
 
     if cfg.monitoring.gc.stats:
         try:
             reporters.append(_GCStatsReporter())
         except Exception as exc:
-            logging.info("monitoring.gc.stats disabled: %s", exc)
+            logger.info("monitoring.gc.stats disabled: %s", exc)
 
     if cfg.monitoring.gc.timing:
         try:
             reporters.append(_GCTimingReporter())
         except Exception as exc:
-            logging.info("monitoring.gc.timing disabled: %s", exc)
+            logger.info("monitoring.gc.timing disabled: %s", exc)
+
+    if cfg.monitoring.gc.refcycle:
+        try:
+            reporters.append(_RefCycleReporter(cfg.monitoring.gc.refcycle))
+        except Exception as exc:
+            logger.info("monitoring.gc.refcycle disabled: %s", exc)
 
     thread = threading.Thread(
         name="Server Monitoring",
