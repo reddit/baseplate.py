@@ -972,6 +972,10 @@ class Span:
         for observer in self.observers:
             observer.on_finish(exc_info)
 
+        # clean up reference cycles
+        self.context = None
+        self.observers.clear()
+
     def __enter__(self):
         self.start()
         return self

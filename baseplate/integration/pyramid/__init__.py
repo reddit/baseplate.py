@@ -61,6 +61,9 @@ def _make_baseplate_tween(handler, _registry):
             if request.trace:
                 request.trace.set_tag("http.status_code", response.status_code)
                 request.trace.finish()
+        finally:
+            # avoid a reference cycle
+            request.start_server_span = None
         return response
 
     return baseplate_tween
