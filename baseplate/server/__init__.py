@@ -8,6 +8,7 @@ import argparse
 import collections
 import configparser
 import fcntl
+import gc
 import importlib
 import logging
 import logging.config
@@ -207,6 +208,9 @@ def load_app_and_run_server():
 
     if args.reload:
         reloader.start_reload_watcher(extra_files=[args.config_file.name])
+
+    # clean up leftovers from initialization before we get into requests
+    gc.collect()
 
     logger.info("Listening on %s", listener.getsockname())
     server.start()
