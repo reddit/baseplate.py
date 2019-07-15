@@ -185,6 +185,12 @@ The following reporters are available:
    :py:class:`~baseplate.metrics.Gauge` with the current number of in-flight
    requests being processed concurrently.
 
+``monitoring.connection_pool``
+   Enabled if ``true``, disabled if ``false``. Defaults to disabled.
+
+   This will track the usage of connection pools for various clients in the
+   application. The metrics generated will depend on which clients are used.
+
 ``monitoring.gc.stats``
    Enabled if ``true``, disabled if ``false``. Defaults to enabled.
 
