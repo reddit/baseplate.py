@@ -172,6 +172,7 @@ def start(server_config, application, pool):
             "monitoring": {
                 "blocked_hub": config.Optional(config.Timespan, default=None),
                 "concurrency": config.Optional(config.Boolean, default=True),
+                "connection_pool": config.Optional(config.Boolean, default=False),
                 "gc": {
                     "stats": config.Optional(config.Boolean, default=True),
                     "timing": config.Optional(config.Boolean, default=False),
@@ -181,10 +182,13 @@ def start(server_config, application, pool):
         },
     )
 
-    reporters = [_BaseplateReporter(baseplate.get_runtime_metric_reporters())]
+    reporters = []
 
     if cfg.monitoring.concurrency:
         reporters.append(_ConcurrencyReporter(pool))
+
+    if cfg.monitoring.connection_pool:
+        reporters.append(_BaseplateReporter(baseplate.get_runtime_metric_reporters()))
 
     if cfg.monitoring.blocked_hub is not None:
         try:
