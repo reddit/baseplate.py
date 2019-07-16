@@ -10,9 +10,9 @@ except ImportError:
 else:
     del pymemcache
 
-from baseplate.config import ConfigurationError
-from baseplate.context.memcache import pool_from_config
-from baseplate.context.memcache import lib as memcache_lib
+from baseplate.lib.config import ConfigurationError
+from baseplate.clients.memcache import pool_from_config
+from baseplate.clients.memcache import lib as memcache_lib
 
 
 class PoolFromConfigTests(unittest.TestCase):

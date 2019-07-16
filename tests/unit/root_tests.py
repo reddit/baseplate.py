@@ -1,8 +1,8 @@
 import unittest
 
-from baseplate import tracing_client_from_config
-from baseplate.config import ConfigurationError
-from baseplate.diagnostics.tracing import LoggingRecorder, NullRecorder
+from baseplate.observers.tracing import tracing_client_from_config
+from baseplate.lib.config import ConfigurationError
+from baseplate.observers.tracing import LoggingRecorder, NullRecorder
 
 
 class TracingClientTests(unittest.TestCase):

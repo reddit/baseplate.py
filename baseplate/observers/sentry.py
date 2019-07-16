@@ -1,0 +1,147 @@
+import os
+import sys
+
+import raven
+
+from baseplate import BaseplateObserver, ServerSpanObserver
+from baseplate.lib import config
+
+
+def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -> raven.Client:
+    """Configure and return a error reporter.
+
+    This expects one configuration option and can take many optional ones:
+
+    ``sentry.dsn``
+        The DSN provided by Sentry. If blank, the reporter will discard events.
+    ``sentry.site`` (optional)
+        An arbitrary string to identify this client installation.
+    ``sentry.environment`` (optional)
+        The environment your application is running in.
+    ``sentry.exclude_paths`` (optional)
+        Comma-delimited list of module prefixes to ignore when discovering
+        where an error came from.
+    ``sentry.include_paths`` (optional)
+        Comma-delimited list of paths to include for consideration when
+        drilling down to an exception.
+    ``sentry.ignore_exceptions`` (optional)
+        Comma-delimited list of fully qualified names of exception classes
+        (potentially with * globs) to not report.
+    ``sentry.sample_rate`` (optional)
+        Percentage of errors to report. (e.g. "37%")
+    ``sentry.processors`` (optional)
+        Comma-delimited list of fully qualified names of processor classes
+        to apply to events before sending to Sentry.
+
+    Example usage::
+
+        error_reporter_from_config(app_config, __name__)
+
+    :param dict raw_config: The application configuration which should have
+        settings for the error reporter.
+    :param str module_name: ``__name__`` of the root module of the application.
+    :rtype: :py:class:`raven.Client`
+
+    """
+    cfg = config.parse_config(
+        raw_config,
+        {
+            "sentry": {
+                "dsn": config.Optional(config.String, default=None),
+                "site": config.Optional(config.String, default=None),
+                "environment": config.Optional(config.String, default=None),
+                "include_paths": config.Optional(config.String, default=None),
+                "exclude_paths": config.Optional(config.String, default=None),
+                "ignore_exceptions": config.Optional(config.TupleOf(config.String), default=[]),
+                "sample_rate": config.Optional(config.Percent, default=1),
+                "processors": config.Optional(
+                    config.TupleOf(config.String),
+                    default=["raven.processors.SanitizePasswordsProcessor"],
+                ),
+            }
+        },
+    )
+
+    application_module = sys.modules[module_name]
+    directory = os.path.dirname(application_module.__file__)
+    release = None
+    while directory != "/":
+        try:
+            release = raven.fetch_git_sha(directory)
+        except raven.exceptions.InvalidGitRepository:
+            directory = os.path.dirname(directory)
+        else:
+            break
+
+    # pylint: disable=maybe-no-member
+    return raven.Client(
+        dsn=cfg.sentry.dsn,
+        site=cfg.sentry.site,
+        release=release,
+        environment=cfg.sentry.environment,
+        include_paths=cfg.sentry.include_paths,
+        exclude_paths=cfg.sentry.exclude_paths,
+        ignore_exceptions=cfg.sentry.ignore_exceptions,
+        sample_rate=cfg.sentry.sample_rate,
+        processors=cfg.sentry.processors,
+    )
+
+
+class SentryBaseplateObserver(BaseplateObserver):
+    """Error reporting observer.
+
+    This observer reports unexpected exceptions to Sentry.
+
+    The raven client is accessible to your application during requests as the
+    ``sentry`` attribute on the :term:`context object`.
+
+    :param raven.Client client: A configured raven client.
+
+    """
+
+    def __init__(self, client):
+        self.raven = client
+
+    def on_server_span_created(self, context, server_span):
+        observer = SentryServerSpanObserver(self.raven, server_span)
+        server_span.register(observer)
+        context.sentry = self.raven
+
+
+class SentryServerSpanObserver(ServerSpanObserver):
+    def __init__(self, client, server_span):
+        self.raven = client
+        self.server_span = server_span
+
+    def on_start(self):
+        self.raven.context.activate()
+
+        # for now, this is just a tag for us humans to use
+        # https://github.com/getsentry/sentry/issues/716
+        self.raven.tags_context({"trace_id": self.server_span.trace_id})
+
+    def on_set_tag(self, key, value):
+        if key.startswith("http"):
+            self.raven.http_context({key[len("http.") :]: value})
+        else:
+            self.raven.tags_context({key: value})
+
+    def on_log(self, name, payload):
+        self.raven.captureBreadcrumb(category=name, data=payload)
+
+    def on_finish(self, exc_info=None):
+        if exc_info is not None:
+            self.raven.captureException(exc_info=exc_info)
+        self.raven.context.clear(deactivate=True)
+
+
+class SentryUnhandledErrorReporter:
+    """Hook into the Gevent hub and report errors outside request context."""
+
+    def __init__(self, hub, client):
+        self.original_print_exception = getattr(hub, "print_exception")
+        self.raven = client
+
+    def __call__(self, context, exc_type, value, tb):
+        self.raven.captureException((exc_type, value, tb))
+        self.original_print_exception(context, exc_type, value, tb)

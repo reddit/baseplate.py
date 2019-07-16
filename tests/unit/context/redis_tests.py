@@ -7,8 +7,8 @@ except ImportError:
 else:
     del redis
 
-from baseplate.config import ConfigurationError
-from baseplate.context.redis import pool_from_config
+from baseplate.lib.config import ConfigurationError
+from baseplate.clients.redis import pool_from_config
 
 
 class PoolFromConfigTests(unittest.TestCase):

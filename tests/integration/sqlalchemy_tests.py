@@ -7,13 +7,13 @@ try:
 except ImportError:
     raise unittest.SkipTest("sqlalchemy is not installed")
 
-from baseplate.context.sqlalchemy import (
+from baseplate.clients.sqlalchemy import (
     engine_from_config,
     SQLAlchemyEngineContextFactory,
     SQLAlchemySession,
     SQLAlchemySessionContextFactory,
 )
-from baseplate.core import Baseplate
+from baseplate import Baseplate
 
 from . import TestBaseplateObserver
 

@@ -1,8 +1,8 @@
 import datetime
 import unittest
 
-from baseplate import crypto
-from baseplate.secrets import VersionedSecret
+from baseplate.lib import crypto
+from baseplate.lib.secrets import VersionedSecret
 
 from .. import mock
 

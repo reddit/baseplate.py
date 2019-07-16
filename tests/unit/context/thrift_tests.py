@@ -1,6 +1,6 @@
 import unittest
 
-from baseplate.context import thrift
+from baseplate.clients import thrift
 from baseplate.thrift import BaseplateService
 
 

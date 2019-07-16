@@ -3,9 +3,15 @@ import json
 import unittest
 import warnings
 
-from baseplate.events import Event, EventQueue, EventQueueFullError, EventTooLargeError, FieldKind
-from baseplate.events.queue import MAX_EVENT_SIZE
-from baseplate.message_queue import MessageQueue, TimedOutError
+from baseplate.lib.events import (
+    Event,
+    EventQueue,
+    EventQueueFullError,
+    EventTooLargeError,
+    FieldKind,
+)
+from baseplate.lib.events import MAX_EVENT_SIZE
+from baseplate.lib.message_queue import MessageQueue, TimedOutError
 
 from ... import mock
 
@@ -150,7 +156,7 @@ class EventTests(unittest.TestCase):
 
 
 class EventQueueTests(unittest.TestCase):
-    @mock.patch("baseplate.events.queue.MessageQueue", autospec=MessageQueue)
+    @mock.patch("baseplate.lib.events.MessageQueue", autospec=MessageQueue)
     def setUp(self, MessageQueue):
         self.message_queue = MessageQueue.return_value
         self.queue = EventQueue("test")

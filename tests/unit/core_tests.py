@@ -1,20 +1,20 @@
 import unittest
 
-from baseplate import config
-from baseplate.core import (
+from baseplate.lib import config
+from baseplate import (
     Baseplate,
     BaseplateObserver,
-    EdgeRequestContextFactory,
     LocalSpan,
-    NoAuthenticationError,
     ServerSpan,
     ServerSpanObserver,
     Span,
     SpanObserver,
     TraceInfo,
 )
-from baseplate.file_watcher import FileWatcher
-from baseplate.secrets import store
+from baseplate.lib.edge_context import NoAuthenticationError
+from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.secrets import SecretsStore
 
 from .. import (
     mock,
@@ -75,7 +75,7 @@ class BaseplateTests(unittest.TestCase):
         self.assertEqual(server_span.observers, [])
 
     def test_configure_context_supports_complex_specs(self):
-        from baseplate.context.thrift import ThriftClient
+        from baseplate.clients.thrift import ThriftClient
         from baseplate.thrift import BaseplateService
 
         app_config = {
@@ -299,7 +299,7 @@ class EdgeRequestContextTests(unittest.TestCase):
             },
             "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
-        self.store = store.SecretsStore("/secrets")
+        self.store = SecretsStore("/secrets")
         self.store._filewatcher = mock_filewatcher
         self.factory = EdgeRequestContextFactory(self.store)
 

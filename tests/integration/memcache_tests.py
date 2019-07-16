@@ -5,8 +5,8 @@ try:
 except ImportError:
     raise unittest.SkipTest("pymemcache is not installed")
 
-from baseplate.context.memcache import MemcacheClient, MonitoredMemcacheConnection, make_keys_str
-from baseplate.core import Baseplate, LocalSpan, ServerSpan
+from baseplate.clients.memcache import MemcacheClient, MonitoredMemcacheConnection, make_keys_str
+from baseplate import Baseplate, LocalSpan, ServerSpan
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 from .. import mock

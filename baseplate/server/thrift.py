@@ -7,7 +7,7 @@ from thrift.transport.TSocket import TSocket
 from thrift.transport.THeaderTransport import THeaderClientType
 from thrift.transport.TTransport import TTransportException, TBufferedTransportFactory
 
-from baseplate import config
+from baseplate.lib import config
 from baseplate.server import runtime_monitor
 
 

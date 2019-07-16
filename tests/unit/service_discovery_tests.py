@@ -2,8 +2,8 @@ import unittest
 
 from io import StringIO
 
-from baseplate import service_discovery
-from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate.lib import service_discovery
+from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
 
 from .. import mock
 

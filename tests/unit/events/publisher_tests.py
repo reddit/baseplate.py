@@ -5,17 +5,17 @@ from io import BytesIO
 
 import requests
 
-from baseplate import config, metrics
-from baseplate.events import publisher
-from baseplate._utils import SerializedBatch
+from baseplate.lib import config, metrics
+from baseplate.sidecars import event_publisher
+from baseplate.sidecars import SerializedBatch
 
 from ... import mock
 
 
 class TimeLimitedBatchTests(unittest.TestCase):
     def setUp(self):
-        self.inner = mock.Mock(autospec=publisher.Batch)
-        self.batch = publisher.TimeLimitedBatch(self.inner, max_age=1)
+        self.inner = mock.Mock(autospec=event_publisher.Batch)
+        self.batch = event_publisher.TimeLimitedBatch(self.inner, max_age=1)
 
     def test_serialize(self):
         result = self.batch.serialize()
@@ -28,7 +28,7 @@ class TimeLimitedBatchTests(unittest.TestCase):
         self.batch.add("a")
         self.assertEqual(self.inner.add.call_count, 1)
 
-        with self.assertRaises(publisher.BatchFull):
+        with self.assertRaises(event_publisher.BatchFull):
             mock_time.return_value = 3
             self.batch.add("b")
         self.assertEqual(self.inner.add.call_count, 1)
@@ -41,7 +41,7 @@ class TimeLimitedBatchTests(unittest.TestCase):
 
 class BatchTests(unittest.TestCase):
     def test_v1(self):
-        batch = publisher.V1Batch(max_size=10)
+        batch = event_publisher.V1Batch(max_size=10)
         batch.add(None)
         batch.add(b"1")
         batch.add(b"2")
@@ -50,7 +50,7 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(result.count, 2)
         self.assertEqual(result.bytes, b"[1,2]")
 
-        with self.assertRaises(publisher.BatchFull):
+        with self.assertRaises(event_publisher.BatchFull):
             batch.add(b"x" * 100)
 
         batch.reset()
@@ -58,7 +58,7 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(result.count, 0)
 
     def test_v2(self):
-        batch = publisher.V2Batch(max_size=50)
+        batch = event_publisher.V2Batch(max_size=50)
         batch.add(None)
         batch.add(b"a")
         batch.add(b"b")
@@ -67,7 +67,7 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(result.count, 2)
         self.assertEqual(result.bytes, b'{"1":{"lst":["rec",2,a,b]}}')
 
-        with self.assertRaises(publisher.BatchFull):
+        with self.assertRaises(event_publisher.BatchFull):
             batch.add(b"x" * 100)
 
         batch.reset()
@@ -78,7 +78,7 @@ class BatchTests(unittest.TestCase):
 class CompressTests(unittest.TestCase):
     def test_compress(self):
         raw = b"test"
-        compressed = publisher.gzip_compress(raw)
+        compressed = event_publisher.gzip_compress(raw)
         decompressed = gzip.GzipFile(fileobj=BytesIO(compressed)).read()
         self.assertEqual(raw, decompressed)
 
@@ -98,7 +98,7 @@ class PublisherTests(unittest.TestCase):
 
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
 
-        self.publisher = publisher.BatchPublisher(self.metrics_client, self.config)
+        self.publisher = event_publisher.BatchPublisher(self.metrics_client, self.config)
 
     def test_empty_batch(self):
         self.publisher.publish(SerializedBatch(count=0, bytes=b""))

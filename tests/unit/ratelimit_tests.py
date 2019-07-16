@@ -1,9 +1,9 @@
 import unittest
 
-from baseplate import ratelimit
-from baseplate.ratelimit.backends import RateLimitBackend
-from baseplate.ratelimit.backends.redis import RedisRateLimitBackend
-from baseplate.ratelimit.backends.memcache import MemcacheRateLimitBackend
+from baseplate.lib import ratelimit
+from baseplate.lib.ratelimit.backends import RateLimitBackend
+from baseplate.lib.ratelimit.backends.redis import RedisRateLimitBackend
+from baseplate.lib.ratelimit.backends.memcache import MemcacheRateLimitBackend
 from pymemcache.client.base import PooledClient
 from redis import StrictRedis
 

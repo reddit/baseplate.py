@@ -6,12 +6,12 @@ import unittest
 
 from datetime import timedelta
 
-from baseplate.core import ServerSpan
-from baseplate.events import EventLogger
-from baseplate.experiments import ExperimentsContextFactory
-from baseplate.experiments.providers import parse_experiment
-from baseplate.experiments.providers.r2 import R2Experiment
-from baseplate.file_watcher import FileWatcher
+from baseplate import ServerSpan
+from baseplate.lib.events import EventLogger
+from baseplate.lib.experiments import ExperimentsContextFactory
+from baseplate.lib.experiments.providers import parse_experiment
+from baseplate.lib.experiments.providers.r2 import R2Experiment
+from baseplate.lib.file_watcher import FileWatcher
 
 from .... import mock
 

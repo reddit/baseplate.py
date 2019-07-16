@@ -8,22 +8,16 @@ import gevent.monkey
 
 from thrift.Thrift import TApplicationException
 
-from baseplate import config
-from baseplate.core import (
-    Baseplate,
-    BaseplateObserver,
-    EdgeRequestContextFactory,
-    ServerSpanObserver,
-    SpanObserver,
-    TraceInfo,
-)
-from baseplate.context.thrift import ThriftClient
-from baseplate.file_watcher import FileWatcher
-from baseplate.integration.thrift import baseplateify_processor
-from baseplate.secrets import store
+from baseplate.lib import config
+from baseplate import Baseplate, BaseplateObserver, ServerSpanObserver, SpanObserver, TraceInfo
+from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate.clients.thrift import ThriftClient
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.frameworks.thrift import baseplateify_processor
+from baseplate.lib.secrets import SecretsStore
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
-from baseplate.thrift_pool import ThriftConnectionPool
+from baseplate.lib.thrift_pool import ThriftConnectionPool
 
 from .test_thrift import TestService
 from .. import mock, AUTH_TOKEN_PUBLIC_KEY, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
@@ -55,7 +49,7 @@ def make_edge_context_factory():
         },
         "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
     }
-    secrets = store.SecretsStore("/secrets")
+    secrets = SecretsStore("/secrets")
     secrets._filewatcher = mock_filewatcher
     return EdgeRequestContextFactory(secrets)
 

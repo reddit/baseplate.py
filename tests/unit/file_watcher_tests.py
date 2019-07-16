@@ -6,8 +6,8 @@ import os
 import tempfile
 import unittest
 
-from baseplate import file_watcher
-from baseplate.retry import RetryPolicy
+from baseplate.lib import file_watcher
+from baseplate.lib.retry import RetryPolicy
 
 from .. import mock
 
@@ -93,7 +93,7 @@ class FileWatcherTests(unittest.TestCase):
             result = watcher.get_data()
             self.assertEqual(result, {"b": 3})
 
-    @mock.patch("baseplate.retry.RetryPolicy.new")
+    @mock.patch("baseplate.lib.retry.RetryPolicy.new")
     def test_timeout(self, mock_retry_factory):
         with tempfile.NamedTemporaryFile() as watched_file:
             watched_file.write(b"!")

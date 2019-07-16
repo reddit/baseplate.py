@@ -1,7 +1,7 @@
 import itertools
 import unittest
 
-from baseplate.retry import (
+from baseplate.lib.retry import (
     ExponentialBackoffRetryPolicy,
     IndefiniteRetryPolicy,
     MaximumAttemptsRetryPolicy,

@@ -4,19 +4,16 @@ import unittest
 import jwt
 
 from baseplate import Baseplate
-from baseplate.core import (
-    BaseplateObserver,
-    EdgeRequestContextFactory,
-    NoAuthenticationError,
-    ServerSpanObserver,
-)
-from baseplate.file_watcher import FileWatcher
-from baseplate.secrets import store
+from baseplate import BaseplateObserver, ServerSpanObserver
+from baseplate.lib.edge_context import NoAuthenticationError
+from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.secrets import SecretsStore
 
 try:
     import webtest
 
-    from baseplate.integration.pyramid import BaseplateConfigurator, ServerSpanInitialized
+    from baseplate.frameworks.pyramid import BaseplateConfigurator, ServerSpanInitialized
     from pyramid.config import Configurator
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
@@ -95,7 +92,7 @@ class ConfiguratorTests(unittest.TestCase):
             },
             "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
-        secrets = store.SecretsStore("/secrets")
+        secrets = SecretsStore("/secrets")
         secrets._filewatcher = mock_filewatcher
 
         self.observer = mock.Mock(spec=BaseplateObserver)

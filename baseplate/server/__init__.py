@@ -19,7 +19,7 @@ import threading
 import traceback
 import warnings
 
-from baseplate.config import Endpoint
+from baseplate.lib.config import Endpoint
 from baseplate.server import einhorn, reloader
 
 

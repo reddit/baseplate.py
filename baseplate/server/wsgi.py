@@ -5,7 +5,7 @@ import gevent
 from gevent.pool import Pool
 from gevent.pywsgi import WSGIServer
 
-from baseplate import config
+from baseplate.lib import config
 from baseplate.server import runtime_monitor, _load_factory
 
 try:

@@ -1,8 +1,8 @@
 import unittest
 
-from baseplate.core import ServerSpan, Span, LocalSpan
-from baseplate.metrics import Client, Batch, Timer, Counter
-from baseplate.diagnostics.metrics import (
+from baseplate import ServerSpan, Span, LocalSpan
+from baseplate.lib.metrics import Client, Batch, Timer, Counter
+from baseplate.observers.metrics import (
     MetricsBaseplateObserver,
     MetricsClientSpanObserver,
     MetricsLocalSpanObserver,

@@ -4,7 +4,7 @@
 import socket
 import unittest
 
-from baseplate import metrics, config
+from baseplate.lib import metrics, config
 
 from .. import mock
 
@@ -137,7 +137,7 @@ class ClientTests(unittest.TestCase):
 
 class BatchTests(unittest.TestCase):
     def setUp(self):
-        self.patcher = mock.patch("baseplate.metrics.BufferedTransport", autospec=True)
+        self.patcher = mock.patch("baseplate.lib.metrics.BufferedTransport", autospec=True)
         self.mock_buffer = self.patcher.start().return_value
         self.mock_transport = mock.Mock(spec=metrics.NullTransport)
 
@@ -170,7 +170,7 @@ class BatchTests(unittest.TestCase):
         self.assertTrue(expected_counter_name in self.batch.counters)
         self.assertEqual(refetched_batch_counter, batch_counter)
 
-    @mock.patch("baseplate.metrics.BatchCounter", autospec=True)
+    @mock.patch("baseplate.lib.metrics.BatchCounter", autospec=True)
     def test_counter_flush(self, MockBatchCounter):
         with self.batch as b:
             batch_counter = b.counter("some_counter")
