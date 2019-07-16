@@ -1,9 +1,9 @@
 import json
 import unittest
 
-from baseplate.config import Endpoint
-from baseplate.core import Span, ServerSpan
-from baseplate.diagnostics.tracing import (
+from baseplate.lib.config import Endpoint
+from baseplate import Span, ServerSpan
+from baseplate.observers.tracing import (
     ANNOTATIONS,
     TraceBaseplateObserver,
     TraceServerSpanObserver,

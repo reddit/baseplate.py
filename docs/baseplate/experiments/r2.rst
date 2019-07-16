@@ -1,9 +1,0 @@
-``baseplate.experiments.providers.r2``
-======================================
-
-.. automodule:: baseplate.experiments.providers.r2
-
-Classes
--------
-
-.. autoclass:: R2Experiment

@@ -9,10 +9,10 @@ try:
 except ImportError:
     raise unittest.SkipTest("cassandra-driver is not installed")
 
-from baseplate import core
-from baseplate.config import ConfigurationError
-from baseplate.context.cassandra import cluster_from_config, CassandraSessionAdapter
-from baseplate.secrets import SecretsStore
+import baseplate
+from baseplate.lib.config import ConfigurationError
+from baseplate.clients.cassandra import cluster_from_config, CassandraSessionAdapter
+from baseplate.lib.secrets import SecretsStore
 
 
 class ClusterFromConfigTests(unittest.TestCase):
@@ -69,7 +69,7 @@ class CassandraSessionAdapterTests(unittest.TestCase):
     def setUp(self):
         self.session = mock.MagicMock()
         self.prepared_statements = {}
-        self.mock_server_span = mock.MagicMock(spec=core.ServerSpan)
+        self.mock_server_span = mock.MagicMock(spec=baseplate.ServerSpan)
         self.adapter = CassandraSessionAdapter(
             "test", self.mock_server_span, self.session, self.prepared_statements
         )

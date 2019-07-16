@@ -74,7 +74,7 @@ callable object within that module.
 
 The rest of the options in the ``app`` section of the configuration file get
 passed as a dictionary to your application callable. You can parse these
-options with :py:mod:`baseplate.config`.
+options with :py:mod:`baseplate.lib.config`.
 
 The application factory should return an appropriate object for your server:
 
@@ -144,7 +144,7 @@ Process-level metrics
 ---------------------
 
 If your application has registered a metrics client with
-:py:meth:`~baseplate.core.Baseplate.configure_metrics`, ``baseplate-serve``
+:py:meth:`~baseplate.Baseplate.configure_metrics`, ``baseplate-serve``
 will automatically send process-level metrics every 10 seconds. Which metrics
 are sent depends on your server configuration, for example::
 
@@ -161,7 +161,7 @@ configuration).
 The following reporters are available:
 
 ``monitoring.blocked_hub``
-   Enabled if a valid :py:func:`~baseplate.config.Timespan` is set, defaults to disabled.
+   Enabled if a valid :py:func:`~baseplate.lib.config.Timespan` is set, defaults to disabled.
 
    This will turn on `Gevent's monitoring thread`_ and report events indicating
    that Gevent detects the main event loop was blocked by a greenlet for longer
@@ -170,7 +170,7 @@ The following reporters are available:
    information, including stack traces, is also printed to the logging system.
 
    Each instance of the hub being blocked will be reported as a
-   :py:class:`~baseplate.metrics.Timer` measuring the duration of the blockage.
+   :py:class:`~baseplate.lib.metrics.Timer` measuring the duration of the blockage.
 
    Note: the performance impact of this reporter is not currently understood.
    Watch your metrics closely if you turn this on.
@@ -182,8 +182,8 @@ The following reporters are available:
    concurrently by this server process.
 
    At each report interval, this will update a
-   :py:class:`~baseplate.metrics.Gauge` with the current number of in-flight
-   requests being processed concurrently.
+   :py:class:`~baseplate.lib.metrics.Gauge` with the current number of
+   in-flight requests being processed concurrently.
 
 ``monitoring.connection_pool``
    Enabled if ``true``, disabled if ``false``. Defaults to disabled.

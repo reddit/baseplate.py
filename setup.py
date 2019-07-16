@@ -25,9 +25,9 @@ setup(
     zip_safe=False,
     entry_points={
         "distutils.commands": [
-            "build_thrift = baseplate.integration.thrift.command:BuildThriftCommand"
+            "build_thrift = baseplate.frameworks.thrift.command:BuildThriftCommand"
         ],
-        "paste.app_factory": ["main = baseplate.integration.pyramid:paste_make_app"],
+        "paste.app_factory": ["main = baseplate.frameworks.pyramid:paste_make_app"],
     },
     classifiers=[
         "Development Status :: 5 - Production/Stable",

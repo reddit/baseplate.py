@@ -7,10 +7,10 @@ import urllib.parse
 
 import requests
 
-from baseplate.config import Endpoint
-from baseplate.requests import add_unix_socket_support
+from baseplate.lib.config import Endpoint
+from baseplate.lib._requests import add_unix_socket_support
 from baseplate.thrift import BaseplateService
-from baseplate.thrift_pool import ThriftConnectionPool
+from baseplate.lib.thrift_pool import ThriftConnectionPool
 
 
 TIMEOUT = 30  # seconds

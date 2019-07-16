@@ -4,15 +4,16 @@ import unittest
 
 from datetime import timedelta
 
-from baseplate.core import ServerSpan, User, AuthenticationToken
-from baseplate.events import DebugLogger
-from baseplate.experiments import (
+from baseplate import ServerSpan
+from baseplate.lib.edge_context import User, AuthenticationToken
+from baseplate.lib.events import DebugLogger
+from baseplate.lib.experiments import (
     EventType,
     Experiments,
     ExperimentsContextFactory,
     experiments_client_from_config,
 )
-from baseplate.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
 
 from ... import mock
 
@@ -62,7 +63,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value="active"
+            "baseplate.lib.experiments.providers.r2.R2Experiment.variant", return_value="active"
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user=self.user, app_name="r2")
@@ -107,7 +108,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value="active"
+            "baseplate.lib.experiments.providers.r2.R2Experiment.variant", return_value="active"
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user_id="t2_2", app_name="r2", logged_in=True)
@@ -151,7 +152,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value="active"
+            "baseplate.lib.experiments.providers.r2.R2Experiment.variant", return_value="active"
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user=self.user)
@@ -221,7 +222,7 @@ class TestExperiments(unittest.TestCase):
             context_name="test",
             event_logger=self.event_logger,
         )
-        with mock.patch("baseplate.experiments.providers.r2.R2Experiment.variant") as p:
+        with mock.patch("baseplate.lib.experiments.providers.r2.R2Experiment.variant") as p:
             p.return_value = "active"
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user=self.user, bucketing_event_override=True)
@@ -248,7 +249,7 @@ class TestExperiments(unittest.TestCase):
             context_name="test",
             event_logger=self.event_logger,
         )
-        with mock.patch("baseplate.experiments.providers.r2.R2Experiment.variant") as p:
+        with mock.patch("baseplate.lib.experiments.providers.r2.R2Experiment.variant") as p:
             p.return_value = "active"
             is_valid = experiments.is_valid_experiment("test")
             self.assertEqual(is_valid, True)
@@ -285,7 +286,7 @@ class TestExperiments(unittest.TestCase):
             context_name="test",
             event_logger=self.event_logger,
         )
-        with mock.patch("baseplate.experiments.providers.r2.R2Experiment.variant") as p:
+        with mock.patch("baseplate.lib.experiments.providers.r2.R2Experiment.variant") as p:
             p.return_value = "active"
             experiment_names = experiments.get_all_experiment_names()
             self.assertEqual(len(experiment_names), 2)
@@ -312,7 +313,7 @@ class TestExperiments(unittest.TestCase):
             context_name="test",
             event_logger=self.event_logger,
         )
-        with mock.patch("baseplate.experiments.providers.r2.R2Experiment.variant") as p:
+        with mock.patch("baseplate.lib.experiments.providers.r2.R2Experiment.variant") as p:
             p.return_value = "active"
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user=self.user, bucketing_event_override=False)
@@ -344,7 +345,7 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value=None
+            "baseplate.lib.experiments.providers.r2.R2Experiment.variant", return_value=None
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
             experiments.variant("test", user=self.user)
@@ -373,9 +374,9 @@ class TestExperiments(unittest.TestCase):
         )
 
         with mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.variant", return_value="active"
+            "baseplate.lib.experiments.providers.r2.R2Experiment.variant", return_value="active"
         ), mock.patch(
-            "baseplate.experiments.providers.r2.R2Experiment.should_log_bucketing",
+            "baseplate.lib.experiments.providers.r2.R2Experiment.should_log_bucketing",
             return_value=False,
         ):
             self.assertEqual(self.event_logger.log.call_count, 0)
@@ -516,7 +517,7 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(variant, None)
 
 
-@mock.patch("baseplate.experiments.FileWatcher")
+@mock.patch("baseplate.lib.experiments.FileWatcher")
 class ExperimentsClientFromConfigTests(unittest.TestCase):
     def test_make_clients(self, file_watcher_mock):
         event_logger = mock.Mock(spec=DebugLogger)

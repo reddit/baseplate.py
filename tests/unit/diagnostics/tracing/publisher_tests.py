@@ -2,9 +2,9 @@ import unittest
 
 import requests
 
-from baseplate import metrics
-from baseplate._utils import SerializedBatch
-from baseplate.diagnostics.tracing import publisher
+from baseplate.lib import metrics
+from baseplate.sidecars import SerializedBatch
+from baseplate.sidecars import trace_publisher
 
 from .... import mock
 
@@ -15,7 +15,7 @@ class ZipkinPublisherTest(unittest.TestCase):
         self.session = mock_Session.return_value
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
         self.zipkin_api_url = "http://test.local/api/v2"
-        self.publisher = publisher.ZipkinPublisher(self.zipkin_api_url, self.metrics_client)
+        self.publisher = trace_publisher.ZipkinPublisher(self.zipkin_api_url, self.metrics_client)
 
     def test_initialization(self):
         self.assertEqual(self.publisher.endpoint, "{}/spans".format(self.zipkin_api_url))

@@ -2,17 +2,17 @@ from time import sleep
 import unittest
 from uuid import uuid4
 
-from baseplate.core import Baseplate
-from baseplate.ratelimit import RateLimiterContextFactory, RateLimitExceededException
+from baseplate import Baseplate
+from baseplate.lib.ratelimit import RateLimiterContextFactory, RateLimitExceededException
 
 try:
     from pymemcache.client.base import PooledClient
-    from baseplate.ratelimit.backends.memcache import MemcacheRateLimitBackendContextFactory
+    from baseplate.lib.ratelimit.backends.memcache import MemcacheRateLimitBackendContextFactory
 except ImportError:
     raise unittest.SkipTest("pymemcache is not installed")
 try:
     from redis import ConnectionPool
-    from baseplate.ratelimit.backends.redis import RedisRateLimitBackendContextFactory
+    from baseplate.lib.ratelimit.backends.redis import RedisRateLimitBackendContextFactory
 except ImportError:
     raise unittest.SkipTest("redis-py is not installed")
 

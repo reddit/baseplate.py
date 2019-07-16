@@ -5,11 +5,11 @@ import unittest
 
 from datetime import timedelta
 
-from baseplate.core import ServerSpan
-from baseplate.events import EventQueue
-from baseplate.experiments import Experiments
-from baseplate.experiments.providers import parse_experiment
-from baseplate.file_watcher import FileWatcher
+from baseplate import ServerSpan
+from baseplate.lib.events import EventQueue
+from baseplate.lib.experiments import Experiments
+from baseplate.lib.experiments.providers import parse_experiment
+from baseplate.lib.file_watcher import FileWatcher
 
 from .... import mock
 

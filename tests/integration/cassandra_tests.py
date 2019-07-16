@@ -9,8 +9,8 @@ try:
 except ImportError:
     raise unittest.SkipTest("cassandra-driver is not installed")
 
-from baseplate.context.cassandra import CassandraClient
-from baseplate.core import Baseplate
+from baseplate.clients.cassandra import CassandraClient
+from baseplate import Baseplate
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 from .. import mock
@@ -92,7 +92,7 @@ class CassandraTests(unittest.TestCase):
 
     def test_async_callback_fail(self):
         # mock threading.Event so that Event.wait() returns immediately
-        event = mock.patch("baseplate.context.cassandra.Event")
+        event = mock.patch("baseplate.clients.cassandra.Event")
         event.start()
         self.addCleanup(event.stop)
 
@@ -103,7 +103,7 @@ class CassandraTests(unittest.TestCase):
             event.set()
 
         on_execute_complete = mock.patch(
-            "baseplate.context.cassandra._on_execute_complete", side_effect=on_execute_complete
+            "baseplate.clients.cassandra._on_execute_complete", side_effect=on_execute_complete
         )
         on_execute_complete.start()
         self.addCleanup(on_execute_complete.stop)
@@ -124,7 +124,7 @@ class CassandraTests(unittest.TestCase):
             event.set()
 
         on_execute_complete = mock.patch(
-            "baseplate.context.cassandra._on_execute_complete", side_effect=on_execute_complete
+            "baseplate.clients.cassandra._on_execute_complete", side_effect=on_execute_complete
         )
         on_execute_complete.start()
         self.addCleanup(on_execute_complete.stop)
@@ -145,7 +145,7 @@ class CassandraTests(unittest.TestCase):
             event.set()
 
         on_execute_complete = mock.patch(
-            "baseplate.context.cassandra._on_execute_complete", side_effect=on_execute_complete
+            "baseplate.clients.cassandra._on_execute_complete", side_effect=on_execute_complete
         )
         on_execute_complete.start()
         self.addCleanup(on_execute_complete.stop)

@@ -2,7 +2,7 @@ import socket
 import tempfile
 import unittest
 
-from baseplate import config
+from baseplate.lib import config
 
 
 class StringTests(unittest.TestCase):

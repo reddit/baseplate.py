@@ -5,8 +5,8 @@ try:
 except ImportError:
     raise unittest.SkipTest("kazoo is not installed")
 
-from baseplate.live_data.zookeeper import zookeeper_client_from_config
-from baseplate.secrets import SecretsStore
+from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
+from baseplate.lib.secrets import SecretsStore
 
 from .. import get_endpoint_or_skip_container
 from ... import mock

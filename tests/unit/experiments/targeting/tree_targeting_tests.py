@@ -1,6 +1,6 @@
 import unittest
 
-from baseplate.experiments.targeting.tree_targeting import (
+from baseplate.lib.experiments.targeting.tree_targeting import (
     create_targeting_tree,
     TargetingNodeError,
     UnknownTargetingOperatorError,

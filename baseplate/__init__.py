@@ -1,215 +1,624 @@
-import os
-import sys
+import logging
+import random
 
-from typing import TYPE_CHECKING
+from types import TracebackType
+from typing import Tuple, Optional, Type, NamedTuple, Any, Dict
 
-from baseplate import config, metrics
-from baseplate.core import Baseplate
-from baseplate.diagnostics import tracing
-from baseplate._utils import warn_deprecated
+from baseplate.lib import config, warn_deprecated
 
 
-if TYPE_CHECKING:
-    import raven
+logger = logging.getLogger(__name__)
 
 
-def metrics_client_from_config(raw_config: config.RawConfig) -> metrics.Client:
-    """Configure and return a metrics client.
+class BaseplateObserver:
+    """Interface for an observer that watches Baseplate."""
 
-    This expects two configuration options:
+    def on_server_span_created(self, context: Any, server_span: "Span") -> None:
+        """Do something when a server span is created.
 
-    ``metrics.namespace``
-        The root key to prefix all metrics in this application with.
-    ``metrics.endpoint``
-        A ``host:port`` pair, e.g. ``localhost:2014``. If an empty string, a
-        client that discards all metrics will be returned.
+        :py:class:`Baseplate` calls this when a new request begins.
 
-    :param dict raw_config: The application configuration which should have
-        settings for the metrics client.
-    :return: A configured client.
-    :rtype: :py:class:`baseplate.metrics.Client`
+        :param context: The :term:`context object` for this request.
+        :param baseplate.ServerSpan server_span: The span representing
+            this request.
 
-    """
-    cfg = config.parse_config(
-        raw_config,
-        {"metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint)}},
-    )
-
-    # pylint: disable=maybe-no-member
-    return metrics.make_client(cfg.metrics.namespace, cfg.metrics.endpoint)
+        """
+        raise NotImplementedError
 
 
-def make_metrics_client(raw_config: config.RawConfig) -> metrics.Client:
-    warn_deprecated(
-        "make_metrics_client is deprecated in favor of the more "
-        "consistently named metrics_client_from_config"
-    )
-    return metrics_client_from_config(raw_config)
+_ExcInfo = Tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]
 
 
-def tracing_client_from_config(
-    raw_config: config.RawConfig, log_if_unconfigured: bool = True
-) -> tracing.TracingClient:
-    """Configure and return a tracing client.
+class SpanObserver:
+    """Interface for an observer that watches a span."""
 
-    This expects one configuration option and can take many optional ones:
+    def on_start(self) -> None:
+        """Do something when the observed span is started."""
 
-    ``tracing.service_name``
-        The name for the service this observer is registered to.
-    ``tracing.endpoint`` (optional)
-        (Deprecated in favor of the sidecar model.) Destination to record span data.
-    ``tracing.queue_name`` (optional)
-        Name of POSIX queue where spans are recorded
-    ``tracing.max_span_queue_size`` (optional)
-        Span processing queue limit.
-    ``tracing.num_span_workers`` (optional)
-        Number of worker threads for span processing.
-    ``tracing.span_batch_interval`` (optional)
-        Wait time for span processing in seconds.
-    ``tracing.num_conns`` (optional)
-        Pool size for remote recorder connection pool.
-    ``tracing.sample_rate`` (optional)
-        Percentage of unsampled requests to record traces for (e.g. "37%")
+    def on_set_tag(self, key: str, value: str) -> None:
+        """Do something when a tag is set on the observed span."""
 
-    :param dict raw_config: The application configuration which should have
-        settings for the tracing client.
-    :param bool log_if_unconfigured: When the client is not configured, should
-        trace spans be logged or discarded silently?
-    :return: A configured client.
-    :rtype: :py:class:`baseplate.diagnostics.tracing.TracingClient`
+    def on_log(self, name: str, payload: str) -> None:
+        """Do something when a log entry is added to the span."""
+
+    def on_finish(self, exc_info: _ExcInfo) -> None:
+        """Do something when the observed span is finished.
+
+        :param exc_info: If the span ended because of an exception, the
+            exception info. Otherwise, :py:data:`None`.
+
+        """
+
+    def on_child_span_created(self, span: "Span") -> None:
+        """Do something when a child span is created.
+
+        :py:class:`SpanObserver` objects call this when a new child span is
+        created.
+
+        :param baseplate.Span span: The new child span.
+
+        """
+
+
+class ServerSpanObserver(SpanObserver):
+    """Interface for an observer that watches the server span."""
+
+
+class TraceInfo(NamedTuple):
+    """Trace context for a span.
+
+    If this request was made at the behest of an upstream service, the upstream
+    service should have passed along trace information. This class is used for
+    collecting the trace context and passing it along to the server span.
 
     """
-    cfg = config.parse_config(
-        raw_config,
-        {
-            "tracing": {
-                "service_name": config.String,
-                "endpoint": config.Optional(config.Endpoint),
-                "queue_name": config.Optional(config.String),
-                "max_span_queue_size": config.Optional(config.Integer, default=50000),
-                "num_span_workers": config.Optional(config.Integer, default=5),
-                "span_batch_interval": config.Optional(
-                    config.Timespan, default=config.Timespan("500 milliseconds")
-                ),
-                "num_conns": config.Optional(config.Integer, default=100),
-                "sample_rate": config.Optional(
-                    config.Fallback(config.Percent, config.Float), default=0.1
-                ),
+
+    trace_id: int
+    parent_id: Optional[int]
+    span_id: Optional[int]
+    sampled: Optional[bool]
+    flags: Optional[int]
+
+    @classmethod
+    def new(cls) -> "TraceInfo":
+        """Generate IDs for a new initial server span.
+
+        This span has no parent and has a random ID. It cannot be correlated
+        with any upstream requests.
+
+        """
+        trace_id = random.getrandbits(64)
+        return cls(trace_id=trace_id, parent_id=None, span_id=trace_id, sampled=None, flags=None)
+
+    @classmethod
+    def from_upstream(
+        cls,
+        trace_id: Optional[int],
+        parent_id: Optional[int],
+        span_id: Optional[int],
+        sampled: Optional[bool],
+        flags: Optional[int],
+    ) -> "TraceInfo":
+        """Build a TraceInfo from individual headers.
+
+        :param trace_id: The ID of the trace.
+        :param parent_id: The ID of the parent span.
+        :param span_id: The ID of this span within the tree.
+        :param sampled: Boolean flag to determine request sampling.
+        :param flags: Bit flags for communicating feature flags downstream
+
+        :raises: :py:exc:`ValueError` if any of the values are inappropriate.
+
+        """
+        if trace_id is None or not 0 <= trace_id < 2 ** 64:
+            raise ValueError("invalid trace_id")
+
+        if span_id is None or not 0 <= span_id < 2 ** 64:
+            raise ValueError("invalid span_id")
+
+        if parent_id is None or not 0 <= parent_id < 2 ** 64:
+            raise ValueError("invalid parent_id")
+
+        if sampled is not None and not isinstance(sampled, bool):
+            raise ValueError("invalid sampled value")
+
+        if flags is not None:
+            if not 0 <= flags < 2 ** 64:
+                raise ValueError("invalid flags value")
+
+        return cls(trace_id, parent_id, span_id, sampled, flags)
+
+    @classmethod
+    def extract_upstream_header_values(cls, upstream_header_names, headers):
+        """Extract values from upstream headers.
+
+        This method thinks about upstream headers by a general name as oppposed to the header
+        name, i.e. "trace_id" instead of "X-Trace". These general names are "trace_id",
+        "span_id", "parent_span_id", "sampled" and "flags".
+
+        A dict mapping these general names to corresponding header names is expected.
+
+        For example:
+
+            {
+                "trace_id": ("X-Trace", "X-B3-TraceId"),
+                "span_id": ("X-Span", "X-B3-SpanId"),
+                "parent_span_id": ("X-Parent", "X-B3-ParentSpanId"),
+                "sampled": ("X-Sampled", "X-B3-Sampled"),
+                "flags": ("X-Flags", "X-B3-Flags"),
             }
-        },
-    )
 
-    # pylint: disable=maybe-no-member
-    return tracing.make_client(
-        service_name=cfg.tracing.service_name,
-        tracing_endpoint=cfg.tracing.endpoint,
-        tracing_queue_name=cfg.tracing.queue_name,
-        max_span_queue_size=cfg.tracing.max_span_queue_size,
-        num_span_workers=cfg.tracing.num_span_workers,
-        span_batch_interval=cfg.tracing.span_batch_interval.total_seconds(),
-        num_conns=cfg.tracing.num_conns,
-        sample_rate=cfg.tracing.sample_rate,
-        log_if_unconfigured=log_if_unconfigured,
-    )
+        This structure is used to extract relevant values from the request headers resulting
+        in a dict mapping general names to values.
 
+        For example:
 
-def make_tracing_client(
-    raw_config: config.RawConfig, log_if_unconfigured: bool = True
-) -> tracing.TracingClient:
-    warn_deprecated(
-        "make_tracing_client is deprecated in favor of the more "
-        "consistently named tracing_client_from_config"
-    )
-    return tracing_client_from_config(raw_config, log_if_unconfigured)
-
-
-def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -> "raven.Client":
-    """Configure and return a error reporter.
-
-    This expects one configuration option and can take many optional ones:
-
-    ``sentry.dsn``
-        The DSN provided by Sentry. If blank, the reporter will discard events.
-    ``sentry.site`` (optional)
-        An arbitrary string to identify this client installation.
-    ``sentry.environment`` (optional)
-        The environment your application is running in.
-    ``sentry.exclude_paths`` (optional)
-        Comma-delimited list of module prefixes to ignore when discovering
-        where an error came from.
-    ``sentry.include_paths`` (optional)
-        Comma-delimited list of paths to include for consideration when
-        drilling down to an exception.
-    ``sentry.ignore_exceptions`` (optional)
-        Comma-delimited list of fully qualified names of exception classes
-        (potentially with * globs) to not report.
-    ``sentry.sample_rate`` (optional)
-        Percentage of errors to report. (e.g. "37%")
-    ``sentry.processors`` (optional)
-        Comma-delimited list of fully qualified names of processor classes
-        to apply to events before sending to Sentry.
-
-    Example usage::
-
-        error_reporter_from_config(app_config, __name__)
-
-    :param dict raw_config: The application configuration which should have
-        settings for the error reporter.
-    :param str module_name: ``__name__`` of the root module of the application.
-    :rtype: :py:class:`raven.Client`
-
-    """
-    import raven  # pylint: disable=redefined-outer-name
-
-    cfg = config.parse_config(
-        raw_config,
-        {
-            "sentry": {
-                "dsn": config.Optional(config.String, default=None),
-                "site": config.Optional(config.String, default=None),
-                "environment": config.Optional(config.String, default=None),
-                "include_paths": config.Optional(config.String, default=None),
-                "exclude_paths": config.Optional(config.String, default=None),
-                "ignore_exceptions": config.Optional(config.TupleOf(config.String), default=[]),
-                "sample_rate": config.Optional(config.Percent, default=1),
-                "processors": config.Optional(
-                    config.TupleOf(config.String),
-                    default=["raven.processors.SanitizePasswordsProcessor"],
-                ),
+            {
+                "trace_id": "2391921232992245445",
+                "span_id": "7638783876913511395",
+                "parent_span_id": "3383915029748331832",
+                "sampled": "1",
             }
-        },
-    )
 
-    application_module = sys.modules[module_name]
-    directory = os.path.dirname(application_module.__file__)
-    release = None
-    while directory != "/":
+        :param dict upstream_headers_name: Map of general upstream value labels to header names
+        :param dict headers: Headers sent with a request
+        :return: Values found in upstream trace headers
+        :rtype: dict
+
+        :raises: :py:exc:`ValueError` if conflicting values are found for the same header category
+
+        """
+        extracted_values = {}
+        for name, header_names in upstream_header_names.items():
+            values = []
+            for header_name in header_names:
+                if header_name in headers:
+                    values.append(headers[header_name])
+
+            if not values:
+                continue
+            elif not all(value == values[0] for value in values):
+                raise ValueError("Conflicting values found for {} header(s)".format(header_names))
+            else:
+                # All the values are the same
+                extracted_values[name] = values[0]
+        return extracted_values
+
+
+class RequestContext:
+    def __init__(self, context_config, prefix=None, span=None, wrapped=None):
+        self.__context_config = context_config
+        self.__prefix = prefix
+        self.__wrapped = wrapped
+        self.trace: ServerSpan = span
+
+    def __getattr__(self, name: str) -> Any:
         try:
-            release = raven.fetch_git_sha(directory)
-        except raven.exceptions.InvalidGitRepository:
-            directory = os.path.dirname(directory)
+            config_item = self.__context_config[name]
+        except KeyError:
+            try:
+                return getattr(self.__wrapped, name)
+            except AttributeError:
+                raise AttributeError(
+                    f"{repr(self.__class__.__name__)} object has no attribute {repr(name)}"
+                ) from None
+
+        if self.__prefix:
+            full_name = f"{self.__prefix}.{name}"
         else:
-            break
+            full_name = name
 
-    # pylint: disable=maybe-no-member
-    return raven.Client(
-        dsn=cfg.sentry.dsn,
-        site=cfg.sentry.site,
-        release=release,
-        environment=cfg.sentry.environment,
-        include_paths=cfg.sentry.include_paths,
-        exclude_paths=cfg.sentry.exclude_paths,
-        ignore_exceptions=cfg.sentry.ignore_exceptions,
-        sample_rate=cfg.sentry.sample_rate,
-        processors=cfg.sentry.processors,
-    )
+        if isinstance(config_item, dict):
+            obj = RequestContext(context_config=config_item, prefix=full_name, span=self.trace)
+        elif hasattr(config_item, "make_object_for_context"):
+            obj = config_item.make_object_for_context(full_name, self.trace)
+        else:
+            obj = config_item
+
+        setattr(self, name, obj)
+        return obj
+
+    def clone(self) -> "RequestContext":
+        return RequestContext(
+            context_config=self.__context_config,
+            prefix=self.__prefix,
+            span=self.trace,
+            wrapped=self,
+        )
 
 
-__all__ = [
-    "error_reporter_from_config",
-    "make_metrics_client",
-    "make_tracing_client",
-    "metrics_client_from_config",
-    "tracing_client_from_config",
-    "Baseplate",
-]
+class Baseplate:
+    """The core of the Baseplate diagnostics framework.
+
+    This class coordinates monitoring and tracing of service calls made to
+    and from this service. See :py:mod:`baseplate.frameworks` for how to
+    integrate it with the application framework you are using.
+
+    """
+
+    def __init__(self):
+        self.observers = []
+        self._metrics_client = None
+        self._context_config = {}
+
+    def register(self, observer):
+        """Register an observer.
+
+        :param baseplate.BaseplateObserver observer: An observer.
+
+        """
+        self.observers.append(observer)
+
+    def configure_logging(self):
+        """Add request context to the logging system."""
+        # pylint: disable=cyclic-import
+        from baseplate.observers.logging import LoggingBaseplateObserver
+
+        self.register(LoggingBaseplateObserver())
+
+    def configure_metrics(self, metrics_client):
+        """Send timing metrics to the given client.
+
+        This also adds a :py:class:`baseplate.lib.metrics.Batch` object to the
+        ``metrics`` attribute on the :term:`context object` where you can add
+        your own application-specific metrics. The batch is automatically
+        flushed at the end of the request.
+
+        :param baseplate.lib.metrics.Client metrics_client: Metrics client to send
+            request metrics to.
+
+        """
+        # pylint: disable=cyclic-import
+        from baseplate.observers.metrics import MetricsBaseplateObserver
+
+        self._metrics_client = metrics_client
+        self.register(MetricsBaseplateObserver(metrics_client))
+
+    def configure_tracing(self, tracing_client, *args, **kwargs):
+        """Collect and send span information for request tracing.
+
+        When configured, this will send tracing information automatically
+        collected by Baseplate to the configured distributed tracing service.
+
+        :param baseplate.observers.tracing.TracingClient tracing_client: Tracing
+            client to send request traces to.
+
+        """
+        # pylint: disable=cyclic-import
+        from baseplate.observers.tracing import make_client, TraceBaseplateObserver, TracingClient
+
+        # the first parameter was service_name before, so if it's not a client
+        # object we'll act like this is the old-style invocation and use the
+        # first parameter as service_name instead, passing on the old arguments
+        if not isinstance(tracing_client, TracingClient):
+            warn_deprecated(
+                "Passing tracing configuration directly to "
+                "configure_tracing is deprecated in favor of "
+                "using baseplate.observers.tracing.tracing_client_from_config and "
+                "passing the constructed client on."
+            )
+            tracing_client = make_client(tracing_client, *args, **kwargs)
+
+        self.register(TraceBaseplateObserver(tracing_client))
+
+    def configure_error_reporting(self, client):
+        """Send reports for unexpected exceptions to the given client.
+
+        This also adds a :py:class:`raven.Client` object to the ``sentry``
+        attribute on the :term:`context object` where you can send your own
+        application-specific events.
+
+        :param raven.Client client: A configured raven client.
+
+        """
+        # pylint: disable=cyclic-import
+        from baseplate.observers.sentry import SentryBaseplateObserver, SentryUnhandledErrorReporter
+
+        from gevent import get_hub
+
+        hub = get_hub()
+        hub.print_exception = SentryUnhandledErrorReporter(hub, client)
+
+        self.register(SentryBaseplateObserver(client))
+
+    def configure_observers(self, app_config: config.RawConfig, module_name: str) -> None:
+        """Configure diagnostics observers based on application config file.
+
+        This installs all the currently supported observers that have settings
+        in the configuration file.
+
+        For the individual configurables, see the documentation for:
+
+        * :py:func:`~baseplate.observers.sentry.error_reporter_from_config`
+        * :py:func:`~baseplate.lib.metrics.metrics_client_from_config`
+        * :py:func:`~baseplate.observers.tracing.tracing_client_from_config`
+
+        :param raw_config: The application configuration which should have
+            settings for the error reporter.
+        :param module_name: ``__name__`` of the root module of the application.
+
+        """
+        skipped = []
+
+        self.configure_logging()
+
+        if "metrics.namespace" in app_config:
+            from baseplate.lib.metrics import metrics_client_from_config
+
+            metrics_client = metrics_client_from_config(app_config)
+            self.configure_metrics(metrics_client)
+        else:
+            skipped.append("metrics")
+
+        if "tracing.service_name" in app_config:
+            from baseplate.observers.tracing import tracing_client_from_config
+
+            tracing_client = tracing_client_from_config(app_config)
+            self.configure_tracing(tracing_client)
+        else:
+            skipped.append("tracing")
+
+        if "sentry.dsn" in app_config:
+            from baseplate.observers.sentry import error_reporter_from_config
+
+            error_reporter = error_reporter_from_config(app_config, module_name)
+            self.configure_error_reporting(error_reporter)
+        else:
+            skipped.append("error_reporter")
+
+        logger.debug(
+            "The following observers are unconfigured and won't run: %s", ",".join(skipped)
+        )
+
+    def configure_context(self, app_config: config.RawConfig, context_spec: Dict) -> None:
+        """Add a number of objects to each request's context object.
+
+        Configure and attach multiple clients to the :term:`context object` in
+        one place. This takes a full configuration spec like
+        :py:func:`baseplate.lib.config.parse_config` and will attach the specified
+        structure onto the context object each request.
+
+        For example, a configuration like::
+
+            baseplate = Baseplate()
+            baseplate.configure_context(app_config, {
+                "cfg": {
+                    "doggo_is_good": config.Boolean,
+                },
+                "cache": MemcachedClient(),
+                "cassandra": {
+                    "foo": CassandraClient(),
+                    "bar": CassandraClient(),
+                },
+            })
+
+        would build a context object that could be used like::
+
+            assert context.cfg.doggo_is_good == True
+            context.cache.get("example")
+            context.cassandra.foo.execute()
+
+        :param config: The raw stringy configuration dictionary.
+        :param context_spec: A specification of what the config should look
+            like. This should only contain context clients and nested dictionaries.
+            Unrelated configuration values should not be included.
+
+        """
+        cfg = config.parse_config(app_config, context_spec)
+        self._context_config.update(cfg)
+
+    def add_to_context(self, name, context_factory):
+        """Add an attribute to each request's context object.
+
+        On each request, the factory will be asked to create an appropriate
+        object to attach to the :term:`context object`.
+
+        :param str name: The attribute on the context object to attach the
+            created object to. This may also be used for metric/tracing
+            purposes so it should be descriptive.
+        :param baseplate.clients.ContextFactory context_factory: A factory.
+
+        """
+        self._context_config[name] = context_factory
+
+    def make_context_object(self):
+        """Make a context object for the request."""
+        return RequestContext(self._context_config)
+
+    def make_server_span(self, context, name, trace_info=None):
+        """Return a server span representing the request we are handling.
+
+        In a server, a server span represents the time spent on a single
+        incoming request. Any calls made to downstream services will be new
+        child spans of the server span, and the server span will in turn be the
+        child span of whatever upstream request it is part of, if any.
+
+        :param RequestContext context: The :term:`context object` for this
+            request. Must have been created using :py:meth:`make_context_object`.
+        :param str name: A name to identify the type of this request, e.g.
+            a route or RPC method name.
+        :param baseplate.TraceInfo trace_info: The trace context of this
+            request as passed in from upstream. If :py:data:`None`, a new trace
+            context will be generated.
+
+        """
+        assert isinstance(context, RequestContext)
+
+        if trace_info is None:
+            trace_info = TraceInfo.new()
+
+        server_span = ServerSpan(
+            trace_info.trace_id,
+            trace_info.parent_id,
+            trace_info.span_id,
+            trace_info.sampled,
+            trace_info.flags,
+            name,
+            context,
+        )
+        context.trace = server_span
+
+        for observer in self.observers:
+            observer.on_server_span_created(context, server_span)
+        return server_span
+
+    def get_runtime_metric_reporters(self):
+        specs = [(None, self._context_config)]
+        result = {}
+        while specs:
+            prefix, spec = specs.pop(0)
+            for name, value in spec.items():
+                if prefix:
+                    full_name = f"{prefix}.{name}"
+                else:
+                    full_name = name
+
+                if isinstance(value, dict):
+                    specs.append((full_name, value))
+                elif hasattr(value, "report_runtime_metrics"):
+                    result[full_name] = value.report_runtime_metrics
+        return result
+
+
+class Span:
+    """A span represents a single RPC within a system."""
+
+    def __init__(self, trace_id, parent_id, span_id, sampled, flags, name, context):
+        self.trace_id = trace_id
+        self.parent_id = parent_id
+        self.id = span_id
+        self.sampled = sampled
+        self.flags = flags
+        self.name = name
+        self.context = context
+        self.observers = []
+
+    def register(self, observer):
+        """Register an observer to receive events from this span."""
+        self.observers.append(observer)
+
+    def start(self):
+        """Record the start of the span.
+
+        This notifies any observers that the span has started, which indicates
+        that timers etc. should start ticking.
+
+        Spans also support the `context manager protocol`_, for use with
+        Python's ``with`` statement. When the context is entered, the span
+        calls :py:meth:`start` and when the context is exited it automatically
+        calls :py:meth:`finish`.
+
+        .. _context manager protocol:
+            https://docs.python.org/3/reference/datamodel.html#context-managers
+
+        """
+        for observer in self.observers:
+            observer.on_start()
+
+    def set_tag(self, key, value):
+        """Set a tag on the span.
+
+        Tags are arbitrary key/value pairs that add context and meaning to the
+        span, such as a hostname or query string. Observers may interpret or
+        ignore tags as they desire.
+
+        :param str key: The name of the tag.
+        :param value: The value of the tag, must be a string/boolean/number.
+
+        """
+        for observer in self.observers:
+            observer.on_set_tag(key, value)
+
+    def log(self, name, payload=None):
+        """Add a log entry to the span.
+
+        Log entries are timestamped events recording notable moments in the
+        lifetime of a span.
+
+        :param str name: The name of the log entry. This should be a stable
+            identifier that can apply to multiple span instances.
+        :param payload: Optional log entry payload. This can be arbitrary data.
+
+        """
+        for observer in self.observers:
+            observer.on_log(name, payload)
+
+    def finish(self, exc_info=None):
+        """Record the end of the span.
+
+        :param exc_info: If the span ended because of an exception, this is
+            the exception information. The default is :py:data:`None` which
+            indicates normal exit.
+
+        """
+        for observer in self.observers:
+            observer.on_finish(exc_info)
+
+        # clean up reference cycles
+        self.context = None
+        self.observers.clear()
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, value, traceback):
+        if exc_type is not None:
+            self.finish(exc_info=(exc_type, value, traceback))
+        else:
+            self.finish()
+
+    def make_child(self, name, local=False, component_name=None):
+        """Return a child Span whose parent is this Span."""
+        raise NotImplementedError
+
+
+class LocalSpan(Span):
+    def make_child(self, name, local=False, component_name=None):
+        """Return a child Span whose parent is this Span.
+
+        The child span can either be a local span representing an in-request
+        operation or a span representing an outbound service call.
+
+        In a server, a local span represents the time spent within a
+        local component performing an operation or set of operations.
+        The local component is some grouping of business logic,
+        which is then split up into operations which could each be wrapped
+        in local spans.
+
+        :param str name: Name to identify the operation this span
+            is recording.
+        :param bool local: Make this span a LocalSpan if True, otherwise
+            make this span a base Span.
+        :param str component_name: Name to identify local component
+            this span is recording in if it is a local span.
+        """
+        span_id = random.getrandbits(64)
+
+        context_copy = self.context.clone()
+        if local:
+            span = LocalSpan(
+                self.trace_id, self.id, span_id, self.sampled, self.flags, name, context_copy
+            )
+            span.component_name = component_name
+        else:
+            span = Span(
+                self.trace_id, self.id, span_id, self.sampled, self.flags, name, context_copy
+            )
+        context_copy.trace = span
+
+        for observer in self.observers:
+            observer.on_child_span_created(span)
+        return span
+
+
+class ServerSpan(LocalSpan):
+    """A server span represents a request this server is handling.
+
+    The server span is available on the :term:`context object` during requests
+    as the ``trace`` attribute.
+
+    """
+
+
+__all__ = ["Baseplate"]

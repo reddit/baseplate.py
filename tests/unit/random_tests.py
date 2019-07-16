@@ -1,7 +1,7 @@
 import collections
 import unittest
 
-from baseplate import random
+from baseplate.lib import random
 
 from .. import mock
 

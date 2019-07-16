@@ -15,10 +15,10 @@ application frameworks to provide automatic diagnostics to services.
 .. toctree::
    :titlesonly:
 
-   baseplate.core: The skeleton of the instrumentation framework <baseplate/core>
-   baseplate.context: Integration with client libraries <baseplate/context/index>
-   baseplate.integration: Integration with application frameworks <baseplate/integration/index>
-   baseplate.diagnostics: Diagnostics observers <baseplate/diagnostics/index>
+   baseplate: The skeleton of the instrumentation framework <baseplate/index>
+   baseplate.clients: Integration with client libraries <baseplate/clients/index>
+   baseplate.frameworks: Integration with application frameworks <baseplate/frameworks/index>
+   baseplate.observers: Diagnostics observers <baseplate/observers/index>
 
 The Library
 -----------
@@ -30,23 +30,22 @@ separately from the rest of Baseplate.
 .. toctree::
    :titlesonly:
 
-   baseplate: General purpose helpers <baseplate/index>
-   baseplate.datetime: Extensions to the standard library's datetime module <baseplate/datetime>
-   baseplate.config: Configuration parsing <baseplate/config>
-   baseplate.crypto: Cryptographic Primitives <baseplate/crypto>
-   baseplate.events: Events for the data pipeline <baseplate/events>
-   baseplate.experiments: Experiments framework <baseplate/experiments/index>
-   baseplate.file_watcher: Read files from disk as they change <baseplate/file_watcher>
-   baseplate.live_data: Tools for centralized data that updates near instantly <baseplate/live_data>
-   baseplate.message_queue: POSIX IPC Message Queues <baseplate/message_queue>
-   baseplate.metrics: Counters, timers, gauges, and histograms for statsd <baseplate/metrics>
-   baseplate.queue_consumer: Consume messages from a queue <baseplate/queue_consumer>
-   baseplate.random: Extensions to the standard library's random module <baseplate/random>
-   baseplate.ratelimit: Ratelimit counters in memcached or redis <baseplate/ratelimit>
-   baseplate.retry: Policies for retrying operations <baseplate/retry>
-   baseplate.secrets: Secure storage and access to secret tokens and credentials <baseplate/secrets>
-   baseplate.thrift_pool: A Thrift client connection pool <baseplate/thrift_pool>
-   baseplate.service_discovery: Integration with Synapse service discovery <baseplate/service_discovery>
+   baseplate.lib.config: Configuration parsing <baseplate/lib/config>
+   baseplate.lib.crypto: Cryptographic Primitives <baseplate/lib/crypto>
+   baseplate.lib.datetime: Extensions to the standard library's datetime module <baseplate/lib/datetime>
+   baseplate.lib.edge_context: Information about the original request from the client <baseplate/lib/edge_context>
+   baseplate.lib.events: Events for the data pipeline <baseplate/lib/events>
+   baseplate.lib.experiments: Experiments framework <baseplate/lib/experiments/index>
+   baseplate.lib.file_watcher: Read files from disk as they change <baseplate/lib/file_watcher>
+   baseplate.lib.live_data: Tools for centralized data that updates near instantly <baseplate/lib/live_data>
+   baseplate.lib.message_queue: POSIX IPC Message Queues <baseplate/lib/message_queue>
+   baseplate.lib.metrics: Counters, timers, gauges, and histograms for statsd <baseplate/lib/metrics>
+   baseplate.lib.random: Extensions to the standard library's random module <baseplate/lib/random>
+   baseplate.lib.ratelimit: Ratelimit counters in memcached or redis <baseplate/lib/ratelimit>
+   baseplate.lib.retry: Policies for retrying operations <baseplate/lib/retry>
+   baseplate.lib.secrets: Secure storage and access to secret tokens and credentials <baseplate/lib/secrets>
+   baseplate.lib.thrift_pool: A Thrift client connection pool <baseplate/lib/thrift_pool>
+   baseplate.lib.service_discovery: Integration with Synapse service discovery <baseplate/lib/service_discovery>
 
 The CLI Toolkit
 ---------------

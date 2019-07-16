@@ -1,7 +1,8 @@
 import socket
 import unittest
 
-from baseplate import config, server
+from baseplate import server
+from baseplate.lib import config
 
 from ... import mock
 

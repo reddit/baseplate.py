@@ -8,7 +8,7 @@ try:
 except ImportError:
     raise unittest.SkipTest("kazoo is not installed")
 
-from baseplate.live_data.writer import (
+from baseplate.lib.live_data.writer import (
     NodeDoesNotExistError,
     UnexpectedChangeError,
     write_file_to_zookeeper,

@@ -5,9 +5,9 @@ try:
 except ImportError:
     raise unittest.SkipTest("sqlalchemy is not installed")
 
-from baseplate.context.sqlalchemy import engine_from_config
-from baseplate.file_watcher import FileWatcher
-from baseplate.secrets.store import SecretsStore
+from baseplate.clients.sqlalchemy import engine_from_config
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.secrets import SecretsStore
 
 from ... import mock
 
@@ -33,7 +33,7 @@ class EngineFromConfigTests(unittest.TestCase):
         engine = engine_from_config({"database.url": "sqlite://"})
         self.assertEqual(engine.url, URL("sqlite"))
 
-    @mock.patch("baseplate.context.sqlalchemy.create_engine")
+    @mock.patch("baseplate.clients.sqlalchemy.create_engine")
     def test_credentials(self, create_engine_mock):
         engine_from_config(
             {
@@ -53,7 +53,7 @@ class EngineFromConfigTests(unittest.TestCase):
             )
         )
 
-    @mock.patch("baseplate.context.sqlalchemy.create_engine")
+    @mock.patch("baseplate.clients.sqlalchemy.create_engine")
     def test_credentials_no_secrets(self, create_engine_mock):
         with self.assertRaises(TypeError):
             engine_from_config(

@@ -5,7 +5,7 @@ import socket
 import threading
 import time
 
-from baseplate import config
+from baseplate.lib import config
 
 
 REPORT_INTERVAL_SECONDS = 10

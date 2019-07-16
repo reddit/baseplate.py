@@ -1,7 +1,7 @@
 import logging
 import unittest
 
-from baseplate.experiments.variant_sets.multi_variant_set import MultiVariantSet
+from baseplate.lib.experiments.variant_sets.multi_variant_set import MultiVariantSet
 
 logger = logging.getLogger(__name__)
 

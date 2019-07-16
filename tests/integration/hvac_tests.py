@@ -5,9 +5,9 @@ try:
 except ImportError:
     raise unittest.SkipTest("hvac is not installed")
 
-from baseplate.context.hvac import HvacClient
-from baseplate.secrets import SecretsStore
-from baseplate.core import Baseplate
+from baseplate.clients.hvac import HvacClient
+from baseplate.lib.secrets import SecretsStore
+from baseplate import Baseplate
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 from .. import mock

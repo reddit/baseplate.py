@@ -1,7 +1,7 @@
 import unittest
 
 from baseplate import Baseplate
-from baseplate.diagnostics.tracing import (
+from baseplate.observers.tracing import (
     TraceBaseplateObserver,
     TraceServerSpanObserver,
     TraceLocalSpanObserver,
@@ -14,7 +14,7 @@ try:
 
     from pyramid.config import Configurator
 
-    from baseplate.integration.pyramid import BaseplateConfigurator
+    from baseplate.frameworks.pyramid import BaseplateConfigurator
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
