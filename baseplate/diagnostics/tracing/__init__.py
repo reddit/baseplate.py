@@ -134,8 +134,8 @@ class TraceBaseplateObserver(BaseplateObserver):
         try:
             self.hostname = socket.gethostbyname(socket.gethostname())
         except socket.gaierror as e:
-            logger.error("Hostname could not be resolved, error=%s", e)
-            self.hostname = 'undefined'
+            logger.warning("Hostname could not be resolved, error=%s", e)
+            self.hostname = "undefined"
 
     @classmethod
     def force_sampling(cls, span):
@@ -431,7 +431,7 @@ class BaseBatchRecorder(object):
         try:
             self.span_queue.put_nowait(span)
         except Exception as e:
-            self.logger.error("Failed adding span to recording queue: %s", e)
+            self.logger.warning("Failed adding span to recording queue: %s", e)
 
 
 class LoggingRecorder(BaseBatchRecorder):
@@ -511,7 +511,7 @@ class RemoteRecorder(BaseBatchRecorder):
                 timeout=1,
             )
         except RequestException as e:
-            self.logger.error("Error flushing spans: %s", e)
+            self.logger.warning("Error flushing spans: %s", e)
 
 
 class TraceTooLargeError(Exception):
@@ -545,7 +545,7 @@ class SidecarRecorder(object):
         # request/response path and should finish cleanly.
         serialized_str = json.dumps(span._serialize())
         if len(serialized_str) > MAX_SIDECAR_MESSAGE_SIZE:
-            logger.error(
+            logger.warning(
                 "Trace too big. Traces published to %s are not allowed to be larger "
                 "than %d bytes. Received trace is %d bytes. This can be caused by "
                 "an excess amount of tags or a large amount of child spans.",
@@ -556,4 +556,6 @@ class SidecarRecorder(object):
         try:
             self.queue.put(serialized_str, timeout=0)
         except TimedOutError:
-            logger.error("Trace queue %s is full. Is trace sidecar healthy?", self.queue.queue.name)
+            logger.warning(
+                "Trace queue %s is full. Is trace sidecar healthy?", self.queue.queue.name
+            )
