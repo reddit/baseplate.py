@@ -10,8 +10,6 @@ Services that need to read and write to the same memcache instances as r2
 should use pickle_and_compress() and decompress_and_unpickle().
 
 """
-
-
 import json
 import logging
 import pickle

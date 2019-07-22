@@ -5,7 +5,8 @@ from io import BytesIO
 
 import requests
 
-from baseplate.lib import config, metrics
+from baseplate.lib import config
+from baseplate.lib import metrics
 from baseplate.sidecars import event_publisher
 from baseplate.sidecars import SerializedBatch
 

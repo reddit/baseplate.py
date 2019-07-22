@@ -3,14 +3,12 @@
 This command serves your application from the given configuration file.
 
 """
-
 import argparse
 import collections
 import configparser
 import fcntl
 import gc
 import importlib
-import logging
 import logging.config
 import signal
 import socket
@@ -20,7 +18,8 @@ import traceback
 import warnings
 
 from baseplate.lib.config import Endpoint
-from baseplate.server import einhorn, reloader
+from baseplate.server import einhorn
+from baseplate.server import reloader
 
 
 logger = logging.getLogger(__name__)

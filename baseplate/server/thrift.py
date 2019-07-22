@@ -3,9 +3,10 @@ import signal
 from gevent.pool import Pool
 from gevent.server import StreamServer
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
-from thrift.transport.TSocket import TSocket
 from thrift.transport.THeaderTransport import THeaderClientType
-from thrift.transport.TTransport import TTransportException, TBufferedTransportFactory
+from thrift.transport.TSocket import TSocket
+from thrift.transport.TTransport import TBufferedTransportFactory
+from thrift.transport.TTransport import TTransportException
 
 from baseplate.lib import config
 from baseplate.server import runtime_monitor

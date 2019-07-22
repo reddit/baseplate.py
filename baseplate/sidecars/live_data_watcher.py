@@ -1,5 +1,4 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
-
 import argparse
 import configparser
 import logging

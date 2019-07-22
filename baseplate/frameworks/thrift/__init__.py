@@ -13,13 +13,13 @@ An abbreviated example of it in use::
         return baseplateify_processor(processor, baseplate)
 
 """
-
 import sys
 
 from requests.structures import CaseInsensitiveDict
-from thrift.Thrift import TException, TApplicationException
-from thrift.transport.TTransport import TTransportException
 from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
+from thrift.transport.TTransport import TTransportException
 
 from baseplate import TraceInfo
 

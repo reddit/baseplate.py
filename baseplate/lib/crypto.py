@@ -29,7 +29,6 @@
 
 
 """
-
 import base64
 import binascii
 import datetime
@@ -40,8 +39,8 @@ import time
 
 from typing import NamedTuple
 
-from baseplate.lib.secrets import VersionedSecret
 from baseplate.lib import warn_deprecated
+from baseplate.lib.secrets import VersionedSecret
 
 
 class SignatureError(Exception):

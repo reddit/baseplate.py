@@ -1,17 +1,21 @@
 """Application integration with the secret fetcher daemon."""
-
 import base64
 import binascii
 import json
 import logging
 
-from typing import NamedTuple, Optional, Iterator, Dict, Any
+from typing import Any
+from typing import Dict
+from typing import Iterator
+from typing import NamedTuple
+from typing import Optional
 
-from baseplate.lib import config
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
 from baseplate.lib import cached_property
+from baseplate.lib import config
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"

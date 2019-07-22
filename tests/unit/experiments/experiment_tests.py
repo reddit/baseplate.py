@@ -5,15 +5,15 @@ import unittest
 from datetime import timedelta
 
 from baseplate import ServerSpan
-from baseplate.lib.edge_context import User, AuthenticationToken
+from baseplate.lib.edge_context import AuthenticationToken
+from baseplate.lib.edge_context import User
 from baseplate.lib.events import DebugLogger
-from baseplate.lib.experiments import (
-    EventType,
-    Experiments,
-    ExperimentsContextFactory,
-    experiments_client_from_config,
-)
-from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate.lib.experiments import EventType
+from baseplate.lib.experiments import Experiments
+from baseplate.lib.experiments import experiments_client_from_config
+from baseplate.lib.experiments import ExperimentsContextFactory
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 
 from ... import mock
 

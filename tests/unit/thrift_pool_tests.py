@@ -2,10 +2,15 @@ import queue
 import socket
 import unittest
 
-from baseplate.lib import config, thrift_pool
+from thrift.protocol import TBinaryProtocol
+from thrift.protocol import THeaderProtocol
 from thrift.Thrift import TException
-from thrift.transport import TTransport, THeaderTransport, TSocket
-from thrift.protocol import THeaderProtocol, TBinaryProtocol
+from thrift.transport import THeaderTransport
+from thrift.transport import TSocket
+from thrift.transport import TTransport
+
+from baseplate.lib import config
+from baseplate.lib import thrift_pool
 
 from .. import mock
 

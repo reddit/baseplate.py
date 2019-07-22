@@ -1,9 +1,11 @@
-from time import sleep
 import unittest
+
+from time import sleep
 from uuid import uuid4
 
 from baseplate import Baseplate
-from baseplate.lib.ratelimit import RateLimiterContextFactory, RateLimitExceededException
+from baseplate.lib.ratelimit import RateLimiterContextFactory
+from baseplate.lib.ratelimit import RateLimitExceededException
 
 try:
     from pymemcache.client.base import PooledClient

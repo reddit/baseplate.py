@@ -1,5 +1,6 @@
 import logging
 import queue
+
 from threading import Thread
 
 from kombu import Queue

@@ -1,17 +1,21 @@
 import logging
+
 from threading import Event
-from typing import Optional, Dict, Any
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 from cassandra.auth import PlainTextAuthProvider
+from cassandra.cluster import _NOT_SET  # pylint: disable=no-name-in-module
+from cassandra.cluster import Cluster  # pylint: disable=no-name-in-module
+from cassandra.cluster import ExecutionProfile  # pylint: disable=no-name-in-module
+from cassandra.cluster import ResponseFuture  # pylint: disable=no-name-in-module
+from cassandra.query import BoundStatement  # pylint: disable=no-name-in-module
+from cassandra.query import PreparedStatement  # pylint: disable=no-name-in-module
+from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
 
-# pylint: disable=no-name-in-module
-from cassandra.cluster import Cluster, _NOT_SET, ResponseFuture, ExecutionProfile
-
-# pylint: disable=no-name-in-module
-from cassandra.query import SimpleStatement, PreparedStatement, BoundStatement
-
-from baseplate.lib import config
 from baseplate.clients import ContextFactory
+from baseplate.lib import config
 from baseplate.lib.secrets import SecretsStore
 
 

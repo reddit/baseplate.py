@@ -3,11 +3,11 @@ import time
 
 from datetime import datetime
 
+from baseplate.lib import warn_deprecated
 from baseplate.lib.experiments.providers.feature_flag import FeatureFlag
 from baseplate.lib.experiments.providers.forced_variant import ForcedVariantExperiment
 from baseplate.lib.experiments.providers.r2 import R2Experiment
 from baseplate.lib.experiments.providers.simple_experiment import SimpleExperiment
-from baseplate.lib import warn_deprecated
 
 logger = logging.getLogger(__name__)
 

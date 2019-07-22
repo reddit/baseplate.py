@@ -1,5 +1,4 @@
 """A gevent-friendly POSIX message queue."""
-
 import select
 
 import posix_ipc

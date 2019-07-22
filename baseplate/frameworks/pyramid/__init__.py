@@ -27,8 +27,6 @@ An abbreviated example of it in use::
        en/latest/pylons/exceptions.html#exception-views
 
 """
-
-
 import sys
 
 import pyramid.events
@@ -36,9 +34,10 @@ import pyramid.request
 import pyramid.tweens
 import webob.request
 
-from baseplate import RequestContext, TraceInfo
-from baseplate.server import make_app
+from baseplate import RequestContext
+from baseplate import TraceInfo
 from baseplate.lib import warn_deprecated
+from baseplate.server import make_app
 
 TRACE_HEADER_NAMES = {
     "trace_id": ("X-Trace", "X-B3-TraceId"),

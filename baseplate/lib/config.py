@@ -75,7 +75,6 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     tempfile.close()
 
 """
-
 import base64
 import datetime
 import functools
@@ -84,19 +83,17 @@ import pwd
 import re
 import socket
 
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    IO,
-    NamedTuple,
-    Optional as OptionalType,
-    Sequence,
-    Set,
-    TypeVar,
-    Union,
-)
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Generic
+from typing import IO
+from typing import NamedTuple
+from typing import Optional as OptionalType
+from typing import Sequence
+from typing import Set
+from typing import TypeVar
+from typing import Union
 
 
 class ConfigurationError(Exception):

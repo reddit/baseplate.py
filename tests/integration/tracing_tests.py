@@ -1,13 +1,11 @@
 import unittest
 
 from baseplate import Baseplate
-from baseplate.observers.tracing import (
-    TraceBaseplateObserver,
-    TraceServerSpanObserver,
-    TraceLocalSpanObserver,
-    NullRecorder,
-    make_client,
-)
+from baseplate.observers.tracing import make_client
+from baseplate.observers.tracing import NullRecorder
+from baseplate.observers.tracing import TraceBaseplateObserver
+from baseplate.observers.tracing import TraceLocalSpanObserver
+from baseplate.observers.tracing import TraceServerSpanObserver
 
 try:
     import webtest

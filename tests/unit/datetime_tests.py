@@ -1,7 +1,9 @@
+import unittest
+
 from datetime import datetime
 from datetime import timezone
+
 import pytz
-import unittest
 
 from baseplate.lib.datetime import datetime_to_epoch_milliseconds
 from baseplate.lib.datetime import datetime_to_epoch_seconds

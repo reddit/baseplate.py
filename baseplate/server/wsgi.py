@@ -1,15 +1,16 @@
 import logging
 
-# pylint: disable=ungrouped-imports
 import gevent
+
 from gevent.pool import Pool
 from gevent.pywsgi import WSGIServer
 
 from baseplate.lib import config
-from baseplate.server import runtime_monitor, _load_factory
+from baseplate.server import _load_factory
+from baseplate.server import runtime_monitor
 
 try:
-    # pylint: disable=no-name-in-module
+    # pylint: disable=no-name-in-module,ungrouped-imports
     from gevent.pywsgi import LoggingLogAdapter  # type: ignore
 except ImportError:
     # LoggingLogAdapter is from gevent 1.1+

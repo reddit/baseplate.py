@@ -2,9 +2,15 @@ import logging
 import random
 
 from types import TracebackType
-from typing import Tuple, Optional, Type, NamedTuple, Any, Dict
+from typing import Any
+from typing import Dict
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
+from typing import Type
 
-from baseplate.lib import config, warn_deprecated
+from baseplate.lib import config
+from baseplate.lib import warn_deprecated
 
 
 logger = logging.getLogger(__name__)

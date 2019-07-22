@@ -1,10 +1,10 @@
 from math import ceil
 
-import redis
 import redis.client
 
-from baseplate.lib import config, message_queue
 from baseplate.clients import ContextFactory
+from baseplate.lib import config
+from baseplate.lib import message_queue
 
 
 def pool_from_config(app_config, prefix="redis.", **kwargs):

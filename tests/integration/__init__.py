@@ -2,8 +2,9 @@ import os
 import socket
 import unittest
 
+from baseplate import BaseplateObserver
+from baseplate import SpanObserver
 from baseplate.lib.config import Endpoint
-from baseplate import BaseplateObserver, SpanObserver
 
 
 def get_endpoint_or_skip_container(name, default_port):

@@ -6,12 +6,11 @@ import unittest
 from datetime import timedelta
 
 from baseplate.lib.experiments.providers import parse_experiment
-from baseplate.lib.experiments.providers.simple_experiment import (
-    _generate_targeting,
-    _generate_overrides,
-)
+from baseplate.lib.experiments.providers.simple_experiment import _generate_overrides
+from baseplate.lib.experiments.providers.simple_experiment import _generate_targeting
 from baseplate.lib.experiments.targeting.base import Targeting
-from baseplate.lib.experiments.targeting.tree_targeting import OverrideNode, EqualNode
+from baseplate.lib.experiments.targeting.tree_targeting import EqualNode
+from baseplate.lib.experiments.targeting.tree_targeting import OverrideNode
 
 from .... import mock
 

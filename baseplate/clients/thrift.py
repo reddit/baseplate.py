@@ -3,11 +3,12 @@ import inspect
 import sys
 
 from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException, TException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
 from thrift.transport.TTransport import TTransportException
 
-from baseplate.lib import config
 from baseplate.clients import ContextFactory
+from baseplate.lib import config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.lib.thrift_pool import thrift_pool_from_config
 

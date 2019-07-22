@@ -1,19 +1,18 @@
 import json
 import unittest
 
+from baseplate import ServerSpan
+from baseplate import Span
 from baseplate.lib.config import Endpoint
-from baseplate import Span, ServerSpan
-from baseplate.observers.tracing import (
-    ANNOTATIONS,
-    TraceBaseplateObserver,
-    TraceServerSpanObserver,
-    TraceLocalSpanObserver,
-    TraceSpanObserver,
-    RemoteRecorder,
-    NullRecorder,
-    LoggingRecorder,
-    make_client,
-)
+from baseplate.observers.tracing import ANNOTATIONS
+from baseplate.observers.tracing import LoggingRecorder
+from baseplate.observers.tracing import make_client
+from baseplate.observers.tracing import NullRecorder
+from baseplate.observers.tracing import RemoteRecorder
+from baseplate.observers.tracing import TraceBaseplateObserver
+from baseplate.observers.tracing import TraceLocalSpanObserver
+from baseplate.observers.tracing import TraceServerSpanObserver
+from baseplate.observers.tracing import TraceSpanObserver
 
 from ... import mock
 

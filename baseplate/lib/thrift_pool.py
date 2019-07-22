@@ -14,7 +14,6 @@ A basic example of usage::
         client.do_example_thing()
 
 """
-
 import contextlib
 import logging
 import queue
@@ -23,7 +22,8 @@ import time
 
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException, TException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
 from thrift.transport import TSocket
 from thrift.transport.TTransport import TTransportException
 

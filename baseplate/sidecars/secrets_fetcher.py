@@ -53,7 +53,6 @@ The `store` module in this package contains utilities for interacting with this
 file from a running service.
 
 """
-
 import argparse
 import configparser
 import datetime
