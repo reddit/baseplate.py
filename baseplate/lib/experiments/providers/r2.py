@@ -1,5 +1,5 @@
-import logging
 import hashlib
+import logging
 
 from baseplate.lib.experiments.providers.base import Experiment
 

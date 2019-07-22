@@ -1,30 +1,26 @@
 import unittest
 
+from baseplate import Baseplate
+from baseplate import BaseplateObserver
+from baseplate import LocalSpan
+from baseplate import ServerSpan
+from baseplate import ServerSpanObserver
+from baseplate import Span
+from baseplate import SpanObserver
+from baseplate import TraceInfo
 from baseplate.lib import config
-from baseplate import (
-    Baseplate,
-    BaseplateObserver,
-    LocalSpan,
-    ServerSpan,
-    ServerSpanObserver,
-    Span,
-    SpanObserver,
-    TraceInfo,
-)
-from baseplate.lib.edge_context import NoAuthenticationError
 from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate.lib.edge_context import NoAuthenticationError
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.secrets import SecretsStore
 
-from .. import (
-    mock,
-    AUTH_TOKEN_PUBLIC_KEY,
-    AUTH_TOKEN_VALID,
-    SERIALIZED_EDGECONTEXT_WITH_ANON_AUTH,
-    SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH,
-    SERIALIZED_EDGECONTEXT_WITH_NO_AUTH,
-    SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
-)
+from .. import AUTH_TOKEN_PUBLIC_KEY
+from .. import AUTH_TOKEN_VALID
+from .. import mock
+from .. import SERIALIZED_EDGECONTEXT_WITH_ANON_AUTH
+from .. import SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH
+from .. import SERIALIZED_EDGECONTEXT_WITH_NO_AUTH
+from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 
 cryptography_installed = True
 try:

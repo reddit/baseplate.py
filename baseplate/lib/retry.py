@@ -1,8 +1,8 @@
 """Policies for retrying an operation safely."""
-
 import time
 
-from typing import Iterator, Optional
+from typing import Iterator
+from typing import Optional
 
 
 class RetryPolicy:

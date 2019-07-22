@@ -11,7 +11,6 @@ by a separate daemon.
 See also: https://github.com/reddit/event-collector
 
 """
-
 import calendar
 import json
 import logging
@@ -19,12 +18,14 @@ import time
 import uuid
 
 from enum import Enum
+
 from thrift import TSerialization
 from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
 from baseplate.clients import ContextFactory
-from baseplate.lib.message_queue import MessageQueue, TimedOutError
 from baseplate.lib import warn_deprecated
+from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import TimedOutError
 
 
 MAX_EVENT_SIZE = 102400

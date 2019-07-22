@@ -1,13 +1,14 @@
 from typing import Optional
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
+from sqlalchemy import event
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
-from baseplate.lib import config
-from baseplate.clients import ContextFactory
 from baseplate import SpanObserver
+from baseplate.clients import ContextFactory
+from baseplate.lib import config
 from baseplate.lib.secrets import SecretsStore
 
 

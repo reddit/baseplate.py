@@ -1,26 +1,31 @@
 import contextlib
-import jwt
 import logging
 import unittest
 
-import gevent
 import gevent.monkey
+import jwt
 
 from thrift.Thrift import TApplicationException
 
-from baseplate.lib import config
-from baseplate import Baseplate, BaseplateObserver, ServerSpanObserver, SpanObserver, TraceInfo
-from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate import Baseplate
+from baseplate import BaseplateObserver
+from baseplate import ServerSpanObserver
+from baseplate import SpanObserver
+from baseplate import TraceInfo
 from baseplate.clients.thrift import ThriftClient
-from baseplate.lib.file_watcher import FileWatcher
 from baseplate.frameworks.thrift import baseplateify_processor
+from baseplate.lib import config
+from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.secrets import SecretsStore
+from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
-from baseplate.lib.thrift_pool import ThriftConnectionPool
 
+from .. import AUTH_TOKEN_PUBLIC_KEY
+from .. import mock
+from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 from .test_thrift import TestService
-from .. import mock, AUTH_TOKEN_PUBLIC_KEY, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 
 
 cryptography_installed = True

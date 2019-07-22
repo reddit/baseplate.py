@@ -1,10 +1,9 @@
 # coding=utf8
-
-
 import socket
 import unittest
 
-from baseplate.lib import metrics, config
+from baseplate.lib import config
+from baseplate.lib import metrics
 
 from .. import mock
 

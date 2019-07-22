@@ -42,7 +42,6 @@ ends.
 .. _statsd: https://github.com/etsy/statsd
 
 """
-
 import collections
 import errno
 import logging
@@ -50,7 +49,11 @@ import socket
 import time
 
 from types import TracebackType
-from typing import List, Dict, DefaultDict, Optional, Type
+from typing import DefaultDict
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Type
 
 from baseplate.lib import config
 

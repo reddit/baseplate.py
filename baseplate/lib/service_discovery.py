@@ -17,13 +17,18 @@ A basic example of usage::
     print(backend.endpoint.address)
 
 """
-
 import json
 
-from typing import NamedTuple, Sequence, List, IO, Optional
+from typing import IO
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Sequence
 
-from baseplate.lib.config import Endpoint, EndpointConfiguration
-from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate.lib.config import Endpoint
+from baseplate.lib.config import EndpointConfiguration
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 from baseplate.lib.random import WeightedLottery
 
 

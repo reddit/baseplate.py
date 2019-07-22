@@ -1,5 +1,4 @@
 """Helpers for interacting with ZooKeeper."""
-
 from kazoo.client import KazooClient
 
 from baseplate.lib import config

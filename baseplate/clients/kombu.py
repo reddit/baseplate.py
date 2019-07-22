@@ -2,8 +2,8 @@ from kombu import Connection
 from kombu import Exchange
 from kombu.pools import Producers
 
-from baseplate.lib import config
 from baseplate.clients import ContextFactory
+from baseplate.lib import config
 
 
 def connection_from_config(app_config, prefix, **kwargs):

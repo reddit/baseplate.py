@@ -1,13 +1,11 @@
 import itertools
 import unittest
 
-from baseplate.lib.retry import (
-    ExponentialBackoffRetryPolicy,
-    IndefiniteRetryPolicy,
-    MaximumAttemptsRetryPolicy,
-    RetryPolicy,
-    TimeBudgetRetryPolicy,
-)
+from baseplate.lib.retry import ExponentialBackoffRetryPolicy
+from baseplate.lib.retry import IndefiniteRetryPolicy
+from baseplate.lib.retry import MaximumAttemptsRetryPolicy
+from baseplate.lib.retry import RetryPolicy
+from baseplate.lib.retry import TimeBudgetRetryPolicy
 
 from .. import mock
 

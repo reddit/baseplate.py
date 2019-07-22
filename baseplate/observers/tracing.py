@@ -1,5 +1,4 @@
 """Components for processing Baseplate spans for service request tracing."""
-
 import collections
 import json
 import logging
@@ -8,14 +7,20 @@ import random
 import socket
 import threading
 import time
+
 from datetime import datetime
 
 import requests
+
 from requests.exceptions import RequestException
 
-from baseplate.lib.message_queue import MessageQueue, TimedOutError
-from baseplate import BaseplateObserver, LocalSpan, SpanObserver
-from baseplate.lib import warn_deprecated, config
+from baseplate import BaseplateObserver
+from baseplate import LocalSpan
+from baseplate import SpanObserver
+from baseplate.lib import config
+from baseplate.lib import warn_deprecated
+from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import TimedOutError
 
 
 logger = logging.getLogger(__name__)

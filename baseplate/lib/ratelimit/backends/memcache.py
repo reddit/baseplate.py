@@ -1,6 +1,7 @@
 from baseplate.clients import ContextFactory
 from baseplate.clients.memcache import MemcacheContextFactory
-from baseplate.lib.ratelimit.backends import _get_current_bucket, RateLimitBackend
+from baseplate.lib.ratelimit.backends import _get_current_bucket
+from baseplate.lib.ratelimit.backends import RateLimitBackend
 
 
 class MemcacheRateLimitBackendContextFactory(ContextFactory):

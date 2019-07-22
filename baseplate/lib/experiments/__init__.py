@@ -3,11 +3,12 @@ import logging
 
 from enum import Enum
 
-from baseplate.lib import config
 from baseplate.clients import ContextFactory
+from baseplate.lib import config
 from baseplate.lib.events import DebugLogger
 from baseplate.lib.experiments.providers import parse_experiment
-from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 
 
 logger = logging.getLogger(__name__)

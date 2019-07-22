@@ -3,7 +3,8 @@ import sys
 
 import raven
 
-from baseplate import BaseplateObserver, ServerSpanObserver
+from baseplate import BaseplateObserver
+from baseplate import ServerSpanObserver
 from baseplate.lib import config
 
 

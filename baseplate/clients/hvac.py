@@ -14,14 +14,13 @@ See `HVAC's README`_ for documentation on the methods available from its client.
 .. _HVAC's README: https://github.com/ianunruh/hvac/blob/master/README.md
 
 """
-
 import datetime
 
 import hvac
 import requests
 
-from baseplate.lib import config
 from baseplate.clients import ContextFactory
+from baseplate.lib import config
 
 
 def hvac_factory_from_config(app_config, secrets_store, prefix="vault."):

@@ -5,12 +5,16 @@ import urllib.parse
 
 import requests
 
-from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib import config
-from baseplate.observers.tracing import MAX_SPAN_SIZE, MAX_QUEUE_SIZE
-from baseplate.lib.message_queue import MessageQueue, TimedOutError
+from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import TimedOutError
+from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
-from baseplate.sidecars import BatchFull, RawJSONBatch, TimeLimitedBatch
+from baseplate.observers.tracing import MAX_QUEUE_SIZE
+from baseplate.observers.tracing import MAX_SPAN_SIZE
+from baseplate.sidecars import BatchFull
+from baseplate.sidecars import RawJSONBatch
+from baseplate.sidecars import TimeLimitedBatch
 
 
 logger = logging.getLogger(__name__)

@@ -1,13 +1,16 @@
 import unittest
 
-from baseplate import ServerSpan, Span, LocalSpan
-from baseplate.lib.metrics import Client, Batch, Timer, Counter
-from baseplate.observers.metrics import (
-    MetricsBaseplateObserver,
-    MetricsClientSpanObserver,
-    MetricsLocalSpanObserver,
-    MetricsServerSpanObserver,
-)
+from baseplate import LocalSpan
+from baseplate import ServerSpan
+from baseplate import Span
+from baseplate.lib.metrics import Batch
+from baseplate.lib.metrics import Client
+from baseplate.lib.metrics import Counter
+from baseplate.lib.metrics import Timer
+from baseplate.observers.metrics import MetricsBaseplateObserver
+from baseplate.observers.metrics import MetricsClientSpanObserver
+from baseplate.observers.metrics import MetricsLocalSpanObserver
+from baseplate.observers.metrics import MetricsServerSpanObserver
 
 from ... import mock
 

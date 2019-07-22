@@ -1,12 +1,13 @@
 # webtest doesn't play well with unicode literals for headers on py2 :(
-
 import unittest
+
 import jwt
 
 from baseplate import Baseplate
-from baseplate import BaseplateObserver, ServerSpanObserver
-from baseplate.lib.edge_context import NoAuthenticationError
+from baseplate import BaseplateObserver
+from baseplate import ServerSpanObserver
 from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate.lib.edge_context import NoAuthenticationError
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.secrets import SecretsStore
 

@@ -29,12 +29,18 @@ The return value of :py:meth:`~baseplate.lib.file_watcher.FileWatcher.get_data`
 would change whenever the underlying file changes.
 
 """
-
 import logging
 import os
 import typing
 
-from typing import TypeVar, Generic, Callable, Optional, IO, Union, Type, NamedTuple
+from typing import Callable
+from typing import Generic
+from typing import IO
+from typing import NamedTuple
+from typing import Optional
+from typing import Type
+from typing import TypeVar
+from typing import Union
 
 from baseplate.lib.retry import RetryPolicy
 

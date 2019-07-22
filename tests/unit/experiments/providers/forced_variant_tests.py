@@ -1,9 +1,11 @@
 import time
 import unittest
 
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 
-from baseplate.lib.experiments.providers import ISO_DATE_FMT, parse_experiment
+from baseplate.lib.experiments.providers import ISO_DATE_FMT
+from baseplate.lib.experiments.providers import parse_experiment
 from baseplate.lib.experiments.providers.forced_variant import ForcedVariantExperiment
 
 THIRTY_DAYS = timedelta(days=30).total_seconds()

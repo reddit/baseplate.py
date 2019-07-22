@@ -3,15 +3,14 @@ import json
 import unittest
 import warnings
 
-from baseplate.lib.events import (
-    Event,
-    EventQueue,
-    EventQueueFullError,
-    EventTooLargeError,
-    FieldKind,
-)
+from baseplate.lib.events import Event
+from baseplate.lib.events import EventQueue
+from baseplate.lib.events import EventQueueFullError
+from baseplate.lib.events import EventTooLargeError
+from baseplate.lib.events import FieldKind
 from baseplate.lib.events import MAX_EVENT_SIZE
-from baseplate.lib.message_queue import MessageQueue, TimedOutError
+from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import TimedOutError
 
 from ... import mock
 

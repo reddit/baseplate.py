@@ -1,5 +1,5 @@
-import logging
 import collections
+import logging
 import time
 import unittest
 

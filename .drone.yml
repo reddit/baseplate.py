@@ -10,6 +10,7 @@ steps:
               from_secret: pip_options
       commands:
           - pip install $PIP_OPTIONS -r requirements-lint.txt
+          - reorder-python-imports --diff-only --py3-plus --separate-from-import --separate-relative $(find -name '*.py')
           - black --diff --check .
           - flake8
           - PYTHONPATH=. pylint baseplate/
