@@ -34,7 +34,7 @@ lint:
 	reorder-python-imports --diff-only --py3-plus --separate-from-import --separate-relative $(shell find -name '*.py')
 	black --diff --check .
 	flake8
-	pylint baseplate/
+	PYTHONPATH=. pylint baseplate/
 	mypy baseplate/
 
 checks: tests lint spelling
