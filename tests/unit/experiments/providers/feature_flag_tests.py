@@ -4,14 +4,13 @@ import time
 import unittest
 
 from datetime import timedelta
+from unittest import mock
 
 from baseplate import ServerSpan
 from baseplate.lib.events import EventQueue
 from baseplate.lib.experiments import Experiments
 from baseplate.lib.experiments.providers import parse_experiment
 from baseplate.lib.file_watcher import FileWatcher
-
-from .... import mock
 
 logger = logging.getLogger(__name__)
 

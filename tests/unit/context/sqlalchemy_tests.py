@@ -1,5 +1,7 @@
 import unittest
 
+from unittest import mock
+
 try:
     from sqlalchemy.engine.url import URL
 except ImportError:
@@ -8,8 +10,6 @@ except ImportError:
 from baseplate.clients.sqlalchemy import engine_from_config
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.secrets import SecretsStore
-
-from ... import mock
 
 
 class EngineFromConfigTests(unittest.TestCase):

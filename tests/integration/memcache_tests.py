@@ -1,5 +1,7 @@
 import unittest
 
+from unittest import mock
+
 try:
     from pymemcache.exceptions import MemcacheClientError
 except ImportError:
@@ -9,7 +11,6 @@ from baseplate.clients.memcache import MemcacheClient, MonitoredMemcacheConnecti
 from baseplate import Baseplate, LocalSpan, ServerSpan
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
-from .. import mock
 
 
 memcached_endpoint = get_endpoint_or_skip_container("memcached", 11211)

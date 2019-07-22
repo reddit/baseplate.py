@@ -2,6 +2,8 @@ import queue
 import socket
 import unittest
 
+from unittest import mock
+
 from thrift.protocol import TBinaryProtocol
 from thrift.protocol import THeaderProtocol
 from thrift.Thrift import TException
@@ -11,8 +13,6 @@ from thrift.transport import TTransport
 
 from baseplate.lib import config
 from baseplate.lib import thrift_pool
-
-from .. import mock
 
 
 EXAMPLE_ENDPOINT = config.EndpointConfiguration(socket.AF_INET, ("127.0.0.1", 1234))

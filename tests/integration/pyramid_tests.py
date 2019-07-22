@@ -1,5 +1,6 @@
-# webtest doesn't play well with unicode literals for headers on py2 :(
 import unittest
+
+from unittest import mock
 
 import jwt
 
@@ -19,7 +20,7 @@ try:
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
-from .. import mock, AUTH_TOKEN_PUBLIC_KEY, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
+from .. import AUTH_TOKEN_PUBLIC_KEY, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 
 
 class TestException(Exception):

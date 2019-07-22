@@ -1,5 +1,7 @@
 import unittest
 
+from unittest import mock
+
 try:
     from hvac.exceptions import InvalidRequest
 except ImportError:
@@ -10,7 +12,6 @@ from baseplate.lib.secrets import SecretsStore
 from baseplate import Baseplate
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
-from .. import mock
 
 
 vault_endpoint = get_endpoint_or_skip_container("vault", 8200)

@@ -1,6 +1,8 @@
 import json
 import unittest
 
+from unittest import mock
+
 from baseplate import ServerSpan
 from baseplate import Span
 from baseplate.lib.config import Endpoint
@@ -13,8 +15,6 @@ from baseplate.observers.tracing import TraceBaseplateObserver
 from baseplate.observers.tracing import TraceLocalSpanObserver
 from baseplate.observers.tracing import TraceServerSpanObserver
 from baseplate.observers.tracing import TraceSpanObserver
-
-from ... import mock
 
 
 class TraceTestBase(unittest.TestCase):

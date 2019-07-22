@@ -1,5 +1,7 @@
 import unittest
 
+from unittest import mock
+
 try:
     import kombu
 except ImportError:
@@ -8,8 +10,6 @@ else:
     del kombu
 
 from baseplate.frameworks import queue_consumer
-
-from .. import mock
 
 
 class BaseKombuConsumerTests(unittest.TestCase):

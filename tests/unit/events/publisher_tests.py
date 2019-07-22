@@ -2,6 +2,7 @@ import gzip
 import unittest
 
 from io import BytesIO
+from unittest import mock
 
 import requests
 
@@ -9,8 +10,6 @@ from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.sidecars import event_publisher
 from baseplate.sidecars import SerializedBatch
-
-from ... import mock
 
 
 class TimeLimitedBatchTests(unittest.TestCase):

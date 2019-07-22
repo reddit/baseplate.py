@@ -5,10 +5,10 @@ import os
 import tempfile
 import unittest
 
+from unittest import mock
+
 from baseplate.lib import file_watcher
 from baseplate.lib.retry import RetryPolicy
-
-from .. import mock
 
 
 class FileWatcherTests(unittest.TestCase):

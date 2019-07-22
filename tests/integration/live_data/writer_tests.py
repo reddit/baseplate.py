@@ -1,6 +1,7 @@
 import unittest
 
 from io import BytesIO
+from unittest import mock
 
 try:
     from kazoo.client import KazooClient
@@ -15,7 +16,6 @@ from baseplate.lib.live_data.writer import (
 )
 
 from .. import get_endpoint_or_skip_container
-from ... import mock
 
 
 zookeeper_endpoint = get_endpoint_or_skip_container("zookeeper", 2181)

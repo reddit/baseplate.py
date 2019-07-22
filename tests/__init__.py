@@ -1,8 +1,3 @@
-try:
-    from unittest import mock
-except ImportError:
-    import mock
-
 AUTH_TOKEN_PUBLIC_KEY = """\
 -----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtzMnDEQPd75QZByogNlB
@@ -54,7 +49,6 @@ SERIALIZED_EDGECONTEXT_WITH_ANON_AUTH = b"\x0c\x00\x01\x0b\x00\x01\x00\x00\x00\x
 
 
 __all__ = [
-    "mock",
     "AUTH_TOKEN_PUBLIC_KEY",
     "AUTH_TOKEN_PRIVATE_KEY",
     "AUTH_TOKEN_VALID",

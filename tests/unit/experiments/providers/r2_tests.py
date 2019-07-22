@@ -5,6 +5,7 @@ import time
 import unittest
 
 from datetime import timedelta
+from unittest import mock
 
 from baseplate import ServerSpan
 from baseplate.lib.events import EventLogger
@@ -12,8 +13,6 @@ from baseplate.lib.experiments import ExperimentsContextFactory
 from baseplate.lib.experiments.providers import parse_experiment
 from baseplate.lib.experiments.providers.r2 import R2Experiment
 from baseplate.lib.file_watcher import FileWatcher
-
-from .... import mock
 
 
 THIRTY_DAYS = timedelta(days=30).total_seconds()

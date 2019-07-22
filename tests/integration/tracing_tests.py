@@ -1,5 +1,7 @@
 import unittest
 
+from unittest import mock
+
 from baseplate import Baseplate
 from baseplate.observers.tracing import make_client
 from baseplate.observers.tracing import NullRecorder
@@ -15,8 +17,6 @@ try:
     from baseplate.frameworks.pyramid import BaseplateConfigurator
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
-
-from .. import mock
 
 
 class TestException(Exception):

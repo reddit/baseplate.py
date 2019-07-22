@@ -1,6 +1,8 @@
 import time
 import unittest
 
+from unittest import mock
+
 try:
     from cassandra import InvalidRequest, ConsistencyLevel
     from cassandra.cluster import ExecutionProfile
@@ -13,7 +15,6 @@ from baseplate.clients.cassandra import CassandraClient
 from baseplate import Baseplate
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
-from .. import mock
 
 
 cassandra_endpoint = get_endpoint_or_skip_container("cassandra", 9042)

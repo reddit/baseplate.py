@@ -2,6 +2,8 @@ import contextlib
 import logging
 import unittest
 
+from unittest import mock
+
 import gevent.monkey
 import jwt
 
@@ -23,7 +25,6 @@ from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 
 from .. import AUTH_TOKEN_PUBLIC_KEY
-from .. import mock
 from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 from .test_thrift import TestService
 
