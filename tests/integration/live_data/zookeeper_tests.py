@@ -1,5 +1,7 @@
 import unittest
 
+from unittest import mock
+
 try:
     from kazoo.exceptions import NoNodeError
 except ImportError:
@@ -9,7 +11,6 @@ from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import SecretsStore
 
 from .. import get_endpoint_or_skip_container
-from ... import mock
 
 zookeeper_endpoint = get_endpoint_or_skip_container("zookeeper", 2181)
 

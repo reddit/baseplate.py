@@ -3,6 +3,7 @@ import time
 import unittest
 
 from datetime import timedelta
+from unittest import mock
 
 from baseplate import ServerSpan
 from baseplate.lib.edge_context import AuthenticationToken
@@ -15,7 +16,6 @@ from baseplate.lib.experiments import ExperimentsContextFactory
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 
-from ... import mock
 
 THIRTY_DAYS = timedelta(days=30).total_seconds()
 

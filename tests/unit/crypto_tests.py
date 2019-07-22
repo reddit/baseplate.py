@@ -1,10 +1,10 @@
 import datetime
 import unittest
 
+from unittest import mock
+
 from baseplate.lib import crypto
 from baseplate.lib.secrets import VersionedSecret
-
-from .. import mock
 
 
 class SignatureTests(unittest.TestCase):

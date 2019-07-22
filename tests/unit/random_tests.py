@@ -1,9 +1,9 @@
 import collections
 import unittest
 
-from baseplate.lib import random
+from unittest import mock
 
-from .. import mock
+from baseplate.lib import random
 
 
 class WeightedChoiceTests(unittest.TestCase):

@@ -1,13 +1,13 @@
 import itertools
 import unittest
 
+from unittest import mock
+
 from baseplate.lib.retry import ExponentialBackoffRetryPolicy
 from baseplate.lib.retry import IndefiniteRetryPolicy
 from baseplate.lib.retry import MaximumAttemptsRetryPolicy
 from baseplate.lib.retry import RetryPolicy
 from baseplate.lib.retry import TimeBudgetRetryPolicy
-
-from .. import mock
 
 
 class RetryPolicyTests(unittest.TestCase):

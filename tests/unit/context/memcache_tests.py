@@ -1,7 +1,7 @@
 import builtins
 import unittest
 
-from ... import mock
+from unittest import mock
 
 try:
     import pymemcache

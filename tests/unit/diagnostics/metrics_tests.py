@@ -1,5 +1,7 @@
 import unittest
 
+from unittest import mock
+
 from baseplate import LocalSpan
 from baseplate import ServerSpan
 from baseplate import Span
@@ -11,8 +13,6 @@ from baseplate.observers.metrics import MetricsBaseplateObserver
 from baseplate.observers.metrics import MetricsClientSpanObserver
 from baseplate.observers.metrics import MetricsLocalSpanObserver
 from baseplate.observers.metrics import MetricsServerSpanObserver
-
-from ... import mock
 
 
 class TestException(Exception):

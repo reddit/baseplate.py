@@ -1,5 +1,7 @@
 import unittest
 
+from unittest import mock
+
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import LocalSpan
@@ -16,7 +18,6 @@ from baseplate.lib.secrets import SecretsStore
 
 from .. import AUTH_TOKEN_PUBLIC_KEY
 from .. import AUTH_TOKEN_VALID
-from .. import mock
 from .. import SERIALIZED_EDGECONTEXT_WITH_ANON_AUTH
 from .. import SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH
 from .. import SERIALIZED_EDGECONTEXT_WITH_NO_AUTH

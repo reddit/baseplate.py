@@ -1,9 +1,9 @@
 import socket
 import unittest
 
-from baseplate.server import einhorn
+from unittest import mock
 
-from ... import mock
+from baseplate.server import einhorn
 
 
 class NotEinhornWorkerTests(unittest.TestCase):

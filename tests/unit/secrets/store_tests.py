@@ -1,5 +1,7 @@
 import unittest
 
+from unittest import mock
+
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 from baseplate.lib.secrets import CorruptSecretError
@@ -8,8 +10,6 @@ from baseplate.lib.secrets import SecretNotFoundError
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.lib.secrets import SecretsNotAvailableError
 from baseplate.lib.secrets import SecretsStore
-
-from ... import mock
 
 
 class StoreTests(unittest.TestCase):
