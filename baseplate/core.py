@@ -821,7 +821,7 @@ class Span(object):
 
         # clean up reference cycles
         self.context = None
-        self.observers.clear()
+        del self.observers[:]
 
     def __enter__(self):
         self.start()
