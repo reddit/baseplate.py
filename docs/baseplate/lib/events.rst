@@ -40,19 +40,6 @@ instantiate and fill out an event object, and pass it into the queue::
       request.events_v2.put(ev2)
 
 
-Legacy schemaless events
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-For legacy schemaless events, you can use these helper objects to build
-payloads:
-
-.. autoclass:: FieldKind
-   :members:
-
-.. autoclass:: Event
-   :members:
-
-
 Queing Events
 -------------
 
@@ -77,12 +64,8 @@ Serializers
 ~~~~~~~~~~~
 
 The ``event_serializer`` parameter to :py:class:`EventQueue` is a callable
-which serializes a given event object. The default is the original schemaless
-format. This can be overridden by passing in a different serializer.  Baseplate
-comes with a serializer for the new Thrift schema based V2 event system as
-well:
-
-.. autofunction:: serialize_v1_event
+which serializes a given event object.  Baseplate comes with a serializer for
+the Thrift schema based V2 event system:
 
 .. autofunction:: serialize_v2_event
 
