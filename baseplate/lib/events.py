@@ -8,127 +8,19 @@ Events are serialized and put onto a message queue on the same server. These
 serialized events are then consumed and published to the remote event collector
 by a separate daemon.
 
-See also: https://github.com/reddit/event-collector
-
 """
-import calendar
-import json
 import logging
-import time
-import uuid
-
-from enum import Enum
 
 from thrift import TSerialization
 from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
 from baseplate.clients import ContextFactory
-from baseplate.lib import warn_deprecated
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
 
 MAX_EVENT_SIZE = 102400
 MAX_QUEUE_SIZE = 10000
-
-
-# pylint: disable=pointless-string-statement,no-init
-class FieldKind(Enum):
-    """Field kinds."""
-
-    NORMAL = None
-    """
-    For fields normal fields with no hashing/indexing requirements.
-    """
-
-    OBFUSCATED = "obfuscated_data"
-    """
-    For fields containing sensitive information like IP addresses that must
-    be treated with care.
-    """
-
-    HIGH_CARDINALITY = "interana_excluded"
-    """
-    For fields that should not be indexed due to high cardinality
-    (e.g. not used in Interana)
-    """
-
-
-class Event:
-    """An event."""
-
-    # pylint: disable=invalid-name,redefined-builtin
-    def __init__(self, topic, event_type, timestamp=None, id=None):
-        self.topic = topic
-        self.event_type = event_type
-        if timestamp:
-            if timestamp.tzinfo and timestamp.utcoffset().total_seconds() != 0:
-                raise ValueError("Timestamps must be in UTC")
-            self.timestamp = calendar.timegm(timestamp.timetuple()) * 1000
-        else:
-            self.timestamp = time.time() * 1000
-        self.id = id or uuid.uuid4()
-        self.payload = {}
-        self.payload_types = {}
-
-    def get_field(self, key):
-        """Get the value of a field in the event.
-
-        If the field is not present, :py:data:`None` is returned.
-
-        :param str key: The name of the field.
-
-        """
-        return self.payload.get(key, None)
-
-    def set_field(self, key, value, obfuscate=False, kind=FieldKind.NORMAL):
-        """Set the value for a field in the event.
-
-        :param str key: The name of the field.
-        :param value: The value to set the field to. Should be JSON
-            serializable.
-        :param baseplate.lib.events.FieldKind kind: The kind the field is.
-            Used to determine what section of the payload the field belongs
-            in when serialized.
-
-        """
-        # There's no need to send null/empty values, the collector will act
-        # the same whether they're sent or not. Zeros are important though,
-        # so we can't use a simple boolean truth check here.
-        if value is None or value == "":
-            return
-
-        if obfuscate:
-            kind = FieldKind.OBFUSCATED
-            warn_deprecated(
-                "Passing obfuscate to set_field is deprecated in"
-                " favor of passing a FieldKind value as kind."
-            )
-
-        self.payload[key] = value
-        self.payload_types[key] = kind
-
-    def serialize(self):
-        payload = {}
-
-        for key, value in self.payload.items():
-            kind = self.payload_types[key]
-
-            if kind.value is None:
-                payload[key] = value
-            else:
-                section = payload.setdefault(kind.value, {})
-                section[key] = value
-
-        return json.dumps(
-            {
-                "event_topic": self.topic,
-                "event_type": self.event_type,
-                "event_ts": int(self.timestamp),
-                "uuid": str(self.id),
-                "payload": payload,
-            }
-        )
 
 
 class EventError(Exception):
@@ -152,15 +44,6 @@ class EventQueueFullError(EventError):
 
     def __init__(self):
         super().__init__("The event queue is full.")
-
-
-def serialize_v1_event(event):
-    """Serialize an Event object for the V1 event protocol.
-
-    :param baseplate.lib.events.Event event: An event object.
-
-    """
-    return event.serialize()
 
 
 _V2_PROTOCOL_FACTORY = TJSONProtocolFactory()
@@ -200,7 +83,7 @@ class EventQueue(ContextFactory):
 
     """
 
-    def __init__(self, name, event_serializer=serialize_v1_event):
+    def __init__(self, name, event_serializer):
         self.queue = MessageQueue(
             "/events-" + name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE
         )
