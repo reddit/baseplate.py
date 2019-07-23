@@ -139,7 +139,7 @@ class EventTooLargeError(EventError):
     """Raised when a serialized event is too large to send."""
 
     def __init__(self, size):
-        super().__init__("Event is too large to send (%d bytes)" % size)
+        super().__init__(f"Event is too large to send ({size:d} bytes)")
 
 
 class EventQueueFullError(EventError):

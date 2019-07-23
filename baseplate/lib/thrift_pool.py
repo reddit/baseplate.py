@@ -40,7 +40,7 @@ def _make_transport(endpoint):
     elif endpoint.family == socket.AF_UNIX:
         trans = TSocket.TSocket(unix_socket=endpoint.address)
     else:
-        raise Exception("unsupported endpoint family %r" % endpoint.family)
+        raise Exception(f"unsupported endpoint family {endpoint.family!r}")
 
     return trans
 

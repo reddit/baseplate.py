@@ -110,9 +110,9 @@ def _decode_secret(path: str, encoding: str, value: str) -> bytes:
         try:
             return base64.b64decode(value)
         except (TypeError, binascii.Error) as exc:
-            raise CorruptSecretError(path, "unable to decode base64: %s" % exc)
+            raise CorruptSecretError(path, f"unable to decode base64: {exc}")
 
-    raise CorruptSecretError(path, "unknown encoding: %r" % encoding)
+    raise CorruptSecretError(path, f"unknown encoding: {encoding!r}")
 
 
 class SecretsStore(ContextFactory):
@@ -176,7 +176,7 @@ class SecretsStore(ContextFactory):
 
         if encoding != "identity":
             raise CorruptSecretError(
-                path, "secret has encoding=%s rather than " "encoding=identity" % encoding
+                path, f"secret has encoding={encoding} rather than encoding=identity"
             )
 
         values = {}
@@ -184,10 +184,10 @@ class SecretsStore(ContextFactory):
             try:
                 val = secret_attributes[key]
                 if not isinstance(val, str):
-                    raise CorruptSecretError(path, "secret value '%s' is not a string" % key)
+                    raise CorruptSecretError(path, f"secret value '{key}' is not a string")
                 values[key] = val
             except KeyError:
-                raise CorruptSecretError(path, "secret does not have key '%s'" % key)
+                raise CorruptSecretError(path, f"secret does not have key '{key}'")
 
         return CredentialSecret(**values)
 

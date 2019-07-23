@@ -178,7 +178,7 @@ class VaultClientFactory:
 
         logger.debug("Obtaining Vault token via kubernetes auth.")
         response = self.session.post(
-            urllib.parse.urljoin(self.base_url, "v1/auth/%s/login" % self.mount_point),
+            urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
         )
         response.raise_for_status()
@@ -222,7 +222,7 @@ class VaultClientFactory:
 
         logger.debug("Obtaining Vault token via aws auth.")
         response = self.session.post(
-            urllib.parse.urljoin(self.base_url, "v1/auth/%s/login" % self.mount_point),
+            urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
         )
         if response.status_code == 400:

@@ -300,7 +300,7 @@ class Timer:
         :param elapsed: The elapsed time in seconds to report.
 
         """
-        serialized = self.name + (":{:g}|ms".format(elapsed * 1000.0).encode())
+        serialized = self.name + (f":{(elapsed * 1000.0):g}|ms".encode())
         self.transport.send(serialized)
 
     def __enter__(self) -> None:

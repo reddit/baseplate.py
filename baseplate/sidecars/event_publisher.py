@@ -98,7 +98,7 @@ def gzip_compress(content):
 class BatchPublisher:
     def __init__(self, metrics_client, cfg):
         self.metrics = metrics_client
-        self.url = "https://%s/v%d" % (cfg.collector.hostname, cfg.collector.version)
+        self.url = f"https://{cfg.collector.hostname}/v{cfg.collector.version:d}"
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
         self.session = requests.Session()

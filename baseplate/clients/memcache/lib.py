@@ -104,7 +104,7 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
             serialized = value
             flags = 0
         elif isinstance(value, int):
-            serialized = "%d" % value
+            serialized = f"{value:d}"
             flags = Flags.INTEGER
         else:
             # NOTE: json.dumps raises ValueError if `value` is not serializable
@@ -211,7 +211,7 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
             serialized = value
             flags = 0
         elif isinstance(value, int):
-            serialized = "%d" % value
+            serialized = f"{value:d}"
             flags = PickleFlags.INTEGER
         else:
             # use protocol 2 which is the highest value supported by python2

@@ -80,4 +80,4 @@ class MetricsClientSpanObserver(SpanObserver):
 
     def on_log(self, name, payload):
         if name == "error.object":
-            self.batch.counter("errors.%s" % payload.__class__.__name__).increment()
+            self.batch.counter(f"errors.{payload.__class__.__name__}").increment()

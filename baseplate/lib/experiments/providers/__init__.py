@@ -80,7 +80,7 @@ def parse_experiment(config):
             stop_ts = (expires - epoch).total_seconds()
         else:
             raise ValueError(
-                "Invalid config for experiment %s, missing start_ts and/or " "stop_ts." % name
+                f"Invalid config for experiment {name}, missing start_ts and/or stop_ts."
             )
 
     if "version" in config:

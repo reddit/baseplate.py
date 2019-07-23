@@ -249,5 +249,5 @@ def create_targeting_tree(input_node):
             )
     else:
         raise UnknownTargetingOperatorError(
-            "Unrecognized operator while constructing targeting " "tree: {}".format(operator_name)
+            f"Unrecognized operator while constructing targeting tree: {operator_name}"
         )

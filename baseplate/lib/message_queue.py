@@ -30,7 +30,7 @@ class InvalidParametersError(ValueError):
 # is rather opaque.
 class MessageQueueOSError(OSError):
     def __init__(self, inner):
-        super().__init__("%s (check `ulimit -q`?)" % inner)
+        super().__init__(f"{inner} (check `ulimit -q`?)")
 
 
 class MessageQueue:
