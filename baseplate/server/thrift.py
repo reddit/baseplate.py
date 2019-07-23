@@ -1,5 +1,3 @@
-import signal
-
 from gevent.pool import Pool
 from gevent.server import StreamServer
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
@@ -26,11 +24,6 @@ class GeventServer(StreamServer):
             ]
         )
         super(GeventServer, self).__init__(*args, **kwargs)
-
-    def serve_forever(self, stop_timeout=None):
-        signal.signal(signal.SIGINT, lambda sig, frame: self.stop())
-        signal.signal(signal.SIGTERM, lambda sig, frame: self.stop())
-        super(GeventServer, self).serve_forever(stop_timeout=stop_timeout)
 
     # pylint: disable=method-hidden
     def handle(self, client_socket, _):
