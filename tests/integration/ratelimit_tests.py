@@ -65,11 +65,11 @@ class RedisRateLimitBackendTests(RateLimiterBackendTests, unittest.TestCase):
     def setUp(self):
         pool = ConnectionPool(host=redis_endpoint.address.host, port=redis_endpoint.address.port)
         self.backend_factory = RedisRateLimitBackendContextFactory(pool)
-        super(RedisRateLimitBackendTests, self).setUp()
+        super().setUp()
 
 
 class MemcacheRateLimitBackendTests(RateLimiterBackendTests, unittest.TestCase):
     def setUp(self):
         pool = PooledClient(server=memcached_endpoint.address)
         self.backend_factory = MemcacheRateLimitBackendContextFactory(pool)
-        super(MemcacheRateLimitBackendTests, self).setUp()
+        super().setUp()

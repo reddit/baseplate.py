@@ -126,7 +126,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         # add a comment to the sql statement with the trace and span ids
         # this is useful for slow query logs and active query views
-        annotated_statement = "{} -- trace:{:d},span:{:d}".format(statement, span.trace_id, span.id)
+        annotated_statement = f"{statement} -- trace:{span.trace_id:d},span:{span.id:d}"
         return annotated_statement, parameters
 
     # pylint: disable=unused-argument, too-many-arguments

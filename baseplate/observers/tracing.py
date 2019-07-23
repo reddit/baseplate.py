@@ -179,7 +179,7 @@ class TraceSpanObserver(SpanObserver):
         self.elapsed = None
         self.binary_annotations = []
         self.on_set_tag(ANNOTATIONS["COMPONENT"], "baseplate")
-        super(TraceSpanObserver, self).__init__()
+        super().__init__()
 
     def on_start(self):
         self.start = current_epoch_microseconds()
@@ -267,7 +267,7 @@ class TraceLocalSpanObserver(TraceSpanObserver):
 
     def __init__(self, service_name, component_name, hostname, span, recorder):
         self.component_name = component_name
-        super(TraceLocalSpanObserver, self).__init__(service_name, hostname, span, recorder)
+        super().__init__(service_name, hostname, span, recorder)
         self.binary_annotations.append(
             self._create_binary_annotation(ANNOTATIONS["LOCAL_COMPONENT"], self.component_name)
         )
@@ -308,7 +308,7 @@ class TraceServerSpanObserver(TraceSpanObserver):
         self.service_name = service_name
         self.span = span
         self.recorder = recorder
-        super(TraceServerSpanObserver, self).__init__(service_name, hostname, span, recorder)
+        super().__init__(service_name, hostname, span, recorder)
 
     def on_start(self):
         self.start = current_epoch_microseconds()
@@ -386,9 +386,7 @@ class LoggingRecorder(BaseBatchRecorder):
     def __init__(
         self, max_queue_size=50000, num_workers=5, max_span_batch=100, batch_wait_interval=0.5
     ):
-        super(LoggingRecorder, self).__init__(
-            max_queue_size, num_workers, max_span_batch, batch_wait_interval
-        )
+        super().__init__(max_queue_size, num_workers, max_span_batch, batch_wait_interval)
 
     def flush_func(self, spans):
         """Write a set of spans to debug log."""
@@ -402,9 +400,7 @@ class NullRecorder(BaseBatchRecorder):
     def __init__(
         self, max_queue_size=50000, num_workers=5, max_span_batch=100, batch_wait_interval=0.5
     ):
-        super(NullRecorder, self).__init__(
-            max_queue_size, num_workers, max_span_batch, batch_wait_interval
-        )
+        super().__init__(max_queue_size, num_workers, max_span_batch, batch_wait_interval)
 
     def flush_func(self, spans):
         return
@@ -428,9 +424,7 @@ class RemoteRecorder(BaseBatchRecorder):
         batch_wait_interval=0.5,
     ):
 
-        super(RemoteRecorder, self).__init__(
-            max_queue_size, num_workers, max_span_batch, batch_wait_interval
-        )
+        super().__init__(max_queue_size, num_workers, max_span_batch, batch_wait_interval)
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         self.session = requests.Session()
         self.session.mount("http://", adapter)

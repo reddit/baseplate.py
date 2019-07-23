@@ -368,7 +368,7 @@ class TestR2Experiment(unittest.TestCase):
 @unittest.skipIf("CI" not in os.environ, "test takes too long to run for normal local iteration")
 class TestSimulatedR2Experiments(unittest.TestCase):
     def setUp(self):
-        super(TestSimulatedR2Experiments, self).setUp()
+        super().setUp()
         self.event_logger = mock.Mock(spec=EventLogger)
         self.mock_filewatcher = mock.Mock(spec=FileWatcher)
         self.factory = ExperimentsContextFactory("path", self.event_logger)

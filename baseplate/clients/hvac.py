@@ -108,22 +108,18 @@ class InstrumentedHvacClient(hvac.Client):
         self.context_name = context_name
         self.server_span = server_span
 
-        super(InstrumentedHvacClient, self).__init__(
-            url=url, token=token, timeout=timeout, session=session
-        )
+        super().__init__(url=url, token=token, timeout=timeout, session=session)
 
     # this ugliness is us undoing the name mangling that __request turns into
     # inside python. this feels very dirty.
     def _Client__request(self, method, url, **kwargs):
-        span_name = "{}.request".format(self.context_name)
+        span_name = f"{self.context_name}.request"
         with self.server_span.make_child(span_name) as span:
             span.set_tag("http.method", method.upper())
             span.set_tag("http.url", url)
 
             # pylint: disable=no-member
-            response = super(InstrumentedHvacClient, self)._Client__request(
-                method=method, url=url, **kwargs
-            )
+            response = super()._Client__request(method=method, url=url, **kwargs)
 
             # this means we can't get the status code from error responses.
             # that's unfortunate, but hvac doesn't make it easy.

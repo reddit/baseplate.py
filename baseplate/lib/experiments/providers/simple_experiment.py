@@ -170,7 +170,7 @@ class SimpleExperiment(Experiment):
 
         self._seed = bucket_seed
         if self._seed is None:
-            self._seed = "{}.{}.{}".format(id, name, shuffle_version)
+            self._seed = f"{id}.{name}.{shuffle_version}"
 
     @classmethod
     def from_dict(cls, id, name, owner, start_ts, stop_ts, config, variant_type, enabled=True):
@@ -184,7 +184,7 @@ class SimpleExperiment(Experiment):
         variant_type_cls = variant_type_map.get(variant_type)
 
         if variant_type_cls is None:
-            raise ValueError("Invalid experiment type: {}".format(variant_type))
+            raise ValueError(f"Invalid experiment type: {variant_type}")
 
         variant_set = variant_type_cls(variants, num_buckets=num_buckets)
 
@@ -291,7 +291,7 @@ class SimpleExperiment(Experiment):
         """
         # Mix the experiment seed with the bucket_val so the same users don't
         # get placed into the same bucket for each experiment.
-        seed_bytes = ("%s%s" % (self.seed, bucket_val)).encode()
+        seed_bytes = (f"{self.seed}{bucket_val}").encode()
         hashed = hashlib.sha1(seed_bytes)
         bucket = int(hashed.hexdigest(), 16) % self.num_buckets
         return bucket

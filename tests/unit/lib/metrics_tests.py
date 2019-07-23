@@ -142,7 +142,7 @@ class BatchTests(unittest.TestCase):
 
         # encode is called here since metrics.Batch is designed to be instantiated
         # by an instance of metrics.Client which encodes the namespace arg
-        self.batch = metrics.Batch(self.mock_transport, "namespace".encode("ascii"))
+        self.batch = metrics.Batch(self.mock_transport, b"namespace")
 
     def test_context(self):
         with self.batch as b:

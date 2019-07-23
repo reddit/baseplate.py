@@ -43,7 +43,7 @@ class RangeVariantSet(VariantSet):
             try:
                 range_size = variant["range_end"] - variant["range_start"]
             except KeyError:
-                raise ValueError("Variant range invalid: {}".format(self.variants))
+                raise ValueError(f"Variant range invalid: {self.variants}")
 
             total_size += int(range_size * self.num_buckets)
 

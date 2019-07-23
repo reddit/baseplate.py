@@ -128,7 +128,7 @@ class _PooledClientProxy:
 
 def _build_thrift_proxy_method(name):
     def _call_thrift_method(self, *args, **kwargs):
-        trace_name = "{}.{}".format(self.namespace, name)
+        trace_name = f"{self.namespace}.{name}"
         last_error = None
 
         for _ in self.retry_policy:

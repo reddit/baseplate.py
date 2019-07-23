@@ -29,7 +29,7 @@ def check_http_service(endpoint):
         )
     elif endpoint.family == socket.AF_UNIX:
         quoted_path = urllib.parse.quote(endpoint.address, safe="")
-        url = "http+unix://{path}/health".format(path=quoted_path)
+        url = f"http+unix://{quoted_path}/health"
     else:
         raise ValueError("unrecognized socket family %r" % endpoint.family)
 

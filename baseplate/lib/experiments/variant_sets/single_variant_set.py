@@ -43,7 +43,7 @@ class SingleVariantSet(VariantSet):
             )
 
         if self.variants[0].get("size") is None or self.variants[1].get("size") is None:
-            raise ValueError("Variant size not provided: {}".format(self.variants))
+            raise ValueError(f"Variant size not provided: {self.variants}")
 
         total_size = self.variants[0].get("size") + self.variants[1].get("size")
 

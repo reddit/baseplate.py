@@ -38,7 +38,7 @@ class MaxRetriesError(Exception):
 
 class TraceBatch(RawJSONBatch):
     def __init__(self, max_size=MAX_BATCH_SIZE_DEFAULT):
-        super(TraceBatch, self).__init__(max_size)
+        super().__init__(max_size)
 
 
 class ZipkinPublisher:
@@ -56,8 +56,8 @@ class ZipkinPublisher:
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         parsed_url = urllib.parse.urlparse(zipkin_api_url)
         self.session = requests.Session()
-        self.session.mount("{}://".format(parsed_url.scheme), adapter)
-        self.endpoint = "{}/spans".format(zipkin_api_url)
+        self.session.mount(f"{parsed_url.scheme}://", adapter)
+        self.endpoint = f"{zipkin_api_url}/spans"
         self.metrics = metrics_client
         self.post_timeout = post_timeout
         self.retry_limit = retry_limit
@@ -97,7 +97,7 @@ class ZipkinPublisher:
                         raise
                 else:
                     logger.exception("HTTP Request failed. Response not available")
-            except IOError:
+            except OSError:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:

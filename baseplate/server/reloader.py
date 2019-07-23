@@ -27,10 +27,8 @@ def _get_loaded_modules():
 
 def _get_watched_files(extra_files):
     """Yield filenames for all files to be watched for modification."""
-    for filename in _get_loaded_modules():
-        yield filename
-    for filename in extra_files:
-        yield filename
+    yield from _get_loaded_modules()
+    yield from extra_files
 
 
 def _reload_when_files_change(extra_files):

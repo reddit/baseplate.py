@@ -158,7 +158,7 @@ class CQLMapperContextFactory(CassandraContextFactory):
         # without installing cqlmapper
         import cqlmapper.connection
 
-        session_adapter = super(CQLMapperContextFactory, self).make_object_for_context(name, span)
+        session_adapter = super().make_object_for_context(name, span)
         return cqlmapper.connection.Connection(session_adapter)
 
 

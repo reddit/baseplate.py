@@ -107,14 +107,14 @@ class MonitoredRedisConnection(redis.StrictRedis):
         self.context_name = context_name
         self.server_span = server_span
 
-        super(MonitoredRedisConnection, self).__init__(connection_pool=connection_pool)
+        super().__init__(connection_pool=connection_pool)
 
     # pylint: disable=arguments-differ
     def execute_command(self, command, *args, **kwargs):
-        trace_name = "{}.{}".format(self.context_name, command)
+        trace_name = f"{self.context_name}.{command}"
 
         with self.server_span.make_child(trace_name):
-            return super(MonitoredRedisConnection, self).execute_command(command, *args, **kwargs)
+            return super().execute_command(command, *args, **kwargs)
 
     # pylint: disable=arguments-differ
     def pipeline(self, name, transaction=True, shard_hint=None):
@@ -130,7 +130,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
         """
         return MonitoredRedisPipeline(
-            "{}.pipeline_{}".format(self.context_name, name),
+            f"{self.context_name}.pipeline_{name}",
             self.server_span,
             self.connection_pool,
             self.response_callbacks,
@@ -153,11 +153,11 @@ class MonitoredRedisPipeline(redis.client.StrictPipeline):
     def __init__(self, trace_name, server_span, connection_pool, response_callbacks, **kwargs):
         self.trace_name = trace_name
         self.server_span = server_span
-        super(MonitoredRedisPipeline, self).__init__(connection_pool, response_callbacks, **kwargs)
+        super().__init__(connection_pool, response_callbacks, **kwargs)
 
     def execute(self, **kwargs):  # pylint: disable=arguments-differ
         with self.server_span.make_child(self.trace_name):
-            return super(MonitoredRedisPipeline, self).execute(**kwargs)
+            return super().execute(**kwargs)
 
 
 class MessageQueue:

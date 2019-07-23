@@ -57,7 +57,7 @@ class _GCStatsReporter:
     def report(self, batch):
         for generation, stats in enumerate(gc.get_stats()):
             for name, value in stats.items():
-                batch.gauge("gc.gen{}.{}".format(generation, name)).replace(value)
+                batch.gauge(f"gc.gen{generation}.{name}").replace(value)
 
 
 class _GCTimingReporter:
@@ -146,7 +146,7 @@ def _report_runtime_metrics_periodically(metrics_client, reporters):
 
         try:
             with metrics_client.batch() as batch:
-                batch.namespace += ".runtime.{}.PID{}".format(hostname, pid).encode()
+                batch.namespace += f".runtime.{hostname}.PID{pid}".encode()
                 for reporter in reporters:
                     try:
                         reporter.report(batch)

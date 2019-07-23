@@ -226,7 +226,7 @@ class R2Experiment(Experiment):
         """
         # Mix the experiment seed with the bucket_val so the same users don't
         # get bucketed into the same bucket for each experiment.
-        seed_bytes = ("%s%s" % (self.seed, bucket_val)).encode()
+        seed_bytes = (f"{self.seed}{bucket_val}").encode()
         hashed = hashlib.sha1(seed_bytes)
         bucket = int(hashed.hexdigest(), 16) % self.num_buckets
         return bucket

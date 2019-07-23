@@ -292,7 +292,7 @@ def load_and_run_tshell():
     # generate banner text
     banner = "Available Objects:\n"
     for var in sorted(env_banner.keys()):
-        banner += "\n  %-12s %s" % (var, env_banner[var])
+        banner += "\n  {:<12} {}".format(var, env_banner[var])
 
     try:
         # try to use IPython if possible
@@ -304,7 +304,7 @@ def load_and_run_tshell():
     except ImportError:
         import code
 
-        newbanner = "Baseplate Interactive Shell\nPython {}\n\n".format(sys.version)
+        newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
         banner = newbanner + banner
 
         # import this just for its side-effects (of enabling nice keyboard

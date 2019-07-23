@@ -20,7 +20,7 @@ THIRTY_DAYS = timedelta(days=30).total_seconds()
 
 class TestFeatureFlag(unittest.TestCase):
     def setUp(self):
-        super(TestFeatureFlag, self).setUp()
+        super().setUp()
         self.user_id = "t2_beef"
         self.user_name = "gary"
         self.user_logged_in = True

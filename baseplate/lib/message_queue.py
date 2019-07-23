@@ -14,7 +14,7 @@ class TimedOutError(MessageQueueError):
     """Raised when a message queue operation times out."""
 
     def __init__(self):
-        super(TimedOutError, self).__init__("Timed out waiting for the message queue.")
+        super().__init__("Timed out waiting for the message queue.")
 
 
 # this wrapper-exception is here just to give the user a bit more of an idea
@@ -22,9 +22,7 @@ class TimedOutError(MessageQueueError):
 # is rather opaque.
 class InvalidParametersError(ValueError):
     def __init__(self, inner):
-        super(InvalidParametersError, self).__init__(
-            "%s (check fs.mqueue.{msg_max,msgsize_max} sysctls?)" % inner
-        )
+        super().__init__("%s (check fs.mqueue.{msg_max,msgsize_max} sysctls?)" % inner)
 
 
 # this wrapper-exception is here just to give the user a bit more of an idea
@@ -32,7 +30,7 @@ class InvalidParametersError(ValueError):
 # is rather opaque.
 class MessageQueueOSError(OSError):
     def __init__(self, inner):
-        super(MessageQueueOSError, self).__init__("%s (check `ulimit -q`?)" % inner)
+        super().__init__("%s (check `ulimit -q`?)" % inner)
 
 
 class MessageQueue:

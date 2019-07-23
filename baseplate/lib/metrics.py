@@ -347,10 +347,10 @@ class Counter:
         :param sample_rate: What rate this counter is sampled at. [0-1].
 
         """
-        parts = [self.name + (":{:g}".format(delta).encode()), b"c"]
+        parts = [self.name + (f":{delta:g}".encode()), b"c"]
 
         if sample_rate != 1.0:
-            parts.append("@{:g}".format(sample_rate).encode())
+            parts.append(f"@{sample_rate:g}".encode())
 
         serialized = b"|".join(parts)
         self.transport.send(serialized)
@@ -377,7 +377,7 @@ class BatchCounter(Counter):
     """
 
     def __init__(self, transport: Transport, name: bytes):
-        super(BatchCounter, self).__init__(transport, name)
+        super().__init__(transport, name)
         self.packets: DefaultDict[float, float] = collections.defaultdict(float)
 
     def increment(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
@@ -403,7 +403,7 @@ class BatchCounter(Counter):
 
     def flush(self) -> None:
         for sample_rate, delta in self.packets.items():
-            super(BatchCounter, self).send(delta, sample_rate)
+            super().send(delta, sample_rate)
 
 
 class Histogram:
@@ -428,7 +428,7 @@ class Histogram:
         This records a new value to the histogram; the bucket it goes in
         is determined by the backend service configurations.
         """
-        serialized = self.name + (":{:g}|h".format(value).encode())
+        serialized = self.name + (f":{value:g}|h".encode())
         self.transport.send(serialized)
 
 
@@ -459,7 +459,7 @@ class Gauge:
 
         """
         assert new_value >= 0, "gauges cannot be replaced with negative numbers"
-        serialized = self.name + (":{:g}|g".format(new_value).encode())
+        serialized = self.name + (f":{new_value:g}|g".encode())
         self.transport.send(serialized)
 
 

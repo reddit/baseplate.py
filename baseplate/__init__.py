@@ -184,7 +184,7 @@ class TraceInfo(NamedTuple):
             if not values:
                 continue
             elif not all(value == values[0] for value in values):
-                raise ValueError("Conflicting values found for {} header(s)".format(header_names))
+                raise ValueError(f"Conflicting values found for {header_names} header(s)")
             else:
                 # All the values are the same
                 extracted_values[name] = values[0]

@@ -22,7 +22,7 @@ THIRTY_DAYS = timedelta(days=30).total_seconds()
 
 class TestExperiments(unittest.TestCase):
     def setUp(self):
-        super(TestExperiments, self).setUp()
+        super().setUp()
         self.event_logger = mock.Mock(spec=DebugLogger)
         self.mock_filewatcher = mock.Mock(spec=FileWatcher)
         self.mock_span = mock.MagicMock(spec=ServerSpan)
