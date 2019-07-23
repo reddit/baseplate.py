@@ -31,7 +31,7 @@ test:
 	tox
 
 lint:
-	reorder-python-imports --diff-only --py3-plus --separate-from-import --separate-relative $(shell find -name '*.py')
+	reorder-python-imports --diff-only --py3-plus --separate-from-import --separate-relative $(shell find baseplate/ tests/ -name '*.py')
 	black --diff --check .
 	flake8
 	PYTHONPATH=. pylint baseplate/
