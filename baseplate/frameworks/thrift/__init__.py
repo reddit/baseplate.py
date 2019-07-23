@@ -24,15 +24,6 @@ from thrift.transport.TTransport import TTransportException
 from baseplate import TraceInfo
 
 
-TRACE_HEADER_NAMES = {
-    "trace_id": (b"Trace", b"B3-TraceId"),
-    "span_id": (b"Span", b"B3-SpanId"),
-    "parent_span_id": (b"Parent", b"B3-ParentSpanId"),
-    "sampled": (b"Sampled", b"B3-Sampled"),
-    "flags": (b"Flags", b"B3-Flags"),
-}
-
-
 class _ContextAwareHandler:
     def __init__(self, handler, context, logger):
         self.handler = handler
@@ -71,13 +62,12 @@ class _ContextAwareHandler:
 
 
 def _extract_trace_info(headers):
-    extracted_values = TraceInfo.extract_upstream_header_values(TRACE_HEADER_NAMES, headers)
-    sampled = bool(extracted_values.get("sampled") == b"1")
-    flags = extracted_values.get("flags", None)
+    sampled = bool(headers.get(b"Sampled") == b"1")
+    flags = headers.get(b"Flags", None)
     return TraceInfo.from_upstream(
-        int(extracted_values["trace_id"]),
-        int(extracted_values["parent_span_id"]),
-        int(extracted_values["span_id"]),
+        int(headers[b"Trace"]),
+        int(headers[b"Parent"]),
+        int(headers[b"Span"]),
         sampled,
         int(flags) if flags is not None else None,
     )
