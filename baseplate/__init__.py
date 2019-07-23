@@ -134,62 +134,6 @@ class TraceInfo(NamedTuple):
 
         return cls(trace_id, parent_id, span_id, sampled, flags)
 
-    @classmethod
-    def extract_upstream_header_values(cls, upstream_header_names, headers):
-        """Extract values from upstream headers.
-
-        This method thinks about upstream headers by a general name as oppposed to the header
-        name, i.e. "trace_id" instead of "X-Trace". These general names are "trace_id",
-        "span_id", "parent_span_id", "sampled" and "flags".
-
-        A dict mapping these general names to corresponding header names is expected.
-
-        For example:
-
-            {
-                "trace_id": ("X-Trace", "X-B3-TraceId"),
-                "span_id": ("X-Span", "X-B3-SpanId"),
-                "parent_span_id": ("X-Parent", "X-B3-ParentSpanId"),
-                "sampled": ("X-Sampled", "X-B3-Sampled"),
-                "flags": ("X-Flags", "X-B3-Flags"),
-            }
-
-        This structure is used to extract relevant values from the request headers resulting
-        in a dict mapping general names to values.
-
-        For example:
-
-            {
-                "trace_id": "2391921232992245445",
-                "span_id": "7638783876913511395",
-                "parent_span_id": "3383915029748331832",
-                "sampled": "1",
-            }
-
-        :param dict upstream_headers_name: Map of general upstream value labels to header names
-        :param dict headers: Headers sent with a request
-        :return: Values found in upstream trace headers
-        :rtype: dict
-
-        :raises: :py:exc:`ValueError` if conflicting values are found for the same header category
-
-        """
-        extracted_values = {}
-        for name, header_names in upstream_header_names.items():
-            values = []
-            for header_name in header_names:
-                if header_name in headers:
-                    values.append(headers[header_name])
-
-            if not values:
-                continue
-            elif not all(value == values[0] for value in values):
-                raise ValueError(f"Conflicting values found for {header_names} header(s)")
-            else:
-                # All the values are the same
-                extracted_values[name] = values[0]
-        return extracted_values
-
 
 class RequestContext:
     def __init__(self, context_config, prefix=None, span=None, wrapped=None):

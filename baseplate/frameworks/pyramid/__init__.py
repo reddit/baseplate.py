@@ -39,14 +39,6 @@ from baseplate import TraceInfo
 from baseplate.lib import warn_deprecated
 from baseplate.server import make_app
 
-TRACE_HEADER_NAMES = {
-    "trace_id": ("X-Trace", "X-B3-TraceId"),
-    "span_id": ("X-Span", "X-B3-SpanId"),
-    "parent_span_id": ("X-Parent", "X-B3-ParentSpanId"),
-    "sampled": ("X-Sampled", "X-B3-Sampled"),
-    "flags": ("X-Flags", "X-B3-Flags"),
-}
-
 
 def _make_baseplate_tween(handler, _registry):
     def baseplate_tween(request):
@@ -234,13 +226,12 @@ class BaseplateConfigurator:
         request.registry.notify(ServerSpanInitialized(request))
 
     def _get_trace_info(self, headers):
-        extracted_values = TraceInfo.extract_upstream_header_values(TRACE_HEADER_NAMES, headers)
-        sampled = bool(extracted_values.get("sampled") == "1")
-        flags = extracted_values.get("flags", None)
+        sampled = bool(headers.get("X-Sampled") == "1")
+        flags = headers.get("X-Flags", None)
         return TraceInfo.from_upstream(
-            int(extracted_values["trace_id"]),
-            int(extracted_values["parent_span_id"]),
-            int(extracted_values["span_id"]),
+            int(headers["X-Trace"]),
+            int(headers["X-Parent"]),
+            int(headers["X-Span"]),
             sampled,
             int(flags) if flags is not None else None,
         )
