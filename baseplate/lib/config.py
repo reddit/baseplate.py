@@ -229,7 +229,7 @@ def File(mode: str = "r") -> Callable[[str], IO]:  # noqa: D401
         try:
             return open(text, mode=mode)
         except OSError:
-            raise ValueError("could not open file: %s" % text)
+            raise ValueError(f"could not open file: {text}")
 
     return open_file
 
@@ -336,7 +336,7 @@ def OneOf(**options: T) -> Callable[[str], T]:  # noqa: D401
         try:
             return options[text]
         except KeyError:
-            raise ValueError("expected one of {!r}".format(options.keys()))
+            raise ValueError(f"expected one of {options.keys()!r}")
 
     return one_of
 
@@ -416,7 +416,7 @@ class Parser(Generic[T]):
             return SpecParser(spec)
         if callable(spec):
             return CallableParser(spec)
-        raise AssertionError("invalid specification: %r" % spec)
+        raise AssertionError(f"invalid specification: {spec!r}")
 
     def parse(self, key_path: str, raw_config: RawConfig) -> T:
         """Parse and return the relevant info for a given key.

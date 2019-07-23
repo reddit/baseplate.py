@@ -46,8 +46,8 @@ def get_socket(index: int = 0) -> socket.socket:
     if not 0 <= index < fd_count:
         raise IndexError
 
-    fileno = int(os.environ["EINHORN_FD_%d" % index])
-    family_name = os.environ.get("EINHORN_FD_FAMILY_%d" % index, "AF_INET")
+    fileno = int(os.environ[f"EINHORN_FD_{index:d}"])
+    family_name = os.environ.get(f"EINHORN_FD_FAMILY_{index:d}", "AF_INET")
     assert family_name.startswith("AF_"), "invalid socket family name"
     family = getattr(socket, family_name)
     return socket.fromfd(fileno, family, socket.SOCK_STREAM)

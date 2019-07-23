@@ -24,14 +24,12 @@ def check_thrift_service(endpoint):
 
 def check_http_service(endpoint):
     if endpoint.family == socket.AF_INET:
-        url = "http://{host}:{port}/health".format(
-            host=endpoint.address.host, port=endpoint.address.port
-        )
+        url = f"http://{endpoint.address.host}:{endpoint.address.port}/health"
     elif endpoint.family == socket.AF_UNIX:
         quoted_path = urllib.parse.quote(endpoint.address, safe="")
         url = f"http+unix://{quoted_path}/health"
     else:
-        raise ValueError("unrecognized socket family %r" % endpoint.family)
+        raise ValueError(f"unrecognized socket family {endpoint.family!r}")
 
     session = requests.Session()
     add_unix_socket_support(session)

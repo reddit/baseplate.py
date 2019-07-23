@@ -60,7 +60,7 @@ class WeightedLottery(Generic[T]):
         for item in self.items:
             weight = weight_key(item)
             if weight < 0:
-                raise ValueError("weight for %r must be non-negative" % item)
+                raise ValueError(f"weight for {item!r} must be non-negative")
             accumulated_weight += weight
             self.weights.append(accumulated_weight)
 

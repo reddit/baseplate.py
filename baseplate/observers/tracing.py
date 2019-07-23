@@ -428,7 +428,7 @@ class RemoteRecorder(BaseBatchRecorder):
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         self.session = requests.Session()
         self.session.mount("http://", adapter)
-        self.endpoint = "http://%s/api/v1/spans" % endpoint
+        self.endpoint = f"http://{endpoint}/api/v1/spans"
 
     def flush_func(self, spans):
         """Send a set of spans to remote collector."""

@@ -105,7 +105,7 @@ class ZipkinPublisher:
                 return
 
         raise MaxRetriesError(
-            "ZipkinPublisher exhausted allowance of %d retries." % self.retry_limit
+            f"ZipkinPublisher exhausted allowance of {self.retry_limit:d} retries."
         )
 
 
