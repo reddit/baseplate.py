@@ -398,8 +398,8 @@ class BatchCounter(Counter):
         self.increment(delta=-delta, sample_rate=sample_rate)
 
     @property
-    def total(self):
-        return sum(self.packets.values())
+    def total(self) -> int:
+        return sum(self.packets.values())  # type: ignore
 
     def flush(self) -> None:
         for sample_rate, delta in self.packets.items():
@@ -494,10 +494,9 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
         A ``host:port`` pair, e.g. ``localhost:2014``. If an empty string, a
         client that discards all metrics will be returned.
 
-    :param dict raw_config: The application configuration which should have
+    :param raw_config: The application configuration which should have
         settings for the metrics client.
     :return: A configured client.
-    :rtype: :py:class:`baseplate.lib.metrics.Client`
 
     """
     cfg = config.parse_config(

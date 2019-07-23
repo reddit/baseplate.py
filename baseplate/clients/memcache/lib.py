@@ -15,6 +15,10 @@ import logging
 import pickle
 import zlib
 
+from typing import Any
+from typing import Callable
+from typing import Tuple
+
 
 class Flags:
     """Memcached client flags.
@@ -32,15 +36,17 @@ class Flags:
     ZLIB = 1 << 3
 
 
-def decompress_and_load(key, serialized, flags):  # pylint: disable=unused-argument
+def decompress_and_load(  # pylint: disable=unused-argument
+    key: str, serialized: bytes, flags: int
+) -> Any:
     """Deserialize data.
 
     This should be paired with
     :py:func:`~baseplate.clients.memcache.lib.make_dump_and_compress_fn`.
 
-    :param str key: the memcached key.
-    :param str serialized: the serialized object returned from memcached.
-    :param int flags: value stored and returned from memcached for the client
+    :param key: the memcached key.
+    :param serialized: the serialized object returned from memcached.
+    :param flags: value stored and returned from memcached for the client
         to use to indicate how the value was serialized.
     :returns: The deserialized value.
 
@@ -71,7 +77,9 @@ def decompress_and_load(key, serialized, flags):  # pylint: disable=unused-argum
     return serialized
 
 
-def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
+def make_dump_and_compress_fn(
+    min_compress_length: int = 0, compress_level: int = 1
+) -> Callable[[str, Any], Tuple[bytes, int]]:
     """Make a serializer.
 
     This should be paired with
@@ -81,9 +89,9 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
     compression. Values that are not JSON serializable will result in a
     :py:exc:`TypeError`.
 
-    :param int min_compress_length: the minimum serialized string length to
+    :param min_compress_length: the minimum serialized string length to
         enable zlib compression. 0 disables compression.
-    :param int compress_level: zlib compression level. 0 disables compression
+    :param compress_level: zlib compression level. 0 disables compression
         and 9 is the maximum value.
     :returns: The serializer.
 
@@ -91,10 +99,12 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
     assert min_compress_length >= 0
     assert 0 <= compress_level <= 9
 
-    def dump_and_compress(key, value):  # pylint: disable=unused-argument
+    def dump_and_compress(  # pylint: disable=unused-argument
+        key: str, value: Any
+    ) -> Tuple[bytes, int]:
         """Serialize a Python object in a way compatible with decompress_and_load().
 
-        :param str key: the memcached key.
+        :param key: the memcached key.
         :param value: python object to be serialized and set to memcached.
         :returns: value serialized as str, flags int.
         :raises ValueError: if `value` is not JSON serializable
@@ -111,11 +121,13 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
             serialized = json.dumps(value)
             flags = Flags.JSON
 
+        serialized_bytes = serialized.encode("utf8")
+
         if compress_level and min_compress_length and len(serialized) > min_compress_length:
-            compressed = zlib.compress(serialized, compress_level)
+            serialized_bytes = zlib.compress(serialized_bytes, compress_level)
             flags |= Flags.ZLIB
-            return compressed, flags
-        return serialized, flags
+
+        return serialized_bytes, flags
 
     return dump_and_compress
 
@@ -136,7 +148,9 @@ class PickleFlags:
     ZLIB = 1 << 3
 
 
-def decompress_and_unpickle(key, serialized, flags):  # pylint: disable=unused-argument
+def decompress_and_unpickle(  # pylint: disable=unused-argument
+    key: str, serialized: bytes, flags: int
+) -> Any:
     """Deserialize data stored by ``pylibmc``.
 
     .. warning:: This should only be used when sharing caches with applications
@@ -144,11 +158,11 @@ def decompress_and_unpickle(key, serialized, flags):  # pylint: disable=unused-a
         future proofed
         :py:func:`~baseplate.clients.memcache.lib.decompress_and_load`.
 
-    :param str key: the memcached key.
-    :param str serialized: the serialized object returned from memcached.
-    :param int flags: value stored and returned from memcached for the client
+    :param key: the memcached key.
+    :param serialized: the serialized object returned from memcached.
+    :param flags: value stored and returned from memcached for the client
         to use to indicate how the value was serialized.
-    :returns str value: the deserialized value.
+    :returns: the deserialized value.
 
     """
     if flags & PickleFlags.ZLIB:
@@ -177,7 +191,9 @@ def decompress_and_unpickle(key, serialized, flags):  # pylint: disable=unused-a
     return serialized
 
 
-def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
+def make_pickle_and_compress_fn(
+    min_compress_length: int = 0, compress_level: int = 1
+) -> Callable[[str, Any], Tuple[bytes, int]]:
     """Make a serializer compatible with ``pylibmc`` readers.
 
     The resulting method is a chain of :py:func:`pickle.dumps` and ``zlib``
@@ -189,29 +205,31 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
         future proofed
         :py:func:`~baseplate.clients.memcache.lib.make_dump_and_compress_fn`.
 
-    :param int min_compress_length: the minimum serialized string length to
+    :param min_compress_length: the minimum serialized string length to
         enable zlib compression. 0 disables compression.
-    :param int compress_level: zlib compression level. 0 disables compression
+    :param compress_level: zlib compression level. 0 disables compression
         and 9 is the maximum value.
-    :returns func memcache_serializer: the serializer method.
+    :returns: the serializer method.
 
     """
     assert min_compress_length >= 0
     assert 0 <= compress_level <= 9
 
-    def pickle_and_compress(key, value):  # pylint: disable=unused-argument
+    def pickle_and_compress(  # pylint: disable=unused-argument
+        key: str, value: Any
+    ) -> Tuple[bytes, int]:
         """Serialize a Python object in a way compatible with decompress_and_unpickle().
 
-        :param str key: the memcached key.
+        :param key: the memcached key.
         :param value: python object to be serialized and set to memcached.
         :returns: value serialized as str, flags int.
 
         """
         if isinstance(value, str):
-            serialized = value
+            serialized = value.encode("utf8")
             flags = 0
         elif isinstance(value, int):
-            serialized = f"{value:d}"
+            serialized = f"{value:d}".encode()
             flags = PickleFlags.INTEGER
         else:
             # use protocol 2 which is the highest value supported by python2
@@ -219,9 +237,9 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
             flags = PickleFlags.PICKLE
 
         if compress_level and min_compress_length and len(serialized) > min_compress_length:
-            compressed = zlib.compress(serialized, compress_level)
+            serialized = zlib.compress(serialized, compress_level)
             flags |= PickleFlags.ZLIB
-            return compressed, flags
+
         return serialized, flags
 
     return pickle_and_compress

@@ -1,6 +1,12 @@
 import logging
 import operator
 
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Type
+
 from baseplate.lib.experiments.targeting.base import Targeting
 
 
@@ -18,7 +24,7 @@ class UnknownTargetingOperatorError(Exception):
 class EqualNode(Targeting):
     """Used to determine whether an attribute equals a single value or a value in a list.
 
-    :param dict input_node: dict with the field name and value or list
+    :param input_node: dict with the field name and value or list
     of values to accept for targeting. This dict will contain two keys:
     "field", and one of "value" or "values". If "value" is provided,
     a single value is expected. If "values" is instead provided, then
@@ -42,7 +48,7 @@ class EqualNode(Targeting):
 
     """
 
-    def __init__(self, input_node):
+    def __init__(self, input_node: Dict[str, Any]):
         if len(input_node) != 2:
             raise ValueError("EqualNode expects exactly two fields.")
 
@@ -52,10 +58,10 @@ class EqualNode(Targeting):
         if "value" not in input_node and "values" not in input_node:
             raise ValueError("EqualNode expects input key 'value' or 'values'.")
 
-        self._accepted_key = input_node.get("field").lower()
-        self._accepted_values = input_node.get("values") or [input_node.get("value")]
+        self._accepted_key = input_node["field"].lower()
+        self._accepted_values = input_node.get("values") or [input_node["value"]]
 
-    def evaluate(self, **kwargs):
+    def evaluate(self, **kwargs: Any) -> bool:
         candidate_value = kwargs.get(self._accepted_key)
         try:
             if candidate_value in self._accepted_values:
@@ -69,51 +75,51 @@ class EqualNode(Targeting):
 class AllNode(Targeting):
     """All child nodes return True.
 
-    :param list input_node: a list of Targeting nodes
+    :param input_node: a list of Targeting nodes
 
     """
 
-    def __init__(self, input_node):
+    def __init__(self, input_node: List[Dict[str, Any]]):
         if not isinstance(input_node, list):
             raise TypeError("Input to AllNode expects a list.")
 
-        self._children = []
+        self._children: List[Targeting] = []
 
         for node in input_node:
             self._children.append(create_targeting_tree(node))
 
-    def evaluate(self, **kwargs):
+    def evaluate(self, **kwargs: Any) -> bool:
         return all(node.evaluate(**kwargs) for node in self._children)
 
 
 class AnyNode(Targeting):
     """At least one child node return True.
 
-    :param list input_node: a list of Targeting nodes
+    :param input_node: a list of Targeting nodes
 
     """
 
-    def __init__(self, input_node):
+    def __init__(self, input_node: List[Dict[str, Any]]):
         if not isinstance(input_node, list):
             raise TypeError("Input to AnyNode expects a list.")
 
-        self._children = []
+        self._children: List[Targeting] = []
 
         for node in input_node:
             self._children.append(create_targeting_tree(node))
 
-    def evaluate(self, **kwargs):
+    def evaluate(self, **kwargs: Any) -> bool:
         return any(node.evaluate(**kwargs) for node in self._children)
 
 
 class NotNode(Targeting):
     """Boolean 'not' operator.
 
-    :param dict input_node: a Targeting node
+    :param input_node: a Targeting node
 
     """
 
-    def __init__(self, input_node):
+    def __init__(self, input_node: Dict[str, Any]):
         if len(input_node) != 1:
             raise ValueError("NotNode expects exactly one field.")
 
@@ -122,20 +128,20 @@ class NotNode(Targeting):
 
         self._child = create_targeting_tree(input_node)
 
-    def evaluate(self, **kwargs):
+    def evaluate(self, **kwargs: Any) -> bool:
         return not self._child.evaluate(**kwargs)
 
 
 class OverrideNode(Targeting):
     """Always return True/False."""
 
-    def __init__(self, input_node):
+    def __init__(self, input_node: bool):
         if input_node is True:
             self._return_value = True
         else:
             self._return_value = False
 
-    def evaluate(self, **kwargs):
+    def evaluate(self, **kwargs: Any) -> bool:
         return self._return_value
 
 
@@ -146,11 +152,11 @@ class ComparisonNode(Targeting):
     operator module). Operator must be one that expects two inputs (
     ie: gt, ge, lt, le, eq, ne)
 
-    :param dict input_node: a Targeting node
-    :param operator operator: an operator to apply to the input node
+    :param input_node: a Targeting node
+    :param operator: an operator to apply to the input node
     """
 
-    def __init__(self, input_node, comparator):
+    def __init__(self, input_node: Dict[str, Any], comparator: Callable[[Any, Any], bool]):
         if len(input_node) != 2:
             raise ValueError("ComparisonNode expects exactly two fields.")
 
@@ -160,11 +166,11 @@ class ComparisonNode(Targeting):
         if "value" not in input_node:
             raise ValueError("ComparisonNode expects input key 'value'.")
 
-        self._accepted_key = input_node.get("field").lower()
-        self._accepted_value = input_node.get("value")
+        self._accepted_key = input_node["field"].lower()
+        self._accepted_value = input_node["value"]
         self.comparator = comparator
 
-    def evaluate(self, **kwargs):
+    def evaluate(self, **kwargs: Any) -> bool:
         candidate_value = kwargs.get(self._accepted_key)
 
         # Python 3 throws a TypeError when comparing two Nones. Handle
@@ -174,7 +180,7 @@ class ComparisonNode(Targeting):
         return self.comparator(candidate_value, self._accepted_value)
 
 
-OPERATOR_NODE_TYPE_MAPPING = {
+OPERATOR_NODE_TYPE_MAPPING: Dict[str, Type[Targeting]] = {
     "any": AnyNode,
     "all": AllNode,
     "eq": EqualNode,
@@ -188,7 +194,7 @@ OPERATOR_NODE_TYPE_MAPPING = {
 }
 
 
-def create_targeting_tree(input_node):
+def create_targeting_tree(input_node: Dict[str, Any]) -> Targeting:
     """Create a tree-based targeting evaluator.
 
     Processes input json to create a tree against which a set of inputs
@@ -238,10 +244,11 @@ def create_targeting_tree(input_node):
     if operator_name in OPERATOR_NODE_TYPE_MAPPING:
         operator_node_type = OPERATOR_NODE_TYPE_MAPPING[operator_name]
         try:
+            subnode: Targeting
             if issubclass(operator_node_type, ComparisonNode):
                 subnode = operator_node_type(input_node_value, getattr(operator, operator_name))
             else:
-                subnode = operator_node_type(input_node_value)
+                subnode = operator_node_type(input_node_value)  # type: ignore
             return subnode
         except (TypeError, ValueError) as e:
             raise TargetingNodeError(

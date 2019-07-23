@@ -6,11 +6,14 @@ import hashlib
 import hmac
 import logging
 
-from io import BytesIO
+from typing import Any
+from typing import List
+from typing import Optional
 
 import requests
 
 from baseplate.lib import config
+from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
 from baseplate.lib.message_queue import MessageQueue
@@ -19,7 +22,6 @@ from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
-from baseplate.sidecars import RawJSONBatch
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
 
@@ -44,11 +46,6 @@ class MaxRetriesError(Exception):
     pass
 
 
-class V1Batch(RawJSONBatch):
-    def __init__(self, max_size=MAX_BATCH_SIZE):
-        super().__init__(max_size)
-
-
 class V2Batch(Batch):
     # V2 batches are a struct with a single field of list<Event> type. because
     # we don't have the individual event schemas here, but pre-serialized
@@ -61,11 +58,11 @@ class V2Batch(Batch):
     _header = '{"1":{"lst":["rec",%01d,'
     _end = b"]}}"
 
-    def __init__(self, max_size=MAX_BATCH_SIZE):
+    def __init__(self, max_size: int = MAX_BATCH_SIZE):
         self.max_size = max_size
         self.reset()
 
-    def add(self, item):
+    def add(self, item: Optional[bytes]) -> None:
         if not item:
             return
 
@@ -77,47 +74,40 @@ class V2Batch(Batch):
         self._items.append(item)
         self._size += serialized_size
 
-    def serialize(self):
+    def serialize(self) -> SerializedBatch:
         header = (self._header % len(self._items)).encode()
         return SerializedBatch(
-            count=len(self._items), bytes=header + b",".join(self._items) + self._end
+            item_count=len(self._items), serialized=header + b",".join(self._items) + self._end
         )
 
-    def reset(self):
-        self._items = []
+    def reset(self) -> None:
+        self._items: List[bytes] = []
         self._size = len(self._header) + len(self._end)
 
 
-def gzip_compress(content):
-    buf = BytesIO()
-    with gzip.GzipFile(fileobj=buf, mode="wb", compresslevel=9) as gzip_file:
-        gzip_file.write(content)
-    return buf.getvalue()
-
-
 class BatchPublisher:
-    def __init__(self, metrics_client, cfg):
+    def __init__(self, metrics_client: metrics.Client, cfg: Any):
         self.metrics = metrics_client
         self.url = f"https://{cfg.collector.hostname}/v{cfg.collector.version:d}"
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
         self.session = requests.Session()
 
-    def _sign_payload(self, payload):
+    def _sign_payload(self, payload: bytes) -> str:
         digest = hmac.new(self.key_secret, payload, hashlib.sha256).hexdigest()
         return f"key={self.key_name}, mac={digest}"
 
-    def publish(self, payload):
-        if not payload.count:
+    def publish(self, payload: SerializedBatch) -> None:
+        if not payload.item_count:
             return
 
-        logger.info("sending batch of %d events", payload.count)
-        compressed_payload = gzip_compress(payload.bytes)
+        logger.info("sending batch of %d events", payload.item_count)
+        compressed_payload = gzip.compress(payload.serialized)
         headers = {
             "Date": email.utils.formatdate(usegmt=True),
             "User-Agent": "baseplate-event-publisher/1.0",
             "Content-Type": "application/json",
-            "X-Signature": self._sign_payload(payload.bytes),
+            "X-Signature": self._sign_payload(payload.serialized),
             "Content-Encoding": "gzip",
         }
 
@@ -146,16 +136,16 @@ class BatchPublisher:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
-                self.metrics.counter("sent").increment(payload.count)
+                self.metrics.counter("sent").increment(payload.item_count)
                 return
 
         raise MaxRetriesError("could not sent batch")
 
 
-SERIALIZER_BY_VERSION = {1: V1Batch, 2: V2Batch}
+SERIALIZER_BY_VERSION = {2: V2Batch}
 
 
-def publish_events():
+def publish_events() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
         "config_file", type=argparse.FileType("r"), help="path to a configuration file"
@@ -202,6 +192,8 @@ def publish_events():
     publisher = BatchPublisher(metrics_client, cfg)
 
     while True:
+        message: Optional[bytes]
+
         try:
             message = event_queue.get(timeout=0.2)
         except TimedOutError:

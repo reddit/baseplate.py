@@ -2,6 +2,11 @@
 import functools
 import warnings
 
+from typing import Callable
+from typing import Generic
+from typing import Type
+from typing import TypeVar
+
 
 def warn_deprecated(message: str) -> None:
     """Emit a deprecation warning from the caller.
@@ -14,9 +19,13 @@ def warn_deprecated(message: str) -> None:
     warnings.warn(message, DeprecationWarning, stacklevel=3)
 
 
+T = TypeVar("T")
+R = TypeVar("R")
+
+
 # cached_property is a renamed copy of pyramid.decorator.reify
 # see debian/copyright for full license information
-class cached_property:
+class cached_property(Generic[T, R]):
     """Like @property but the function will only be called once per instance.
 
     When used as a method decorator, this will act like @property but instead
@@ -26,11 +35,11 @@ class cached_property:
 
     """
 
-    def __init__(self, wrapped):
+    def __init__(self, wrapped: Callable[[T], R]):
         self.wrapped = wrapped
-        functools.update_wrapper(self, wrapped)
+        functools.update_wrapper(self, wrapped)  # type: ignore
 
-    def __get__(self, instance, owner):
+    def __get__(self, instance: T, owner: Type[T]) -> R:
         if instance is None:
             return self
         ret = self.wrapped(instance)

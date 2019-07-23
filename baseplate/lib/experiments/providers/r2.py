@@ -1,6 +1,11 @@
 import hashlib
 import logging
 
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Optional
+
 from baseplate.lib.experiments.providers.base import Experiment
 
 
@@ -54,21 +59,21 @@ class R2Experiment(Experiment):
     # pylint: disable=redefined-builtin
     def __init__(
         self,
-        id,
-        name,
-        owner,
-        variants,
-        seed=None,
-        bucket_val="user_id",
-        targeting=None,
-        overrides=None,
-        newer_than=None,
-        version=None,
+        id: int,
+        name: str,
+        owner: str,
+        variants: Dict[str, float],
+        seed: Optional[str] = None,
+        bucket_val: str = "user_id",
+        targeting: Optional[Dict[str, List[Any]]] = None,
+        overrides: Optional[Dict[str, Dict[Any, Any]]] = None,
+        newer_than: Optional[float] = None,
+        version: Optional[int] = None,
     ):
         targeting = dict(targeting or {})
         overrides = dict(overrides or {})
-        self.targeting = {}
-        self.overrides = {}
+        self.targeting: Dict[str, List[Any]] = {}
+        self.overrides: Dict[str, Dict[Any, Any]] = {}
         self._case_sensitive_overrides = [
             param_name.lower() for param_name in overrides.pop("__case_sensitive__", [])
         ]
@@ -88,15 +93,15 @@ class R2Experiment(Experiment):
                     self.targeting[param.lower()].append(v)
                 else:
                     self.targeting[param.lower()].append(v.lower())
-        for param, value in overrides.items():
+        for param, override_value in overrides.items():
             assert isinstance(param, str)
-            assert isinstance(value, dict)
+            assert isinstance(override_value, dict)
             # even if the override parameter is case sensitive, the paramer
             # name cannot be
             key = param.lower()
             self.overrides[key] = {}
             is_case_sensitive = key in self._case_sensitive_overrides
-            for k, v in value.items():
+            for k, v in override_value.items():
                 if is_case_sensitive or not isinstance(k, str):
                     override_val = k
                 else:
@@ -114,14 +119,15 @@ class R2Experiment(Experiment):
 
     # pylint: disable=redefined-builtin
     @classmethod
-    def from_dict(cls, id, name, owner, version, config):
+    def from_dict(
+        cls, id: int, name: str, owner: str, version: int, config: Dict[Any, Any]
+    ) -> "R2Experiment":
         """Parse the config dict and return a new R2Experiment object.
 
-        :param int id: The id of the experiment from the base config.
-        :param str name: The name of the experiment from the base config.
-        :param str owner: The owner of the experiment from the base config.
-        :param dict config: The "experiment" config dict from the base config.
-        :rtype: :py:class:`baseplate.lib.experiments.providers.r2.R2Experiment`
+        :param id: The id of the experiment from the base config.
+        :param name: The name of the experiment from the base config.
+        :param owner: The owner of the experiment from the base config.
+        :param config: The "experiment" config dict from the base config.
         """
         return cls(
             id=id,
@@ -136,15 +142,15 @@ class R2Experiment(Experiment):
             newer_than=config.get("newer_than"),
         )
 
-    def get_unique_id(self, **kwargs):
+    def get_unique_id(self, **kwargs: Any) -> Optional[str]:
         if kwargs.get(self.bucket_val):
             return ":".join([self.name, self.bucket_val, str(kwargs[self.bucket_val])])
         return None
 
-    def should_log_bucketing(self):
+    def should_log_bucketing(self) -> bool:
         return True
 
-    def variant(self, **kwargs):
+    def variant(self, **kwargs: Any) -> Optional[str]:
         lower_kwargs = {k.lower(): v for k, v in kwargs.items()}
 
         variant = self._check_overrides(**lower_kwargs)
@@ -171,7 +177,7 @@ class R2Experiment(Experiment):
         bucket = self._calculate_bucket(lower_kwargs[self.bucket_val])
         return self._choose_variant(bucket)
 
-    def _check_overrides(self, **kwargs):
+    def _check_overrides(self, **kwargs: Any) -> Optional[str]:
         """Check if any of the kwargs override the variant."""
         for override_arg in self.overrides:
             if override_arg in kwargs:
@@ -190,7 +196,7 @@ class R2Experiment(Experiment):
                         return override
         return None
 
-    def _is_enabled(self, **kwargs):
+    def _is_enabled(self, **kwargs: Any) -> bool:
         """Check if the targeting parameters in kwargs allow us to perform the experiment."""
         for targeting_param, allowed_values in self.targeting.items():
             if targeting_param in kwargs:
@@ -216,13 +222,13 @@ class R2Experiment(Experiment):
                             return True
         return False
 
-    def _calculate_bucket(self, bucket_val):
+    def _calculate_bucket(self, bucket_val: str) -> int:
         """Sort something into one of self.num_buckets buckets.
 
-        :param bucket_val -- a string used for shifting the deterministic bucketing
+        :param bucket_val: a string used for shifting the deterministic bucketing
                        algorithm.  In most cases, this will be an Account's
                        _fullname.
-        :return int -- a bucket, 0 <= bucket < self.num_buckets
+        :return: a bucket, 0 <= bucket < self.num_buckets
         """
         # Mix the experiment seed with the bucket_val so the same users don't
         # get bucketed into the same bucket for each experiment.
@@ -231,7 +237,7 @@ class R2Experiment(Experiment):
         bucket = int(hashed.hexdigest(), 16) % self.num_buckets
         return bucket
 
-    def _choose_variant(self, bucket):
+    def _choose_variant(self, bucket: int) -> Optional[str]:
         """Deterministically choose a percentage-based variant.
 
         The algorithm satisfies two conditions:
@@ -248,16 +254,16 @@ class R2Experiment(Experiment):
         These attributes make it suitable for use in A/B experiments that may
         see an increase in their variant percentages post-enabling.
 
-        :param bucket -- an integer bucket representation
-        :param variants -- a dictionary of
+        :param bucket: an integer bucket representation
+        :param variants: a dictionary of
                            <string:variant name>:<float:percentage> pairs.  If
                            any percentage exceeds 1/n percent, where n is the
                            number of variants, the percentage will be capped to
                            1/n.  These variants will be added to
                            DEFAULT_CONTROL_GROUPS to create the effective
                            variant set.
-        :return string -- the variant name, or None if bucket doesn't fall into
-                          any of the variants
+        :returns: the variant name, or None if bucket doesn't fall into any of
+            the variants
         """
         # Say we have an experiment with two new things we're trying out for 2%
         # of users (A and B), a control group with 5% (C), and a pool of

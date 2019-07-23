@@ -2,15 +2,23 @@ import contextlib
 import inspect
 import sys
 
+from typing import Any
+from typing import Callable
+from typing import Iterator
+from typing import Optional
+
 from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
 from thrift.transport.TTransport import TTransportException
 
+from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib import metrics
 from baseplate.lib.retry import RetryPolicy
 from baseplate.lib.thrift_pool import thrift_pool_from_config
+from baseplate.lib.thrift_pool import ThriftConnectionPool
 
 
 class ThriftClient(config.Parser):
@@ -27,7 +35,7 @@ class ThriftClient(config.Parser):
 
     """
 
-    def __init__(self, client_cls, **kwargs):
+    def __init__(self, client_cls: Any, **kwargs: Any):
         self.client_cls = client_cls
         self.kwargs = kwargs
 
@@ -45,8 +53,7 @@ class ThriftContextFactory(ContextFactory):
     the connection pool and execute the RPC, automatically recording diagnostic
     information.
 
-    :param baseplate.lib.thrift_pool.ThriftConnectionPool pool: The connection
-        pool.
+    :param pool: The connection pool.
     :param client_cls: The class object of a Thrift-generated client class,
         e.g. ``YourService.Client``.
 
@@ -61,7 +68,7 @@ class ThriftContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, pool, client_cls):
+    def __init__(self, pool: ThriftConnectionPool, client_cls: Any):
         self.pool = pool
         self.client_cls = client_cls
         self.proxy_cls = type(
@@ -74,25 +81,25 @@ class ThriftContextFactory(ContextFactory):
             },
         )
 
-    def report_runtime_metrics(self, batch):
+    def report_runtime_metrics(self, batch: metrics.Client) -> None:
         batch.gauge("pool.size").replace(self.pool.size)
         batch.gauge("pool.in_use").replace(self.pool.checkedout)
         # it's hard to report "open_and_available" currently because we can't
         # distinguish easily between available connection slots that aren't
         # instantiated and ones that have actual open connections.
 
-    def make_object_for_context(self, name, span):
+    def make_object_for_context(self, name: str, span: Span) -> "_PooledClientProxy":
         return self.proxy_cls(self.client_cls, self.pool, span, name)
 
 
-def _enumerate_service_methods(client):
+def _enumerate_service_methods(client: Any) -> Iterator[str]:
     """Return an iterable of service methods from a generated Iface class."""
     ifaces_found = 0
 
     # python3 drops the concept of unbound methods, so they're just plain
     # functions and we have to account for that here. see:
     # https://stackoverflow.com/questions/17019949/why-is-there-a-difference-between-inspect-ismethod-and-inspect-isfunction-from-p  # noqa: E501
-    def predicate(x):
+    def predicate(x: Any) -> bool:
         return inspect.isfunction(x) or inspect.ismethod(x)
 
     for base_cls in inspect.getmro(client):
@@ -108,7 +115,14 @@ class _PooledClientProxy:
     """A proxy which acts like a thrift client but uses a connection pool."""
 
     # pylint: disable=too-many-arguments
-    def __init__(self, client_cls, pool, server_span, namespace, retry_policy=None):
+    def __init__(
+        self,
+        client_cls: Any,
+        pool: ThriftConnectionPool,
+        server_span: Span,
+        namespace: str,
+        retry_policy: Optional[RetryPolicy] = None,
+    ):
         self.client_cls = client_cls
         self.pool = pool
         self.server_span = server_span
@@ -116,7 +130,7 @@ class _PooledClientProxy:
         self.retry_policy = retry_policy or RetryPolicy.new(attempts=1)
 
     @contextlib.contextmanager
-    def retrying(self, **policy):
+    def retrying(self, **policy: Any) -> Iterator["_PooledClientProxy"]:
         yield self.__class__(
             self.client_cls,
             self.pool,
@@ -126,8 +140,8 @@ class _PooledClientProxy:
         )
 
 
-def _build_thrift_proxy_method(name):
-    def _call_thrift_method(self, *args, **kwargs):
+def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
+    def _call_thrift_method(self: Any, *args: Any, **kwargs: Any) -> Any:
         trace_name = f"{self.namespace}.{name}"
         last_error = None
 

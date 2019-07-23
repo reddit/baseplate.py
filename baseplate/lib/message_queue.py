@@ -1,6 +1,8 @@
 """A gevent-friendly POSIX message queue."""
 import select
 
+from typing import Optional
+
 import posix_ipc
 
 from baseplate.lib.retry import RetryPolicy
@@ -13,7 +15,7 @@ class MessageQueueError(Exception):
 class TimedOutError(MessageQueueError):
     """Raised when a message queue operation times out."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("Timed out waiting for the message queue.")
 
 
@@ -21,7 +23,7 @@ class TimedOutError(MessageQueueError):
 # how to fix the error should they run into it since the base error message
 # is rather opaque.
 class InvalidParametersError(ValueError):
-    def __init__(self, inner):
+    def __init__(self, inner: Exception):
         super().__init__("%s (check fs.mqueue.{msg_max,msgsize_max} sysctls?)" % inner)
 
 
@@ -29,7 +31,7 @@ class InvalidParametersError(ValueError):
 # how to fix the error should they run into it since the base error message
 # is rather opaque.
 class MessageQueueOSError(OSError):
-    def __init__(self, inner):
+    def __init__(self, inner: Exception):
         super().__init__(f"{inner} (check `ulimit -q`?)")
 
 
@@ -46,7 +48,7 @@ class MessageQueue:
 
     """
 
-    def __init__(self, name, max_messages, max_message_size):
+    def __init__(self, name: str, max_messages: int, max_message_size: int):
         try:
             self.queue = posix_ipc.MessageQueue(
                 name,
@@ -61,10 +63,10 @@ class MessageQueue:
             raise MessageQueueOSError(exc)
         self.queue.block = False
 
-    def get(self, timeout=None):
+    def get(self, timeout: Optional[float] = None) -> bytes:
         """Read a message from the queue.
 
-        :param float timeout: If the queue is empty, the call will block up to
+        :param timeout: If the queue is empty, the call will block up to
             ``timeout`` seconds or forever if ``None``.
         :raises: :py:exc:`TimedOutError` The queue was empty for the allowed
             duration of the call.
@@ -81,10 +83,10 @@ class MessageQueue:
 
         raise TimedOutError
 
-    def put(self, message, timeout=None):
+    def put(self, message: bytes, timeout: Optional[float] = None) -> None:
         """Add a message to the queue.
 
-        :param float timeout: If the queue is full, the call will block up to
+        :param timeout: If the queue is full, the call will block up to
             ``timeout`` seconds or forever if ``None``.
         :raises: :py:exc:`TimedOutError` The queue was full for the allowed
             duration of the call.
@@ -100,7 +102,7 @@ class MessageQueue:
 
         raise TimedOutError
 
-    def unlink(self):
+    def unlink(self) -> None:
         """Remove the queue from the system.
 
         The queue will not leave until the last active user closes it.
@@ -108,7 +110,7 @@ class MessageQueue:
         """
         self.queue.unlink()
 
-    def close(self):
+    def close(self) -> None:
         """Close the queue, freeing related resources.
 
         This must be called explicitly if queues are created/destroyed on the
@@ -119,7 +121,7 @@ class MessageQueue:
         self.queue.close()
 
 
-def queue_tool():
+def queue_tool() -> None:
     import argparse
     import sys
 
@@ -172,7 +174,7 @@ def queue_tool():
             print(item.decode())
     elif args.mode == "write":
         for line in sys.stdin:
-            queue.put(line.rstrip("\n"))
+            queue.put(line.rstrip("\n").encode())
 
 
 if __name__ == "__main__":

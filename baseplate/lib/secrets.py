@@ -301,7 +301,7 @@ class _CachingSecretsStore(SecretsStore):
         self._filewatcher = filewatcher
 
     @cached_property
-    def _data(self):
+    def _data(self) -> Any:
         return super()._get_data()
 
     def _get_data(self) -> Dict:

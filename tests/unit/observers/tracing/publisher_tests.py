@@ -22,14 +22,14 @@ class ZipkinPublisherTest(unittest.TestCase):
         self.publisher.session.mount.assert_called_with("http://", mock.ANY)
 
     def test_empty_batch(self):
-        self.publisher.publish(SerializedBatch(count=0, bytes=b""))
+        self.publisher.publish(SerializedBatch(item_count=0, serialized=b""))
         self.assertEqual(self.session.post.call_count, 0)
 
     def test_publish_retry(self):
         # raise two errors and then return a mock response
         self.session.post.side_effect = [requests.HTTPError(504), OSError, mock.Mock()]
         spans = b"[]"
-        self.publisher.publish(SerializedBatch(count=1, bytes=spans))
+        self.publisher.publish(SerializedBatch(item_count=1, serialized=spans))
         self.assertEqual(self.session.post.call_count, 3)
 
     def test_client_error(self):
@@ -39,6 +39,6 @@ class ZipkinPublisherTest(unittest.TestCase):
         spans = b"[]"
 
         with self.assertRaises(requests.HTTPError):
-            self.publisher.publish(SerializedBatch(count=1, bytes=spans))
+            self.publisher.publish(SerializedBatch(item_count=1, serialized=spans))
 
         self.assertEqual(self.session.post.call_count, 1)

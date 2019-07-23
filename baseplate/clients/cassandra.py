@@ -2,21 +2,35 @@ import logging
 
 from threading import Event
 from typing import Any
+from typing import Callable
 from typing import Dict
+from typing import List
+from typing import Mapping
 from typing import Optional
+from typing import Sequence
+from typing import Tuple
+from typing import TYPE_CHECKING
+from typing import Union
 
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import _NOT_SET  # pylint: disable=no-name-in-module
 from cassandra.cluster import Cluster  # pylint: disable=no-name-in-module
 from cassandra.cluster import ExecutionProfile  # pylint: disable=no-name-in-module
 from cassandra.cluster import ResponseFuture  # pylint: disable=no-name-in-module
+from cassandra.cluster import Session  # pylint: disable=no-name-in-module
+from cassandra.encoder import Encoder
 from cassandra.query import BoundStatement  # pylint: disable=no-name-in-module
 from cassandra.query import PreparedStatement  # pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
 
+from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.secrets import SecretsStore
+
+
+if TYPE_CHECKING:
+    import cqlmapper.connection
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +42,7 @@ def cluster_from_config(
     prefix: str = "cassandra.",
     execution_profiles: Optional[Dict[str, ExecutionProfile]] = None,
     **kwargs: Any,
-):
+) -> Cluster:
     """Make a Cluster from a configuration dictionary.
 
     The keys useful to :py:func:`cluster_from_config` should be prefixed, e.g.
@@ -88,11 +102,11 @@ class CassandraClient(config.Parser):
 
     """
 
-    def __init__(self, keyspace: str, **kwargs):
+    def __init__(self, keyspace: str, **kwargs: Any):
         self.keyspace = keyspace
         self.kwargs = kwargs
 
-    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> "CassandraContextFactory":
         cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
         session = cluster.connect(keyspace=self.keyspace)
         return CassandraContextFactory(session)
@@ -110,11 +124,11 @@ class CassandraContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, session):
+    def __init__(self, session: Session):
         self.session = session
-        self.prepared_statements = {}
+        self.prepared_statements: Dict[str, PreparedStatement] = {}
 
-    def make_object_for_context(self, name, span):
+    def make_object_for_context(self, name: str, span: Span) -> "CassandraSessionAdapter":
         return CassandraSessionAdapter(name, span, self.session, self.prepared_statements)
 
 
@@ -130,11 +144,11 @@ class CQLMapperClient(config.Parser):
 
     """
 
-    def __init__(self, keyspace: str, **kwargs):
+    def __init__(self, keyspace: str, **kwargs: Any):
         self.keyspace = keyspace
         self.kwargs = kwargs
 
-    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> "CQLMapperContextFactory":
         cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
         session = cluster.connect(keyspace=self.keyspace)
         return CQLMapperContextFactory(session)
@@ -153,16 +167,23 @@ class CQLMapperContextFactory(CassandraContextFactory):
 
     """
 
-    def make_object_for_context(self, name, span):
+    def make_object_for_context(self, name: str, span: Span) -> "cqlmapper.connection.Connection":
         # Import inline so you can still use the regular Cassandra integration
         # without installing cqlmapper
+        # pylint: disable=redefined-outer-name
         import cqlmapper.connection
 
         session_adapter = super().make_object_for_context(name, span)
         return cqlmapper.connection.Connection(session_adapter)
 
 
-def wrap_future(response_future, callback_fn, callback_args, errback_fn, errback_args):
+def wrap_future(
+    response_future: ResponseFuture,
+    callback_fn: Callable[..., None],
+    callback_args: Any,
+    errback_fn: Callable[..., None],
+    errback_args: Any,
+) -> ResponseFuture:
     """Patch ResponseFuture.result() to wait for callback or errback to complete.
 
     The callback_fn and errback_fn are given special treatment: they must be
@@ -182,7 +203,7 @@ def wrap_future(response_future, callback_fn, callback_args, errback_fn, errback
     response_future.add_callback(callback_fn, callback_args, response_future._callback_event)
     response_future.add_errback(errback_fn, errback_args, response_future._callback_event)
 
-    def wait_for_callbacks_result(self):
+    def wait_for_callbacks_result(self: ResponseFuture) -> Any:
         exc = None
 
         try:
@@ -201,13 +222,15 @@ def wrap_future(response_future, callback_fn, callback_args, errback_fn, errback
         return result
 
     # call __get__ to turn wait_for_callbacks_result into a bound method
-    bound_method = wait_for_callbacks_result.__get__(response_future, ResponseFuture)
+    bound_method = wait_for_callbacks_result.__get__(  # type: ignore
+        response_future, ResponseFuture
+    )
     # patch the ResponseFuture instance
     response_future.result = bound_method
     return response_future
 
 
-def _on_execute_complete(_result, span, event):
+def _on_execute_complete(_result: Any, span: Span, event: Event) -> None:
     # TODO: tag with anything from the result set?
     # TODO: tag with any returned warnings
     try:
@@ -216,7 +239,7 @@ def _on_execute_complete(_result, span, event):
         event.set()
 
 
-def _on_execute_failed(exc, span, event):
+def _on_execute_failed(exc: BaseException, span: Span, event: Event) -> None:
     try:
         exc_info = (type(exc), exc, None)
         span.finish(exc_info=exc_info)
@@ -224,37 +247,58 @@ def _on_execute_failed(exc, span, event):
         event.set()
 
 
+RowFactory = Callable[[List[str], List[Tuple]], Any]
+Query = Union[str, SimpleStatement, PreparedStatement, BoundStatement]
+Parameters = Union[Sequence[Any], Mapping[str, Any]]
+
+
 class CassandraSessionAdapter:
-    def __init__(self, context_name, server_span, session, prepared_statements):
+    def __init__(
+        self,
+        context_name: str,
+        server_span: Span,
+        session: Session,
+        prepared_statements: Dict[str, PreparedStatement],
+    ):
         self.context_name = context_name
         self.server_span = server_span
         self.session = session
         self.prepared_statements = prepared_statements
 
     @property
-    def cluster(self):
+    def cluster(self) -> Cluster:
         return self.session.cluster
 
     @property
-    def encoder(self):
+    def encoder(self) -> Encoder:
         return self.session.encoder
 
     @property
-    def keyspace(self):
+    def keyspace(self) -> str:
         return self.session.keyspace
 
     @property
-    def row_factory(self):
+    def row_factory(self) -> RowFactory:
         return self.session.row_factory
 
     @row_factory.setter
-    def row_factory(self, new_row_factory):
+    def row_factory(self, new_row_factory: RowFactory) -> None:
         self.session.row_factory = new_row_factory
 
-    def execute(self, query, parameters=None, timeout=_NOT_SET):
+    def execute(
+        self,
+        query: Query,
+        parameters: Optional[Parameters] = None,
+        timeout: Union[float, object] = _NOT_SET,
+    ) -> Any:
         return self.execute_async(query, parameters, timeout).result()
 
-    def execute_async(self, query, parameters=None, timeout=_NOT_SET):
+    def execute_async(
+        self,
+        query: Query,
+        parameters: Optional[Parameters] = None,
+        timeout: Union[float, object] = _NOT_SET,
+    ) -> ResponseFuture:
         trace_name = "{}.{}".format(self.context_name, "execute")
         span = self.server_span.make_child(trace_name)
         span.start()
@@ -275,10 +319,10 @@ class CassandraSessionAdapter:
         )
         return future
 
-    def prepare(self, query, cache=True):
+    def prepare(self, query: str, cache: bool = True) -> PreparedStatement:
         """Prepare a CQL statement.
 
-        :param bool cache: If set to True (default), prepared statements will be
+        :param cache: If set to True (default), prepared statements will be
         automatically cached and reused. The cache is keyed on the text of the
         statement. Set to False if you don't want your prepared statements
         cached, which might be advisable if you have a very high-cardinality

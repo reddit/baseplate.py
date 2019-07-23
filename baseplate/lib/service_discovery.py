@@ -86,8 +86,8 @@ class NoBackendsAvailableError(Exception):
 class ServiceInventory:
     """The inventory enumerates available backends for a single service.
 
-    :param str filename: The absolute path to the Synapse-generated
-        inventory file in JSON format.
+    :param filename: The absolute path to the Synapse-generated inventory file
+        in JSON format.
 
     """
 

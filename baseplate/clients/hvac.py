@@ -16,14 +16,20 @@ See `HVAC's README`_ for documentation on the methods available from its client.
 """
 import datetime
 
+from typing import Any
+
 import hvac
 import requests
 
+from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib.secrets import SecretsStore
 
 
-def hvac_factory_from_config(app_config, secrets_store, prefix="vault."):
+def hvac_factory_from_config(
+    app_config: config.RawConfig, secrets_store: SecretsStore, prefix: str = "vault."
+) -> "HvacContextFactory":
     """Make an HVAC client factory from a configuration dictionary.
 
     The keys useful to :py:func:`hvac_factory_from_config` should be prefixed,
@@ -34,10 +40,10 @@ def hvac_factory_from_config(app_config, secrets_store, prefix="vault."):
 
     * ``timeout``: How long to wait for calls to Vault.
 
-    :param dict app_config: The raw application configuration.
-    :param baseplate.lib.secrets.SecretsStore secrets_store: A configured secrets
-        store from which we can get a Vault authentication token.
-    :param str prefix: The prefix for configuration keys.
+    :param app_config: The raw application configuration.
+    :param secrets_store: A configured secrets store from which we can get a
+        Vault authentication token.
+    :param prefix: The prefix for configuration keys.
 
     """
     assert prefix.endswith(".")
@@ -61,10 +67,10 @@ class HvacClient(config.Parser):
 
     """
 
-    def __init__(self, secrets):
+    def __init__(self, secrets: SecretsStore):
         self.secrets = secrets
 
-    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> "HvacContextFactory":
         return hvac_factory_from_config(
             raw_config, secrets_store=self.secrets, prefix=f"{key_path}."
         )
@@ -84,12 +90,12 @@ class HvacContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, secrets_store, timeout):
+    def __init__(self, secrets_store: SecretsStore, timeout: datetime.timedelta):
         self.secrets = secrets_store
         self.timeout = timeout
         self.session = requests.Session()
 
-    def make_object_for_context(self, name, span):
+    def make_object_for_context(self, name: str, span: Span) -> "InstrumentedHvacClient":
         vault_url = self.secrets.get_vault_url()
         vault_token = self.secrets.get_vault_token()
 
@@ -104,7 +110,15 @@ class HvacContextFactory(ContextFactory):
 
 
 class InstrumentedHvacClient(hvac.Client):
-    def __init__(self, url, token, timeout, session, context_name, server_span):
+    def __init__(
+        self,
+        url: str,
+        token: str,
+        timeout: float,
+        session: requests.Session,
+        context_name: str,
+        server_span: Span,
+    ):
         self.context_name = context_name
         self.server_span = server_span
 
@@ -112,7 +126,7 @@ class InstrumentedHvacClient(hvac.Client):
 
     # this ugliness is us undoing the name mangling that __request turns into
     # inside python. this feels very dirty.
-    def _Client__request(self, method, url, **kwargs):
+    def _Client__request(self, method: str, url: str, **kwargs: Any) -> requests.Response:
         span_name = f"{self.context_name}.request"
         with self.server_span.make_child(span_name) as span:
             span.set_tag("http.method", method.upper())

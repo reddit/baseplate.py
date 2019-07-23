@@ -1,6 +1,14 @@
+import socket
+
+from typing import Any
+from typing import Dict
+from typing import Tuple
+from typing import Union
+
 from gevent.pool import Pool
 from gevent.server import StreamServer
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
+from thrift.Thrift import TProcessor
 from thrift.transport.THeaderTransport import THeaderClientType
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TBufferedTransportFactory
@@ -10,9 +18,12 @@ from baseplate.lib import config
 from baseplate.server import runtime_monitor
 
 
+Address = Union[Tuple[str, int], str]
+
+
 # pylint: disable=too-many-public-methods
 class GeventServer(StreamServer):
-    def __init__(self, processor, *args, **kwargs):
+    def __init__(self, processor: TProcessor, *args: Any, **kwargs: Any):
         self.processor = processor
         self.transport_factory = TBufferedTransportFactory()
         self.protocol_factory = THeaderProtocolFactory(
@@ -25,8 +36,8 @@ class GeventServer(StreamServer):
         )
         super().__init__(*args, **kwargs)
 
-    # pylint: disable=method-hidden
-    def handle(self, client_socket, _):
+    # pylint: disable=method-hidden,unused-argument
+    def handle(self, client_socket: socket.socket, address: Address) -> None:
         client = TSocket()
         client.setHandle(client_socket)
 
@@ -42,7 +53,7 @@ class GeventServer(StreamServer):
             trans.close()
 
 
-def make_server(server_config, listener, app):
+def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
     # pylint: disable=maybe-no-member
     cfg = config.parse_config(
         server_config,

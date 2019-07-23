@@ -43,7 +43,7 @@ and a small script, ``printer.py``:
        parser.add_argument("name")
        args = parser.parse_args(args)
 
-       print('%s %s' % (app_config["message"], args.name))
+       print(f"{app_config['message']} {args.name}")
 
 You can run the script with various configurations:
 

@@ -118,7 +118,7 @@ class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
 
     def test_gets(self):
         self.connection.gets(self.key)
-        self.mocked_pool.gets.assert_called_with(self.key)
+        self.mocked_pool.gets.assert_called_with(self.key, default=None, cas_default=None)
         self.assertEqual(self.local_span.set_tag.call_count, 2)
 
     def test_gets_many(self):

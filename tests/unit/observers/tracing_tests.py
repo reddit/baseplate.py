@@ -374,7 +374,7 @@ class RemoteRecorderTests(TraceTestBase):
             recorder.flush_func([serialized_span])
             func_mock.assert_called_with(
                 recorder.endpoint,
-                data=json.dumps([serialized_span]),
+                data=json.dumps([serialized_span]).encode("utf8"),
                 headers={"Content-Type": "application/json"},
                 timeout=1,
             )

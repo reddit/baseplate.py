@@ -96,7 +96,7 @@ class FileWatcher(Generic[T]):
         self,
         path: str,
         parser: Callable[[IO], T],
-        timeout: Optional[int] = None,
+        timeout: Optional[float] = None,
         binary: bool = False,
         encoding: Optional[str] = None,
         newline: Optional[str] = None,

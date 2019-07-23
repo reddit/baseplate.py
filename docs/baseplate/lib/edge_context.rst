@@ -24,6 +24,7 @@ authentication and context data as well.
    :members:
 
 .. autoclass:: Session
+   :members:
 
 .. autoclass:: Service
    :members:

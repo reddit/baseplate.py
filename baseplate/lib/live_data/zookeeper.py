@@ -1,10 +1,15 @@
 """Helpers for interacting with ZooKeeper."""
+from typing import Optional
+
 from kazoo.client import KazooClient
 
 from baseplate.lib import config
+from baseplate.lib.secrets import SecretsStore
 
 
-def zookeeper_client_from_config(secrets, app_config, read_only=None):
+def zookeeper_client_from_config(
+    secrets: SecretsStore, app_config: config.RawConfig, read_only: Optional[bool] = None
+) -> KazooClient:
     """Configure and return a ZooKeeper client.
 
     There are several configuration options:
@@ -22,13 +27,11 @@ def zookeeper_client_from_config(secrets, app_config, read_only=None):
 
     The client will attempt forever to reconnect on connection loss.
 
-    :param baseplate.lib.secrets.SecretsStore secrets: A secrets store object
-    :param dict raw_config: The application configuration which should have
+    :param secrets: A secrets store object
+    :param raw_config: The application configuration which should have
         settings for the ZooKeeper client.
-    :param bool read_only: Whether or not to allow connections to read-only
+    :param read_only: Whether or not to allow connections to read-only
         ZooKeeper servers.
-
-    :rtype: :py:class:`kazoo.client.KazooClient`
 
     """
     full_cfg = config.parse_config(

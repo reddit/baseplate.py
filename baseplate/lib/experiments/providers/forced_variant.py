@@ -1,3 +1,6 @@
+from typing import Any
+from typing import Optional
+
 from baseplate.lib.experiments.providers.base import Experiment
 
 
@@ -12,11 +15,11 @@ class ForcedVariantExperiment(Experiment):
     the base config.
     """
 
-    def __init__(self, variant):
+    def __init__(self, variant: str):
         self._variant = variant
 
-    def variant(self, **kwargs):
+    def variant(self, **kwargs: Any) -> Optional[str]:
         return self._variant
 
-    def should_log_bucketing(self):
+    def should_log_bucketing(self) -> bool:
         return False

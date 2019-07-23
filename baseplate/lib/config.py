@@ -125,7 +125,7 @@ def Integer(
     To prevent mistakes, this will raise an error if the user attempts
     to configure a non-whole number.
 
-    :param int base: (Optional) If specified, the base of the integer to parse.
+    :param base: (Optional) If specified, the base of the integer to parse.
 
     """
     if text is not None:
@@ -146,7 +146,7 @@ class InternetAddress(NamedTuple):
     host: str
     port: int
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.host}:{self.port}"
 
 
@@ -168,7 +168,7 @@ class EndpointConfiguration(NamedTuple):
     family: socket.AddressFamily  # pylint: disable=no-member
     address: Union[InternetAddress, str]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.address)
 
 
@@ -220,8 +220,8 @@ def File(mode: str = "r") -> Callable[[str], IO]:  # noqa: D401
     This takes a path to a file and returns an open file object, like
     returned by :py:func:`open`.
 
-    :param str mode: an optional string that specifies the mode in
-        which the file is opened.
+    :param mode: an optional string that specifies the mode in which the file
+        is opened.
 
     """
 
@@ -391,7 +391,7 @@ def Fallback(
 
 
 class ConfigNamespace(dict):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.__dict__ = self
 

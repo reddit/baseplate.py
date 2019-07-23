@@ -3,9 +3,12 @@ import configparser
 import logging
 import urllib.parse
 
+from typing import Optional
+
 import requests
 
 from baseplate.lib import config
+from baseplate.lib import metrics
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
@@ -14,6 +17,7 @@ from baseplate.observers.tracing import MAX_QUEUE_SIZE
 from baseplate.observers.tracing import MAX_SPAN_SIZE
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import RawJSONBatch
+from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
 
 
@@ -37,7 +41,7 @@ class MaxRetriesError(Exception):
 
 
 class TraceBatch(RawJSONBatch):
-    def __init__(self, max_size=MAX_BATCH_SIZE_DEFAULT):
+    def __init__(self, max_size: int = MAX_BATCH_SIZE_DEFAULT):
         super().__init__(max_size)
 
 
@@ -46,11 +50,11 @@ class ZipkinPublisher:
 
     def __init__(
         self,
-        zipkin_api_url,
-        metrics_client,
-        post_timeout=POST_TIMEOUT_DEFAULT,
-        retry_limit=RETRY_LIMIT_DEFAULT,
-        num_conns=5,
+        zipkin_api_url: str,
+        metrics_client: metrics.Client,
+        post_timeout: int = POST_TIMEOUT_DEFAULT,
+        retry_limit: int = RETRY_LIMIT_DEFAULT,
+        num_conns: int = 5,
     ):
 
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
@@ -62,16 +66,15 @@ class ZipkinPublisher:
         self.post_timeout = post_timeout
         self.retry_limit = retry_limit
 
-    def publish(self, payload):
+    def publish(self, payload: SerializedBatch) -> None:
         """Publish spans to Zipkin API.
 
-        :param baseplate.sidecars.event_publisher.SerializedBatch payload: Count and
-            payload to publish.
+        :param payload: Count and payload to publish.
         """
-        if not payload.count:
+        if not payload.item_count:
             return
 
-        logger.info("Sending batch of %d traces", payload.count)
+        logger.info("Sending batch of %d traces", payload.item_count)
         headers = {
             "User-Agent": "baseplate-trace-publisher/1.0",
             "Content-Type": "application/json",
@@ -81,7 +84,7 @@ class ZipkinPublisher:
                 with self.metrics.timer("post"):
                     response = self.session.post(
                         self.endpoint,
-                        data=payload.bytes,
+                        data=payload.serialized,
                         headers=headers,
                         timeout=self.post_timeout,
                         stream=False,
@@ -101,7 +104,7 @@ class ZipkinPublisher:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
-                self.metrics.counter("sent").increment(payload.count)
+                self.metrics.counter("sent").increment(payload.item_count)
                 return
 
         raise MaxRetriesError(
@@ -109,7 +112,7 @@ class ZipkinPublisher:
         )
 
 
-def publish_traces():
+def publish_traces() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
         "config_file", type=argparse.FileType("r"), help="path to a configuration file"
@@ -165,6 +168,8 @@ def publish_traces():
     )
 
     while True:
+        message: Optional[bytes]
+
         try:
             message = trace_queue.get(timeout=0.2)
         except TimedOutError:

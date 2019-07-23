@@ -17,6 +17,12 @@ and then a context-aware version of the client will show up on the
         context.my_client.make_some_remote_call()
 
 """
+from typing import Any
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    import baseplate.lib.metrics
 
 
 class ContextFactory:
@@ -29,9 +35,9 @@ class ContextFactory:
 
     """
 
-    def report_runtime_metrics(self, batch):
+    def report_runtime_metrics(self, batch: "baseplate.lib.metrics.Client") -> None:
         """Report runtime metrics to the stats sytem."""
 
-    def make_object_for_context(self, name, span):
+    def make_object_for_context(self, name: str, span: "baseplate.Span") -> Any:
         """Return an object that can be added to the context object."""
         raise NotImplementedError

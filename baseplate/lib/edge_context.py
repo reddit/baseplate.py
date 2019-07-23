@@ -1,12 +1,22 @@
-import collections
 import logging
+
+from typing import Any
+from typing import Dict
+from typing import NamedTuple
+from typing import Optional
+from typing import Set
 
 import jwt
 
 from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 
+from baseplate import RequestContext
 from baseplate.lib import cached_property
+from baseplate.lib.secrets import SecretsStore
+from baseplate.thrift.ttypes import Loid as TLoid
+from baseplate.thrift.ttypes import Request as TRequest
+from baseplate.thrift.ttypes import Session as TSession
 
 
 logger = logging.getLogger(__name__)
@@ -19,15 +29,14 @@ class NoAuthenticationError(Exception):
 class AuthenticationTokenValidator:
     """Factory that knows how to validate raw authentication tokens."""
 
-    def __init__(self, secrets):
+    def __init__(self, secrets: SecretsStore):
         self.secrets = secrets
 
-    def validate(self, token):
+    def validate(self, token: bytes) -> "AuthenticationToken":
         """Validate a raw authentication token and return an object.
 
         :param token: token value originating from the Authentication service
             either directly or from an upstream service
-        :rtype: :py:class:`AuthenticationToken`
 
         """
         if not token:
@@ -56,76 +65,79 @@ class AuthenticationToken:
     """
 
     @property
-    def subject(self):
+    def subject(self) -> Optional[str]:
         """Return the raw `subject` that is authenticated."""
         raise NotImplementedError
 
     @property
-    def user_roles(self):
+    def user_roles(self) -> Set[str]:
         raise NotImplementedError
 
     @property
-    def oauth_client_id(self):
+    def oauth_client_id(self) -> Optional[str]:
         raise NotImplementedError
 
     @property
-    def oauth_client_type(self):
+    def oauth_client_type(self) -> Optional[str]:
         raise NotImplementedError
 
 
 class ValidatedAuthenticationToken(AuthenticationToken):
-    def __init__(self, payload):
+    def __init__(self, payload: Dict[str, str]):
         self.payload = payload
 
     @property
-    def subject(self):
+    def subject(self) -> Optional[str]:
         return self.payload.get("sub")
 
     @cached_property
-    def user_roles(self):
+    def user_roles(self) -> Set[str]:  # type: ignore
         return set(self.payload.get("roles", []))
 
     @property
-    def oauth_client_id(self):
+    def oauth_client_id(self) -> Optional[str]:
         return self.payload.get("client_id")
 
     @property
-    def oauth_client_type(self):
+    def oauth_client_type(self) -> Optional[str]:
         return self.payload.get("client_type")
 
 
 class InvalidAuthenticationToken(AuthenticationToken):
     @property
-    def subject(self):
+    def subject(self) -> Optional[str]:
         raise NoAuthenticationError
 
     @property
-    def user_roles(self):
+    def user_roles(self) -> Set[str]:
         raise NoAuthenticationError
 
     @property
-    def oauth_client_id(self):
+    def oauth_client_id(self) -> Optional[str]:
         raise NoAuthenticationError
 
     @property
-    def oauth_client_type(self):
+    def oauth_client_type(self) -> Optional[str]:
         raise NoAuthenticationError
 
 
-_User = collections.namedtuple("_User", ["authentication_token", "loid", "cookie_created_ms"])
-_OAuthClient = collections.namedtuple("_OAuthClient", ["authentication_token"])
-Session = collections.namedtuple("Session", ["id"])
-_Service = collections.namedtuple("_Service", ["authentication_token"])
+class Session(NamedTuple):
+    """Wrapper for the session values in the EdgeRequestContext."""
+
+    id: str
 
 
-class User(_User):
+class User(NamedTuple):
     """Wrapper for the user values in AuthenticationToken and the LoId cookie."""
 
+    authentication_token: AuthenticationToken
+    loid: str
+    cookie_created_ms: int
+
     @property
-    def id(self):
+    def id(self) -> Optional[str]:
         """Return the authenticated account_id for the current User.
 
-        :type: account_id string or None if context authentication is invalid
         :raises: :py:class:`NoAuthenticationError` if there was no
             authentication token, it was invalid, or the subject is not an
             account.
@@ -137,7 +149,7 @@ class User(_User):
         return subject
 
     @property
-    def is_logged_in(self):
+    def is_logged_in(self) -> bool:
         """Return if the User has a valid, authenticated id."""
         try:
             return self.id is not None
@@ -145,29 +157,27 @@ class User(_User):
             return False
 
     @property
-    def roles(self):
+    def roles(self) -> Set[str]:
         """Return the authenticated roles for the current User.
 
-        :type: set(string)
         :raises: :py:class:`NoAuthenticationError` if there was no
             authentication token or it was invalid
 
         """
         return self.authentication_token.user_roles
 
-    def has_role(self, role):
+    def has_role(self, role: str) -> bool:
         """Return if the authenticated user has the specified role.
 
-        :param str client_types: Case-insensitive sequence role name to check.
+        :param client_types: Case-insensitive sequence role name to check.
 
-        :type: bool
         :raises: :py:class:`NoAuthenticationError` if there was no
             authentication token defined for the current context
 
         """
         return role.lower() in self.roles
 
-    def event_fields(self):
+    def event_fields(self) -> Dict[str, Any]:
         """Return fields to be added to events."""
         if self.is_logged_in:
             user_id = self.id
@@ -181,21 +191,22 @@ class User(_User):
         }
 
 
-class OAuthClient(_OAuthClient):
+class OAuthClient(NamedTuple):
     """Wrapper for the OAuth2 client values in AuthenticationToken."""
 
+    authentication_token: AuthenticationToken
+
     @property
-    def id(self):
+    def id(self) -> Optional[str]:
         """Return the authenticated id for the current client.
 
-        :type: string or None if context authentication is invalid
         :raises: :py:class:`NoAuthenticationError` if there was no
             authentication token defined for the current context
 
         """
         return self.authentication_token.oauth_client_id
 
-    def is_type(self, *client_types):
+    def is_type(self, *client_types: str) -> bool:
         """Return if the authenticated client type is one of the given types.
 
         When checking the type of the current OauthClient, you should check
@@ -213,18 +224,19 @@ class OAuthClient(_OAuthClient):
                 ...
 
 
-        :param str client_types: Case-insensitive sequence of client type
+        :param client_types: Case-insensitive sequence of client type
             names that you want to check.
 
-        :type: bool
         :raises: :py:class:`NoAuthenticationError` if there was no
             authentication token defined for the current context
 
         """
         lower_types = (client_type.lower() for client_type in client_types)
+        if not self.authentication_token.oauth_client_type:
+            return False
         return self.authentication_token.oauth_client_type in lower_types
 
-    def event_fields(self):
+    def event_fields(self) -> Dict[str, Any]:
         """Return fields to be added to events."""
         try:
             oauth_client_id = self.id
@@ -234,11 +246,13 @@ class OAuthClient(_OAuthClient):
         return {"oauth_client_id": oauth_client_id}
 
 
-class Service(_Service):
+class Service(NamedTuple):
     """Wrapper for the Service values in AuthenticationToken."""
 
+    authentication_token: AuthenticationToken
+
     @property
-    def name(self):
+    def name(self) -> str:
         """Return the authenticated service name.
 
         :type: name string or None if context authentication is invalid
@@ -268,10 +282,16 @@ class EdgeRequestContextFactory:
 
     """
 
-    def __init__(self, secrets):
+    def __init__(self, secrets: SecretsStore):
         self.authn_token_validator = AuthenticationTokenValidator(secrets)
 
-    def new(self, authentication_token=None, loid_id=None, loid_created_ms=None, session_id=None):
+    def new(
+        self,
+        authentication_token: Optional[bytes] = None,
+        loid_id: Optional[str] = None,
+        loid_created_ms: Optional[int] = None,
+        session_id: Optional[str] = None,
+    ) -> "EdgeRequestContext":
         """Return a new EdgeRequestContext object made from scratch.
 
         Services at the edge that communicate directly with clients should use
@@ -296,21 +316,14 @@ class EdgeRequestContextFactory:
             )
             edge_context.attach_context(request)
 
-        :param authentication_token: (Optional) A raw authentication token
-            as returned by the authentication service.
-        :param str loid_id: (Optional) ID for the current LoID in fullname
-            format.
-        :param int loid_created_ms: (Optional) Epoch milliseconds when the
-            current LoID cookie was created.
-        :param str session_id: (Optional) ID for the current session cookie.
+        :param authentication_token: A raw authentication token as returned by
+            the authentication service.
+        :param loid_id: ID for the current LoID in fullname format.
+        :param loid_created_ms: Epoch milliseconds when the current LoID cookie
+            was created.
+        :param session_id: ID for the current session cookie.
 
         """
-        # Importing the Thrift models inline so that building them is not a
-        # hard, import-time dependency for tasks like building the docs.
-        from baseplate.thrift.ttypes import Loid as TLoid
-        from baseplate.thrift.ttypes import Request as TRequest
-        from baseplate.thrift.ttypes import Session as TSession
-
         if loid_id is not None and not loid_id.startswith("t2_"):
             raise ValueError(
                 "loid_id <%s> is not in a valid format, it should be in the "
@@ -330,7 +343,7 @@ class EdgeRequestContextFactory:
         context._t_request = t_request
         return context
 
-    def from_upstream(self, edge_header):
+    def from_upstream(self, edge_header: Optional[bytes]) -> "EdgeRequestContext":
         """Create and return an EdgeRequestContext from an upstream header.
 
         This is generally used internally to Baseplate by framework
@@ -353,11 +366,13 @@ class EdgeRequestContext:
 
     _HEADER_PROTOCOL_FACTORY = TBinaryProtocolAcceleratedFactory()
 
-    def __init__(self, authn_token_validator, header):
+    def __init__(
+        self, authn_token_validator: AuthenticationTokenValidator, header: Optional[bytes]
+    ):
         self._authn_token_validator = authn_token_validator
         self._header = header
 
-    def attach_context(self, context):
+    def attach_context(self, context: RequestContext) -> None:
         """Attach this to the provided :term:`context object`.
 
         :param context: request context to attach this to
@@ -366,7 +381,7 @@ class EdgeRequestContext:
         context.request_context = self
         context.raw_request_context = self._header
 
-    def event_fields(self):
+    def event_fields(self) -> Dict[str, Any]:
         """Return fields to be added to events."""
         fields = {"session_id": self.session.id}
         fields.update(self.user.event_fields())
@@ -374,11 +389,11 @@ class EdgeRequestContext:
         return fields
 
     @cached_property
-    def authentication_token(self):
+    def authentication_token(self) -> AuthenticationToken:
         return self._authn_token_validator.validate(self._t_request.authentication_token)
 
     @cached_property
-    def user(self):
+    def user(self) -> User:
         """:py:class:`~baseplate.lib.edge_context.User` object for the current context."""
         return User(
             authentication_token=self.authentication_token,
@@ -387,28 +402,22 @@ class EdgeRequestContext:
         )
 
     @cached_property
-    def oauth_client(self):
+    def oauth_client(self) -> OAuthClient:
         """:py:class:`~baseplate.lib.edge_context.OAuthClient` object for the current context."""
         return OAuthClient(self.authentication_token)
 
     @cached_property
-    def session(self):
+    def session(self) -> Session:
         """:py:class:`~baseplate.lib.edge_context.Session` object for the current context."""
         return Session(id=self._t_request.session.id)
 
     @cached_property
-    def service(self):
+    def service(self) -> Service:
         """:py:class:`~baseplate.lib.edge_context.Service` object for the current context."""
         return Service(self.authentication_token)
 
     @cached_property
-    def _t_request(self):  # pylint: disable=method-hidden
-        # Importing the Thrift models inline so that building them is not a
-        # hard, import-time dependency for tasks like building the docs.
-        from baseplate.thrift.ttypes import Loid as TLoid
-        from baseplate.thrift.ttypes import Request as TRequest
-        from baseplate.thrift.ttypes import Session as TSession
-
+    def _t_request(self) -> TRequest:  # pylint: disable=method-hidden
         _t_request = TRequest()
         _t_request.loid = TLoid()
         _t_request.session = TSession()

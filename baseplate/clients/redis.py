@@ -1,13 +1,19 @@
 from math import ceil
+from typing import Any
+from typing import Dict
+from typing import Optional
 
 import redis.client
 
+from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
 
 
-def pool_from_config(app_config, prefix="redis.", **kwargs):
+def pool_from_config(
+    app_config: config.RawConfig, prefix: str = "redis.", **kwargs: Any
+) -> redis.BlockingConnectionPool:
     """Make a ConnectionPool from a configuration dictionary.
 
     The keys useful to :py:func:`pool_from_config` should be prefixed, e.g.
@@ -57,10 +63,10 @@ class RedisClient(config.Parser):
 
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs: Any):
         self.kwargs = kwargs
 
-    def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> "RedisContextFactory":
         connection_pool = pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
         return RedisContextFactory(connection_pool)
 
@@ -75,16 +81,14 @@ class RedisContextFactory(ContextFactory):
     :py:class:`redis.ConnectionPool` and automatically record diagnostic
     information.
 
-    :param redis.ConnectionPool connection_pool: A connection pool.
-
-    :returns: :py:class:`~baseplate.clients.redis.MonitoredRedisConnection`
+    :param connection_pool: A connection pool.
 
     """
 
-    def __init__(self, connection_pool):
+    def __init__(self, connection_pool: redis.ConnectionPool):
         self.connection_pool = connection_pool
 
-    def make_object_for_context(self, name, span):
+    def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
         return MonitoredRedisConnection(name, span, self.connection_pool)
 
 
@@ -103,29 +107,31 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     """
 
-    def __init__(self, context_name, server_span, connection_pool):
+    def __init__(self, context_name: str, server_span: Span, connection_pool: redis.ConnectionPool):
         self.context_name = context_name
         self.server_span = server_span
 
         super().__init__(connection_pool=connection_pool)
 
     # pylint: disable=arguments-differ
-    def execute_command(self, command, *args, **kwargs):
+    def execute_command(self, command: str, *args: Any, **kwargs: Any) -> Any:
         trace_name = f"{self.context_name}.{command}"
 
         with self.server_span.make_child(trace_name):
             return super().execute_command(command, *args, **kwargs)
 
     # pylint: disable=arguments-differ
-    def pipeline(self, name, transaction=True, shard_hint=None):
+    def pipeline(
+        self, name: str, transaction: bool = True, shard_hint: Optional[str] = None
+    ) -> "MonitoredRedisPipeline":
         """Create a pipeline.
 
         This returns an object on which you can call the standard redis
         commands. Execution will be deferred until ``execute`` is called. This
         is useful for saving round trips.
 
-        :param str name: The name to attach to diagnostics for this pipeline.
-        :param bool transaction: Whether or not the commands in the pipeline
+        :param name: The name to attach to diagnostics for this pipeline.
+        :param transaction: Whether or not the commands in the pipeline
             are wrapped with a transaction and executed atomically.
 
         """
@@ -139,23 +145,30 @@ class MonitoredRedisConnection(redis.StrictRedis):
         )
 
     # these commands are not yet implemented, but probably not unimplementable
-    def transaction(self, *args, **kwargs):
+    def transaction(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError
 
-    def lock(self, *args, **kwargs):
+    def lock(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError
 
-    def pubsub(self, *args, **kwargs):
+    def pubsub(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError
 
 
 class MonitoredRedisPipeline(redis.client.StrictPipeline):
-    def __init__(self, trace_name, server_span, connection_pool, response_callbacks, **kwargs):
+    def __init__(
+        self,
+        trace_name: str,
+        server_span: Span,
+        connection_pool: redis.ConnectionPool,
+        response_callbacks: Dict,
+        **kwargs: Any,
+    ):
         self.trace_name = trace_name
         self.server_span = server_span
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
-    def execute(self, **kwargs):  # pylint: disable=arguments-differ
+    def execute(self, **kwargs: Any) -> Any:  # pylint: disable=arguments-differ
         with self.server_span.make_child(self.trace_name):
             return super().execute(**kwargs)
 
@@ -172,17 +185,17 @@ class MessageQueue:
 
     """
 
-    def __init__(self, name, client):
+    def __init__(self, name: str, client: redis.ConnectionPool):
         self.queue = name
         if isinstance(client, (redis.BlockingConnectionPool, redis.ConnectionPool)):
             self.client = redis.Redis(connection_pool=client)
         else:
             self.client = client
 
-    def get(self, timeout=None):
+    def get(self, timeout: Optional[float] = None) -> bytes:
         """Read a message from the queue.
 
-        :param int timeout: If the queue is empty, the call will block up to
+        :param timeout: If the queue is empty, the call will block up to
             ``timeout`` seconds or forever if ``None``, if a float is given,
             it will be rounded up to be an integer
         :raises: :py:exc:`~baseplate.lib.message_queue.TimedOutError` The queue
@@ -205,7 +218,9 @@ class MessageQueue:
 
         return message
 
-    def put(self, message, timeout=None):  # pylint: disable=unused-argument
+    def put(  # pylint: disable=unused-argument
+        self, message: bytes, timeout: Optional[float] = None
+    ) -> None:
         """Add a message to the queue.
 
         :param message: will be typecast to a string upon storage and will come
@@ -214,10 +229,10 @@ class MessageQueue:
         """
         return self.client.rpush(self.queue, message)
 
-    def unlink(self):
+    def unlink(self) -> None:
         """Not implemented for Redis variant."""
 
-    def close(self):
+    def close(self) -> None:
         """Close queue when finished.
 
         Will delete the queue from the Redis server (Note, can still enqueue

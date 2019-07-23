@@ -1,11 +1,24 @@
 import os
 import sys
 
+from types import TracebackType
+from typing import Any
+from typing import Optional
+from typing import Type
+from typing import TYPE_CHECKING
+
 import raven
 
+from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
+from baseplate import RequestContext
 from baseplate import ServerSpanObserver
+from baseplate import Span
 from baseplate.lib import config
+
+
+if TYPE_CHECKING:
+    from gevent.hub import Hub
 
 
 def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -> raven.Client:
@@ -38,10 +51,9 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
 
         error_reporter_from_config(app_config, __name__)
 
-    :param dict raw_config: The application configuration which should have
+    :param raw_config: The application configuration which should have
         settings for the error reporter.
-    :param str module_name: ``__name__`` of the root module of the application.
-    :rtype: :py:class:`raven.Client`
+    :param module_name: ``__name__`` of the root module of the application.
 
     """
     cfg = config.parse_config(
@@ -100,37 +112,37 @@ class SentryBaseplateObserver(BaseplateObserver):
 
     """
 
-    def __init__(self, client):
+    def __init__(self, client: raven.Client):
         self.raven = client
 
-    def on_server_span_created(self, context, server_span):
+    def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
         observer = SentryServerSpanObserver(self.raven, server_span)
         server_span.register(observer)
         context.sentry = self.raven
 
 
 class SentryServerSpanObserver(ServerSpanObserver):
-    def __init__(self, client, server_span):
+    def __init__(self, client: raven.Client, server_span: Span):
         self.raven = client
         self.server_span = server_span
 
-    def on_start(self):
+    def on_start(self) -> None:
         self.raven.context.activate()
 
         # for now, this is just a tag for us humans to use
         # https://github.com/getsentry/sentry/issues/716
         self.raven.tags_context({"trace_id": self.server_span.trace_id})
 
-    def on_set_tag(self, key, value):
+    def on_set_tag(self, key: str, value: Any) -> None:
         if key.startswith("http"):
             self.raven.http_context({key[len("http.") :]: value})
         else:
             self.raven.tags_context({key: value})
 
-    def on_log(self, name, payload):
+    def on_log(self, name: str, payload: Any) -> None:
         self.raven.captureBreadcrumb(category=name, data=payload)
 
-    def on_finish(self, exc_info=None):
+    def on_finish(self, exc_info: Optional[_ExcInfo] = None) -> None:
         if exc_info is not None:
             self.raven.captureException(exc_info=exc_info)
         self.raven.context.clear(deactivate=True)
@@ -139,10 +151,16 @@ class SentryServerSpanObserver(ServerSpanObserver):
 class SentryUnhandledErrorReporter:
     """Hook into the Gevent hub and report errors outside request context."""
 
-    def __init__(self, hub, client):
+    def __init__(self, hub: "Hub", client: raven.Client):
         self.original_print_exception = getattr(hub, "print_exception")
         self.raven = client
 
-    def __call__(self, context, exc_type, value, tb):
+    def __call__(
+        self,
+        context: RequestContext,
+        exc_type: Optional[Type[BaseException]],
+        value: Optional[BaseException],
+        tb: Optional[TracebackType],
+    ) -> None:
         self.raven.captureException((exc_type, value, tb))
         self.original_print_exception(context, exc_type, value, tb)
