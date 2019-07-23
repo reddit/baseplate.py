@@ -228,7 +228,7 @@ def File(mode: str = "r") -> Callable[[str], IO]:  # noqa: D401
     def open_file(text: str) -> IO:
         try:
             return open(text, mode=mode)
-        except IOError:
+        except OSError:
             raise ValueError("could not open file: %s" % text)
 
     return open_file
@@ -440,7 +440,7 @@ class SpecParser(Parser[ConfigNamespace]):
             assert "." not in key, "dots are not allowed in keys"
 
             if key_path:
-                sub_key_path = "%s.%s" % (key_path, key)
+                sub_key_path = f"{key_path}.{key}"
             else:
                 sub_key_path = key
 

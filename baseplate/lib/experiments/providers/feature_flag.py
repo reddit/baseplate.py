@@ -48,9 +48,7 @@ class FeatureFlag(R2Experiment):
     def from_dict(cls, id, name, owner, version, config):  # pylint: disable=redefined-builtin
         variants = config.get("variants", {})
         assert not set(variants.keys()) - {"active"}
-        return super(FeatureFlag, cls).from_dict(
-            id=id, name=name, owner=owner, version=version, config=config
-        )
+        return super().from_dict(id=id, name=name, owner=owner, version=version, config=config)
 
     def should_log_bucketing(self):
         return False

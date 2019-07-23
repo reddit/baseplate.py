@@ -109,7 +109,7 @@ def load_nonce():
         logger.debug("Loading nonce.")
         with open(NONCE_FILENAME, "r") as f:
             return f.read()
-    except IOError as exc:
+    except OSError as exc:
         logger.debug("Nonce not found: %s.", exc)
         return None
 
@@ -168,7 +168,7 @@ class VaultClientFactory:
         try:
             with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE, "r") as f:
                 token = f.read()
-        except IOError:
+        except OSError:
             logger.error(
                 "Could not read Kubernetes token file '%s'", K8S_SERVICE_ACCOUNT_TOKEN_FILE
             )

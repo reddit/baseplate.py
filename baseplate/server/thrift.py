@@ -23,7 +23,7 @@ class GeventServer(StreamServer):
                 THeaderClientType.UNFRAMED_BINARY,
             ]
         )
-        super(GeventServer, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     # pylint: disable=method-hidden
     def handle(self, client_socket, _):

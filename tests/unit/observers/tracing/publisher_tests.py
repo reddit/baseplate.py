@@ -18,7 +18,7 @@ class ZipkinPublisherTest(unittest.TestCase):
         self.publisher = trace_publisher.ZipkinPublisher(self.zipkin_api_url, self.metrics_client)
 
     def test_initialization(self):
-        self.assertEqual(self.publisher.endpoint, "{}/spans".format(self.zipkin_api_url))
+        self.assertEqual(self.publisher.endpoint, f"{self.zipkin_api_url}/spans")
         self.publisher.session.mount.assert_called_with("http://", mock.ANY)
 
     def test_empty_batch(self):
@@ -27,7 +27,7 @@ class ZipkinPublisherTest(unittest.TestCase):
 
     def test_publish_retry(self):
         # raise two errors and then return a mock response
-        self.session.post.side_effect = [requests.HTTPError(504), IOError, mock.Mock()]
+        self.session.post.side_effect = [requests.HTTPError(504), OSError, mock.Mock()]
         spans = b"[]"
         self.publisher.publish(SerializedBatch(count=1, bytes=spans))
         self.assertEqual(self.session.post.call_count, 3)

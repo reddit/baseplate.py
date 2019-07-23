@@ -26,7 +26,7 @@ class TraceTestBase(unittest.TestCase):
 
 class TraceObserverTests(TraceTestBase):
     def setUp(self):
-        super(TraceObserverTests, self).setUp()
+        super().setUp()
         self.mock_context = mock.Mock()
 
     def test_null_recorder_setup(self):
@@ -111,7 +111,7 @@ class TraceObserverTests(TraceTestBase):
 
 class TraceSpanObserverTests(TraceTestBase):
     def setUp(self):
-        super(TraceSpanObserverTests, self).setUp()
+        super().setUp()
         self.recorder = NullRecorder()
         self.mock_context = mock.Mock()
 
@@ -213,7 +213,7 @@ class TraceSpanObserverTests(TraceTestBase):
 
 class TraceServerSpanObserverTests(TraceTestBase):
     def setUp(self):
-        super(TraceServerSpanObserverTests, self).setUp()
+        super().setUp()
         self.recorder = NullRecorder()
         self.mock_context = mock.Mock()
         self.span = ServerSpan(
@@ -263,7 +263,7 @@ class TraceServerSpanObserverTests(TraceTestBase):
 
 class TraceLocalSpanObserverTests(TraceTestBase):
     def setUp(self):
-        super(TraceLocalSpanObserverTests, self).setUp()
+        super().setUp()
         self.recorder = NullRecorder()
         self.mock_context = mock.Mock()
         self.span = ServerSpan(
@@ -314,7 +314,7 @@ class TraceLocalSpanObserverTests(TraceTestBase):
 
 class NullRecorderTests(TraceTestBase):
     def setUp(self):
-        super(NullRecorderTests, self).setUp()
+        super().setUp()
         self.recorder = NullRecorder()
         self.mock_context = mock.Mock()
 
@@ -325,7 +325,7 @@ class NullRecorderTests(TraceTestBase):
 
 class RemoteRecorderTests(TraceTestBase):
     def setUp(self):
-        super(RemoteRecorderTests, self).setUp()
+        super().setUp()
         self.endpoint = "test:1111"
 
     def test_init(self):

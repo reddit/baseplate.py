@@ -21,14 +21,14 @@ class WriterError(Exception):
 
 class NodeDoesNotExistError(WriterError):
     def __init__(self):
-        super(NodeDoesNotExistError, self).__init__(
+        super().__init__(
             "Target node does not exist. Please create it with appropriate " "ACLs first."
         )
 
 
 class UnexpectedChangeError(WriterError):
     def __init__(self):
-        super(UnexpectedChangeError, self).__init__("The data in ZooKeeper changed unexpectedly.")
+        super().__init__("The data in ZooKeeper changed unexpectedly.")
 
 
 def write_file_to_zookeeper(zookeeper, source_file, dest_path):

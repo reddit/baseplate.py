@@ -52,7 +52,7 @@ class BuildThriftCommand(Command):
                 self.copy_tree(input_package, output_package)
 
                 # rewrite "from thriftname" to "from package.thriftname_thrift"
-                full_package_name = "%s.%s" % (package, generated_module)
+                full_package_name = f"{package}.{generated_module}"
                 for remote in glob.glob(os.path.join(output_package, "*-remote")):
                     with open(remote) as f:
                         lines = f.readlines()

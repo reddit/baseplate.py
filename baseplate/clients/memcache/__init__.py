@@ -260,7 +260,7 @@ class MonitoredMemcacheConnection:
         that corresponds to the current context name and called method.
 
         """
-        trace_name = "{}.{}".format(self.context_name, method_name)
+        trace_name = f"{self.context_name}.{method_name}"
         span = self.server_span.make_child(trace_name)
         span.set_tag("method", method_name)
         return span

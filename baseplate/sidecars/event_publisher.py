@@ -46,7 +46,7 @@ class MaxRetriesError(Exception):
 
 class V1Batch(RawJSONBatch):
     def __init__(self, max_size=MAX_BATCH_SIZE):
-        super(V1Batch, self).__init__(max_size)
+        super().__init__(max_size)
 
 
 class V2Batch(Batch):
@@ -105,7 +105,7 @@ class BatchPublisher:
 
     def _sign_payload(self, payload):
         digest = hmac.new(self.key_secret, payload, hashlib.sha256).hexdigest()
-        return "key={key}, mac={mac}".format(key=self.key_name, mac=digest)
+        return f"key={self.key_name}, mac={digest}"
 
     def publish(self, payload):
         if not payload.count:
@@ -142,7 +142,7 @@ class BatchPublisher:
                     logger.exception("HTTP Request failed. Error: %s", response.text)
                     raise
                 logger.exception("HTTP Request failed.")
-            except IOError:
+            except OSError:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:

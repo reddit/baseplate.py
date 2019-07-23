@@ -41,7 +41,7 @@ class MultiVariantSet(VariantSet):
         total_size = 0
         for variant in self.variants:
             if variant.get("size") is None:
-                raise ValueError("Variant size not provided: {}".format(self.variants))
+                raise ValueError(f"Variant size not provided: {self.variants}")
             total_size += int(variant.get("size") * self.num_buckets)
 
         if total_size > self.num_buckets:

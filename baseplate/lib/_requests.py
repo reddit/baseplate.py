@@ -30,7 +30,7 @@ class _UNIXConnection(urllib3.connectionpool.HTTPConnection):
 
 class _UNIXConnectionPool(urllib3.connectionpool.HTTPConnectionPool):
     def __init__(self, url):
-        super(_UNIXConnectionPool, self).__init__(host="localhost")
+        super().__init__(host="localhost")
         self.url = url
 
     def _new_conn(self):
