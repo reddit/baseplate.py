@@ -1,7 +1,5 @@
-import gzip
 import unittest
 
-from io import BytesIO
 from unittest import mock
 
 import requests
@@ -40,23 +38,6 @@ class TimeLimitedBatchTests(unittest.TestCase):
 
 
 class BatchTests(unittest.TestCase):
-    def test_v1(self):
-        batch = event_publisher.V1Batch(max_size=10)
-        batch.add(None)
-        batch.add(b"1")
-        batch.add(b"2")
-
-        result = batch.serialize()
-        self.assertEqual(result.count, 2)
-        self.assertEqual(result.bytes, b"[1,2]")
-
-        with self.assertRaises(event_publisher.BatchFull):
-            batch.add(b"x" * 100)
-
-        batch.reset()
-        result = batch.serialize()
-        self.assertEqual(result.count, 0)
-
     def test_v2(self):
         batch = event_publisher.V2Batch(max_size=50)
         batch.add(None)
@@ -64,23 +45,15 @@ class BatchTests(unittest.TestCase):
         batch.add(b"b")
 
         result = batch.serialize()
-        self.assertEqual(result.count, 2)
-        self.assertEqual(result.bytes, b'{"1":{"lst":["rec",2,a,b]}}')
+        self.assertEqual(result.item_count, 2)
+        self.assertEqual(result.serialized, b'{"1":{"lst":["rec",2,a,b]}}')
 
         with self.assertRaises(event_publisher.BatchFull):
             batch.add(b"x" * 100)
 
         batch.reset()
         result = batch.serialize()
-        self.assertEqual(result.count, 0)
-
-
-class CompressTests(unittest.TestCase):
-    def test_compress(self):
-        raw = b"test"
-        compressed = event_publisher.gzip_compress(raw)
-        decompressed = gzip.GzipFile(fileobj=BytesIO(compressed)).read()
-        self.assertEqual(raw, decompressed)
+        self.assertEqual(result.item_count, 0)
 
 
 class PublisherTests(unittest.TestCase):
@@ -101,13 +74,13 @@ class PublisherTests(unittest.TestCase):
         self.publisher = event_publisher.BatchPublisher(self.metrics_client, self.config)
 
     def test_empty_batch(self):
-        self.publisher.publish(SerializedBatch(count=0, bytes=b""))
+        self.publisher.publish(SerializedBatch(item_count=0, serialized=b""))
         self.assertEqual(self.session.post.call_count, 0)
 
     def test_publish_success(self):
         events = b'[{"example": "value"}]'
 
-        self.publisher.publish(SerializedBatch(count=1, bytes=events))
+        self.publisher.publish(SerializedBatch(item_count=1, serialized=events))
 
         self.assertEqual(self.session.post.call_count, 1)
 
@@ -128,7 +101,7 @@ class PublisherTests(unittest.TestCase):
         events = b'[{"example": "value"}]'
 
         with self.assertRaises(requests.HTTPError):
-            self.publisher.publish(SerializedBatch(count=1, bytes=events))
+            self.publisher.publish(SerializedBatch(item_count=1, serialized=events))
 
         self.assertEqual(mock_sleep.call_count, 0)
         self.assertEqual(self.session.post.call_count, 1)

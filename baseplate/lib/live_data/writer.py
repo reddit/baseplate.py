@@ -5,6 +5,9 @@ import difflib
 import logging
 import sys
 
+from typing import BinaryIO
+
+from kazoo.client import KazooClient
 from kazoo.exceptions import BadVersionError
 from kazoo.exceptions import NoNodeError
 
@@ -20,18 +23,18 @@ class WriterError(Exception):
 
 
 class NodeDoesNotExistError(WriterError):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(
-            "Target node does not exist. Please create it with appropriate " "ACLs first."
+            "Target node does not exist. Please create it with appropriate ACLs first."
         )
 
 
 class UnexpectedChangeError(WriterError):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("The data in ZooKeeper changed unexpectedly.")
 
 
-def write_file_to_zookeeper(zookeeper, source_file, dest_path):
+def write_file_to_zookeeper(zookeeper: KazooClient, source_file: BinaryIO, dest_path: str) -> bool:
     logger.info("Writing to %s in ZooKeeper...", dest_path)
 
     try:
@@ -66,7 +69,7 @@ def write_file_to_zookeeper(zookeeper, source_file, dest_path):
     return True
 
 
-def main():
+def main() -> None:
     arg_parser = argparse.ArgumentParser(description=sys.modules[__name__].__doc__)
     arg_parser.add_argument(
         "--debug", default=False, action="store_true", help="enable debug logging"

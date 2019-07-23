@@ -6,6 +6,12 @@ import os
 import sys
 import time
 
+from typing import Any
+from typing import NoReturn
+
+from kazoo.client import KazooClient
+from kazoo.protocol.states import ZnodeStat
+
 from baseplate.lib import config
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
@@ -18,13 +24,13 @@ HEARTBEAT_INTERVAL = 300
 
 
 class NodeWatcher:
-    def __init__(self, dest, owner, group, mode):
+    def __init__(self, dest: str, owner: int, group: int, mode: int):
         self.dest = dest
         self.owner = owner
         self.group = group
         self.mode = mode
 
-    def on_change(self, data, _):
+    def on_change(self, data: bytes, _znode_stat: ZnodeStat) -> None:
         if data is None:
             # the data node does not exist
             try:
@@ -46,7 +52,7 @@ class NodeWatcher:
         os.rename(self.dest + ".tmp", self.dest)
 
 
-def watch_zookeeper_nodes(zookeeper, nodes):
+def watch_zookeeper_nodes(zookeeper: KazooClient, nodes: Any) -> NoReturn:
     for node in nodes:
         watcher = NodeWatcher(node.dest, node.owner, node.group, node.mode)
         zookeeper.DataWatch(node.source, watcher.on_change)
@@ -75,7 +81,7 @@ def watch_zookeeper_nodes(zookeeper, nodes):
                     logger.warning("%s: could not heartbeat: %s", node.dest, exc)
 
 
-def main():
+def main() -> NoReturn:
     arg_parser = argparse.ArgumentParser(description=sys.modules[__name__].__doc__)
     arg_parser.add_argument(
         "config_file", type=argparse.FileType("r"), help="path to a configuration file"
@@ -107,7 +113,7 @@ def main():
                     "dest": config.String,
                     "owner": config.Optional(config.UnixUser),
                     "group": config.Optional(config.UnixGroup),
-                    "mode": config.Optional(config.Integer(base=8), default=0o400),
+                    "mode": config.Optional(config.Integer(base=8), default=0o400),  # type: ignore
                 }
             )
         },

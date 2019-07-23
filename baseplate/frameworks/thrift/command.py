@@ -12,20 +12,20 @@ class BuildThriftCommand(Command):
     description = "Generate Python code from Thrift IDL."
     user_options = [("build-base=", "b", "base directory for build library")]
 
-    def initialize_options(self):
+    def initialize_options(self) -> None:
         self.build_base = None
 
-    def finalize_options(self):
+    def finalize_options(self) -> None:
         self.set_undefined_options("build", ("build_base", "build_base"))
 
-    def run(self):
-        if self.dry_run:
+    def run(self) -> None:
+        if self.dry_run:  # type: ignore
             return
 
-        temp_dir = os.path.join(self.build_base, "thrift")
+        temp_dir = os.path.join(self.build_base, "thrift")  # type: ignore
         self.mkpath(temp_dir)
 
-        for package in self.distribution.packages:
+        for package in self.distribution.packages:  # type: ignore
             package_dir = os.path.join(*package.split("."))
 
             for thriftfile in glob.glob(os.path.join(package_dir, "*.thrift")):
@@ -67,6 +67,6 @@ class BuildThriftCommand(Command):
 
 
 class ThriftBuildPyCommand(build_py):
-    def run(self):
+    def run(self) -> None:
         self.run_command("build_thrift")
         build_py.run(self)

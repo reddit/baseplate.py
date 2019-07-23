@@ -29,19 +29,34 @@ An abbreviated example of it in use::
 """
 import sys
 
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Mapping
+from typing import Optional
+
 import pyramid.events
 import pyramid.request
 import pyramid.tweens
 import webob.request
 
+from pyramid.config import Configurator
+from pyramid.registry import Registry
+from pyramid.request import Request
+from pyramid.response import Response
+
+from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import TraceInfo
 from baseplate.lib import warn_deprecated
+from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.server import make_app
 
 
-def _make_baseplate_tween(handler, _registry):
-    def baseplate_tween(request):
+def _make_baseplate_tween(
+    handler: Callable[[Request], Response], _registry: Registry
+) -> Callable[[Request], Response]:
+    def baseplate_tween(request: Request) -> Response:
         try:
             response = handler(request)
         except:  # noqa: E722
@@ -61,7 +76,7 @@ def _make_baseplate_tween(handler, _registry):
 
 
 class BaseplateEvent:
-    def __init__(self, request):
+    def __init__(self, request: Request):
         self.request = request
 
 
@@ -83,21 +98,21 @@ class HeaderTrustHandler:
     See :py:class:`StaticTrustHandler` for the default implementation.
     """
 
-    def should_trust_trace_headers(self, request):
+    def should_trust_trace_headers(self, request: Request) -> bool:
         """Return whether baseplate should parse the trace headers from the inbound request.
 
-        :param request pyramid.util.Request: The request
+        :param request: The request
 
-        :returns bool: Whether baseplate should parse the trace headers from the inbound request.
+        :returns: Whether baseplate should parse the trace headers from the inbound request.
         """
         raise NotImplementedError
 
-    def should_trust_edge_context_payload(self, request):
+    def should_trust_edge_context_payload(self, request: Request) -> bool:
         """Return whether baseplate should trust the edge context headers from the inbound request.
 
-        :param request pyramid.util.Request: The request
+        :param request: The request
 
-        :returns bool: Whether baseplate should trust the inbound edge context headers
+        :returns: Whether baseplate should trust the inbound edge context headers
         """
         raise NotImplementedError
 
@@ -108,7 +123,7 @@ class StaticTrustHandler(HeaderTrustHandler):
     This class is created automatically by BaseplateConfigurator unless you
     supply your own HeaderTrustHandler
 
-    :param bool trust_headers:
+    :param trust_headers:
         Whether or not to trust trace and edge context headers from
         inbound requests. This value will be returned by should_trust_trace_headers and
         should_trust_edge_context_payload.
@@ -120,31 +135,31 @@ class StaticTrustHandler(HeaderTrustHandler):
         services).
     """
 
-    def __init__(self, trust_headers=False):
+    def __init__(self, trust_headers: bool = False):
         self.trust_headers = trust_headers
 
-    def should_trust_trace_headers(self, request):
+    def should_trust_trace_headers(self, request: Request) -> bool:
         return self.trust_headers
 
-    def should_trust_edge_context_payload(self, request):
+    def should_trust_edge_context_payload(self, request: Request) -> bool:
         return self.trust_headers
 
 
 # pylint: disable=too-many-ancestors
 class BaseplateRequest(RequestContext, pyramid.request.Request):
-    def __init__(self, context_config, environ):
+    def __init__(self, context_config: Dict[str, Any], environ: Dict[str, str]):
         RequestContext.__init__(self, context_config)
         pyramid.request.Request.__init__(self, environ)
 
 
 class RequestFactory:
-    def __init__(self, baseplate):
+    def __init__(self, baseplate: Baseplate):
         self.baseplate = baseplate
 
-    def __call__(self, environ):
+    def __call__(self, environ: Dict[str, str]) -> BaseplateRequest:
         return BaseplateRequest(self.baseplate._context_config, environ)
 
-    def blank(self, path):
+    def blank(self, path: str) -> BaseplateRequest:
         environ = webob.request.environ_from_url(path)
         return BaseplateRequest(self.baseplate._context_config, environ)
 
@@ -152,22 +167,20 @@ class RequestFactory:
 class BaseplateConfigurator:
     """Config extension to integrate Baseplate into Pyramid.
 
-    :param baseplate.Baseplate baseplate: The Baseplate instance for your
-        application.
-    :param baseplate.lib.edge_context.EdgeRequestContextFactory edge_context_factory: A
-        configured factory for handling edge request context.
-    :param baseplate.frameworks.pyramid.HeaderTrustHandler header_trust_handler:
-        An object which will be used to verify whether baseplate should parse the request
-        context headers, for example trace ids. See StaticTrustHandler for
-        the default implementation.
+    :param baseplate: The Baseplate instance for your application.
+    :param edge_context_factory: A configured factory for handling edge request
+        context.
+    :param header_trust_handler: An object which will be used to verify whether
+        baseplate should parse the request context headers, for example trace ids.
+        See StaticTrustHandler for the default implementation.
     """
 
     def __init__(
         self,
-        baseplate,
-        trust_trace_headers=None,
-        edge_context_factory=None,
-        header_trust_handler=None,
+        baseplate: Baseplate,
+        trust_trace_headers: Optional[bool] = None,
+        edge_context_factory: Optional[EdgeRequestContextFactory] = None,
+        header_trust_handler: Optional[HeaderTrustHandler] = None,
     ):
         self.baseplate = baseplate
         self.trust_trace_headers = bool(trust_trace_headers)
@@ -183,11 +196,11 @@ class BaseplateConfigurator:
         else:
             self.header_trust_handler = StaticTrustHandler(trust_headers=self.trust_trace_headers)
 
-    def _on_application_created(self, event):
+    def _on_application_created(self, event: pyramid.events.ApplicationCreated) -> None:
         # attach the baseplate object to the application the server gets
         event.app.baseplate = self.baseplate
 
-    def _on_new_request(self, event):
+    def _on_new_request(self, event: pyramid.events.ContextFound) -> None:
         request = event.request
 
         # this request didn't match a route we know
@@ -220,12 +233,14 @@ class BaseplateConfigurator:
         request.trace.set_tag("http.method", request.method)
         request.trace.set_tag("peer.ipv4", request.remote_addr)
 
-    def _start_server_span(self, request, name, trace_info=None):
+    def _start_server_span(
+        self, request: BaseplateRequest, name: str, trace_info: Optional[TraceInfo] = None
+    ) -> None:
         span = self.baseplate.make_server_span(request, name=name, trace_info=trace_info)
         span.start()
         request.registry.notify(ServerSpanInitialized(request))
 
-    def _get_trace_info(self, headers):
+    def _get_trace_info(self, headers: Mapping[str, str]) -> TraceInfo:
         sampled = bool(headers.get("X-Sampled") == "1")
         flags = headers.get("X-Flags", None)
         return TraceInfo.from_upstream(
@@ -236,7 +251,7 @@ class BaseplateConfigurator:
             int(flags) if flags is not None else None,
         )
 
-    def includeme(self, config):
+    def includeme(self, config: Configurator) -> None:
         config.set_request_factory(RequestFactory(self.baseplate))
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
         config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
@@ -265,13 +280,15 @@ class BaseplateConfigurator:
         # pyramid gets all cute with descriptors and will pass the request
         # object as the first ("self") param to bound methods. wrapping
         # the bound method in a simple function prevents that behavior
-        def start_server_span(*args, **kwargs):
-            return self._start_server_span(*args, **kwargs)
+        def start_server_span(
+            request: BaseplateRequest, name: str, trace_info: Optional[TraceInfo]
+        ) -> None:
+            return self._start_server_span(request, name, trace_info)
 
         config.add_request_method(start_server_span, "start_server_span")
 
 
-def paste_make_app(_, **local_config):
+def paste_make_app(_: Dict[str, str], **local_config: str) -> Any:
     """Make an application object, PasteDeploy style.
 
     This is a compatibility shim to adapt the baseplate app entrypoint to
@@ -286,7 +303,7 @@ def paste_make_app(_, **local_config):
     return make_app(local_config)
 
 
-def pshell_setup(env):
+def pshell_setup(env: Dict[str, Any]) -> None:
     r"""Start a server span when pshell starts up.
 
     This simply starts a server span after the shell initializes, which

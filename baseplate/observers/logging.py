@@ -1,6 +1,8 @@
 import threading
 
 from baseplate import BaseplateObserver
+from baseplate import RequestContext
+from baseplate import Span
 
 
 class LoggingBaseplateObserver(BaseplateObserver):
@@ -12,5 +14,5 @@ class LoggingBaseplateObserver(BaseplateObserver):
 
     """
 
-    def on_server_span_created(self, context, server_span):
+    def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
         threading.current_thread().name = str(server_span.trace_id)

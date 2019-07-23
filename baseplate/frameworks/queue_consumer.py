@@ -2,17 +2,47 @@ import logging
 import queue
 
 from threading import Thread
+from typing import Callable
+from typing import NoReturn
+from typing import Optional
+from typing import Sequence
+from typing import TYPE_CHECKING
 
+import kombu
+
+from kombu import Connection
+from kombu import Exchange
+from kombu import Message
 from kombu import Queue
 from kombu.mixins import ConsumerMixin
+from kombu.transport.virtual import Channel
 
+from baseplate import Baseplate
+from baseplate import RequestContext
+from baseplate import Span
 from baseplate.lib.retry import RetryPolicy
 
 
 logger = logging.getLogger(__name__)
 
 
-def consume(baseplate, exchange, connection, queue_name, routing_keys, handler):
+Handler = Callable[[RequestContext, str, Message], None]
+
+
+if TYPE_CHECKING:
+    WorkQueue = queue.Queue[Message]  # pylint: disable=unsubscriptable-object
+else:
+    WorkQueue = queue.Queue
+
+
+def consume(
+    baseplate: Baseplate,
+    exchange: Exchange,
+    connection: Connection,
+    queue_name: str,
+    routing_keys: Sequence[str],
+    handler: Handler,
+) -> NoReturn:
     """Create a long-running process to consume messages from a queue.
 
     A queue with name ``queue_name`` is created and bound to the
@@ -34,12 +64,11 @@ def consume(baseplate, exchange, connection, queue_name, routing_keys, handler):
     will prevent the ``ack`` and the message will be re-queued at the head of
     the queue.
 
-    :param baseplate.Baseplate baseplate: A baseplate instance for the
-        service.
-    :param kombu.Exchange exchange:
-    :param kombu.connection.Connection connection:
-    :param str queue_name: The name of the queue.
-    :param list routing_keys: List of routing keys.
+    :param baseplate: A baseplate instance for the service.
+    :param exchange:
+    :param connection:
+    :param queue_name: The name of the queue.
+    :param routing_keys: List of routing keys.
     :param handler: The handler method.
 
     """
@@ -60,18 +89,18 @@ def consume(baseplate, exchange, connection, queue_name, routing_keys, handler):
 
 
 class _ConsumerWorker(ConsumerMixin):
-    def __init__(self, connection, queues, work_queue):
+    def __init__(self, connection: Connection, queues: Sequence[Queue], work_queue: WorkQueue):
         self.connection = connection
         self.queues = queues
         self.work_queue = work_queue
 
-    def get_consumers(self, Consumer, channel):
+    def get_consumers(self, Consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
         return [Consumer(queues=self.queues, on_message=self.on_message)]
 
-    def on_message(self, message):
+    def on_message(self, message: Message) -> None:
         self.work_queue.put(message)
 
-    def get_message(self, block, timeout):
+    def get_message(self, block: bool, timeout: Optional[float]) -> Message:
         try:
             return self.work_queue.get(block=block, timeout=timeout)
         except queue.Empty:
@@ -91,22 +120,24 @@ class BaseKombuConsumer:
 
     """
 
-    def __init__(self, worker, worker_thread):
+    def __init__(self, worker: _ConsumerWorker, worker_thread: Thread):
         self.worker = worker
         self.worker_thread = worker_thread
 
     @classmethod
-    def new(cls, connection, queues, queue_size=100):
+    def new(
+        cls, connection: Connection, queues: Sequence[Queue], queue_size: int = 100
+    ) -> "BaseKombuConsumer":
         """Create and initialize a consumer.
 
-        :param kombu.Exchange exchange:
-        :param list queues: List of :py:class:`kombu.queue.Queue` objects.
-        :param int queue_size: (Optional) The maximum number of messages to cache
+        :param connection: The connection
+        :param queues: List of queues.
+        :param queue_size: The maximum number of messages to cache
             in the internal `queue.Queue` worker queue.  Defaults to 100.  For
             an infinite size (not recommended), use `queue_size=0`.
 
         """
-        work_queue = queue.Queue(maxsize=queue_size)
+        work_queue: WorkQueue = queue.Queue(maxsize=queue_size)
         worker = _ConsumerWorker(connection, queues, work_queue)
         worker_thread = Thread(target=worker.run)
         worker_thread.name = "consumer message pump"
@@ -115,16 +146,16 @@ class BaseKombuConsumer:
 
         return cls(worker, worker_thread)
 
-    def get_message(self):
+    def get_message(self) -> Message:
         """Return a single message."""
         batch = self.get_batch(max_items=1, timeout=None)
         return batch[0]
 
-    def get_batch(self, max_items, timeout):
+    def get_batch(self, max_items: int, timeout: Optional[float]) -> Sequence[Message]:
         """Return a batch of messages.
 
-        :param int max_items: The maximum batch size.
-        :param int timeout: The maximum time to wait in seconds, or ``None``
+        :param max_items: The maximum batch size.
+        :param timeout: The maximum time to wait in seconds, or ``None``
             for no timeout.
 
         """
@@ -145,7 +176,7 @@ class BaseKombuConsumer:
         return batch
 
 
-class KombuConsumer(BaseKombuConsumer):
+class KombuConsumer:
     """Consumer for use in baseplate.
 
     The :py:meth:`~baseplate.frameworks.queue_consumer.KombuConsumer.get_message` and
@@ -154,17 +185,36 @@ class KombuConsumer(BaseKombuConsumer):
 
     """
 
-    def get_message(self, server_span):  # pylint: disable=arguments-differ
+    def __init__(self, base_consumer: BaseKombuConsumer):
+        self.base_consumer = base_consumer
+
+    @classmethod
+    def new(
+        cls, connection: Connection, queues: Sequence[Queue], queue_size: int = 100
+    ) -> "KombuConsumer":
+        """Create and initialize a consumer.
+
+        :param connection: The connection
+        :param queues: List of queues.
+        :param queue_size: The maximum number of messages to cache
+            in the internal `queue.Queue` worker queue.  Defaults to 100.  For
+            an infinite size (not recommended), use `queue_size=0`.
+
+        """
+        base_consumer = BaseKombuConsumer.new(connection, queues, queue_size)
+        return cls(base_consumer)
+
+    def get_message(self, server_span: Span) -> Message:
         """Return a single message.
 
-        :param baseplate.ServerSpan server_span:
+        :param server_span: The span.
 
         """
         child_span = server_span.make_child("kombu.get_message")
         child_span.set_tag("kind", "consumer")
 
         with child_span:
-            messages = BaseKombuConsumer.get_batch(self, max_items=1, timeout=None)
+            messages = self.base_consumer.get_batch(max_items=1, timeout=None)
             message = messages[0]
 
             routing_key = message.delivery_info.get("routing_key", "")
@@ -181,12 +231,14 @@ class KombuConsumer(BaseKombuConsumer):
 
             return message
 
-    def get_batch(self, server_span, max_items, timeout):  # pylint: disable=arguments-differ
+    def get_batch(
+        self, server_span: Span, max_items: int, timeout: Optional[float]
+    ) -> Sequence[Message]:
         """Return a batch of messages.
 
-        :param baseplate.ServerSpan server_span:
-        :param int max_items: The maximum batch size.
-        :param int timeout: The maximum time to wait in seconds, or ``None``
+        :param server_span: The span.
+        :param max_items: The maximum batch size.
+        :param timeout: The maximum time to wait in seconds, or ``None``
             for no timeout.
 
         """
@@ -194,6 +246,6 @@ class KombuConsumer(BaseKombuConsumer):
         child_span.set_tag("kind", "consumer")
 
         with child_span:
-            messages = BaseKombuConsumer.get_batch(self, max_items, timeout)
+            messages = self.base_consumer.get_batch(max_items, timeout)
             child_span.set_tag("message_count", len(messages))
             return messages

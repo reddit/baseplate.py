@@ -1,3 +1,6 @@
+from typing import Any
+from typing import Dict
+
 from baseplate.lib.experiments.providers.r2 import R2Experiment
 
 
@@ -45,10 +48,12 @@ class FeatureFlag(R2Experiment):
     """
 
     @classmethod
-    def from_dict(cls, id, name, owner, version, config):  # pylint: disable=redefined-builtin
+    def from_dict(  # pylint: disable=redefined-builtin
+        cls, id: int, name: str, owner: str, version: int, config: Dict[Any, Any]
+    ) -> R2Experiment:
         variants = config.get("variants", {})
         assert not set(variants.keys()) - {"active"}
         return super().from_dict(id=id, name=name, owner=owner, version=version, config=config)
 
-    def should_log_bucketing(self):
+    def should_log_bucketing(self) -> bool:
         return False

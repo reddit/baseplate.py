@@ -4,7 +4,6 @@ This command serves your application from the given configuration file.
 
 """
 import argparse
-import collections
 import configparser
 import fcntl
 import gc
@@ -18,7 +17,20 @@ import threading
 import traceback
 import warnings
 
+from types import FrameType
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import NamedTuple
+from typing import Optional
+from typing import Sequence
+from typing import TextIO
+
+from gevent.server import StreamServer
+
+from baseplate import Baseplate
 from baseplate.lib.config import Endpoint
+from baseplate.lib.config import EndpointConfiguration
 from baseplate.server import einhorn
 from baseplate.server import reloader
 
@@ -26,7 +38,7 @@ from baseplate.server import reloader
 logger = logging.getLogger(__name__)
 
 
-def parse_args(args):
+def parse_args(args: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=sys.modules[__name__].__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -67,12 +79,15 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-Configuration = collections.namedtuple(
-    "Configuration", ["filename", "server", "app", "has_logging_options", "tshell"]
-)
+class Configuration(NamedTuple):
+    filename: str
+    server: Optional[Dict[str, str]]
+    app: Dict[str, str]
+    has_logging_options: bool
+    tshell: Optional[Dict[str, str]]
 
 
-def read_config(config_file, server_name, app_name):
+def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) -> Configuration:
     # we use RawConfigParser to reduce surprise caused by interpolation and so
     # that config.Percent works more naturally (no escaping %).
     parser = configparser.RawConfigParser()
@@ -89,7 +104,7 @@ def read_config(config_file, server_name, app_name):
     return Configuration(filename, server_config, app_config, has_logging_config, tshell_config)
 
 
-def configure_logging(config, debug):
+def configure_logging(config: Configuration, debug: bool) -> None:
     logging.captureWarnings(capture=True)
 
     if debug:
@@ -111,7 +126,7 @@ def configure_logging(config, debug):
         logging.config.fileConfig(config.filename)
 
 
-def make_listener(endpoint):
+def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
     try:
         return einhorn.get_socket()
     except (einhorn.NotEinhornWorker, IndexError):
@@ -138,7 +153,7 @@ def make_listener(endpoint):
     return sock
 
 
-def _load_factory(url, default_name=None):
+def _load_factory(url: str, default_name: Optional[str] = None) -> Callable:
     """Load a factory function from a config file."""
     module_name, sep, func_name = url.partition(":")
     if not sep:
@@ -150,20 +165,22 @@ def _load_factory(url, default_name=None):
     return factory
 
 
-def make_server(server_config, listener, app):
+def make_server(
+    server_config: Dict[str, str], listener: socket.socket, app: Callable
+) -> StreamServer:
     server_url = server_config["factory"]
     factory = _load_factory(server_url, default_name="make_server")
     return factory(server_config, listener, app)
 
 
-def make_app(app_config):
+def make_app(app_config: Dict[str, str]) -> Callable:
     app_url = app_config["factory"]
     factory = _load_factory(app_url, default_name="make_app")
     return factory(app_config)
 
 
-def register_signal_handlers():
-    def _handle_debug_signal(_signo, frame):
+def register_signal_handlers() -> threading.Event:
+    def _handle_debug_signal(_signo: int, frame: FrameType) -> None:
         if not frame:
             logger.warning("Received SIGUSR1, but no frame found.")
             return
@@ -178,7 +195,7 @@ def register_signal_handlers():
 
     shutdown_event = threading.Event()
 
-    def _handle_shutdown_signal(_signo, _frame):
+    def _handle_shutdown_signal(_signo: int, _frame: FrameType) -> None:
         shutdown_event.set()
 
     # shutdown is signalled differently in different contexts:
@@ -191,12 +208,14 @@ def register_signal_handlers():
     return shutdown_event
 
 
-def load_app_and_run_server():
+def load_app_and_run_server() -> None:
     """Parse arguments, read configuration, and start the server."""
     shutdown_event = register_signal_handlers()
 
     args = parse_args(sys.argv[1:])
     config = read_config(args.config_file, args.server_name, args.app_name)
+    assert config.server
+
     configure_logging(config, args.debug)
 
     app = make_app(config.app)
@@ -220,7 +239,7 @@ def load_app_and_run_server():
         server.stop()
 
 
-def load_and_run_script():
+def load_and_run_script() -> None:
     """Launch a script with an entrypoint similar to a server."""
     parser = argparse.ArgumentParser(
         description="Run a function with app configuration loaded.",
@@ -256,7 +275,7 @@ def load_and_run_script():
         args.entrypoint(config.app)
 
 
-def _fn_accepts_additional_args(script_fn, fn_args):
+def _fn_accepts_additional_args(script_fn: Callable[..., Any], fn_args: Sequence[str]) -> bool:
     additional_args_provided = len(fn_args) > 0
     signature = inspect.signature(script_fn)
 
@@ -283,7 +302,7 @@ def _fn_accepts_additional_args(script_fn, fn_args):
     return allows_additional_args
 
 
-def load_and_run_tshell():
+def load_and_run_tshell() -> None:
     """Launch a shell for a thrift service."""
     parser = argparse.ArgumentParser(
         description="Open a shell for a Thrift service with app configuration loaded.",
@@ -316,8 +335,9 @@ def load_and_run_tshell():
     app = make_app(config.app)
     env["app"] = app
 
-    context = app.baseplate.make_context_object()
-    span = app.baseplate.make_server_span(context, "shell")
+    baseplate: Baseplate = app.baseplate  # type: ignore
+    context = baseplate.make_context_object()
+    span = baseplate.make_server_span(context, "shell")
     env["context"] = span.context
 
     if config.tshell and "setup" in config.tshell:

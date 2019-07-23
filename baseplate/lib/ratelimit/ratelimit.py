@@ -1,3 +1,4 @@
+from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib.ratelimit.backends import RateLimitBackend
 
@@ -12,12 +13,12 @@ class RateLimiterContextFactory(ContextFactory):
     :param backend_factory: An instance of
         :py:class:`baseplate.clients.ContextFactory`. The context factory must
         return an instance of :py:class:`baseplate.lib.ratelimit.backends.RateLimitBackend`
-    :param int allowance: The maximum allowance allowed per key.
-    :param int interval: The interval (in seconds) to reset allowances.
+    :param allowance: The maximum allowance allowed per key.
+    :param interval: The interval (in seconds) to reset allowances.
 
     """
 
-    def __init__(self, backend_factory, allowance, interval):
+    def __init__(self, backend_factory: ContextFactory, allowance: int, interval: int):
         if allowance < 1:
             raise ValueError("minimum allowance is 1")
         if interval < 1:
@@ -29,7 +30,7 @@ class RateLimiterContextFactory(ContextFactory):
         self.allowance = allowance
         self.interval = interval
 
-    def make_object_for_context(self, name, span):
+    def make_object_for_context(self, name: str, span: Span) -> "RateLimiter":
         backend = self.backend_factory.make_object_for_context(name, span)
         return RateLimiter(backend, self.allowance, self.interval)
 
@@ -37,14 +38,13 @@ class RateLimiterContextFactory(ContextFactory):
 class RateLimiter:
     """A class for rate limiting actions.
 
-    :param `RateLimitBackend` backend: The backend to use for storing rate
-        limit counters.
-    :param int allowance: The maximum allowance allowed per key.
-    :param int interval: The interval (in seconds) to reset allowances.
+    :param backend: The backend to use for storing rate limit counters.
+    :param allowance: The maximum allowance allowed per key.
+    :param interval: The interval (in seconds) to reset allowances.
 
     """
 
-    def __init__(self, backend, allowance, interval):
+    def __init__(self, backend: RateLimitBackend, allowance: int, interval: int):
         if allowance < 1:
             raise ValueError("minimum allowance is 1")
         if interval < 1:
@@ -56,15 +56,15 @@ class RateLimiter:
         self.allowance = allowance
         self.interval = interval
 
-    def consume(self, key, amount=1):
+    def consume(self, key: str, amount: int = 1) -> None:
         """Consume the given `amount` from the allowance for the given `key`.
 
         This will raise
         :py:class:`baseplate.lib.ratelimit.RateLimitExceededException` if the
         allowance for `key` is exhausted.
 
-        :param str key: The name of the rate limit bucket to consume from.
-        :param int amount: The amount to consume from the rate limit bucket.
+        :param key: The name of the rate limit bucket to consume from.
+        :param amount: The amount to consume from the rate limit bucket.
 
         """
         if not self.backend.consume(key, amount, self.allowance, self.interval):

@@ -15,23 +15,34 @@ An abbreviated example of it in use::
 """
 import sys
 
+from logging import Logger
+from typing import Any
+from typing import Callable
+from typing import Mapping
+from typing import Optional
+
 from requests.structures import CaseInsensitiveDict
+from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
+from thrift.Thrift import TProcessor
 from thrift.transport.TTransport import TTransportException
 
+from baseplate import Baseplate
+from baseplate import RequestContext
 from baseplate import TraceInfo
+from baseplate.lib.edge_context import EdgeRequestContextFactory
 
 
 class _ContextAwareHandler:
-    def __init__(self, handler, context, logger):
+    def __init__(self, handler: Any, context: RequestContext, logger: Logger):
         self.handler = handler
         self.context = context
         self.logger = logger
 
-    def __getattr__(self, fn_name):
-        def call_with_context(*args, **kwargs):
+    def __getattr__(self, fn_name: str) -> Callable[..., Any]:
+        def call_with_context(*args: Any, **kwargs: Any) -> Any:
             self.logger.debug("Handling: %r", fn_name)
 
             handler_fn = getattr(self.handler, fn_name)
@@ -61,40 +72,44 @@ class _ContextAwareHandler:
         return call_with_context
 
 
-def _extract_trace_info(headers):
-    sampled = bool(headers.get(b"Sampled") == b"1")
-    flags = headers.get(b"Flags", None)
-    return TraceInfo.from_upstream(
-        int(headers[b"Trace"]),
-        int(headers[b"Parent"]),
-        int(headers[b"Span"]),
-        sampled,
-        int(flags) if flags is not None else None,
-    )
-
-
-def baseplateify_processor(processor, logger, baseplate, edge_context_factory=None):
+def baseplateify_processor(
+    processor: TProcessor,
+    logger: Logger,
+    baseplate: Baseplate,
+    edge_context_factory: Optional[EdgeRequestContextFactory] = None,
+) -> TProcessor:
     """Wrap a Thrift Processor with Baseplate's span lifecycle.
 
-    :param thrift.Thrift.TProcessor processor: The service's processor to wrap.
-    :param logging.Logger logger: The logger to use for error and debug
-        logging.
-    :param baseplate.Baseplate baseplate: The baseplate instance for your
-        application.
-    :param baseplate.lib.edge_context.EdgeRequestContextFactory edge_context_factory: A
-        configured factory for handling edge request context.
+    :param processor: The service's processor to wrap.
+    :param logger: The logger to use for error and debug logging.
+    :param baseplate: The baseplate instance for your application.
+    :param edge_context_factory: A configured factory for handling edge request
+        context.
 
     """
 
-    def make_processor_fn(fn_name, processor_fn):
-        def call_processor_with_span_context(self, seqid, iprot, oprot):
+    def make_processor_fn(fn_name: str, processor_fn: Callable[..., Any]) -> Callable[..., Any]:
+        def call_processor_with_span_context(
+            self: Any, seqid: int, iprot: TProtocolBase, oprot: TProtocolBase
+        ) -> Any:
             context = baseplate.make_context_object()
 
             # Allow case-insensitivity for THeader headers
-            headers = CaseInsensitiveDict(data=iprot.get_headers())
+            headers: Mapping[bytes, bytes] = CaseInsensitiveDict(  # type: ignore
+                data=iprot.get_headers()
+            )
 
+            trace_info: Optional[TraceInfo]
             try:
-                trace_info = _extract_trace_info(headers)
+                sampled = bool(headers.get(b"Sampled") == b"1")
+                flags = headers.get(b"Flags", None)
+                trace_info = TraceInfo.from_upstream(
+                    int(headers[b"Trace"]),
+                    int(headers[b"Parent"]),
+                    int(headers[b"Span"]),
+                    sampled,
+                    int(flags) if flags is not None else None,
+                )
             except (KeyError, ValueError):
                 trace_info = None
 

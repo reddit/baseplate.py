@@ -1,12 +1,16 @@
 import logging
 
 from datetime import timedelta
+from typing import Any
+from typing import Tuple
 
 from zope.interface import implementer
 
 from baseplate.lib.crypto import make_signature
 from baseplate.lib.crypto import SignatureError
 from baseplate.lib.crypto import validate_signature
+from baseplate.lib.secrets import SecretsStore
+from baseplate.lib.secrets import VersionedSecret
 
 
 logger = logging.getLogger(__name__)
@@ -16,15 +20,15 @@ try:
     from pyramid.interfaces import ICSRFStoragePolicy  # pylint: disable=no-name-in-module
 except ImportError:
     logger.error(
-        "baseplate.frameworks.pyramid.csrf requires that you use a version " "of pyramid >= 1.9"
+        "baseplate.frameworks.pyramid.csrf requires that you use a version of pyramid >= 1.9"
     )
     raise
 
 
-def _make_csrf_token_payload(version, account_id):
-    version = str(version)
-    payload = ".".join([version, account_id])
-    return version, payload
+def _make_csrf_token_payload(version: int, account_id: str) -> Tuple[str, str]:
+    version_str = str(version)
+    payload = ".".join([version_str, account_id])
+    return version_str, payload
 
 
 @implementer(ICSRFStoragePolicy)
@@ -61,29 +65,33 @@ class TokenCSRFStoragePolicy:
     StoragePolicy since these tokens expire and are difficult to selectively
     invalidate.
 
-    :param baseplate.lib.secrets.SecretsStore secrets: A SecretsStore
-        that contains the secret you will use to sign the CSRF token.
-    :param str secret_path: The key to the secret in the supplied
-        SecretsStore
-    :param string param: (Optional) The name of the parameter to get the
-        CSRF token from on a request.  The default is 'csrf_token'.
-    :param datetime.timedelta max_age: (Optional) The maximum age that the
-        signature portion of the CSRF token is valid.  The default value is
-        one hour.
+    :param secrets: A SecretsStore that contains the secret you will use to
+        sign the CSRF token.
+    :param secret_path: The key to the secret in the supplied SecretsStore
+    :param param: The name of the parameter to get the CSRF token from on a
+        request.  The default is 'csrf_token'.
+    :param max_age: The maximum age that the signature portion of the CSRF
+        token is valid.  The default value is one hour.
     """
 
     VERSION = 1
 
-    def __init__(self, secrets, secret_path, param="csrf_token", max_age=timedelta(hours=1)):
+    def __init__(
+        self,
+        secrets: SecretsStore,
+        secret_path: str,
+        param: str = "csrf_token",
+        max_age: timedelta = timedelta(hours=1),
+    ):
         self._secrets = secrets
         self._secret_path = secret_path
         self._param = param
         self._max_age = max_age
 
-    def _get_secret(self):
+    def _get_secret(self) -> VersionedSecret:
         return self._secrets.get_versioned(self._secret_path)
 
-    def new_csrf_token(self, request):
+    def new_csrf_token(self, request: Any) -> str:
         """Return a new CSRF token.
 
         You will need to call `pyramid.csrf.new_csrf_token` to get a new
@@ -97,7 +105,7 @@ class TokenCSRFStoragePolicy:
         signature = make_signature(self._get_secret(), payload, self._max_age)
         return ".".join([prefix, signature.decode("utf-8")])
 
-    def get_csrf_token(self, request):
+    def get_csrf_token(self, request: Any) -> str:
         """Return the currently active CSRF token from the request params.
 
         This will not generate a new one if none is supplied like some of
@@ -108,18 +116,22 @@ class TokenCSRFStoragePolicy:
         """
         return request.params.get(self._param)
 
-    def check_csrf_token(self, request, supplied_token):
+    def check_csrf_token(self, request: Any, supplied_token: str) -> bool:
         """Return True if the supplied_token is valid.
 
         This is called automatically by Pyramid if you have configured it
         to require CSRF.
         """
         try:
-            token_version, sep, signature = supplied_token.partition(".")
+            version_str, sep, signature = supplied_token.partition(".")
+            token_version = int(version_str)
         except Exception:
             return False
 
         if sep != ".":
+            return False
+
+        if token_version != self.VERSION:
             return False
 
         _, payload = _make_csrf_token_payload(
@@ -127,7 +139,7 @@ class TokenCSRFStoragePolicy:
         )
 
         try:
-            validate_signature(self._get_secret(), payload, signature)
+            validate_signature(self._get_secret(), payload, signature.encode())
         except SignatureError:
             return False
 

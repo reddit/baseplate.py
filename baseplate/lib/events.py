@@ -11,9 +11,15 @@ by a separate daemon.
 """
 import logging
 
+from typing import Any
+from typing import Callable
+from typing import Generic
+from typing import TypeVar
+
 from thrift import TSerialization
 from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
+from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
@@ -30,7 +36,7 @@ class EventError(Exception):
 class EventTooLargeError(EventError):
     """Raised when a serialized event is too large to send."""
 
-    def __init__(self, size):
+    def __init__(self, size: int):
         super().__init__(f"Event is too large to send ({size:d} bytes)")
 
 
@@ -42,14 +48,14 @@ class EventQueueFullError(EventError):
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__("The event queue is full.")
 
 
 _V2_PROTOCOL_FACTORY = TJSONProtocolFactory()
 
 
-def serialize_v2_event(event):
+def serialize_v2_event(event: Any) -> bytes:
     """Serialize a Thrift struct to bytes for the V2 event protocol.
 
     :param event: A Thrift struct from the event schemas.
@@ -59,37 +65,40 @@ def serialize_v2_event(event):
 
 
 class EventLogger:
-    def log(self, **kwargs):
+    def log(self, **kwargs: Any) -> None:
         raise NotImplementedError
 
 
 class DebugLogger(EventLogger):
-    def __init__(self):
+    def __init__(self) -> None:
         self.logger = logging.getLogger(__name__)
 
-    def log(self, **kwargs):
+    def log(self, **kwargs: Any) -> None:
         self.logger.debug("Would send event: %s", kwargs)
 
 
-class EventQueue(ContextFactory):
+T = TypeVar("T")
+
+
+class EventQueue(ContextFactory, Generic[T]):
     """A queue to transfer events to the publisher.
 
-    :param str name: The name of the event queue to send to. This specifies
+    :param name: The name of the event queue to send to. This specifies
         which publisher should send the events which can be useful for routing
         to different event pipelines (prod/test/v2 etc.).
-    :param callable event_serializer: A callable that takes an event object
+    :param event_serializer: A callable that takes an event object
         and returns serialized bytes ready to send on the wire. See below for
         options.
 
     """
 
-    def __init__(self, name, event_serializer):
+    def __init__(self, name: str, event_serializer: Callable[[T], bytes]):
         self.queue = MessageQueue(
             "/events-" + name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE
         )
         self.serialize_event = event_serializer
 
-    def put(self, event):
+    def put(self, event: T) -> None:
         """Add an event to the queue.
 
         The queue is local to the server this code is run on. The event
@@ -112,5 +121,5 @@ class EventQueue(ContextFactory):
         except TimedOutError:
             raise EventQueueFullError
 
-    def make_object_for_context(self, name, span):
+    def make_object_for_context(self, name: str, span: Span) -> "EventQueue[T]":
         return self

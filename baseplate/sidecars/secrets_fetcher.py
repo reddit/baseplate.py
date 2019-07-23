@@ -64,6 +64,12 @@ import time
 import urllib.parse
 import uuid
 
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+
 import requests
 
 from baseplate.lib import config
@@ -85,7 +91,7 @@ https://www.vaultproject.io/docs/auth/aws.html#client-nonce
 )
 
 
-def fetch_instance_identity():
+def fetch_instance_identity() -> str:
     """Retrieve the instance identity document from the metadata service.
 
     http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html
@@ -97,13 +103,13 @@ def fetch_instance_identity():
     return resp.text
 
 
-def generate_nonce():
+def generate_nonce() -> str:
     """Return a string value suitable for use as a nonce."""
     logger.debug("Generating a new nonce.")
     return str(uuid.uuid4())
 
 
-def load_nonce():
+def load_nonce() -> Optional[str]:
     """Load the nonce from disk."""
     try:
         logger.debug("Loading nonce.")
@@ -114,7 +120,7 @@ def load_nonce():
         return None
 
 
-def store_nonce(nonce):
+def store_nonce(nonce: str) -> None:
     """Store the nonce to disk securely."""
     logger.debug("Storing nonce.")
     fd = os.open(NONCE_FILENAME, os.O_WRONLY | os.O_CREAT, 0o400)
@@ -122,29 +128,32 @@ def store_nonce(nonce):
         f.write(nonce)
 
 
-def ttl_to_time(ttl):
+def ttl_to_time(ttl: int) -> datetime.datetime:
     """Return an absolute expiration time given a TTL."""
     return datetime.datetime.utcnow() + datetime.timedelta(seconds=ttl)
+
+
+Authenticator = Callable[["VaultClientFactory"], Tuple[str, datetime.datetime]]
 
 
 class VaultClientFactory:
     """Factory that makes authenticated clients."""
 
-    def __init__(self, base_url, role, auth_type, mount_point):
+    def __init__(self, base_url: str, role: str, auth_type: Authenticator, mount_point: str):
         self.base_url = base_url
         self.role = role
         self.auth_type = auth_type
         self.mount_point = mount_point
         self.session = requests.Session()
-        self.client = None
+        self.client: Optional["VaultClient"] = None
 
-    def _make_client(self):
+    def _make_client(self) -> "VaultClient":
         """Obtain a client token from an auth backend and return a Vault client with it."""
         client_token, lease_duration = self.auth_type(self)
 
         return VaultClient(self.session, self.base_url, client_token, lease_duration)
 
-    def _vault_kubernetes_auth(self):
+    def _vault_kubernetes_auth(self) -> Tuple[str, datetime.datetime]:
         r"""Get a client token from Vault through the Kubernetes auth backend.
 
         This authenticates with Vault as a specified role using its
@@ -185,7 +194,7 @@ class VaultClientFactory:
         auth = response.json()["auth"]
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
-    def _vault_aws_auth(self):
+    def _vault_aws_auth(self) -> Tuple[str, datetime.datetime]:
         r"""Get a client token from Vault through the AWS auth backend.
 
         This authenticates with Vault as a specified role using its AWS
@@ -232,14 +241,14 @@ class VaultClientFactory:
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
     @staticmethod
-    def auth_types():
+    def auth_types() -> Dict[str, Authenticator]:
         """Return a dict of the supported auth types and respective methods."""
         return {
             "aws": VaultClientFactory._vault_aws_auth,
             "kubernetes": VaultClientFactory._vault_kubernetes_auth,
         }
 
-    def get_client(self):
+    def get_client(self) -> "VaultClient":
         """Get an authenticated client, reauthenticating if not cached."""
         if not self.client or self.client.is_about_to_expire:
             self.client = self._make_client()
@@ -254,19 +263,25 @@ class VaultClient:
 
     """
 
-    def __init__(self, session, base_url, token, token_expiration):
+    def __init__(
+        self,
+        session: requests.Session,
+        base_url: str,
+        token: str,
+        token_expiration: datetime.datetime,
+    ):
         self.session = session
         self.base_url = base_url
         self.token = token
         self.token_expiration = token_expiration
 
     @property
-    def is_about_to_expire(self):
+    def is_about_to_expire(self) -> bool:
         """Return if the token is near expiration and in need of regeneration."""
         expiration = self.token_expiration - VAULT_TOKEN_PREFETCH_TIME
         return expiration < datetime.datetime.utcnow()
 
-    def get_secret(self, secret_name):
+    def get_secret(self, secret_name: str) -> Tuple[Any, datetime.datetime]:
         """Get the value and expiration time of a named secret."""
         logger.debug("Fetching secret %r.", secret_name)
         try:
@@ -283,7 +298,9 @@ class VaultClient:
         return payload["data"], ttl_to_time(payload["lease_duration"])
 
 
-def fetch_secrets(cfg, client_factory):
+def fetch_secrets(
+    cfg: config.ConfigNamespace, client_factory: VaultClientFactory
+) -> datetime.datetime:
     logger.info("Fetching secrets.")
     client = client_factory.get_client()
     secrets = {}
@@ -315,7 +332,7 @@ def fetch_secrets(cfg, client_factory):
     return soonest_expiration
 
 
-def main():
+def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
         "config_file", type=argparse.FileType("r"), help="path to a configuration file"
@@ -357,7 +374,7 @@ def main():
                 "path": config.Optional(config.String, default="/var/local/secrets.json"),
                 "owner": config.Optional(config.UnixUser, default=0),
                 "group": config.Optional(config.UnixGroup, default=0),
-                "mode": config.Optional(config.Integer(base=8), default=0o400),
+                "mode": config.Optional(config.Integer(base=8), default=0o400),  # type: ignore
             },
             "secrets": config.Optional(config.TupleOf(config.String), default=[]),
         },

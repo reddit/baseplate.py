@@ -20,11 +20,17 @@ import queue
 import socket
 import time
 
+from typing import Any
+from typing import Generator
+from typing import TYPE_CHECKING
+
 from thrift.protocol import THeaderProtocol
+from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
+from thrift.protocol.TProtocol import TProtocolFactory
 from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
-from thrift.transport import TSocket
+from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TTransportException
 
 from baseplate.lib import config
@@ -34,18 +40,26 @@ from baseplate.lib.retry import RetryPolicy
 logger = logging.getLogger(__name__)
 
 
-def _make_transport(endpoint):
+if TYPE_CHECKING:
+    ProtocolPool = queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
+else:
+    ProtocolPool = queue.Queue
+
+
+def _make_transport(endpoint: config.EndpointConfiguration) -> TSocket:
     if endpoint.family == socket.AF_INET:
-        trans = TSocket.TSocket(*endpoint.address)
+        trans = TSocket(*endpoint.address)
     elif endpoint.family == socket.AF_UNIX:
-        trans = TSocket.TSocket(unix_socket=endpoint.address)
+        trans = TSocket(unix_socket=endpoint.address)
     else:
         raise Exception(f"unsupported endpoint family {endpoint.family!r}")
 
     return trans
 
 
-def thrift_pool_from_config(app_config, prefix, **kwargs):
+def thrift_pool_from_config(
+    app_config: config.RawConfig, prefix: str, **kwargs: Any
+) -> "ThriftConnectionPool":
     """Make a ThriftConnectionPool from a configuration dictionary.
 
     The keys useful to :py:func:`thrift_pool_from_config` should be prefixed,
@@ -96,15 +110,15 @@ def thrift_pool_from_config(app_config, prefix, **kwargs):
 class ThriftConnectionPool:
     """A pool that maintains a queue of open Thrift connections.
 
-    :param baseplate.lib.config.EndpointConfiguration endpoint: The remote address
+    :param endpoint: The remote address
         of the Thrift service.
-    :param int size: The maximum number of connections that can be open
+    :param size: The maximum number of connections that can be open
         before new attempts to open block.
-    :param int max_age: The maximum number of seconds a connection should be
+    :param max_age: The maximum number of seconds a connection should be
         kept alive. Connections older than this will be reaped.
-    :param int timeout: The maximum number of seconds a connection attempt or
+    :param timeout: The maximum number of seconds a connection attempt or
         RPC call can take before a TimeoutError is raised.
-    :param int max_retries: The maximum number of times the pool will attempt
+    :param max_retries: The maximum number of times the pool will attempt
         to open a connection.
     :param protocol_factory: The factory to use for creating protocols from
         transports. This is useful for talking to services that don't support
@@ -118,12 +132,12 @@ class ThriftConnectionPool:
     # pylint: disable=too-many-arguments
     def __init__(
         self,
-        endpoint,
-        size=10,
-        max_age=120,
-        timeout=1,
-        max_retries=3,
-        protocol_factory=THeaderProtocol.THeaderProtocolFactory(),
+        endpoint: config.EndpointConfiguration,
+        size: int = 10,
+        max_age: int = 120,
+        timeout: int = 1,
+        max_retries: int = 3,
+        protocol_factory: TProtocolFactory = THeaderProtocol.THeaderProtocolFactory(),
     ):
         self.endpoint = endpoint
         self.max_age = max_age
@@ -132,11 +146,11 @@ class ThriftConnectionPool:
         self.protocol_factory = protocol_factory
 
         self.size = size
-        self.pool = queue.LifoQueue()
+        self.pool: ProtocolPool = queue.LifoQueue()
         for _ in range(size):
             self.pool.put(None)
 
-    def _acquire(self):
+    def _acquire(self) -> TProtocolBase:
         try:
             prot = self.pool.get(block=True, timeout=self.timeout)
         except queue.Empty:
@@ -173,14 +187,14 @@ class ThriftConnectionPool:
             message="giving up after multiple attempts to connect",
         )
 
-    def _release(self, prot):
+    def _release(self, prot: TProtocolBase) -> None:
         if prot.trans.isOpen():
             self.pool.put(prot)
         else:
             self.pool.put(None)
 
     @contextlib.contextmanager
-    def connection(self):
+    def connection(self) -> Generator[TProtocolBase, None, None]:
         """Acquire a connection from the pool.
 
         This method is to be used with a context manager. It returns a
@@ -226,5 +240,5 @@ class ThriftConnectionPool:
             self._release(prot)
 
     @property
-    def checkedout(self):
+    def checkedout(self) -> int:
         return self.size - self.pool.qsize()

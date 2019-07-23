@@ -3,14 +3,23 @@ import random
 
 from types import TracebackType
 from typing import Any
+from typing import Callable
 from typing import Dict
+from typing import List
 from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 from typing import Type
+from typing import TYPE_CHECKING
 
 from baseplate.lib import config
-from baseplate.lib import warn_deprecated
+from baseplate.lib import metrics
+
+
+if TYPE_CHECKING:
+    import baseplate.clients
+    import baseplate.observers.tracing
+    import raven
 
 
 logger = logging.getLogger(__name__)
@@ -19,14 +28,13 @@ logger = logging.getLogger(__name__)
 class BaseplateObserver:
     """Interface for an observer that watches Baseplate."""
 
-    def on_server_span_created(self, context: Any, server_span: "Span") -> None:
+    def on_server_span_created(self, context: "RequestContext", server_span: "ServerSpan") -> None:
         """Do something when a server span is created.
 
         :py:class:`Baseplate` calls this when a new request begins.
 
         :param context: The :term:`context object` for this request.
-        :param baseplate.ServerSpan server_span: The span representing
-            this request.
+        :param server_span: The span representing this request.
 
         """
         raise NotImplementedError
@@ -41,13 +49,13 @@ class SpanObserver:
     def on_start(self) -> None:
         """Do something when the observed span is started."""
 
-    def on_set_tag(self, key: str, value: str) -> None:
+    def on_set_tag(self, key: str, value: Any) -> None:
         """Do something when a tag is set on the observed span."""
 
-    def on_log(self, name: str, payload: str) -> None:
+    def on_log(self, name: str, payload: Any) -> None:
         """Do something when a log entry is added to the span."""
 
-    def on_finish(self, exc_info: _ExcInfo) -> None:
+    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         """Do something when the observed span is finished.
 
         :param exc_info: If the span ended because of an exception, the
@@ -61,7 +69,7 @@ class SpanObserver:
         :py:class:`SpanObserver` objects call this when a new child span is
         created.
 
-        :param baseplate.Span span: The new child span.
+        :param span: The new child span.
 
         """
 
@@ -81,7 +89,7 @@ class TraceInfo(NamedTuple):
 
     trace_id: int
     parent_id: Optional[int]
-    span_id: Optional[int]
+    span_id: int
     sampled: Optional[bool]
     flags: Optional[int]
 
@@ -136,11 +144,24 @@ class TraceInfo(NamedTuple):
 
 
 class RequestContext:
-    def __init__(self, context_config, prefix=None, span=None, wrapped=None):
+    def __init__(
+        self,
+        context_config: Dict[str, Any],
+        prefix: Optional[str] = None,
+        span: Optional["Span"] = None,
+        wrapped: Optional["RequestContext"] = None,
+    ):
         self.__context_config = context_config
         self.__prefix = prefix
         self.__wrapped = wrapped
-        self.trace: ServerSpan = span
+
+        # the context and span reference eachother (unfortunately) so we can't
+        # construct 'em both with references from the start. however, we can
+        # guarantee that during the valid life of a span, there will be a
+        # reference. so we fake it here and say "trust us".
+        #
+        # this would be much cleaner with a different API but this is where we are.
+        self.trace: "Span" = span  # type: ignore
 
     def __getattr__(self, name: str) -> Any:
         try:
@@ -168,6 +189,11 @@ class RequestContext:
         setattr(self, name, obj)
         return obj
 
+    # this is just here for type checking
+    # pylint: disable=useless-super-delegation
+    def __setattr__(self, name: str, value: Any) -> None:
+        super().__setattr__(name, value)
+
     def clone(self) -> "RequestContext":
         return RequestContext(
             context_config=self.__context_config,
@@ -186,27 +212,27 @@ class Baseplate:
 
     """
 
-    def __init__(self):
-        self.observers = []
-        self._metrics_client = None
-        self._context_config = {}
+    def __init__(self) -> None:
+        self.observers: List[BaseplateObserver] = []
+        self._metrics_client: Optional[metrics.Client] = None
+        self._context_config: Dict[str, Any] = {}
 
-    def register(self, observer):
+    def register(self, observer: BaseplateObserver) -> None:
         """Register an observer.
 
-        :param baseplate.BaseplateObserver observer: An observer.
+        :param observer: An observer.
 
         """
         self.observers.append(observer)
 
-    def configure_logging(self):
+    def configure_logging(self) -> None:
         """Add request context to the logging system."""
         # pylint: disable=cyclic-import
         from baseplate.observers.logging import LoggingBaseplateObserver
 
         self.register(LoggingBaseplateObserver())
 
-    def configure_metrics(self, metrics_client):
+    def configure_metrics(self, metrics_client: metrics.Client) -> None:
         """Send timing metrics to the given client.
 
         This also adds a :py:class:`baseplate.lib.metrics.Batch` object to the
@@ -214,8 +240,7 @@ class Baseplate:
         your own application-specific metrics. The batch is automatically
         flushed at the end of the request.
 
-        :param baseplate.lib.metrics.Client metrics_client: Metrics client to send
-            request metrics to.
+        :param metrics_client: Metrics client to send request metrics to.
 
         """
         # pylint: disable=cyclic-import
@@ -224,41 +249,30 @@ class Baseplate:
         self._metrics_client = metrics_client
         self.register(MetricsBaseplateObserver(metrics_client))
 
-    def configure_tracing(self, tracing_client, *args, **kwargs):
+    def configure_tracing(
+        self, tracing_client: "baseplate.observers.tracing.TracingClient"
+    ) -> None:
         """Collect and send span information for request tracing.
 
         When configured, this will send tracing information automatically
         collected by Baseplate to the configured distributed tracing service.
 
-        :param baseplate.observers.tracing.TracingClient tracing_client: Tracing
-            client to send request traces to.
+        :param tracing_client: Tracing client to send request traces to.
 
         """
         # pylint: disable=cyclic-import
-        from baseplate.observers.tracing import make_client, TraceBaseplateObserver, TracingClient
-
-        # the first parameter was service_name before, so if it's not a client
-        # object we'll act like this is the old-style invocation and use the
-        # first parameter as service_name instead, passing on the old arguments
-        if not isinstance(tracing_client, TracingClient):
-            warn_deprecated(
-                "Passing tracing configuration directly to "
-                "configure_tracing is deprecated in favor of "
-                "using baseplate.observers.tracing.tracing_client_from_config and "
-                "passing the constructed client on."
-            )
-            tracing_client = make_client(tracing_client, *args, **kwargs)
+        from baseplate.observers.tracing import TraceBaseplateObserver
 
         self.register(TraceBaseplateObserver(tracing_client))
 
-    def configure_error_reporting(self, client):
+    def configure_error_reporting(self, client: "raven.Client") -> None:
         """Send reports for unexpected exceptions to the given client.
 
         This also adds a :py:class:`raven.Client` object to the ``sentry``
         attribute on the :term:`context object` where you can send your own
         application-specific events.
 
-        :param raven.Client client: A configured raven client.
+        :param client: A configured raven client.
 
         """
         # pylint: disable=cyclic-import
@@ -320,7 +334,7 @@ class Baseplate:
             "The following observers are unconfigured and won't run: %s", ",".join(skipped)
         )
 
-    def configure_context(self, app_config: config.RawConfig, context_spec: Dict) -> None:
+    def configure_context(self, app_config: config.RawConfig, context_spec: Dict[str, Any]) -> None:
         """Add a number of objects to each request's context object.
 
         Configure and attach multiple clients to the :term:`context object` in
@@ -357,25 +371,29 @@ class Baseplate:
         cfg = config.parse_config(app_config, context_spec)
         self._context_config.update(cfg)
 
-    def add_to_context(self, name, context_factory):
+    def add_to_context(
+        self, name: str, context_factory: "baseplate.clients.ContextFactory"
+    ) -> None:
         """Add an attribute to each request's context object.
 
         On each request, the factory will be asked to create an appropriate
         object to attach to the :term:`context object`.
 
-        :param str name: The attribute on the context object to attach the
+        :param name: The attribute on the context object to attach the
             created object to. This may also be used for metric/tracing
             purposes so it should be descriptive.
-        :param baseplate.clients.ContextFactory context_factory: A factory.
+        :param context_factory: A factory.
 
         """
         self._context_config[name] = context_factory
 
-    def make_context_object(self):
+    def make_context_object(self) -> RequestContext:
         """Make a context object for the request."""
         return RequestContext(self._context_config)
 
-    def make_server_span(self, context, name, trace_info=None):
+    def make_server_span(
+        self, context: RequestContext, name: str, trace_info: Optional[TraceInfo] = None
+    ) -> "ServerSpan":
         """Return a server span representing the request we are handling.
 
         In a server, a server span represents the time spent on a single
@@ -383,13 +401,11 @@ class Baseplate:
         child spans of the server span, and the server span will in turn be the
         child span of whatever upstream request it is part of, if any.
 
-        :param RequestContext context: The :term:`context object` for this
-            request. Must have been created using :py:meth:`make_context_object`.
-        :param str name: A name to identify the type of this request, e.g.
-            a route or RPC method name.
-        :param baseplate.TraceInfo trace_info: The trace context of this
-            request as passed in from upstream. If :py:data:`None`, a new trace
-            context will be generated.
+        :param context: The :term:`context object` for this request.
+        :param name: A name to identify the type of this request, e.g.  a route
+            or RPC method name.
+        :param trace_info: The trace context of this request as passed in from
+            upstream. If :py:data:`None`, a new trace context will be generated.
 
         """
         assert isinstance(context, RequestContext)
@@ -412,8 +428,8 @@ class Baseplate:
             observer.on_server_span_created(context, server_span)
         return server_span
 
-    def get_runtime_metric_reporters(self):
-        specs = [(None, self._context_config)]
+    def get_runtime_metric_reporters(self) -> Dict[str, Callable[[Any], None]]:
+        specs: List[Tuple[Optional[str], Dict[str, Any]]] = [(None, self._context_config)]
         result = {}
         while specs:
             prefix, spec = specs.pop(0)
@@ -433,7 +449,16 @@ class Baseplate:
 class Span:
     """A span represents a single RPC within a system."""
 
-    def __init__(self, trace_id, parent_id, span_id, sampled, flags, name, context):
+    def __init__(
+        self,
+        trace_id: int,
+        parent_id: Optional[int],
+        span_id: int,
+        sampled: Optional[bool],
+        flags: Optional[int],
+        name: str,
+        context: RequestContext,
+    ):
         self.trace_id = trace_id
         self.parent_id = parent_id
         self.id = span_id
@@ -441,13 +466,14 @@ class Span:
         self.flags = flags
         self.name = name
         self.context = context
-        self.observers = []
+        self.component_name: Optional[str] = None
+        self.observers: List[SpanObserver] = []
 
-    def register(self, observer):
+    def register(self, observer: SpanObserver) -> None:
         """Register an observer to receive events from this span."""
         self.observers.append(observer)
 
-    def start(self):
+    def start(self) -> None:
         """Record the start of the span.
 
         This notifies any observers that the span has started, which indicates
@@ -465,27 +491,27 @@ class Span:
         for observer in self.observers:
             observer.on_start()
 
-    def set_tag(self, key, value):
+    def set_tag(self, key: str, value: Any) -> None:
         """Set a tag on the span.
 
         Tags are arbitrary key/value pairs that add context and meaning to the
         span, such as a hostname or query string. Observers may interpret or
         ignore tags as they desire.
 
-        :param str key: The name of the tag.
-        :param value: The value of the tag, must be a string/boolean/number.
+        :param key: The name of the tag.
+        :param value: The value of the tag.
 
         """
         for observer in self.observers:
             observer.on_set_tag(key, value)
 
-    def log(self, name, payload=None):
+    def log(self, name: str, payload: Optional[Any] = None) -> None:
         """Add a log entry to the span.
 
         Log entries are timestamped events recording notable moments in the
         lifetime of a span.
 
-        :param str name: The name of the log entry. This should be a stable
+        :param name: The name of the log entry. This should be a stable
             identifier that can apply to multiple span instances.
         :param payload: Optional log entry payload. This can be arbitrary data.
 
@@ -493,7 +519,7 @@ class Span:
         for observer in self.observers:
             observer.on_log(name, payload)
 
-    def finish(self, exc_info=None):
+    def finish(self, exc_info: Optional[_ExcInfo] = None) -> None:
         """Record the end of the span.
 
         :param exc_info: If the span ended because of an exception, this is
@@ -505,26 +531,35 @@ class Span:
             observer.on_finish(exc_info)
 
         # clean up reference cycles
-        self.context = None
+        self.context = None  # type: ignore
         self.observers.clear()
 
-    def __enter__(self):
+    def __enter__(self) -> "Span":
         self.start()
         return self
 
-    def __exit__(self, exc_type, value, traceback):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        value: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> None:
         if exc_type is not None:
             self.finish(exc_info=(exc_type, value, traceback))
         else:
             self.finish()
 
-    def make_child(self, name, local=False, component_name=None):
+    def make_child(
+        self, name: str, local: bool = False, component_name: Optional[str] = None
+    ) -> "Span":
         """Return a child Span whose parent is this Span."""
         raise NotImplementedError
 
 
 class LocalSpan(Span):
-    def make_child(self, name, local=False, component_name=None):
+    def make_child(
+        self, name: str, local: bool = False, component_name: Optional[str] = None
+    ) -> "Span":
         """Return a child Span whose parent is this Span.
 
         The child span can either be a local span representing an in-request
@@ -536,16 +571,17 @@ class LocalSpan(Span):
         which is then split up into operations which could each be wrapped
         in local spans.
 
-        :param str name: Name to identify the operation this span
+        :param name: Name to identify the operation this span
             is recording.
-        :param bool local: Make this span a LocalSpan if True, otherwise
+        :param local: Make this span a LocalSpan if True, otherwise
             make this span a base Span.
-        :param str component_name: Name to identify local component
+        :param component_name: Name to identify local component
             this span is recording in if it is a local span.
         """
         span_id = random.getrandbits(64)
 
         context_copy = self.context.clone()
+        span: Span
         if local:
             span = LocalSpan(
                 self.trace_id, self.id, span_id, self.sampled, self.flags, name, context_copy

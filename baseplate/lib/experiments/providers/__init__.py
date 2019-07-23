@@ -2,8 +2,10 @@ import logging
 import time
 
 from datetime import datetime
+from typing import Dict
 
 from baseplate.lib import warn_deprecated
+from baseplate.lib.experiments.providers.base import Experiment
 from baseplate.lib.experiments.providers.feature_flag import FeatureFlag
 from baseplate.lib.experiments.providers.forced_variant import ForcedVariantExperiment
 from baseplate.lib.experiments.providers.r2 import R2Experiment
@@ -23,7 +25,7 @@ simple_type_class_list = frozenset(
 )
 
 
-def parse_experiment(config):
+def parse_experiment(config: Dict[str, str]) -> Experiment:
     """Parse an experiment config dict and return an appropriate Experiment class.
 
     The config dict is expected to have the following values:
@@ -53,8 +55,7 @@ def parse_experiment(config):
           experiment.variant will always return the override value and will not
           log bucketing events to the event pipeline.
 
-    :param dict config: Configuration dict for the experiment you wish to run.
-    :rtype: :py:class:`baseplate.lib.experiments.providers.base.Experiment`
+    :param config: Configuration dict for the experiment you wish to run.
     :return: A subclass of :py:class:`Experiment` for the given experiment
         type.
     """
