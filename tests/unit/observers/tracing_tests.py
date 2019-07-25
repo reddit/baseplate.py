@@ -118,8 +118,17 @@ class TraceSpanObserverTests(TraceTestBase):
         self.span = Span(
             "test-id", "test-parent-id", "test-span-id", None, 0, "test", self.mock_context
         )
+
+        self.debug_span = Span(
+            "test-id", "test-parent-id", "test-span-id", None, 1, "test", self.mock_context
+        )
+
         self.test_span_observer = TraceSpanObserver(
             "test-service", "test-hostname", self.span, self.recorder
+        )
+
+        self.test_debug_span_observer = TraceSpanObserver(
+            "test-service", "test-hostname", self.debug_span, self.recorder
         )
 
     def test_component_set_on_initialization(self):
@@ -129,6 +138,13 @@ class TraceSpanObserverTests(TraceTestBase):
                 component_set = True
                 break
         self.assertTrue(component_set)
+
+    def test_debug_span_tag_set_on_initialization(self):
+
+        for annotation in self.test_debug_span_observer.binary_annotations:
+            if annotation["key"] == ANNOTATIONS["DEBUG"]:
+                self.assertTrue(annotation["value"])
+                break
 
     def test_serialize_uses_span_info(self):
         serialized_span = self.test_span_observer._serialize()
@@ -253,6 +269,16 @@ class TraceServerSpanObserverTests(TraceTestBase):
     def test_on_child_span_created(self):
         child_span = Span(
             "child-id", "test-parent-id", "test-span-id", None, 0, "test-child", self.mock_context
+        )
+        self.test_server_span_observer.on_child_span_created(child_span)
+        # Make sure new trace observer is added in the child span
+        #  and the trace observer's span is that child span
+        self.assertEqual(len(child_span.observers), 1)
+        self.assertEqual(child_span.observers[0].span, child_span)
+
+    def test_on_child_span_created_for_debug_span(self):
+        child_span = Span(
+            "child-id", "test-parent-id", "test-span-id", None, 1, "test-child", self.mock_context
         )
         self.test_server_span_observer.on_child_span_created(child_span)
         # Make sure new trace observer is added in the child span
