@@ -128,13 +128,15 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
             serialized = json.dumps(value)
             flags = Flags.JSON
 
+        serialized_bytes = serialized.encode("utf8")
+
         if (compress_level and
                 min_compress_length and
                 len(serialized) > min_compress_length):
-            compressed = zlib.compress(serialized, compress_level)
+            serialized_bytes = zlib.compress(serialized_bytes, compress_level)
             flags |= Flags.ZLIB
-            return compressed, flags
-        return serialized, flags
+
+        return serialized_bytes, flags
 
     return dump_and_compress
 
@@ -230,13 +232,13 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
 
         """
         if isinstance(value, string_types):
-            serialized = value
+            serialized = value.encode("utf8")
             flags = 0
         elif isinstance(value, int):
-            serialized = "%d" % value
+            serialized = ("%d" % value).encode()
             flags = PickleFlags.INTEGER
         elif isinstance(value, long):
-            serialized = "%d" % value
+            serialized = ("%d" % value).encode()
             flags = PickleFlags.LONG
         else:
             # use protocol 2 which is the highest value supported by python2

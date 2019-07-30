@@ -68,13 +68,13 @@ class SerdeTests(unittest.TestCase):
     def test_serialize_str(self):
         dump_no_compress = memcache_lib.make_dump_and_compress_fn()
         value, flags = dump_no_compress(key="key", value="val")
-        self.assertEqual(value, "val")
+        self.assertEqual(value, b"val")
         self.assertEqual(flags, 0)
 
     def test_serialize_int(self):
         dump_no_compress = memcache_lib.make_dump_and_compress_fn()
         value, flags = dump_no_compress(key="key", value=100)
-        self.assertEqual(value, "100")
+        self.assertEqual(value, b"100")
         self.assertEqual(flags, memcache_lib.Flags.INTEGER)
 
     def test_serialize_long(self):
@@ -90,7 +90,7 @@ class SerdeTests(unittest.TestCase):
 
         dump_no_compress = memcache_lib.make_dump_and_compress_fn()
         value, flags = dump_no_compress(key="key", value=value)
-        self.assertEqual(value, "100")
+        self.assertEqual(value, b"100")
         self.assertEqual(flags, expected_flags)
 
     def test_serialize_other(self):
@@ -98,14 +98,13 @@ class SerdeTests(unittest.TestCase):
         json = json_patch.start()
         self.addCleanup(json_patch.stop)
 
-        expected_value = object()
-        json.dumps.return_value = expected_value
+        json.dumps.return_value = "expected"
 
         dump_no_compress = memcache_lib.make_dump_and_compress_fn()
         value, flags = dump_no_compress(key="key", value=("stuff", 1, False))
 
         json.dumps.assert_called_with(("stuff", 1, False))
-        self.assertEqual(value, expected_value)
+        self.assertEqual(value, b"expected")
         self.assertEqual(flags, memcache_lib.Flags.JSON)
 
     def test_deserialize_str(self):
@@ -155,7 +154,7 @@ class SerdeTests(unittest.TestCase):
             min_compress_length=0,  # disable compression
         )
         value, flags = dump_no_compress(key="key", value="simple string")
-        self.assertEqual(value, "simple string")
+        self.assertEqual(value, b"simple string")
         self.assertEqual(flags, 0)
         zlib.compress.assert_not_called()
 
@@ -174,7 +173,7 @@ class SerdeTests(unittest.TestCase):
         value, flags = json_and_compress(key="key", value="simple string")
         self.assertEqual(value, expected_value)
         self.assertEqual(flags, memcache_lib.Flags.ZLIB)
-        zlib.compress.assert_called_with("simple string", 1)
+        zlib.compress.assert_called_with(b"simple string", 1)
 
     def test_deserialize_no_decompress(self):
         zlib_patch = mock.patch.object(memcache_lib, "zlib")
@@ -269,13 +268,13 @@ class R2CompatSerdeTests(unittest.TestCase):
     def test_serialize_str(self):
         pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
         value, flags = pickle_no_compress(key="key", value="val")
-        self.assertEqual(value, "val")
+        self.assertEqual(value, b"val")
         self.assertEqual(flags, 0)
 
     def test_serialize_int(self):
         pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
         value, flags = pickle_no_compress(key="key", value=100)
-        self.assertEqual(value, "100")
+        self.assertEqual(value, b"100")
         self.assertEqual(flags, memcache_lib.PickleFlags.INTEGER)
 
     def test_serialize_long(self):
@@ -291,7 +290,7 @@ class R2CompatSerdeTests(unittest.TestCase):
 
         pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
         value, flags = pickle_no_compress(key="key", value=value)
-        self.assertEqual(value, "100")
+        self.assertEqual(value, b"100")
         self.assertEqual(flags, expected_flags)
 
     def test_serialize_other(self):
@@ -356,7 +355,7 @@ class R2CompatSerdeTests(unittest.TestCase):
             min_compress_length=0,  # disable compression
         )
         value, flags = pickle_no_compress(key="key", value="simple string")
-        self.assertEqual(value, "simple string")
+        self.assertEqual(value, b"simple string")
         self.assertEqual(flags, 0)
         zlib.compress.assert_not_called()
 
@@ -375,7 +374,7 @@ class R2CompatSerdeTests(unittest.TestCase):
         value, flags = pickle_and_compress(key="key", value="simple string")
         self.assertEqual(value, expected_value)
         self.assertEqual(flags, memcache_lib.PickleFlags.ZLIB)
-        zlib.compress.assert_called_with("simple string", 1)
+        zlib.compress.assert_called_with(b"simple string", 1)
 
     def test_deserialize_no_decompress(self):
         zlib_patch = mock.patch.object(memcache_lib, "zlib")
