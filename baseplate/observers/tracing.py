@@ -36,6 +36,8 @@ ANNOTATIONS = {
     "SERVER_RECEIVE": "sr",
     "LOCAL_COMPONENT": "lc",
     "COMPONENT": "component",
+    "DEBUG": "debug",
+    "ERROR": "error",
 }
 
 # Feature flags
@@ -187,7 +189,13 @@ class TraceSpanObserver(SpanObserver):
 
     def on_finish(self, exc_info):
         if exc_info:
-            self.on_set_tag("error", True)
+            self.on_set_tag(ANNOTATIONS["ERROR"], True)
+
+        # Set a debug annotation for downstream processing to
+        # utilize in span filtering.
+        if self.span.flags and (self.span.flags & FLAGS["DEBUG"]):
+            self.on_set_tag(ANNOTATIONS["DEBUG"], True)
+
         self.end = current_epoch_microseconds()
         self.elapsed = self.end - self.start
         self.record()
