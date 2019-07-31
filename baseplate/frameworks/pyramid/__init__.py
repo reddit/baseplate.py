@@ -281,7 +281,7 @@ class BaseplateConfigurator:
         # object as the first ("self") param to bound methods. wrapping
         # the bound method in a simple function prevents that behavior
         def start_server_span(
-            request: BaseplateRequest, name: str, trace_info: Optional[TraceInfo]
+            request: BaseplateRequest, name: str, trace_info: Optional[TraceInfo] = None
         ) -> None:
             return self._start_server_span(request, name, trace_info)
 
