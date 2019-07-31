@@ -12,6 +12,8 @@ from typing import List
 from typing import NoReturn
 from typing import Optional
 
+import gevent.events
+
 from gevent.pool import Pool
 
 from baseplate import Baseplate
@@ -40,11 +42,6 @@ class _ConcurrencyReporter(_Reporter):
 
 class _BlockedGeventHubReporter(_Reporter):
     def __init__(self, max_blocking_time: int):
-        try:
-            import gevent.events
-        except ImportError:
-            raise Exception("Gevent >=1.3 required")
-
         gevent.events.subscribers.append(self._on_gevent_event)
         gevent.config.monitor_thread = True
         gevent.config.max_blocking_time = max_blocking_time
@@ -53,8 +50,6 @@ class _BlockedGeventHubReporter(_Reporter):
         self.times_blocked: List[int] = []
 
     def _on_gevent_event(self, event: Any) -> None:
-        import gevent.events
-
         if isinstance(event, gevent.events.EventLoopBlocked):
             self.times_blocked.append(event.blocking_time)
 
