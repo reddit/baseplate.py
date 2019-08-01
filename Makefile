@@ -30,6 +30,10 @@ docs:
 test:
 	tox
 
+fmt:
+	reorder-python-imports --py3-plus --separate-from-import --separate-relative $(shell find baseplate/ tests/ -name '*.py')
+	black .
+
 lint:
 	reorder-python-imports --diff-only --py3-plus --separate-from-import --separate-relative $(shell find baseplate/ tests/ -name '*.py')
 	black --diff --check .
@@ -46,4 +50,4 @@ clean:
 realclean: clean
 	-rm -rf baseplate.egg-info/
 
-.PHONY: docs spelling clean realclean tests lint checks
+.PHONY: docs spelling clean realclean tests fmt lint checks
