@@ -1,4 +1,4 @@
-REORDER_PYTHON_IMPORTS := reorder-python-imports --py37-plus --separate-from-import --separate-relative
+REORDER_PYTHON_IMPORTS := reorder-python-imports --py3-plus --separate-from-import --separate-relative
 PYTHON_FILES = $(shell find baseplate/ tests/ -name '*.py')
 
 all: thrift
