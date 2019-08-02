@@ -91,7 +91,7 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
     # we use RawConfigParser to reduce surprise caused by interpolation and so
     # that config.Percent works more naturally (no escaping %).
     parser = configparser.RawConfigParser()
-    parser.readfp(config_file)  # pylint: disable=deprecated-method
+    parser.read_file(config_file)
 
     filename = config_file.name
     server_config = dict(parser.items("server:" + server_name)) if server_name else None

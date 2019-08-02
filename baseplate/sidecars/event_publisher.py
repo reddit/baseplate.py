@@ -167,7 +167,7 @@ def publish_events() -> None:
     logging.basicConfig(level=level)
 
     config_parser = configparser.RawConfigParser()
-    config_parser.readfp(args.config_file)  # pylint: disable=deprecated-method
+    config_parser.read_file(args.config_file)
     raw_config = dict(config_parser.items("event-publisher:" + args.queue_name))
     cfg = config.parse_config(
         raw_config,

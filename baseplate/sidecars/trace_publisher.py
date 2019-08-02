@@ -140,7 +140,7 @@ def publish_traces() -> None:
     logging.basicConfig(level=level)
 
     config_parser = configparser.RawConfigParser()
-    config_parser.readfp(args.config_file)  # pylint: disable=deprecated-method
+    config_parser.read_file(args.config_file)
 
     publisher_raw_cfg = dict(config_parser.items("trace-publisher:" + args.queue_name))
     publisher_cfg = config.parse_config(
