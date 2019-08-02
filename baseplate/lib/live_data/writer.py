@@ -91,7 +91,7 @@ def main() -> None:
     logging.getLogger("kazoo").setLevel(logging.WARNING)
 
     parser = configparser.RawConfigParser()
-    parser.readfp(args.config_file)  # pylint: disable=deprecated-method
+    parser.read_file(args.config_file)
     watcher_config = dict(parser.items("live-data"))
 
     secrets = secrets_store_from_config(watcher_config)
