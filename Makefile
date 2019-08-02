@@ -1,3 +1,6 @@
+REORDER_PYTHON_IMPORTS := reorder-python-imports --py3-plus --separate-from-import --separate-relative
+PYTHON_FILES = $(shell find baseplate/ tests/ -name '*.py')
+
 all: thrift
 
 THRIFT=thrift
@@ -30,9 +33,13 @@ docs:
 test:
 	tox
 
+fmt:
+	$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_FILES)
+	black baseplate/ tests/
+
 lint:
-	reorder-python-imports --diff-only --py3-plus --separate-from-import --separate-relative $(shell find baseplate/ tests/ -name '*.py')
-	black --diff --check .
+	$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_FILES)
+	black --diff --check baseplate/ tests/
 	flake8
 	PYTHONPATH=. pylint baseplate/
 	mypy baseplate/
@@ -46,4 +53,4 @@ clean:
 realclean: clean
 	-rm -rf baseplate.egg-info/
 
-.PHONY: docs spelling clean realclean tests lint checks
+.PHONY: docs spelling clean realclean tests fmt lint checks
