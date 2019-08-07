@@ -10,6 +10,7 @@ import gc
 import importlib
 import inspect
 import logging.config
+import os
 import signal
 import socket
 import sys
@@ -210,6 +211,9 @@ def register_signal_handlers() -> threading.Event:
 
 def load_app_and_run_server() -> None:
     """Parse arguments, read configuration, and start the server."""
+
+    sys.path.append(os.getcwd())
+
     shutdown_event = register_signal_handlers()
 
     args = parse_args(sys.argv[1:])
@@ -241,6 +245,9 @@ def load_app_and_run_server() -> None:
 
 def load_and_run_script() -> None:
     """Launch a script with an entrypoint similar to a server."""
+
+    sys.path.append(os.getcwd())
+
     parser = argparse.ArgumentParser(
         description="Run a function with app configuration loaded.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -304,6 +311,9 @@ def _fn_accepts_additional_args(script_fn: Callable[..., Any], fn_args: Sequence
 
 def load_and_run_tshell() -> None:
     """Launch a shell for a thrift service."""
+
+    sys.path.append(os.getcwd())
+
     parser = argparse.ArgumentParser(
         description="Open a shell for a Thrift service with app configuration loaded.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
