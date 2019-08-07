@@ -217,7 +217,8 @@ def load_app_and_run_server() -> None:
     shutdown_event = register_signal_handlers()
 
     args = parse_args(sys.argv[1:])
-    config = read_config(args.config_file, args.server_name, args.app_name)
+    with args.config_file:
+        config = read_config(args.config_file, args.server_name, args.app_name)
     assert config.server
 
     configure_logging(config, args.debug)
@@ -273,7 +274,8 @@ def load_and_run_script() -> None:
     )
 
     args = parser.parse_args(sys.argv[1:])
-    config = read_config(args.config_file, server_name=None, app_name=args.app_name)
+    with args.config_file:
+        config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
 
     if _fn_accepts_additional_args(args.entrypoint, args.args):
@@ -333,7 +335,8 @@ def load_and_run_tshell() -> None:
     )
 
     args = parser.parse_args(sys.argv[1:])
-    config = read_config(args.config_file, server_name=None, app_name=args.app_name)
+    with args.config_file:
+        config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     logging.basicConfig(level=logging.INFO)
 
     env = dict()
