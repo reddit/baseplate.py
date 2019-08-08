@@ -265,25 +265,8 @@ class CassandraSessionAdapter:
         self.session = session
         self.prepared_statements = prepared_statements
 
-    @property
-    def cluster(self) -> Cluster:
-        return self.session.cluster
-
-    @property
-    def encoder(self) -> Encoder:
-        return self.session.encoder
-
-    @property
-    def keyspace(self) -> str:
-        return self.session.keyspace
-
-    @property
-    def row_factory(self) -> RowFactory:
-        return self.session.row_factory
-
-    @row_factory.setter
-    def row_factory(self, new_row_factory: RowFactory) -> None:
-        self.session.row_factory = new_row_factory
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.session, name)
 
     def execute(
         self,
