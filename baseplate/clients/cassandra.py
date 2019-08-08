@@ -273,14 +273,16 @@ class CassandraSessionAdapter:
         query: Query,
         parameters: Optional[Parameters] = None,
         timeout: Union[float, object] = _NOT_SET,
+        **kwargs: Any
     ) -> Any:
-        return self.execute_async(query, parameters, timeout).result()
+        return self.execute_async(query, parameters, timeout, **kwargs).result()
 
     def execute_async(
         self,
         query: Query,
         parameters: Optional[Parameters] = None,
         timeout: Union[float, object] = _NOT_SET,
+        **kwargs: Any
     ) -> ResponseFuture:
         trace_name = "{}.{}".format(self.context_name, "execute")
         span = self.server_span.make_child(trace_name)
@@ -292,7 +294,7 @@ class CassandraSessionAdapter:
             span.set_tag("statement", query.query_string)
         elif isinstance(query, BoundStatement):
             span.set_tag("statement", query.prepared_statement.query_string)
-        future = self.session.execute_async(query, parameters=parameters, timeout=timeout)
+        future = self.session.execute_async(query, parameters=parameters, timeout=timeout, **kwargs)
         future = wrap_future(
             response_future=future,
             callback_fn=_on_execute_complete,
