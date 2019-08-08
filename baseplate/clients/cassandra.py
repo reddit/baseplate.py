@@ -18,7 +18,6 @@ from cassandra.cluster import Cluster  # pylint: disable=no-name-in-module
 from cassandra.cluster import ExecutionProfile  # pylint: disable=no-name-in-module
 from cassandra.cluster import ResponseFuture  # pylint: disable=no-name-in-module
 from cassandra.cluster import Session  # pylint: disable=no-name-in-module
-from cassandra.encoder import Encoder
 from cassandra.query import BoundStatement  # pylint: disable=no-name-in-module
 from cassandra.query import PreparedStatement  # pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
@@ -273,7 +272,7 @@ class CassandraSessionAdapter:
         query: Query,
         parameters: Optional[Parameters] = None,
         timeout: Union[float, object] = _NOT_SET,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Any:
         return self.execute_async(query, parameters, timeout, **kwargs).result()
 
@@ -282,7 +281,7 @@ class CassandraSessionAdapter:
         query: Query,
         parameters: Optional[Parameters] = None,
         timeout: Union[float, object] = _NOT_SET,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> ResponseFuture:
         trace_name = "{}.{}".format(self.context_name, "execute")
         span = self.server_span.make_child(trace_name)
