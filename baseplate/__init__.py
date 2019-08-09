@@ -1,3 +1,4 @@
+import inspect
 import logging
 import random
 
@@ -285,7 +286,9 @@ class Baseplate:
 
         self.register(SentryBaseplateObserver(client))
 
-    def configure_observers(self, app_config: config.RawConfig, module_name: str) -> None:
+    def configure_observers(
+        self, app_config: config.RawConfig, module_name: Optional[str] = None
+    ) -> None:
         """Configure diagnostics observers based on application config file.
 
         This installs all the currently supported observers that have settings
@@ -299,7 +302,8 @@ class Baseplate:
 
         :param raw_config: The application configuration which should have
             settings for the error reporter.
-        :param module_name: ``__name__`` of the root module of the application.
+        :param module_name: Name of the root package of the application. If not specified,
+            will be guessed from the package calling this function.
 
         """
         skipped = []
@@ -324,6 +328,9 @@ class Baseplate:
 
         if "sentry.dsn" in app_config:
             from baseplate.observers.sentry import error_reporter_from_config
+
+            if module_name is None:
+                module_name = inspect.getmodule(inspect.stack()[1].frame).__name__
 
             error_reporter = error_reporter_from_config(app_config, module_name)
             self.configure_error_reporting(error_reporter)
