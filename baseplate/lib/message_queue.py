@@ -1,4 +1,4 @@
-"""A gevent-friendly POSIX message queue."""
+"""A Gevent-friendly POSIX message queue."""
 import select
 
 from typing import Optional
@@ -36,7 +36,7 @@ class MessageQueueOSError(OSError):
 
 
 class MessageQueue:
-    """A gevent-friendly (but not required) inter process message queue.
+    """A Gevent-friendly (but not required) inter process message queue.
 
     ``name`` should be a string of up to 255 characters consisting of an
     initial slash, followed by one or more characters, none of which are

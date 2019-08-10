@@ -1,5 +1,6 @@
 REORDER_PYTHON_IMPORTS := reorder-python-imports --py3-plus --separate-from-import --separate-relative
-PYTHON_FILES = $(shell find baseplate/ tests/ -name '*.py')
+PYTHON_SOURCE = $(shell find baseplate/ tests/ -name '*.py')
+PYTHON_EXAMPLES = $(shell find docs/ -name '*.py')
 
 all: thrift
 
@@ -27,30 +28,52 @@ $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/t
 	rm -f tests/integration/test_thrift/TestService-remote
 	touch $@
 
+.PHONY: docs
 docs:
 	sphinx-build -M html docs/ build/
 
-test:
+.PHONY: doctest
+doctest:
+	sphinx-build -M doctest docs/ build/
+
+.PHONY: linkcheck
+linkcheck:
+	sphinx-build -M linkcheck docs/ build/
+
+.PHONY: spelling
+spelling:
+	sphinx-build -M spelling docs/ build/
+
+.PHONY: test
+test: tox doctest
+
+.PHONY: tox
+tox:
 	tox
 
+.PHONY: fmt
 fmt:
-	$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_FILES)
+	$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
 	black baseplate/ tests/
+	$(REORDER_PYTHON_IMPORTS) --application-directories /tmp --exit-zero-even-if-changed $(PYTHON_EXAMPLES)
+	black docs/  # separate so it uses its own pyproject.toml
 
+.PHONY: lint
 lint:
-	$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_FILES)
+	$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
 	black --diff --check baseplate/ tests/
 	flake8
 	PYTHONPATH=. pylint baseplate/
 	mypy baseplate/
 
-checks: tests lint spelling
+.PHONY: checks
+checks: test lint spelling linkcheck
 
+.PHONY: clean
 clean:
 	-rm -rf build/
 	-rm -rf tests/integration/test_thrift/
 
+.PHONY: realclean
 realclean: clean
 	-rm -rf baseplate.egg-info/
-
-.PHONY: docs spelling clean realclean tests fmt lint checks

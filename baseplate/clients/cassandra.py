@@ -95,7 +95,7 @@ class CassandraClient(config.Parser):
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
 
-    See :py:func:`cluster_from_config` for available configurables.
+    See :py:func:`cluster_from_config` for available configuration settings.
 
     :param keyspace: Which keyspace to set as the default for operations.
 
@@ -115,9 +115,10 @@ class CassandraContextFactory(ContextFactory):
     """Cassandra session context factory.
 
     This factory will attach a proxy object which acts like a
-    :py:class:`cassandra.cluster.Session` to an attribute on the :term:`context
-    object`. The ``execute``, ``execute_async`` or ``prepare`` methods will
-    automatically record diagnostic information.
+    :py:class:`cassandra.cluster.Session` to an attribute on the
+    :py:class:`~baseplate.RequestContext`. The :py:meth:`execute`,
+    :py:meth:`execute_async` and :py:meth:`prepare` methods will automatically
+    record diagnostic information.
 
     :param cassandra.cluster.Session session: A configured session object.
 
@@ -137,7 +138,7 @@ class CQLMapperClient(config.Parser):
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
 
-    See :py:func:`cluster_from_config` for available configurables.
+    See :py:func:`cluster_from_config` for available configuration settings.
 
     :param keyspace: Which keyspace to set as the default for operations.
 
@@ -158,9 +159,10 @@ class CQLMapperContextFactory(CassandraContextFactory):
 
     This factory will attach a new CQLMapper
     :py:class:`cqlmapper.connection.Connection` to an attribute on the
-    :term:`context object`. This Connection object will use the same proxy
-    object that CassandraContextFactory attaches to a context to run queries
-    so the `execute` command will automatically record diagnostic information.
+    :py:class:`~baseplate.RequestContext`. This Connection object will use the
+    same proxy object that CassandraContextFactory attaches to a context to run
+    queries so the `execute` command will automatically record diagnostic
+    information.
 
     :param cassandra.cluster.Session session: A configured session object.
 

@@ -28,7 +28,7 @@ class ThriftClient(config.Parser):
     :py:meth:`baseplate.Baseplate.configure_context`.
 
     See :py:func:`baseplate.lib.thrift_pool.thrift_pool_from_config` for available
-    configurables.
+    configuration settings.
 
     :param client_cls: The class object of a Thrift-generated client class,
         e.g. ``YourService.Client``.
@@ -48,10 +48,10 @@ class ThriftContextFactory(ContextFactory):
     """Thrift client pool context factory.
 
     This factory will attach a proxy object with the same interface as your
-    thrift client to an attribute on the :term:`context object`. When a thrift
-    method is called on this proxy object, it will check out a connection from
-    the connection pool and execute the RPC, automatically recording diagnostic
-    information.
+    thrift client to an attribute on the :py:class:`~baseplate.RequestContext`.
+    When a thrift method is called on this proxy object, it will check out a
+    connection from the connection pool and execute the RPC, automatically
+    recording diagnostic information.
 
     :param pool: The connection pool.
     :param client_cls: The class object of a Thrift-generated client class,

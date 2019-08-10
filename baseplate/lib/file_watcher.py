@@ -6,7 +6,7 @@ For example, a JSON file like the following:
 
 .. highlight:: ini
 
-.. include:: ../../watched_file.json
+.. include:: ../../../watched_file.json
    :literal:
 
 .. testsetup::

@@ -11,7 +11,7 @@ See `HVAC's README`_ for documentation on the methods available from its client.
 
 .. _Transit backend: https://www.vaultproject.io/docs/secrets/transit/
 .. _Cubbyholes: https://www.vaultproject.io/docs/secrets/cubbyhole/index.html
-.. _HVAC's README: https://github.com/ianunruh/hvac/blob/master/README.md
+.. _HVAC's README: https://github.com/hvac/hvac/blob/master/README.md
 
 """
 import datetime
@@ -61,7 +61,7 @@ class HvacClient(config.Parser):
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
 
-    See :py:func:`hvac_factory_from_config` for available configurables.
+    See :py:func:`hvac_factory_from_config` for available configuration settings.
 
     :param secrets: The configured secrets store for this application.
 
@@ -80,9 +80,9 @@ class HvacContextFactory(ContextFactory):
     """HVAC client context factory.
 
     This factory will attach a proxy object which acts like an
-    :py:class:`hvac.Client` to an attribute on the :term:`context object`. All
-    methods that talk to Vault will be automatically instrumented for tracing
-    and diagnostic metrics.
+    :py:class:`hvac.Client` to an attribute on the
+    :py:class:`~baseplate.RequestContext`. All methods that talk to Vault will
+    be automatically instrumented for tracing and diagnostic metrics.
 
     :param baseplate.lib.secrets.SecretsStore secrets_store: Configured secrets
         store from which we can get a Vault authentication token.

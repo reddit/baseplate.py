@@ -2,7 +2,7 @@
 ====================
 
 This command allows you to run a piece of Python code with the application
-config loaded similarly to `baseplate-serve`_. The command is
+configuration loaded similarly to `baseplate-serve`_. The command is
 ``baseplate-script``.
 
 .. _baseplate-serve: serve.html
@@ -47,7 +47,7 @@ and a small script, ``printer.py``:
 
 You can run the script with various configurations:
 
-.. code-block:: text
+.. code-block:: console
 
    $ baseplate-script printer.ini printer:run Goodbye.
    Hello! Goodbye.

@@ -56,7 +56,7 @@ class RetryPolicy:
         :param budget: The maximum amount of time, in seconds, that the
             local service will wait for the operation to succeed.
         :param backoff: The base amount of time, in seconds, for
-            exponential backoff between attempts. ``N`` in (``N *
+            exponential back-off between attempts. ``N`` in (``N *
             2**attempts``).
 
         """

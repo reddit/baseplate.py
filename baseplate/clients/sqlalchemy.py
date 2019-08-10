@@ -70,7 +70,7 @@ class SQLAlchemySession(config.Parser):
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
 
-    See :py:func:`engine_from_config` for available configurables.
+    See :py:func:`engine_from_config` for available configuration settings.
 
     :param secrets: Required if configured to use credentials to talk to the database.
 
@@ -96,8 +96,8 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     """SQLAlchemy core engine context factory.
 
     This factory will attach a SQLAlchemy :py:class:`sqlalchemy.engine.Engine`
-    to an attribute on the :term:`context object`. All cursor (query) execution
-    will automatically record diagnostic information.
+    to an attribute on the :py:class:`~baseplate.RequestContext`. All cursor
+    (query) execution will automatically record diagnostic information.
 
     Additionally, the trace and span ID will be added as a comment to the text
     of the SQL statement. This is to aid correlation of queries with requests.
@@ -185,8 +185,8 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
 
     This factory will attach a new SQLAlchemy
     :py:class:`sqlalchemy.orm.session.Session` to an attribute on the
-    :term:`context object`. All cursor (query) execution will automatically
-    record diagnostic information.
+    :py:class:`~baseplate.RequestContext`. All cursor (query) execution will
+    automatically record diagnostic information.
 
     The session will be automatically closed, but not committed or rolled back,
     at the end of each request.

@@ -26,10 +26,10 @@ def pool_from_config(
 
     * ``url`` (required): a URL like ``redis://localhost/0``.
     * ``max_connections``: an integer maximum number of connections in the pool
-    * ``socket_connect_timeout``: a timespan of how long to wait for sockets
-        to connect. e.g. ``200 milliseconds``.
-    * ``socket_timeout``: a timespan of how long to wait for socket operations,
-        e.g. ``200 milliseconds``.
+    * ``socket_connect_timeout``: how long to wait for sockets to connect. e.g.
+        ``200 milliseconds``.
+    * ``socket_timeout``: how long to wait for socket operations, e.g.
+        ``200 milliseconds``.
 
     """
     assert prefix.endswith(".")
@@ -59,7 +59,7 @@ class RedisClient(config.Parser):
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
 
-    See :py:func:`pool_from_config` for available configurables.
+    See :py:func:`pool_from_config` for available configuration settings.
 
     """
 
@@ -76,10 +76,10 @@ class RedisContextFactory(ContextFactory):
 
     This factory will attach a
     :py:class:`~baseplate.clients.redis.MonitoredRedisConnection` to an
-    attribute on the :term:`context object`. When redis commands are executed
-    via this connection object, they will use connections from the provided
-    :py:class:`redis.ConnectionPool` and automatically record diagnostic
-    information.
+    attribute on the :py:class:`~baseplate.RequestContext`. When Redis commands
+    are executed via this connection object, they will use connections from the
+    provided :py:class:`redis.ConnectionPool` and automatically record
+    diagnostic information.
 
     :param connection_pool: A connection pool.
 
@@ -126,7 +126,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
     ) -> "MonitoredRedisPipeline":
         """Create a pipeline.
 
-        This returns an object on which you can call the standard redis
+        This returns an object on which you can call the standard Redis
         commands. Execution will be deferred until ``execute`` is called. This
         is useful for saving round trips.
 
@@ -146,12 +146,15 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     # these commands are not yet implemented, but probably not unimplementable
     def transaction(self, *args: Any, **kwargs: Any) -> Any:
+        """Not currently implemented."""
         raise NotImplementedError
 
     def lock(self, *args: Any, **kwargs: Any) -> Any:
+        """Not currently implemented."""
         raise NotImplementedError
 
     def pubsub(self, *args: Any, **kwargs: Any) -> Any:
+        """Not currently implemented."""
         raise NotImplementedError
 
 

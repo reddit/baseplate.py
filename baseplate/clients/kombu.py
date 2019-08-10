@@ -67,7 +67,7 @@ class KombuProducer(config.Parser):
     :py:meth:`baseplate.Baseplate.configure_context`.
 
     See :py:func:`connection_from_config` and :py:func:`exchange_from_config`
-    for available configurables.
+    for available configuration settings.
 
     :param max_connections: The maximum number of connections.
 
@@ -88,8 +88,9 @@ class KombuProducerContextFactory(ContextFactory):
     """KombuProducer context factory.
 
     This factory will attach a proxy object which acts like a
-    :py:class:`kombu.Producer` to an attribute on the :term:`context object`.
-    The :py:meth:`~baseplate.clients.kombu.KombuProducer.publish` method will
+    :py:class:`kombu.Producer` to an attribute on the
+    :py:class:`~baseplate.RequestContext`.  The
+    :py:meth:`~baseplate.clients.kombu.KombuProducer.publish` method will
     automatically record diagnostic information.
 
     :param connection: A configured connection object.

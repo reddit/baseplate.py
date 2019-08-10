@@ -91,7 +91,7 @@ class CredentialSecret(NamedTuple):
 
     Credential secrets allow us to store usernames and passwords together in a
     single secret.  Note that they are not versioned since the general pattern
-    for rotating credenitals like this would be to generate a new username/password
+    for rotating credentials like this would be to generate a new username/password
     pair.  This object has two properties:
 
     """
@@ -160,7 +160,7 @@ class SecretsStore(ContextFactory):
         ``type``
             This must always be ``credential`` for this method.
         ``encoding``
-            This must be un-set or set to ``identity``.
+            This must be unset or set to ``identity``.
         ``username``
             This contains the raw username.
         ``password``

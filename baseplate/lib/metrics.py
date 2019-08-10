@@ -1,7 +1,7 @@
-"""Application metrics via statsd.
+"""Application metrics via StatsD.
 
-A client for the application metrics aggregator statsd_. Metrics sent to
-statsd are aggregated and written to graphite. Statsd is generally used for
+A client for the application metrics aggregator StatsD_. Metrics sent to
+StatsD are aggregated and written to graphite. StatsD is generally used for
 whole-system health monitoring and insight into usage patterns.
 
 .. testsetup::
@@ -15,7 +15,7 @@ Basic example usage:
 
 .. testcode::
 
-    from baseplate import metrics_client_from_config
+    from baseplate.lib.metrics import metrics_client_from_config
 
     client = metrics_client_from_config(app_config)
     client.counter("events.connect").increment()
@@ -39,7 +39,7 @@ If you have multiple metrics to send, you can batch them up for efficiency:
 and the batch will be sent in as few packets as possible when the `with` block
 ends.
 
-.. _statsd: https://github.com/etsy/statsd
+.. _StatsD: https://github.com/statsd/statsd
 
 """
 import collections
@@ -174,7 +174,7 @@ class BaseClient:
 
 
 class Client(BaseClient):
-    """A client for statsd."""
+    """A client for StatsD."""
 
     def batch(self) -> "Batch":
         """Return a client-like object which batches up metrics.
@@ -187,7 +187,7 @@ class Client(BaseClient):
 
 
 class Batch(BaseClient):
-    """A batch of metrics to send to statsd.
+    """A batch of metrics to send to StatsD.
 
     The batch also supports the `context manager protocol`_, for use with
     Python's ``with`` statement. When the context is exited, the batch will
@@ -359,11 +359,11 @@ class Counter:
 class BatchCounter(Counter):
     """Counter implementation that batches multiple increment calls.
 
-    A new entry in the :term:`packets` entry is created for each sample rate.
-    For example, if a counter is incremented multiple times with a sample
-    rate of 1.0, there will be one entry in :term:`packets`. If that counter
-    is implemented again with a sample rate of 0.5, there will be two entries
-    in :term:`packets`. Each packet has an associated delta value.
+    A new entry in the ``packets`` entry is created for each sample rate.  For
+    example, if a counter is incremented multiple times with a sample rate of
+    1.0, there will be one entry in ``packets``. If that counter is implemented
+    again with a sample rate of 0.5, there will be two entries in ``packets``.
+    Each packet has an associated delta value.
 
     Example usage::
         counter = BatchCounter(transport, "counter_name")
@@ -435,9 +435,9 @@ class Histogram:
 class Gauge:
     """A gauge representing an arbitrary value.
 
-    .. note:: The statsd protocol supports incrementing/decrementing gauges
+    .. note:: The StatsD protocol supports incrementing/decrementing gauges
         from their current value. We do not support that here because this
-        feature is unpredictable in face of the statsd server restarting and
+        feature is unpredictable in face of the StatsD server restarting and
         the "current value" being lost.
 
     """

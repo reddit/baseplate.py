@@ -20,11 +20,8 @@ An abbreviated example of it in use::
 .. warning::
 
     Because of how Baseplate instruments Pyramid, you should not make an
-    `exception view`_ prevent Baseplate from seeing the unhandled error and
-    reporting it appropriately.
-
-    .. _exception view: https://docs.pylonsproject.org/projects/pyramid_cookbook/\
-       en/latest/pylons/exceptions.html#exception-views
+    :ref:`exception view <exception_views>` prevent Baseplate from seeing the
+    unhandled error and reporting it appropriately.
 
 """
 import sys
@@ -165,7 +162,7 @@ class RequestFactory:
 
 
 class BaseplateConfigurator:
-    """Config extension to integrate Baseplate into Pyramid.
+    """Configuration extension to integrate Baseplate into Pyramid.
 
     :param baseplate: The Baseplate instance for your application.
     :param edge_context_factory: A configured factory for handling edge request
@@ -306,18 +303,16 @@ def paste_make_app(_: Dict[str, str], **local_config: str) -> Any:
 def pshell_setup(env: Dict[str, Any]) -> None:
     r"""Start a server span when pshell starts up.
 
-    This simply starts a server span after the shell initializes, which
-    gives shell users access to all the :term:`context object` goodness.
+    This simply starts a server span after the shell initializes, which gives
+    shell users access to all the :py:class:`~baseplate.RequestContext`
+    goodness.
 
     To use it, add configuration to your app's INI file like so:
 
         [pshell]
         setup = baseplate.frameworks.pyramid:pshell_setup
 
-    See the `Pyramid documentation`_.
-
-    .. _Pyramid documentation: http://docs.pylonsproject.org/projects/pyramid/en/latest/\
-       narr/commandline.html#extending-the-shell
+    See the :ref:`Pyramid documentation <extending_pshell>`.
 
     """
     env["request"].start_server_span("shell")
