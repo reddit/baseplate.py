@@ -4,10 +4,21 @@ A tiny "Hello, World" service
 In this tutorial, we're going to build up a simple service to show off various
 aspects of Baseplate.py.
 
+Prerequisites
+-------------
+
+This tutorial expects you to be familiar with Python and the basics of web
+application development.  We will use `Python 3.7`_ and `virtual
+environments`_. To get set up, see `this guide on installing Python`_.
+
+.. _`Python 3.7`: https://www.python.org/
+.. _`virtual environments`: https://virtualenv.pypa.io/en/stable/
+.. _`this guide on installing python`: https://realpython.com/installing-python/
+
 Make a home for our service
 ---------------------------
 
-First, let's create a folder and `virtual environment`_ to isolate the code and
+First, let's create a folder and virtual environment to isolate the code and
 dependencies for this project.
 
 .. code-block:: console
@@ -21,8 +32,6 @@ dependencies for this project.
    Also creating executable in /home/user/tutorial/venv/bin/python
    Installing setuptools, pkg_resources, pip, wheel...done.
    $ source venv/bin/activate
-
-.. _`virtual environment`: https://virtualenv.pypa.io/en/stable/
 
 Build a simple Pyramid service
 ------------------------------
