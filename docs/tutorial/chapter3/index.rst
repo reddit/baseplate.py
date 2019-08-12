@@ -1,7 +1,7 @@
 Observers --- Looking under the hood
 ====================================
 
-In the previous chapter, we took our basic Pyramid service and made it
+In the previous chapter we took our basic Pyramid service and made it
 compatible with :program:`baseplate-serve`. Now we'll start using Baseplate.py
 inside the service itself so we can see what's going on while handling
 requests.
