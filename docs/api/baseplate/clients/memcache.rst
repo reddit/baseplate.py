@@ -1,7 +1,16 @@
 ``baseplate.clients.memcache``
 ==============================
 
+`Memcached`_ is a high-performance in-memory key value store frequently used
+for caching. `Pymemcache`_ is a Python client library for it.
+
+.. _`Memcached`: https://memcached.org/
+.. _`Pymemcache`: https://github.com/pinterest/pymemcache
+
 .. automodule:: baseplate.clients.memcache
+
+Example
+-------
 
 To integrate pymemcache with your application, add the appropriate client
 declaration to your context configuration::
@@ -38,7 +47,8 @@ configure it in your application's configuration file:
    ...
 
 
-and then use it in request::
+and then use the attached :py:class:`~pymemcache.client.base.PooledClient`-like
+object in request::
 
    def my_method(request):
        request.foo.incr("bar")

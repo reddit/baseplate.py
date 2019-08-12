@@ -5,6 +5,11 @@ The tracing observer reports span information to a Zipkin-compatible
 distributed trace aggregator. This can be used to build up cross-service views
 of request processing across many services.
 
+See `the OpenTracing overview`_ for more info on what tracing is and how it is
+helpful to you.
+
+.. _`the OpenTracing overview`: https://opentracing.io/docs/overview/
+
 Configuration
 -------------
 

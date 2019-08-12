@@ -1,9 +1,20 @@
 ``baseplate.clients.redis``
 ===========================
 
+`Redis`_ is an in-memory data structure store used where speed is necessary but
+complexity is beyond simple key-value operations. (If you're just doing
+caching, prefer :doc:`memcached <memcache>`). `Redis-py`_ is a Python
+client library for Redis.
+
+.. _`Redis`: https://redis.io/
+.. _`redis-py`: https://github.com/andymccurdy/redis-py
+
 .. automodule:: baseplate.clients.redis
 
-To integrate `redis-py`_ with your application, add the appropriate client
+Example
+-------
+
+To integrate redis-py with your application, add the appropriate client
 declaration to your context configuration::
 
    baseplate.configure_context(
@@ -14,8 +25,6 @@ declaration to your context configuration::
          ...
       }
    )
-
-.. _`redis-py`: https://github.com/andymccurdy/redis-py
 
 configure it in your application's configuration file:
 
@@ -41,7 +50,8 @@ configure it in your application's configuration file:
    ...
 
 
-and then use it in request::
+and then use the attached :py:class:`~redis.Redis`-like object in
+request::
 
    def my_method(request):
        request.foo.ping()

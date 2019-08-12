@@ -1,21 +1,61 @@
 ``baseplate.clients.thrift``
 ============================
 
+`Thrift`_ is a cross-language framework for cross-service communication.
+Developers write a language-independent definition of a service's API (the
+"IDL") and Thrift's code generator makes server and client libraries for that
+API.
+
+.. _`Thrift`: https://thrift.apache.org/
+
 .. automodule:: baseplate.clients.thrift
 
-To add a Thrift client to your application, add the appropriate client
-declaration to your context configuration::
+Example
+-------
 
-   baseplate.configure_context(
-      app_config,
-      {
-         ...
-         "foo": CassandraClient(OtherService.Client),
-         ...
-      }
+To add a Thrift client to your application, ensure that your service has
+Baseplate.py's Thrift build step integrated in its root ``setup.py``::
+
+   from baseplate.frameworks.thrift.command import ThriftBuildPyCommand
+
+   ...
+
+   setup(
+      ...
+
+      cmdclass={
+         "build_py": ThriftBuildPyCommand,
+      },
    )
 
-configure it in your application's configuration file:
+Then add the downstream service's IDL to your application directory:
+
+.. code-block:: console
+
+   $ cp ~/src/other/other/other.thrift myservice/
+
+Baseplate.py will automatically run the Thrift compiler on this when building
+your application and put the output into a Python package within your
+application like ``yourservice.other_thrift``. Import the client class and add
+it to your context object::
+
+   from .other_thrift import OtherService
+
+   ...
+
+   def make_wsgi_app(app_config):
+      ...
+
+      baseplate.configure_context(
+         app_config,
+         {
+            ...
+            "foo": ThriftClient(OtherService.Client),
+            ...
+         }
+      )
+
+then configure it in your application's configuration file:
 
 .. code-block:: ini
 
@@ -43,7 +83,7 @@ configure it in your application's configuration file:
    ...
 
 
-and then use it in request::
+and finally use the attached client in request::
 
    def my_method(request):
        request.foo.is_healthy()

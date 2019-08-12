@@ -1,9 +1,12 @@
 ``baseplate.frameworks.queue_consumer``
 =======================================
 
+:doc:`Kombu <kombu:index>` is a library for interacting with queue brokers.
+This integration helps you consume messages from a queue using Kombu.
+
 .. automodule:: baseplate.frameworks.queue_consumer
 
-Create a long-running process to consume from a queue. For example::
+To create a long-running process to consume from a queue::
 
     from kombu import Connection, Exchange
     from baseplate import queue_consumer

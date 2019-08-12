@@ -1,8 +1,11 @@
 StatsD Metrics
 ==============
 
-The metrics observer emits StatsD metrics about the performance of your
-application.
+The metrics observer emits `StatsD`_-compatible time-series metrics about the
+performance of your application. These metrics are useful to get a
+cross-sectional view of how your application is performing in a broad sense.
+
+.. _`StatsD`: https://github.com/statsd/statsd
 
 Configuration
 -------------

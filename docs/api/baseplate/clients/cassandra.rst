@@ -3,11 +3,21 @@
 
 .. automodule:: baseplate.clients.cassandra
 
-This integration supports both the base Python Cassandra driver and the
-Cassandra ORM, CQLMapper.
+Cassandra_ is a database designed for high-availability, high write throughput,
+and eventual consistency.
 
-To integrate it with your application, add the appropriate client declaration
-to your context configuration::
+Baseplate.py supports both the base :doc:`Python Cassandra driver
+<cassandra:index>` and the Cassandra ORM, `CQLMapper`_.
+
+.. _`Cassandra`: https://cassandra.apache.org/
+
+.. _`CQLMapper`: https://github.com/reddit/cqlmapper
+
+Example
+-------
+
+To integrate the Cassandra driver with your application, add the appropriate
+client declaration to your context configuration::
 
    baseplate.configure_context(
       app_config,
@@ -40,7 +50,8 @@ configure it in your application's configuration file:
    ...
 
 
-and then use it in request::
+and then use the attached :py:class:`~cassandra.cluster.Session`-like object in
+request::
 
    def my_method(request):
        request.foo.execute("SELECT 1;")

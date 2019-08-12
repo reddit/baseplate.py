@@ -1,11 +1,17 @@
 ``baseplate.clients.kombu``
 ===========================
 
-This integration adds support for sending messages to queue brokers via Kombu.
-If you are looking to consume messages, check out the
-:py:mod:`baseplate.frameworks.queue_consumer` framework integration instead.
+This integration adds support for sending messages to queue brokers (like
+`RabbitMQ`_) via :doc:`Kombu <kombu:index>`.  If you are looking to consume
+messages, check out the :py:mod:`baseplate.frameworks.queue_consumer` framework
+integration instead.
+
+.. _`RabbitMQ`: https://www.rabbitmq.com/
 
 .. automodule:: baseplate.clients.kombu
+
+Example
+-------
 
 To integrate it with your application, add the appropriate client declaration
 to your context configuration::
@@ -42,7 +48,7 @@ configure it in your application's configuration file:
    ...
 
 
-and then use it in request::
+and then use the attached :py:class:`~kombu.Producer`-like object in request::
 
    def my_method(request):
        request.foo.publish("boo!", routing_key="route_me")

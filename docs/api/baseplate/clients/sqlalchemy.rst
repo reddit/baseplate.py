@@ -1,7 +1,17 @@
 ``baseplate.clients.sqlalchemy``
 ================================
 
+`SQLAlchemy`_ is an ORM and general-purpose SQL engine for Python. It can work
+with many different SQL database backends. Reddit generally uses it to talk to
+`PostgreSQL`_.
+
+.. _`SQLAlchemy`: https://www.sqlalchemy.org/
+.. _`PostgreSQL`: https://www.postgresql.org/
+
 .. automodule:: baseplate.clients.sqlalchemy
+
+Example
+-------
 
 To integrate SQLAlchemy with your application, add the appropriate client
 declaration to your context configuration::
@@ -33,7 +43,8 @@ configure it in your application's configuration file:
    ...
 
 
-and then use it in request::
+and then use the attached :py:class:`~sqlalchemy.orm.session.Session` object in
+request::
 
    def my_method(request):
        request.foo.query(MyModel).filter_by(...).all()
