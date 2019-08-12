@@ -23,6 +23,7 @@ def hvac_factory_from_config(
     Supported keys:
 
     * ``timeout``: How long to wait for calls to Vault.
+        (:py:func:`~baseplate.lib.config.Timespan`)
 
     :param app_config: The raw application configuration.
     :param secrets_store: A configured secrets store from which we can get a

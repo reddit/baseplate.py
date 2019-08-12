@@ -27,9 +27,9 @@ def pool_from_config(
     * ``url`` (required): a URL like ``redis://localhost/0``.
     * ``max_connections``: an integer maximum number of connections in the pool
     * ``socket_connect_timeout``: how long to wait for sockets to connect. e.g.
-        ``200 milliseconds``.
+        ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
     * ``socket_timeout``: how long to wait for socket operations, e.g.
-        ``200 milliseconds``.
+        ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
 
     """
     assert prefix.endswith(".")
