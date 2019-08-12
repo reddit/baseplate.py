@@ -30,6 +30,7 @@ configure it in your application's configuration file:
    foo.contact_points = cassandra-01.local, cassandra-02.local
 
    # optional: the port to connect to on each cassandra server
+   # (default: 9042)
    foo.port = 9999
 
    # optional: the name of a CredentialSecret holding credentials for
