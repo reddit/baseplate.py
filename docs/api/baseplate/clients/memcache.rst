@@ -38,11 +38,11 @@ configure it in your application's configuration file:
    # optional: the maximum size of the connection pool (default 2147483648)
    foo.max_pool_size = 99
 
-   # optional: how long to wait (in seconds) for connections to establish
-   foo.connect_timeout = .5
+   # optional: how long to wait for connections to establish
+   foo.connect_timeout = .5 seconds
 
-   # optional: how long to wait (in seconds) for a memcached command
-   foo.timeout = .1
+   # optional: how long to wait for a memcached command
+   foo.timeout = 100 milliseconds
 
    ...
 

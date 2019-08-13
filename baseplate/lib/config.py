@@ -267,6 +267,14 @@ def Timespan(text: str) -> datetime.timedelta:  # noqa: D401
     return datetime.timedelta(seconds=count * scale)
 
 
+def TimespanWithLegacyFallback(text: str) -> datetime.timedelta:  # noqa: D401
+    """A span of time, allowing for older style "float number of seconds" as fallback."""
+    try:
+        return Timespan(text)
+    except ValueError:
+        return datetime.timedelta(seconds=Float(text))
+
+
 def Percent(text: str) -> float:  # noqa: D401
     """A percentage.
 

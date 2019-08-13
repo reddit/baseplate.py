@@ -39,11 +39,12 @@ def pool_from_config(
         to memcached service, e.g. ``localhost:11211`` or ``127.0.0.1:11211``.
     * ``max_pool_size``: an integer for the maximum pool size to use, by default
         this is ``2147483648``.
-    * ``connect_timeout``: a float representing seconds to wait for a connection to
+    * ``connect_timeout``: how long (as
+        :py:func:`~baseplate.lib.config.Timespan`) to wait for a connection to
         memcached server. Defaults to the underlying socket default timeout.
-    * ``timeout``: a float representing seconds to wait for calls on the
-        socket connected to memcache. Defaults to the underlying socket default
-        timeout.
+    * ``timeout``: how long (as :py:func:`~baseplate.lib.config.Timespan`) to
+        wait for calls on the socket connected to memcache. Defaults to the
+        underlying socket default timeout.
 
     :param app_config: the raw application configuration
     :param prefix: prefix for configuration keys
@@ -62,8 +63,8 @@ def pool_from_config(
         {
             "endpoint": config.Endpoint,
             "max_pool_size": config.Optional(config.Integer, default=None),
-            "connect_timeout": config.Optional(config.Float, default=None),
-            "timeout": config.Optional(config.Float, default=None),
+            "connect_timeout": config.Optional(config.TimespanWithLegacyFallback, default=None),
+            "timeout": config.Optional(config.TimespanWithLegacyFallback, default=None),
             "no_delay": config.Optional(config.Boolean, default=True),
         }
     )
@@ -71,8 +72,8 @@ def pool_from_config(
 
     return PooledClient(
         server=options.endpoint.address,
-        connect_timeout=options.connect_timeout,
-        timeout=options.timeout,
+        connect_timeout=options.connect_timeout and options.connect_timeout.total_seconds(),
+        timeout=options.timeout and options.timeout.total_seconds(),
         serializer=serializer,
         deserializer=deserializer,
         no_delay=options.no_delay,
