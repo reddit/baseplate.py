@@ -341,7 +341,7 @@ class Baseplate:
         See :py:mod:`baseplate.observers` for the configuration settings
         available for each observer.
 
-        :param raw_config: The application configuration which should have
+        :param app_config: The application configuration which should have
             settings for the error reporter.
         :param module_name: Name of the root package of the application. If not specified,
             will be guessed from the package calling this function.
@@ -411,7 +411,7 @@ class Baseplate:
             context.cache.get("example")
             context.cassandra.foo.execute()
 
-        :param config: The raw stringy configuration dictionary.
+        :param app_config: The raw stringy configuration dictionary.
         :param context_spec: A specification of what the configuration should
             look like. This should only contain context clients and nested
             dictionaries.  Unrelated configuration values should not be included.
