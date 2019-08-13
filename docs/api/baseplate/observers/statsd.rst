@@ -63,4 +63,4 @@ When enabled, the metrics observer also adds a
 ``metrics`` to the :py:class:`~baseplate.RequestContext`::
 
    def my_handler(request):
-      request.metrics.counter("foo").increment()
+       request.metrics.counter("foo").increment()
