@@ -413,8 +413,7 @@ class Baseplate:
 
         :param app_config: The raw stringy configuration dictionary.
         :param context_spec: A specification of what the configuration should
-            look like. This should only contain context clients and nested
-            dictionaries.  Unrelated configuration values should not be included.
+            look like.
 
         """
         cfg = config.parse_config(app_config, context_spec)
