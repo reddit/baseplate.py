@@ -258,7 +258,7 @@ class Service(NamedTuple):
         :type: name string or None if context authentication is invalid
         :raises: :py:class:`NoAuthenticationError` if there was no
             authentication token, it was invalid, or the subject is not a
-            servce.
+            service.
 
         """
         subject = self.authentication_token.subject
@@ -373,7 +373,7 @@ class EdgeRequestContext:
         self._header = header
 
     def attach_context(self, context: RequestContext) -> None:
-        """Attach this to the provided :term:`context object`.
+        """Attach this to the provided :py:class:`~baseplate.RequestContext`.
 
         :param context: request context to attach this to
 

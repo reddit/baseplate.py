@@ -1,18 +1,3 @@
-"""Thrift integration for Baseplate.
-
-This module provides a wrapper for a :py:class:`TProcessor` which integrates
-Baseplate's facilities into the Thrift request lifecycle.
-
-An abbreviated example of it in use::
-
-    def make_processor(app_config):
-        baseplate = Baseplate()
-
-        handler = MyHandler()
-        processor = my_thrift.MyService.Processor(handler)
-        return baseplateify_processor(processor, baseplate)
-
-"""
 import sys
 
 from logging import Logger

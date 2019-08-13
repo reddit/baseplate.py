@@ -39,14 +39,15 @@ def pool_from_config(
         to memcached service, e.g. ``localhost:11211`` or ``127.0.0.1:11211``.
     * ``max_pool_size``: an integer for the maximum pool size to use, by default
         this is ``2147483648``.
-    * ``connect_timeout``: a float representing seconds to wait for a connection to
+    * ``connect_timeout``: how long (as
+        :py:func:`~baseplate.lib.config.Timespan`) to wait for a connection to
         memcached server. Defaults to the underlying socket default timeout.
-    * ``timeout``: a float representing seconds to wait for calls on the
-        socket connected to memcache. Defaults to the underlying socket default
-        timeout.
+    * ``timeout``: how long (as :py:func:`~baseplate.lib.config.Timespan`) to
+        wait for calls on the socket connected to memcache. Defaults to the
+        underlying socket default timeout.
 
-    :param app_config: the config dictionary
-    :param prefix: prefix for config keys
+    :param app_config: the raw application configuration
+    :param prefix: prefix for configuration keys
     :param serializer: function to serialize values to strings suitable
         for being stored in memcached. An example is
         :py:func:`~baseplate.clients.memcache.lib.make_dump_and_compress_fn`.
@@ -62,8 +63,8 @@ def pool_from_config(
         {
             "endpoint": config.Endpoint,
             "max_pool_size": config.Optional(config.Integer, default=None),
-            "connect_timeout": config.Optional(config.Float, default=None),
-            "timeout": config.Optional(config.Float, default=None),
+            "connect_timeout": config.Optional(config.TimespanWithLegacyFallback, default=None),
+            "timeout": config.Optional(config.TimespanWithLegacyFallback, default=None),
             "no_delay": config.Optional(config.Boolean, default=True),
         }
     )
@@ -71,8 +72,8 @@ def pool_from_config(
 
     return PooledClient(
         server=options.endpoint.address,
-        connect_timeout=options.connect_timeout,
-        timeout=options.timeout,
+        connect_timeout=options.connect_timeout and options.connect_timeout.total_seconds(),
+        timeout=options.timeout and options.timeout.total_seconds(),
         serializer=serializer,
         deserializer=deserializer,
         no_delay=options.no_delay,
@@ -86,7 +87,7 @@ class MemcacheClient(config.Parser):
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
 
-    See :py:func:`pool_from_config` for available configurables.
+    See :py:func:`pool_from_config` for available configuration settings.
 
     :param serializer: function to serialize values to strings suitable
         for being stored in memcached. An example is
@@ -118,10 +119,10 @@ class MemcacheContextFactory(ContextFactory):
 
     This factory will attach a
     :py:class:`~baseplate.clients.memcache.MonitoredMemcacheConnection` to an
-    attribute on the :term:`context object`. When memcache commands are
-    executed via this connection object, they will use connections from the
-    provided :py:class:`~pymemcache.client.base.PooledClient` and automatically
-    record diagnostic information.
+    attribute on the :py:class:`~baseplate.RequestContext`. When memcache
+    commands are executed via this connection object, they will use connections
+    from the provided :py:class:`~pymemcache.client.base.PooledClient` and
+    automatically record diagnostic information.
 
     :param pooled_client: A pooled client.
 

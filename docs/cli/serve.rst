@@ -51,8 +51,8 @@ The WSGI server takes an additional optional parameter:
    A full name of a class which subclasses
    ``gevent.pywsgi.WSGIHandler`` for extra functionality.
 
-There are some additional configurables in this section that start with a
-``monitoring`` prefix. For more information on those, see `Process-level
+There are some additional configuration settings in this section that start
+with a ``monitoring`` prefix. For more information on those, see `Process-level
 metrics`_.
 
 
@@ -84,6 +84,8 @@ Thrift
 WSGI
    A WSGI callable.
 
+.. _server-logging:
+
 Logging
 -------
 
@@ -93,10 +95,8 @@ includes trace information. The default log level is ``INFO`` or ``DEBUG`` if
 the ``--debug`` flag is passed to ``baseplate-serve``.
 
 If more complex logging configuration is necessary, the configuration file will
-override the default setup. The `configuration format`_ is documented in the
-standard library.
-
-.. _configuration format: https://docs.python.org/2/library/logging.config.html#logging-config-fileformat
+override the default setup. The :ref:`logging-config-fileformat` is documented
+in the standard library.
 
 Automatic reload on source changes
 ----------------------------------
@@ -132,7 +132,9 @@ printing a stack trace to the logger. This can be useful for debugging
 deadlocks and other issues.
 
 Note that Einhorn will exit if you send it a ``SIGUSR1``. You can instead open up
-``einhornsh`` and instruct the master to send the signal to all workers::
+``einhornsh`` and instruct the master to send the signal to all workers:
+
+.. code-block:: console
 
    $ einhornsh
    > signal SIGUSR1
@@ -165,9 +167,10 @@ The following reporters are available:
 
    This will turn on `Gevent's monitoring thread`_ and report events indicating
    that Gevent detects the main event loop was blocked by a greenlet for longer
-   than the given timespan. This can indicate excessive CPU usage causing event
-   loop starvation or the use of non-patched blocking IO calls. More detailed
-   information, including stack traces, is also printed to the logging system.
+   than the given time span. This can indicate excessive CPU usage causing
+   event loop starvation or the use of non-patched blocking IO calls. More
+   detailed information, including stack traces, is also printed to the logging
+   system.
 
    Each instance of the hub being blocked will be reported as a
    :py:class:`~baseplate.lib.metrics.Timer` measuring the duration of the blockage.
@@ -212,7 +215,7 @@ The following reporters are available:
    Watch your metrics closely if you turn this on.
 
 ``monitoring.gc.refcycle``
-   Enabled if a path to a writeable directory is set, defaults to disabled.
+   Enabled if a path to a writable directory is set, defaults to disabled.
 
    **This should only be used in debugging, it will certainly have a negative
    performance impact.**

@@ -11,13 +11,17 @@ Command Line
 There are two required arguments on the command line: the protocol of the
 service to check (``thrift`` or ``wsgi``) and the endpoint to connect to.
 
-For example, to check a Thrift-based service listening on port 9090::
+For example, to check a Thrift-based service listening on port 9090:
 
-   baseplate-healthcheck thrift 127.0.0.1:9090
+.. code-block:: console
 
-or a WSGI (HTTP) service listening on a UNIX domain socket::
+   $ baseplate-healthcheck thrift 127.0.0.1:9090
 
-   baseplate-healthcheck wsgi /run/myservice.sock
+or a WSGI (HTTP) service listening on a UNIX domain socket:
+
+.. code-block:: console
+
+   $ baseplate-healthcheck wsgi /run/myservice.sock
 
 Results
 -------

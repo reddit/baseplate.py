@@ -22,7 +22,7 @@ class MetricsBaseplateObserver(BaseplateObserver):
       as possible.
 
     The batch is accessible to your application during requests as the
-    ``metrics`` attribute on the :term:`context object`.
+    ``metrics`` attribute on the :py:class:`~baseplate.RequestContext`.
 
     :param client: The client where metrics will be sent.
 

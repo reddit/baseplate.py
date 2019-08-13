@@ -24,7 +24,7 @@ R = TypeVar("R")
 
 
 # cached_property is a renamed copy of pyramid.decorator.reify
-# see debian/copyright for full license information
+# see COPYRIGHT for full license information
 class cached_property(Generic[T, R]):
     """Like @property but the function will only be called once per instance.
 

@@ -76,9 +76,11 @@ def thrift_pool_from_config(
         where the Thrift server can be found.
     * ``size``: The size of the connection pool.
     * ``max_age``: The oldest a connection can be before it's recycled and
-        replaced with a new one. Written as a time span e.g. ``1 minute``.
+        replaced with a new one. Written as a
+        :py:func:`~baseplate.lib.config.Timespan` e.g. ``1 minute``.
     * ``timeout``: The maximum amount of time a connection attempt or RPC call
         can take before a TimeoutError is raised.
+        (:py:func:`~baseplate.lib.config.Timespan`)
     * ``max_retries``: The maximum number of times the pool will attempt to
         open a connection.
 

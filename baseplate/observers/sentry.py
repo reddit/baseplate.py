@@ -106,7 +106,7 @@ class SentryBaseplateObserver(BaseplateObserver):
     This observer reports unexpected exceptions to Sentry.
 
     The raven client is accessible to your application during requests as the
-    ``sentry`` attribute on the :term:`context object`.
+    ``sentry`` attribute on the :py:class:`~baseplate.RequestContext`.
 
     :param raven.Client client: A configured raven client.
 

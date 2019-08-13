@@ -8,7 +8,7 @@ For example, an INI file like the following:
 
 .. highlight:: ini
 
-.. include:: ../../config_example.ini
+.. include:: ../../../config_example.ini
    :literal:
 
 Might be parsed like the following. Note: when running under the baseplate
@@ -26,7 +26,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     config_parser.readfp(open("docs/config_example.ini"))
 
     tempfile = NamedTemporaryFile()
-    tempfile.write("cool")
+    tempfile.write(b"cool")
     tempfile.flush()
     config_parser.set("app:main", "some_file", tempfile.name)
 
@@ -267,6 +267,14 @@ def Timespan(text: str) -> datetime.timedelta:  # noqa: D401
     return datetime.timedelta(seconds=count * scale)
 
 
+def TimespanWithLegacyFallback(text: str) -> datetime.timedelta:  # noqa: D401
+    """A span of time, allowing for older style "float number of seconds" as fallback."""
+    try:
+        return Timespan(text)
+    except ValueError:
+        return datetime.timedelta(seconds=Float(text))
+
+
 def Percent(text: str) -> float:  # noqa: D401
     """A percentage.
 
@@ -405,7 +413,7 @@ RawConfig = Dict[str, str]
 
 
 class Parser(Generic[T]):
-    """Base for config parsers."""
+    """Base class for configuration parsers."""
 
     @staticmethod
     def from_spec(spec: ConfigSpecItem) -> "Parser":
@@ -472,7 +480,7 @@ class DictOf(Parser[ConfigNamespace]):
 
     .. highlight:: ini
 
-    .. include:: ../../config_dictof_example.ini
+    .. include:: ../../../config_dictof_example.ini
        :literal:
 
     .. highlight:: py
@@ -502,7 +510,7 @@ class DictOf(Parser[ConfigNamespace]):
 
     .. highlight:: ini
 
-    .. include:: ../../config_dictof_spec_example.ini
+    .. include:: ../../../config_dictof_spec_example.ini
        :literal:
 
     .. highlight:: py
@@ -568,7 +576,7 @@ def parse_config(config: RawConfig, spec: ConfigSpec) -> ConfigNamespace:
     """Parse options against a spec and return a structured representation.
 
     :param config: The raw stringy configuration dictionary.
-    :param spec: A specification of what the config should look like.
+    :param spec: A specification of what the configuration should look like.
     :raises: :py:exc:`ConfigurationError` The configuration violated the spec.
     :return: A structured configuration object.
 

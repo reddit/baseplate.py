@@ -34,7 +34,8 @@ class BaseplateObserver:
 
         :py:class:`Baseplate` calls this when a new request begins.
 
-        :param context: The :term:`context object` for this request.
+        :param context: The :py:class:`~baseplate.RequestContext` for this
+            request.
         :param server_span: The span representing this request.
 
         """
@@ -88,10 +89,19 @@ class TraceInfo(NamedTuple):
 
     """
 
+    #: The ID of the whole trace. This will be the same for all downstream requests.
     trace_id: int
+
+    #: The ID of the parent span, or None if this is the root span.
     parent_id: Optional[int]
+
+    #: The ID of the current span. Should be unique within a trace.
     span_id: int
+
+    #: True if this trace was selected for sampling. Will be propagated to child spans.
     sampled: Optional[bool]
+
+    #: A bit field of extra flags about this trace.
     flags: Optional[int]
 
     @classmethod
@@ -145,6 +155,22 @@ class TraceInfo(NamedTuple):
 
 
 class RequestContext:
+    """The request context object.
+
+    The context object is passed into each request handler by the framework
+    you're using. In some cases (e.g. Pyramid) the request object will also
+    inherit from another base class and carry extra framework-specific
+    information.
+
+    Clients and configuration added to the context via
+    :py:meth:`~baseplate.Baseplate.configure_context` or
+    :py:meth:`~baseplate.Baseplate.add_to_context` will be available as an
+    attribute on this object.  To take advantage of Baseplate's automatic
+    monitoring, any interactions with external services should be done through
+    these clients.
+
+    """
+
     def __init__(
         self,
         context_config: Dict[str, Any],
@@ -205,7 +231,7 @@ class RequestContext:
 
 
 class Baseplate:
-    """The core of the Baseplate diagnostics framework.
+    """The core of the Baseplate framework.
 
     This class coordinates monitoring and tracing of service calls made to
     and from this service. See :py:mod:`baseplate.frameworks` for how to
@@ -227,7 +253,13 @@ class Baseplate:
         self.observers.append(observer)
 
     def configure_logging(self) -> None:
-        """Add request context to the logging system."""
+        """Add request context to the logging system.
+
+        .. deprecated:: 1.0
+
+            Use :py:meth:`configure_observers` instead.
+
+        """
         # pylint: disable=cyclic-import
         from baseplate.observers.logging import LoggingBaseplateObserver
 
@@ -237,9 +269,13 @@ class Baseplate:
         """Send timing metrics to the given client.
 
         This also adds a :py:class:`baseplate.lib.metrics.Batch` object to the
-        ``metrics`` attribute on the :term:`context object` where you can add
-        your own application-specific metrics. The batch is automatically
-        flushed at the end of the request.
+        ``metrics`` attribute on the :py:class:`~baseplate.RequestContext`
+        where you can add your own application-specific metrics. The batch is
+        automatically flushed at the end of the request.
+
+        .. deprecated:: 1.0
+
+            Use :py:meth:`configure_observers` instead.
 
         :param metrics_client: Metrics client to send request metrics to.
 
@@ -258,6 +294,10 @@ class Baseplate:
         When configured, this will send tracing information automatically
         collected by Baseplate to the configured distributed tracing service.
 
+        .. deprecated:: 1.0
+
+            Use :py:meth:`configure_observers` instead.
+
         :param tracing_client: Tracing client to send request traces to.
 
         """
@@ -270,8 +310,12 @@ class Baseplate:
         """Send reports for unexpected exceptions to the given client.
 
         This also adds a :py:class:`raven.Client` object to the ``sentry``
-        attribute on the :term:`context object` where you can send your own
-        application-specific events.
+        attribute on the :py:class:`~baseplate.RequestContext` where you can
+        send your own application-specific events.
+
+        .. deprecated:: 1.0
+
+            Use :py:meth:`configure_observers` instead.
 
         :param client: A configured raven client.
 
@@ -289,16 +333,13 @@ class Baseplate:
     def configure_observers(
         self, app_config: config.RawConfig, module_name: Optional[str] = None
     ) -> None:
-        """Configure diagnostics observers based on application config file.
+        """Configure diagnostics observers based on application configuration.
 
         This installs all the currently supported observers that have settings
         in the configuration file.
 
-        For the individual configurables, see the documentation for:
-
-        * :py:func:`~baseplate.observers.sentry.error_reporter_from_config`
-        * :py:func:`~baseplate.lib.metrics.metrics_client_from_config`
-        * :py:func:`~baseplate.observers.tracing.tracing_client_from_config`
+        See :py:mod:`baseplate.observers` for the configuration settings
+        available for each observer.
 
         :param raw_config: The application configuration which should have
             settings for the error reporter.
@@ -344,10 +385,11 @@ class Baseplate:
     def configure_context(self, app_config: config.RawConfig, context_spec: Dict[str, Any]) -> None:
         """Add a number of objects to each request's context object.
 
-        Configure and attach multiple clients to the :term:`context object` in
-        one place. This takes a full configuration spec like
-        :py:func:`baseplate.lib.config.parse_config` and will attach the specified
-        structure onto the context object each request.
+        Configure and attach multiple clients to the
+        :py:class:`~baseplate.RequestContext` in one place. This takes a full
+        configuration spec like :py:func:`baseplate.lib.config.parse_config`
+        and will attach the specified structure onto the context object each
+        request.
 
         For example, a configuration like::
 
@@ -370,9 +412,9 @@ class Baseplate:
             context.cassandra.foo.execute()
 
         :param config: The raw stringy configuration dictionary.
-        :param context_spec: A specification of what the config should look
-            like. This should only contain context clients and nested dictionaries.
-            Unrelated configuration values should not be included.
+        :param context_spec: A specification of what the configuration should
+            look like. This should only contain context clients and nested
+            dictionaries.  Unrelated configuration values should not be included.
 
         """
         cfg = config.parse_config(app_config, context_spec)
@@ -384,7 +426,7 @@ class Baseplate:
         """Add an attribute to each request's context object.
 
         On each request, the factory will be asked to create an appropriate
-        object to attach to the :term:`context object`.
+        object to attach to the :py:class:`~baseplate.RequestContext`.
 
         :param name: The attribute on the context object to attach the
             created object to. This may also be used for metric/tracing
@@ -408,7 +450,8 @@ class Baseplate:
         child spans of the server span, and the server span will in turn be the
         child span of whatever upstream request it is part of, if any.
 
-        :param context: The :term:`context object` for this request.
+        :param context: The :py:class:`~baseplate.RequestContext` for this
+            request.
         :param name: A name to identify the type of this request, e.g.  a route
             or RPC method name.
         :param trace_info: The trace context of this request as passed in from
@@ -608,8 +651,8 @@ class LocalSpan(Span):
 class ServerSpan(LocalSpan):
     """A server span represents a request this server is handling.
 
-    The server span is available on the :term:`context object` during requests
-    as the ``trace`` attribute.
+    The server span is available on the :py:class:`~baseplate.RequestContext`
+    during requests as the ``trace`` attribute.
 
     """
 

@@ -47,6 +47,14 @@ steps:
           - pytest
       depends_on: [clone]
 
+    - name: "Doctests"
+      image: python:3.7-buster
+      commands:
+          - apt-get update && apt-get install -y libenchant1c2a
+          - pip install -r requirements-docs.txt
+          - make doctest
+      depends_on: [clone]
+
 services:
     - name: cassandra
       image: cassandra:3.11

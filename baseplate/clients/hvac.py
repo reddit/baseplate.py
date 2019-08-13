@@ -1,19 +1,3 @@
-"""Integration with HVAC, a Vault Python client, for advanced Vault features.
-
-See `HVAC's README`_ for documentation on the methods available from its client.
-
-.. note:: The :py:class:`~baseplate.lib.secrets.SecretsStore` handles the most
-    common use case of Vault in a Baseplate application: secure retrieval of
-    secret tokens. This client is only necessary when taking advantage of more
-    advanced features of Vault such as the `Transit backend`_ or `Cubbyholes`_.
-    If these don't sound familiar, check out the secrets store before digging
-    in here.
-
-.. _Transit backend: https://www.vaultproject.io/docs/secrets/transit/
-.. _Cubbyholes: https://www.vaultproject.io/docs/secrets/cubbyhole/index.html
-.. _HVAC's README: https://github.com/ianunruh/hvac/blob/master/README.md
-
-"""
 import datetime
 
 from typing import Any
@@ -39,6 +23,7 @@ def hvac_factory_from_config(
     Supported keys:
 
     * ``timeout``: How long to wait for calls to Vault.
+        (:py:func:`~baseplate.lib.config.Timespan`)
 
     :param app_config: The raw application configuration.
     :param secrets_store: A configured secrets store from which we can get a
@@ -61,7 +46,7 @@ class HvacClient(config.Parser):
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
 
-    See :py:func:`hvac_factory_from_config` for available configurables.
+    See :py:func:`hvac_factory_from_config` for available configuration settings.
 
     :param secrets: The configured secrets store for this application.
 
@@ -80,9 +65,9 @@ class HvacContextFactory(ContextFactory):
     """HVAC client context factory.
 
     This factory will attach a proxy object which acts like an
-    :py:class:`hvac.Client` to an attribute on the :term:`context object`. All
-    methods that talk to Vault will be automatically instrumented for tracing
-    and diagnostic metrics.
+    :py:class:`hvac.Client` to an attribute on the
+    :py:class:`~baseplate.RequestContext`. All methods that talk to Vault will
+    be automatically instrumented for tracing and diagnostic metrics.
 
     :param baseplate.lib.secrets.SecretsStore secrets_store: Configured secrets
         store from which we can get a Vault authentication token.

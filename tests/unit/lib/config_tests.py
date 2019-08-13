@@ -160,6 +160,15 @@ class TimespanTests(unittest.TestCase):
         self.assertEqual(result.total_seconds(), 86400)
 
 
+class TimespanWithLegacyFallbackTests(unittest.TestCase):
+    def test_fallback(self):
+        result = config.TimespanWithLegacyFallback("30 minutes")
+        self.assertEqual(result.total_seconds(), 1800)
+
+        result = config.TimespanWithLegacyFallback("92")
+        self.assertEqual(result.total_seconds(), 92)
+
+
 class PercentTests(unittest.TestCase):
     def test_percentage(self):
         self.assertAlmostEqual(config.Percent("37.2%"), 0.372)

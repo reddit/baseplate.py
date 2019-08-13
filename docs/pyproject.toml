@@ -1,0 +1,8 @@
+[tool.black]
+# code blocks look funky with scroll bars and they're quite narrow in the
+# alabaster theme. so we limit it to keep things sane.
+line-length = 74
+
+# no need for legacy stuff here in the docs! always use the latest supported
+# version here.
+target-version = ['py37']
