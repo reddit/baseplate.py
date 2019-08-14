@@ -20,10 +20,11 @@ import logging
 import json
 import zlib
 
+import six
+
 from ..._compat import (
     long,
     pickle,
-    string_types,
 )
 
 
@@ -114,29 +115,29 @@ def make_dump_and_compress_fn(min_compress_length=0, compress_level=1):
         :raises ValueError: if `value` is not JSON serializable
 
         """
-        if isinstance(value, string_types):
+        if isinstance(value, six.text_type):
+            serialized = value.encode("utf8")
+            flags = 0
+        elif isinstance(value, six.binary_type):
             serialized = value
             flags = 0
         elif isinstance(value, int):
-            serialized = "%d" % value
+            serialized = ("%d" % value).encode()
             flags = Flags.INTEGER
         elif isinstance(value, long):
-            serialized = "%d" % value
+            serialized = ("%d" % value).encode()
             flags = Flags.LONG
         else:
             # NOTE: json.dumps raises ValueError if `value` is not serializable
             serialized = json.dumps(value)
+            serialized = serialized.encode("utf8")
             flags = Flags.JSON
 
-        serialized_bytes = serialized.encode("utf8")
-
-        if (compress_level and
-                min_compress_length and
-                len(serialized) > min_compress_length):
-            serialized_bytes = zlib.compress(serialized_bytes, compress_level)
+        if compress_level and min_compress_length and len(serialized) > min_compress_length:
+            serialized = zlib.compress(serialized, compress_level)
             flags |= Flags.ZLIB
 
-        return serialized_bytes, flags
+        return serialized, flags
 
     return dump_and_compress
 
@@ -231,8 +232,11 @@ def make_pickle_and_compress_fn(min_compress_length=0, compress_level=1):
         :returns: value serialized as str, flags int.
 
         """
-        if isinstance(value, string_types):
+        if isinstance(value, six.text_type):
             serialized = value.encode("utf8")
+            flags = 0
+        elif isinstance(value, six.binary_type):
+            serialized = value
             flags = 0
         elif isinstance(value, int):
             serialized = ("%d" % value).encode()
