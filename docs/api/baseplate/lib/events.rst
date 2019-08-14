@@ -15,29 +15,40 @@ instantiate and fill out an event object, and pass it into the queue::
    import time
    import uuid
 
-   from baseplate.lib.events import EventQueue, serialize_v2_event
+   from baseplate import Baseplate
+   from baseplate.lib.events import EventQueue
+   from baseplate.lib.events import serialize_v2_event
 
    from event_schemas.event.ttypes import Event
 
 
-   def make_wsgi_app(app_config):
-      ...
-
-      queue = EventQueue("v2", event_serializer=serialize_v2_event)
-      baseplate.add_to_context("events_v2", queue)
-
-      ...
-
-
    def my_handler(request):
-      event = Event(
-         source="baseplate",
-         action="test",
-         noun="baseplate",
-         client_timestamp=time.time() * 1000,
-         uuid=str(uuid.uuid4()),
-      )
-      request.events_v2.put(ev2)
+       event = Event(
+           source="baseplate",
+           action="test",
+           noun="baseplate",
+           client_timestamp=time.time() * 1000,
+           uuid=str(uuid.uuid4()),
+       )
+       request.events_v2.put(ev2)
+
+
+   def make_wsgi_app(app_config):
+       ...
+
+       baseplate = Baseplate()
+       baseplate.configure_context(
+           app_config,
+           {
+               ...
+
+               "events_v2": EventQueue("v2", serialize_v2_events),
+
+               ...
+           }
+       )
+
+       ...
 
 
 Queuing Events
