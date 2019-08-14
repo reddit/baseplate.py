@@ -111,23 +111,24 @@ def make_dump_and_compress_fn(
 
         """
         if isinstance(value, str):
+            serialized = value.encode("utf8")
+            flags = 0
+        elif isinstance(value, bytes):
             serialized = value
             flags = 0
         elif isinstance(value, int):
-            serialized = f"{value:d}"
+            serialized = f"{value:d}".encode()
             flags = Flags.INTEGER
         else:
             # NOTE: json.dumps raises ValueError if `value` is not serializable
-            serialized = json.dumps(value)
+            serialized = json.dumps(value).encode("utf8")
             flags = Flags.JSON
 
-        serialized_bytes = serialized.encode("utf8")
-
         if compress_level and min_compress_length and len(serialized) > min_compress_length:
-            serialized_bytes = zlib.compress(serialized_bytes, compress_level)
+            serialized = zlib.compress(serialized, compress_level)
             flags |= Flags.ZLIB
 
-        return serialized_bytes, flags
+        return serialized, flags
 
     return dump_and_compress
 
@@ -227,6 +228,9 @@ def make_pickle_and_compress_fn(
         """
         if isinstance(value, str):
             serialized = value.encode("utf8")
+            flags = 0
+        elif isinstance(value, bytes):
+            serialized = value
             flags = 0
         elif isinstance(value, int):
             serialized = f"{value:d}".encode()
