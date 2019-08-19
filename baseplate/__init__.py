@@ -54,6 +54,9 @@ class SpanObserver:
     def on_set_tag(self, key: str, value: Any) -> None:
         """Do something when a tag is set on the observed span."""
 
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        """Do something when a tag value is incremented on the observed span."""
+
     def on_log(self, name: str, payload: Any) -> None:
         """Do something when a log entry is added to the span."""
 
@@ -553,6 +556,20 @@ class Span:
         """
         for observer in self.observers:
             observer.on_set_tag(key, value)
+
+    def incr_tag(self, key: str, delta: float = 1) -> None:
+        """Increment a tag value on the span.
+
+        This is useful to count instances of an event in your application. In
+        addition to showing up as a tag on the span, the value may also be
+        aggregated separately as an independent counter.
+
+        :param key: The name of the tag.
+        :param value: The amount to increment the value. Defaults to 1.
+
+        """
+        for observer in self.observers:
+            observer.on_incr_tag(key, delta)
 
     def log(self, name: str, payload: Optional[Any] = None) -> None:
         """Add a log entry to the span.

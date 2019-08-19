@@ -1,4 +1,5 @@
 """Components for processing Baseplate spans for service request tracing."""
+import collections
 import json
 import logging
 import queue
@@ -10,6 +11,7 @@ import typing
 
 from datetime import datetime
 from typing import Any
+from typing import DefaultDict
 from typing import Dict
 from typing import List
 from typing import NamedTuple
@@ -198,6 +200,7 @@ class TraceSpanObserver(SpanObserver):
         self.end: Optional[int] = None
         self.elapsed: Optional[int] = None
         self.binary_annotations: List[Dict[str, Any]] = []
+        self.counters: DefaultDict[str, float] = collections.defaultdict(float)
         self.on_set_tag(ANNOTATIONS["COMPONENT"], "baseplate")
         super().__init__()
 
@@ -216,7 +219,11 @@ class TraceSpanObserver(SpanObserver):
 
         self.end = current_epoch_microseconds()
         self.elapsed = self.end - typing.cast(int, self.start)
-        self.record()
+
+        for key, value in self.counters.items():
+            self.binary_annotations.append(self._create_binary_annotation(key, value))
+
+        self.recorder.send(self)
 
     def on_set_tag(self, key: str, value: Any) -> None:
         """Translate set tags to tracing binary annotations.
@@ -224,6 +231,9 @@ class TraceSpanObserver(SpanObserver):
         Number-type values are coerced to strings.
         """
         self.binary_annotations.append(self._create_binary_annotation(key, value))
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        self.counters[key] += delta
 
     def _endpoint_info(self) -> Dict[str, str]:
         return {"serviceName": self.service_name, "ipv4": self.hostname}
@@ -281,10 +291,6 @@ class TraceSpanObserver(SpanObserver):
         )
 
         return self._to_span_obj(annotations, self.binary_annotations)
-
-    def record(self) -> None:
-        """Record serialized span."""
-        self.recorder.send(self)
 
 
 class TraceLocalSpanObserver(TraceSpanObserver):

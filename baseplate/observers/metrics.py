@@ -47,6 +47,9 @@ class MetricsServerSpanObserver(SpanObserver):
     def on_start(self) -> None:
         self.timer.start()
 
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        self.batch.counter(key).increment(delta)
+
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         self.timer.stop()
         suffix = "success" if not exc_info else "failure"
@@ -64,10 +67,14 @@ class MetricsServerSpanObserver(SpanObserver):
 
 class MetricsLocalSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span):
+        self.batch = batch
         self.timer = batch.timer(typing.cast(str, span.component_name) + "." + span.name)
 
     def on_start(self) -> None:
         self.timer.start()
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        self.batch.counter(key).increment(delta)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         self.timer.stop()
@@ -76,11 +83,14 @@ class MetricsLocalSpanObserver(SpanObserver):
 class MetricsClientSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span):
         self.batch = batch
-        self.base_name = "clients." + span.name
+        self.base_name = f"clients.{span.name}"
         self.timer = batch.timer(self.base_name)
 
     def on_start(self) -> None:
         self.timer.start()
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        self.batch.counter(key).increment(delta)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         self.timer.stop()
