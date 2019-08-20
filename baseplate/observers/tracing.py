@@ -221,7 +221,7 @@ class TraceSpanObserver(SpanObserver):
         self.elapsed = self.end - typing.cast(int, self.start)
 
         for key, value in self.counters.items():
-            self.binary_annotations.append(self._create_binary_annotation(key, value))
+            self.binary_annotations.append(self._create_binary_annotation(f"counter.{key}", value))
 
         self.recorder.send(self)
 

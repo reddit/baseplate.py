@@ -233,7 +233,7 @@ class TraceSpanObserverTests(TraceTestBase):
         self.test_span_observer.on_incr_tag("test-key", 5)
         self.test_span_observer.on_finish(None)
         annotation = self.test_span_observer.binary_annotations[0]
-        self.assertEquals(annotation["key"], "test-key")
+        self.assertEquals(annotation["key"], "counter.test-key")
         self.assertEquals(annotation["value"], "8.0")
 
 
