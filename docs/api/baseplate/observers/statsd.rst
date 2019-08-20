@@ -50,6 +50,9 @@ has a name like ``{namespace}.clients.{context_name}.{method}`` and the counter
 ``{namespace}.clients.{context_name}.{method}.{success,failure}`` where
 ``context_name`` is the name of the client in the context configuration.
 
+Calls to :py:meth:`~baseplate.Span.incr_tag` will increment a counter like
+``{namespace}.{tag_name}`` by the amount specified.
+
 When using :program:`baseplate-serve`, various process-level runtime metrics
 will also be emitted. These are not tied to individual requests but instead
 give insight into how the whole application is functioning. See
@@ -64,3 +67,7 @@ When enabled, the metrics observer also adds a
 
    def my_handler(request):
        request.metrics.counter("foo").increment()
+
+To keep your application more generic, it's better to use local spans for
+custom local timers and :py:meth:`~baseplate.Span.incr_tag` for custom
+counters.
