@@ -11,7 +11,7 @@ setup(
     url="https://baseplate.readthedocs.io/en/stable/",
     use_scm_version=True,
     packages=find_packages(exclude=["tests", "tests.*"]),
-    python_requires=">=3.6",
+    python_requires=">=3.6.2",
     setup_requires=["setuptools_scm"],
     install_requires=[
         "posix_ipc>=1.0.0",
