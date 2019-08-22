@@ -1,4 +1,5 @@
 import socket
+import sys
 import unittest
 
 from unittest import mock
@@ -137,3 +138,35 @@ class CheckFnSignatureTests(unittest.TestCase):
         server._fn_accepts_additional_args(foo, [])
         server._fn_accepts_additional_args(foo, ["arg1", "arg2", "arg3"])
         server._fn_accepts_additional_args(foo, ["arg1"])
+
+
+class ParseBaseplateScriptArgs(unittest.TestCase):
+    @mock.patch.object(sys, "argv", ["baseplate-script", "mock.ini", "package.module:callable"])
+    @mock.patch("baseplate.server._load_factory")
+    @mock.patch("builtins.open", mock.mock_open())
+    def test_simple_call(self, _load_factory):
+        args, extra_args = server._parse_baseplate_script_args()
+        self.assertEqual(args.app_name, "main")
+        self.assertEqual(extra_args, [])
+
+    @mock.patch.object(
+        sys, "argv", ["baseplate-script", "mock.ini", "package.module:callable", "--app-name", "ci"]
+    )
+    @mock.patch("baseplate.server._load_factory")
+    @mock.patch("builtins.open", mock.mock_open())
+    def test_specifying_app_name(self, _load_factory):
+        args, extra_args = server._parse_baseplate_script_args()
+        self.assertEqual(args.app_name, "ci")
+        self.assertEqual(extra_args, [])
+
+    @mock.patch.object(
+        sys,
+        "argv",
+        ["baseplate-script", "mock.ini", "package.module:callable", "extra_arg1", "extra_arg2"],
+    )
+    @mock.patch("baseplate.server._load_factory")
+    @mock.patch("builtins.open", mock.mock_open())
+    def test_extra_args(self, _load_factory):
+        args, extra_args = server._parse_baseplate_script_args()
+        self.assertEqual(args.app_name, "main")
+        self.assertEqual(extra_args, ["extra_arg1", "extra_arg2"])

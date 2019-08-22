@@ -22,10 +22,12 @@ from types import FrameType
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import List
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import TextIO
+from typing import Tuple
 
 from gevent.server import StreamServer
 
@@ -249,6 +251,18 @@ def load_and_run_script() -> None:
 
     sys.path.append(os.getcwd())
 
+    args, extra_args = _parse_baseplate_script_args()
+    with args.config_file:
+        config = read_config(args.config_file, server_name=None, app_name=args.app_name)
+    configure_logging(config, args.debug)
+
+    if _fn_accepts_additional_args(args.entrypoint, extra_args):
+        args.entrypoint(config.app, extra_args)
+    else:
+        args.entrypoint(config.app)
+
+
+def _parse_baseplate_script_args() -> Tuple[argparse.Namespace, List[str]]:
     parser = argparse.ArgumentParser(
         description="Run a function with app configuration loaded.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -269,19 +283,7 @@ def load_and_run_script() -> None:
     parser.add_argument(
         "entrypoint", type=_load_factory, help="function to call, e.g. module.path:fn_name"
     )
-    parser.add_argument(
-        "args", nargs=argparse.REMAINDER, help="arguments to pass along to the invoked script"
-    )
-
-    args = parser.parse_args(sys.argv[1:])
-    with args.config_file:
-        config = read_config(args.config_file, server_name=None, app_name=args.app_name)
-    configure_logging(config, args.debug)
-
-    if _fn_accepts_additional_args(args.entrypoint, args.args):
-        args.entrypoint(config.app, args.args)
-    else:
-        args.entrypoint(config.app)
+    return parser.parse_known_args(sys.argv[1:])
 
 
 def _fn_accepts_additional_args(script_fn: Callable[..., Any], fn_args: Sequence[str]) -> bool:
