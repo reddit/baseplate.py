@@ -381,9 +381,10 @@ class Baseplate:
         else:
             skipped.append("error_reporter")
 
-        logger.debug(
-            "The following observers are unconfigured and won't run: %s", ", ".join(skipped)
-        )
+        if skipped:
+            logger.debug(
+                "The following observers are unconfigured and won't run: %s", ", ".join(skipped)
+            )
 
     def configure_context(self, app_config: config.RawConfig, context_spec: Dict[str, Any]) -> None:
         """Add a number of objects to each request's context object.
