@@ -1,5 +1,6 @@
-from cql_string_format_plugin import NoCQLStringFormatChecker
 from pylint.lint import PyLinter
+
+from baseplate.lint.cql_string_format_plugin import NoCQLStringFormatChecker
 
 
 def register(linter: PyLinter) -> None:
