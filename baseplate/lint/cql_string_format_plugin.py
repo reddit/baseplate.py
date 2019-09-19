@@ -50,11 +50,7 @@ class NoCQLStringFormatChecker(BaseChecker):
     def visit_call(self, node: nodes) -> None:
         """Check whether execute calls have queries using string formatting."""
 
-        if (
-            isinstance(node.func, nodes.Attribute)
-            and node.func.attrname == "execute"
-            and node.args
-        ):
+        if isinstance(node.func, nodes.Attribute) and node.func.attrname == "execute" and node.args:
             if (
                 isinstance(node.args[0], nodes.Name)
                 and node.args[0].name in self.string_sub_queries
