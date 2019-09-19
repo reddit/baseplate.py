@@ -1,6 +1,6 @@
+from astroid import nodes
 from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker
-from astroid import nodes
 
 
 class NoCQLStringFormatChecker(BaseChecker):
