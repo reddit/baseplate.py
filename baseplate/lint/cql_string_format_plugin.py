@@ -30,14 +30,14 @@ class NoCQLStringFormatChecker(BaseChecker):
         """Check variables with queries using string formatting."""
 
         if (isinstance(node.value, nodes.BinOp) and
-            node.value.op == "%" and
-            isinstance(node.value.left, nodes.Const)):
+                node.value.op == "%" and
+                isinstance(node.value.left, nodes.Const)):
             if self.check_string_is_query(node.value.left.value):
                 self.string_sub_queries.add(node.targets[0].name)
         elif (isinstance(node.value, nodes.Call) and
-            isinstance(node.targets[0], nodes.Name) and
-            isinstance(node.value.func, nodes.Attribute) and
-            node.value.func.attrname == "format"):
+              isinstance(node.targets[0], nodes.Name) and
+              isinstance(node.value.func, nodes.Attribute) and
+              node.value.func.attrname == "format"):
             if self.check_string_is_query(node.value.func.expr.value):
                 self.string_sub_queries.add(node.targets[0].name)
 
