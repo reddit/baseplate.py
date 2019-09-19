@@ -53,7 +53,7 @@ class NoCQLStringFormatChecker(BaseChecker):
         if (
             isinstance(node.func, nodes.Attribute)
             and node.func.attrname == "execute"
-            and not node.args
+            and node.args
         ):
             if (
                 isinstance(node.args[0], nodes.Name)
