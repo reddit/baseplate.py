@@ -71,11 +71,14 @@ class NoCQLStringFormatChecker(BaseChecker):
             ):
                 self.add_message("cql-string-format", node=node)
 
-    def leave_module(self, node) -> None:
+    def leave_module(self, node: nodes) -> nodes:
         self.string_sub_queries = set()
+        return node
 
-    def leave_classdef(self, node) -> None:
+    def leave_classdef(self, node: nodes) -> nodes:
         self.string_sub_queries = set()
+        return node
 
-    def leave_functiondef(self, node) -> None:
+    def leave_functiondef(self, node: nodes) -> nodes:
         self.string_sub_queries = set()
+        return node
