@@ -18,10 +18,9 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
 
         self.checker.visit_assign(assign_node_a)
         self.checker.visit_call(call_node_b)
-        with self.assertAddsMessages(
+        self.assertAddsMessages(
             pylint.testutils.Message(msg_id="cql-string-format", node=call_node_b)
-        ):
-            self.checker.leave_functiondef(func_node)
+        )
 
     def test_finds_variable_call_string_format_query(self):
         func_node, assign_node_a, call_node_b = astroid.extract_node(
@@ -34,10 +33,9 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
 
         self.checker.visit_assign(assign_node_a)
         self.checker.visit_call(call_node_b)
-        with self.assertAddsMessages(
+        self.assertAddsMessages(
             pylint.testutils.Message(msg_id="cql-string-format", node=call_node_b)
-        ):
-            self.checker.leave_functiondef(func_node)
+        )
 
     def test_finds_binop_string_format_query(self):
         func_node, call_node_a = astroid.extract_node(
@@ -48,10 +46,9 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
         )
 
         self.checker.visit_call(call_node_a)
-        with self.assertAddsMessages(
+        self.assertAddsMessages(
             pylint.testutils.Message(msg_id="cql-string-format", node=call_node_a)
-        ):
-            self.checker.leave_functiondef(func_node)
+        )
 
     def test_finds_call_string_format_query(self):
         func_node, call_node_a = astroid.extract_node(
@@ -62,10 +59,9 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
         )
 
         self.checker.visit_call(call_node_a)
-        with self.assertAddsMessages(
+        self.assertAddsMessages(
             pylint.testutils.Message(msg_id="cql-string-format", node=call_node_a)
-        ):
-            self.checker.leave_functiondef(func_node)
+        )
 
     def test_ignores_variable_non_string_format_query(self):
         func_node, assign_node_a, call_node_b = astroid.extract_node(
