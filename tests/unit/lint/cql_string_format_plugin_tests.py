@@ -1,3 +1,4 @@
+import astroid
 import pylint.testutils
 
 from baseplate.lint import cql_string_format_plugin
