@@ -102,7 +102,7 @@ class TestUniqueReturnChecker(pylint.testutils.CheckerTestCase):
         with self.assertNoMessages():
             self.checker.visit_call(call_node_a)
 
-    def test_variable_rest(self):
+    def test_variable_reset(self):
         func_node, assign_node_a, assign_node_b, call_node_c = astroid.extract_node(
             """
         def test(cassandra_session): #@
