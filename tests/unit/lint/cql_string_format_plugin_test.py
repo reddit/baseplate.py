@@ -4,7 +4,7 @@ import pylint.testutils
 from baseplate.lint import cql_string_format_plugin
 
 
-class TestUniqueReturnChecker(pylint.testutils.CheckerTestCase):
+class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
     CHECKER_CLASS = cql_string_format_plugin.NoCQLStringFormatChecker
 
     def test_finds_variable_binop_string_format_query(self):
