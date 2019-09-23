@@ -31,13 +31,14 @@ class NoCQLStringFormatChecker(BaseChecker):
     def visit_assign(self, node: nodes) -> None:
         """Check variables with queries using string formatting."""
 
+        variable_is_query = False
         if (
             isinstance(node.value, nodes.BinOp)
             and node.value.op == "%"
             and isinstance(node.value.left, nodes.Const)
             and self.check_string_is_query(node.value.left.value)
         ):
-            self.string_sub_queries.add(node.targets[0].name)
+            variable_is_query = True
         elif (
             isinstance(node.value, nodes.Call)
             and isinstance(node.targets[0], nodes.Name)
@@ -45,7 +46,11 @@ class NoCQLStringFormatChecker(BaseChecker):
             and node.value.func.attrname == "format"
             and self.check_string_is_query(node.value.func.expr.value)
         ):
+            variable_is_query = True
+        if variable_is_query and node.targets[0].name not in self.string_sub_queries:
             self.string_sub_queries.add(node.targets[0].name)
+        elif not variable_is_query and node.targets[0].name in self.string_sub_queries:
+            self.string_sub_queries.remove(node.targets[0].name)
 
     def visit_call(self, node: nodes) -> None:
         """Check whether execute calls have queries using string formatting."""
