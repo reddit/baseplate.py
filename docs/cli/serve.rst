@@ -35,15 +35,17 @@ comes with two servers built in:
 ``baseplate.server.wsgi``
    A Gevent WSGI server.
 
-Both take two optional configuration values as well:
+Both take two configuration values as well:
 
 ``max_concurrency``
-   The maximum number of simultaneous clients the server will handle. Unlimited
-   by default.
+   The maximum number of simultaneous clients the server will handle. Note that
+   this is how many connections will be accepted, but some of those connections
+   may be idle at any given time.
 
 ``stop_timeout``
-   How long, in seconds, to wait for active connections to finish up gracefully
-   when shutting down. By default, the server will shut down immediately.
+   (Optional) How long, in seconds, to wait for active connections to finish up
+   gracefully when shutting down. By default, the server will shut down
+   immediately.
 
 The WSGI server takes an additional optional parameter:
 
@@ -184,9 +186,10 @@ The following reporters are available:
    This will track the number of in-flight requests being processed
    concurrently by this server process.
 
-   At each report interval, this will update a
-   :py:class:`~baseplate.lib.metrics.Gauge` with the current number of
-   in-flight requests being processed concurrently.
+   At each report interval, this will update two
+   :py:class:`~baseplate.lib.metrics.Gauge` metrics with the current number of
+   open connections (``open_connections``) and current number of in-flight
+   requests being processed concurrently (``active_requests``).
 
 ``monitoring.connection_pool``
    Enabled if ``true``, disabled if ``false``. Defaults to disabled.
