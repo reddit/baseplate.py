@@ -4,15 +4,15 @@ from pylint.interfaces import IAstroidChecker
 from pylint.lint import PyLinter
 
 
-class NoCQLStringFormatChecker(BaseChecker):
+class NoDbQueryStringFormatChecker(BaseChecker):
     __implements__ = IAstroidChecker
 
-    name = "no-cql-string-format"
+    name = "no-database-query-string-format"
     priority = -1
     msgs = {
         "W0001": (
             "Python string formatting found in Cassandra database query",
-            "cql-string-format",
+            "database-query-string-format",
             "Database queries should be using Cassandra driver parameter substitution",
         )
     }
@@ -60,21 +60,21 @@ class NoCQLStringFormatChecker(BaseChecker):
                 isinstance(node.args[0], nodes.Name)
                 and node.args[0].name in self.string_sub_queries
             ):
-                self.add_message("cql-string-format", node=node)
+                self.add_message("database-query-string-format", node=node)
             elif (
                 isinstance(node.args[0], nodes.BinOp)
                 and node.args[0].op == "%"
                 and isinstance(node.args[0].left, nodes.Const)
                 and self.check_string_is_query(node.args[0].left.value)
             ):
-                self.add_message("cql-string-format", node=node)
+                self.add_message("database-query-string-format", node=node)
             elif (
                 isinstance(node.args[0], nodes.Call)
                 and isinstance(node.args[0].func, nodes.Attribute)
                 and node.args[0].func.attrname == "format"
                 and self.check_string_is_query(node.args[0].func.expr.value)
             ):
-                self.add_message("cql-string-format", node=node)
+                self.add_message("database-query-string-format", node=node)
 
     def leave_module(self, node: nodes) -> nodes:
         self.string_sub_queries = set()

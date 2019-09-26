@@ -1,7 +1,7 @@
 import astroid
 import pylint.testutils
 
-from baseplate.lint import cql_string_format_plugin
+from baseplate.lint import db_query_string_format_plugin
 
 
 class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
