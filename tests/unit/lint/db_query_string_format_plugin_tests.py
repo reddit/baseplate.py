@@ -5,7 +5,7 @@ from baseplate.lint import db_query_string_format_plugin
 
 
 class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
-    CHECKER_CLASS = cql_string_format_plugin.NoCQLStringFormatChecker
+    CHECKER_CLASS = db_query_string_format_plugin.NoDbQueryStringFormatChecker
 
     def test_finds_variable_binop_string_format_query(self):
         assign_node_a, call_node_b = astroid.extract_node(
@@ -18,7 +18,7 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
         self.checker.visit_assign(assign_node_a)
         self.checker.visit_call(call_node_b)
         self.assertAddsMessages(
-            pylint.testutils.Message(msg_id="cql-string-format", node=call_node_b)
+            pylint.testutils.Message(msg_id="database-query-string-format", node=call_node_b)
         )
 
     def test_finds_variable_call_string_format_query(self):
@@ -32,7 +32,7 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
         self.checker.visit_assign(assign_node_a)
         self.checker.visit_call(call_node_b)
         self.assertAddsMessages(
-            pylint.testutils.Message(msg_id="cql-string-format", node=call_node_b)
+            pylint.testutils.Message(msg_id="database-query-string-format", node=call_node_b)
         )
 
     def test_finds_binop_string_format_query(self):
@@ -44,7 +44,7 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
 
         self.checker.visit_call(call_node_a)
         self.assertAddsMessages(
-            pylint.testutils.Message(msg_id="cql-string-format", node=call_node_a)
+            pylint.testutils.Message(msg_id="database-query-string-format", node=call_node_a)
         )
 
     def test_finds_call_string_format_query(self):
@@ -56,7 +56,7 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
 
         self.checker.visit_call(call_node_a)
         self.assertAddsMessages(
-            pylint.testutils.Message(msg_id="cql-string-format", node=call_node_a)
+            pylint.testutils.Message(msg_id="database-query-string-format", node=call_node_a)
         )
 
     def test_ignores_variable_non_string_format_query(self):
