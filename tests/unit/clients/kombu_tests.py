@@ -1,9 +1,95 @@
+from unittest import mock
+
 import pytest
 
+from baseplate.clients.kombu import connection_from_config
 from baseplate.clients.kombu import KombuThriftSerializer
+from baseplate.lib.config import ConfigurationError
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.secrets import SecretsStore
 from baseplate.thrift.ttypes import Loid
 from baseplate.thrift.ttypes import Request
 from baseplate.thrift.ttypes import Session
+
+from ... import does_not_raise
+
+
+def secrets():
+    mock_filewatcher = mock.Mock(spec=FileWatcher)
+    mock_filewatcher.get_data.return_value = {
+        "secrets": {
+            "secret/rabbitmq/account": {
+                "type": "credential",
+                "username": "spez",
+                "password": "hunter2",
+            }
+        },
+        "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
+    }
+    secrets = SecretsStore("/secrets")
+    secrets._filewatcher = mock_filewatcher
+    return secrets
+
+
+@pytest.mark.parametrize(
+    "app_config,kwargs,expectation,expected",
+    [
+        ({}, {}, pytest.raises(ConfigurationError), {}),
+        ({"rabbitmq.virtual_host": "test"}, {}, pytest.raises(ConfigurationError), {}),
+        ({"amqp.hostname": "amqp://rabbit.local:5672"}, {}, pytest.raises(ConfigurationError), {}),
+        (
+            {
+                "rabbitmq.hostname": "amqp://rabbit.local:5672",
+                "rabbitmq.credentials_secret": "secret/rabbitmq/account",
+            },
+            {},
+            pytest.raises(ValueError),
+            {},
+        ),
+        (
+            {"rabbitmq.hostname": "amqp://rabbit.local:5672"},
+            {},
+            does_not_raise(),
+            {"hostname": "rabbit.local", "userid": None, "password": None, "virtual_host": "/"},
+        ),
+        (
+            {"rabbitmq.hostname": "amqp://rabbit.local:5672", "rabbitmq.virtual_host": "test"},
+            {},
+            does_not_raise(),
+            {"hostname": "rabbit.local", "userid": None, "password": None, "virtual_host": "test"},
+        ),
+        (
+            {"rabbitmq.hostname": "amqp://rabbit.local:5672", "rabbitmq.virtual_host": "test"},
+            {"userid": "spez", "password": "hunter2"},
+            does_not_raise(),
+            {
+                "hostname": "rabbit.local",
+                "userid": "spez",
+                "password": "hunter2",
+                "virtual_host": "test",
+            },
+        ),
+        (
+            {
+                "rabbitmq.hostname": "amqp://rabbit.local:5672",
+                "rabbitmq.credentials_secret": "secret/rabbitmq/account",
+            },
+            {"secrets": secrets()},
+            does_not_raise(),
+            {
+                "hostname": "rabbit.local",
+                "userid": "spez",
+                "password": "hunter2",
+                "virtual_host": "/",
+            },
+        ),
+    ],
+)
+def test_connection_from_config(app_config, kwargs, expectation, expected):
+    with expectation:
+        connection = connection_from_config(app_config, prefix="rabbitmq.", **kwargs)
+    for attr, value in expected.items():
+        assert getattr(connection, attr) == value
 
 
 class TestKombuThriftSerializer:

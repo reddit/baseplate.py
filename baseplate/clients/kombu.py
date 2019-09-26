@@ -18,12 +18,15 @@ from thrift.protocol.TProtocol import TProtocolFactory
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib.secrets import SecretsStore
 
 
 T = TypeVar("T")
 
 
-def connection_from_config(app_config: config.RawConfig, prefix: str, **kwargs: Any) -> Connection:
+def connection_from_config(
+    app_config: config.RawConfig, prefix: str, secrets: Optional[SecretsStore] = None, **kwargs: Any
+) -> Connection:
     """Make a Connection from a configuration dictionary.
 
     The keys useful to :py:func:`connection_from_config` should be prefixed,
@@ -36,15 +39,26 @@ def connection_from_config(app_config: config.RawConfig, prefix: str, **kwargs: 
 
     Supported keys:
 
+    * ``credentials_secret``
     * ``hostname``
     * ``virtual_host``
 
     """
     assert prefix.endswith(".")
     parser = config.SpecParser(
-        {"hostname": config.String, "virtual_host": config.Optional(config.String)}
+        {
+            "credentials_secret": config.Optional(config.String),
+            "hostname": config.String,
+            "virtual_host": config.Optional(config.String),
+        }
     )
     options = parser.parse(prefix[:-1], app_config)
+    if options.credentials_secret:
+        if not secrets:
+            raise ValueError("'secrets' is required if 'credentials_secret' is set")
+        credentials = secrets.get_credentials(options.credentials_secret)
+        kwargs.setdefault("userid", credentials.username)
+        kwargs.setdefault("password", credentials.password)
     return Connection(hostname=options.hostname, virtual_host=options.virtual_host, **kwargs)
 
 
