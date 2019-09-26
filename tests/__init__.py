@@ -1,3 +1,14 @@
+try:
+    # nullcontext is only available in Python 3.7+
+    from contextlib import nullcontext as does_not_raise
+except ImportError:
+    from contextlib import contextmanager
+
+    @contextmanager
+    def does_not_raise():
+        yield
+
+
 AUTH_TOKEN_PUBLIC_KEY = """\
 -----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtzMnDEQPd75QZByogNlB
@@ -52,6 +63,7 @@ __all__ = [
     "AUTH_TOKEN_PUBLIC_KEY",
     "AUTH_TOKEN_PRIVATE_KEY",
     "AUTH_TOKEN_VALID",
+    "does_not_raise",
     "SERIALIZED_EDGECONTEXT_WITH_NO_AUTH",
     "SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH",
     "SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH",
