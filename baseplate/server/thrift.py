@@ -1,3 +1,4 @@
+import datetime
 import socket
 
 from typing import Any
@@ -59,13 +60,15 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
         server_config,
         {
             "max_concurrency": config.Integer,
-            "stop_timeout": config.Optional(config.Integer, default=10),
+            "stop_timeout": config.Optional(
+                config.TimespanWithLegacyFallback, default=datetime.timedelta(seconds=10)
+            ),
         },
     )
 
     pool = Pool(size=cfg.max_concurrency)
     server = GeventServer(processor=app, listener=listener, spawn=pool)
-    server.stop_timeout = cfg.stop_timeout
+    server.stop_timeout = cfg.stop_timeout.total_seconds()
 
     runtime_monitor.start(server_config, app, pool)
     return server
