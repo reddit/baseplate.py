@@ -25,7 +25,7 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
         {
             "handler": config.Optional(config.String, default=None),
             "max_concurrency": config.Integer,
-            "stop_timeout": config.Optional(config.Integer, default=0),
+            "stop_timeout": config.Optional(config.Integer, default=10),
         },
     )
 

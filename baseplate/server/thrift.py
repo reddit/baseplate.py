@@ -59,7 +59,7 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
         server_config,
         {
             "max_concurrency": config.Integer,
-            "stop_timeout": config.Optional(config.Integer, default=0),
+            "stop_timeout": config.Optional(config.Integer, default=10),
         },
     )
 
