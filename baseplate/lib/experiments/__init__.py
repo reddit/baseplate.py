@@ -92,7 +92,7 @@ class Experiments:
         except WatchedFileNotAvailableError as exc:
             logger.warning("Experiment config unavailable: %s", str(exc))
         except KeyError:
-            logger.warning("Experiment <%r> not found in experiment config", name)
+            logger.info("Experiment <%r> not found in experiment config", name)
         except TypeError as exc:
             logger.warning("Could not load experiment config: %s", str(exc))
         return None
