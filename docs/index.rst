@@ -44,6 +44,7 @@ Table of Contents
    tutorial/index
    api/index
    cli/index
+   lint/index
 
 Appendix
 --------

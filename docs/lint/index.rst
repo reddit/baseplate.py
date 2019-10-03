@@ -1,7 +1,8 @@
-Linting
+Linters
 =======
 
-The baseplate.lint module consists of custom `Pylint`_ checkers.
+Incorporating linters into your service will enforce a coding standard and prevent errors from getting merged into your codebase.
+The :py:mod:`baseplate.lint` module consists of custom `Pylint`_ checkers based on bugs found at Reddit.
 
 .. _`Pylint`: https://pylint.readthedocs.io/en/latest/intro.html
 
@@ -11,9 +12,9 @@ Configuration
 Getting Started
 ^^^^^^^^^^^^^^^
 
-Install `Pylint`_ and ensure you have it and its dependencies added to your requirements-dev.txt file.
+`Install Pylint`_ and ensure you have it and its dependencies added to your requirements-dev.txt file.
 
-.. _`Pylint`: https://pylint.readthedocs.io/en/latest/user_guide/installation.html
+.. _`Install Pylint`: https://pylint.readthedocs.io/en/latest/user_guide/installation.html
 
 Follow the `Pylint user guide`_ for instructions to generate a default pylintrc configuration file and run Pylint.
 
