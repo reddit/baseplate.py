@@ -8,6 +8,7 @@ from pylint.checkers import BaseChecker
 from pylint.interfaces import IAstroidChecker
 from pylint.lint import PyLinter
 
+
 # Basic example of a Pylint AST (astract syntax tree) checker
 # Checks for variables that have been reassigned in a function. If it finds a reassigned variable, it will throw an error
 class NoReassignmentChecker(BaseChecker):
