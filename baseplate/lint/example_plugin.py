@@ -15,7 +15,7 @@ class NoReassignmentChecker(BaseChecker):
     __implements__ = IAstroidChecker
 
     # Checker name
-    name = "no-reassign-variables"
+    name = "no-reassigned-variable"
     # Set priority to -1
     priority = -1
     # Message dictionary
@@ -25,11 +25,11 @@ class NoReassignmentChecker(BaseChecker):
         # Numbers need to be unique and in-between 9000-9999
         "W9001": (
             # displayed-message shown to user
-            "Reassigned variables found.",
+            "Reassigned variable found.",
             # message-symbol used as alias for message-id
-            "reassign-variables",
+            "reassigned-variable",
             # message-help shown to user when calling pylint --help-msg
-            "Ensure only variables are not reassigned.",
+            "Ensure variables are not reassigned.",
         )
     }
 
