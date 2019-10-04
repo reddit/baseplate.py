@@ -2,7 +2,6 @@
 import astroid
 import pylint.testutils
 
-# Pylint checker module
 from baseplate.lint import example_plugin
 
 
