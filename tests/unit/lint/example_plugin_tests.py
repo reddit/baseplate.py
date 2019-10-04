@@ -11,8 +11,8 @@ class TestNoReassignmentChecker(pylint.testutils.CheckerTestCase):
     def test_finds_reassigned_variable(self):
         assign_node_a, assign_node_b = astroid.extract_node(
             """
-            test = 1 #@
-            test = 2 #@
+        test = 1 #@
+        test = 2 #@
             """
         )
 
@@ -25,8 +25,8 @@ class TestNoReassignmentChecker(pylint.testutils.CheckerTestCase):
     def test_ignores_no_reassigned_variable(self):
         assign_node_a, assign_node_b = astroid.extract_node(
             """
-            test1 = 1 #@
-            test2 = 2 #@
+        test1 = 1 #@
+        test2 = 2 #@
             """
         )
 
@@ -37,11 +37,11 @@ class TestNoReassignmentChecker(pylint.testutils.CheckerTestCase):
     def test_ignores_variable_outside_function(self):
         func_node, assign_node_a, assign_node_b = astroid.extract_node(
             """
-            def test1(): #@
-                test = 1 #@
-                
-            def test2():
-                test = 2 #@
+        def test1(): #@
+            test = 1 #@
+
+        def test2():
+            test = 2 #@
             """
         )
 
