@@ -23,6 +23,8 @@ class NoReassignmentChecker(BaseChecker):
         # message-id, consists of a letter and numbers
         # Letter will be one of following letters (C=Convention, W=Warning, E=Error, F=Fatal, R=Refactoring)
         # Numbers need to be unique and in-between 9000-9999
+        # Check https://baseplate.readthedocs.io/en/stable/linters/index.html#custom-checkers-list
+        # for numbers that are already in use
         "W9001": (
             # displayed-message shown to user
             "Reassigned variable found.",
