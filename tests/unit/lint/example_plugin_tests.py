@@ -5,9 +5,13 @@ import pylint.testutils
 from baseplate.lint import example_plugin
 
 
+# CheckerTestCase creates a linter that will traverse the AST tree
 class TestNoReassignmentChecker(pylint.testutils.CheckerTestCase):
-    CHECKER_CLASS = example_plugin.NoReassigmentChecker
+    CHECKER_CLASS = example_plugin.NoReassignmentChecker
 
+    # Use astroid.extract_node() to create a test case
+    # Where you put #@ is where the variable gets assigned
+    # example, assign_node_a = test = 1, assign_node_b = test = 2
     def test_finds_reassigned_variable(self):
         assign_node_a, assign_node_b = astroid.extract_node(
             """
