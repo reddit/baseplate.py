@@ -51,4 +51,5 @@ class NoReassignmentChecker(BaseChecker):
 
     # Leave the FunctionDef node: https://astroid.readthedocs.io/en/latest/api/astroid.nodes.html#astroid.nodes.FunctionDef
     def leave_functiondef(self, node: nodes) -> nodes:
+        self.variables = set()
         return node
