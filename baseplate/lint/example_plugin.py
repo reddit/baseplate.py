@@ -10,12 +10,12 @@ from pylint.interfaces import IAstroidChecker
 from pylint.lint import PyLinter
 
 # Basic example of a Pylint AST (astract syntax tree) checker
-# Checks for unique variables in a function. If it finds a non-unique variable, it will throw an error
-class UniqueVariablesChecker(BaseChecker):
+# Checks for variables that have been reassigned in a function. If it finds a reassigned variable, it will throw an error
+class NoReassignmentChecker(BaseChecker):
     __implements__ = IAstroidChecker
 
     # Checker name
-    name = "unique-variables"
+    name = "no-reassign-variables"
     # Set priority to -1
     priority = -1
     # Message dictionary
@@ -25,11 +25,11 @@ class UniqueVariablesChecker(BaseChecker):
         # Numbers need to be unique and in-between 9000-9999
         "W9001": (
             # displayed-message shown to user
-            "Non-unique variables found.",
+            "Reassigned variables found.",
             # message-symbol used as alias for message-id
-            "non-unique-variables",
+            "reassign-variables",
             # message-help shown to user when calling pylint --help-msg
-            "Ensure only unique variables are used.",
+            "Ensure only variables are not reassigned.",
         )
     }
 
