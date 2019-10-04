@@ -2,7 +2,6 @@
 # This is an example of a Pylint AST checker and should not be registered to use
 # In an AST (abstract syntax tree) checker, the code will be represented as nodes of a tree
 # We will use the astroid library: https://astroid.readthedocs.io/en/latest/api/general.html to visit and leave nodes
-
 # Libraries needed for an AST checker
 from astroid import nodes
 from pylint.checkers import BaseChecker
