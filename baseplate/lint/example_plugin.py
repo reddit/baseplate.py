@@ -35,7 +35,7 @@ class NoReassignmentChecker(BaseChecker):
 
     def __init__(self, linter: PyLinter = None):
         super().__init__(linter)
-        self.variables = set()
+        self.variables: set = set()
 
     # The following two methods are how we visit and leave desired nodes from the astroid library
     # Methods should start with visit_ or leave_ followed by lowercase class name of nodes
@@ -51,5 +51,4 @@ class NoReassignmentChecker(BaseChecker):
 
     # Leave the FunctionDef node: https://astroid.readthedocs.io/en/latest/api/astroid.nodes.html#astroid.nodes.FunctionDef
     def leave_functiondef(self, node: nodes) -> nodes:
-        self.string_sub_queries = set()
         return node
