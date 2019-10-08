@@ -14,6 +14,7 @@ from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import cached_property
 from baseplate.lib import config
+from baseplate.lib.file_watcher import DEFAULT_FILEWATCHER_BACKOFF
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 
@@ -127,8 +128,13 @@ class SecretsStore(ContextFactory):
 
     """
 
-    def __init__(self, path: str, timeout: Optional[int] = None):
-        self._filewatcher = FileWatcher(path, json.load, timeout=timeout)
+    def __init__(
+        self,
+        path: str,
+        timeout: Optional[int] = None,
+        backoff: Optional[float] = DEFAULT_FILEWATCHER_BACKOFF,
+    ):
+        self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
 
     def _get_data(self) -> Any:
         try:
@@ -335,11 +341,17 @@ def secrets_store_from_config(
         app_config,
         {
             config_prefix: {
-                "path": config.Optional(config.String, default="/var/local/secrets.json")
+                "path": config.Optional(config.String, default="/var/local/secrets.json"),
+                "backoff": config.Optional(config.Timespan),
             }
         },
     )
     options = getattr(cfg, config_prefix)
 
+    if options.backoff:
+        backoff = options.backoff.total_seconds()
+    else:
+        backoff = DEFAULT_FILEWATCHER_BACKOFF
+
     # pylint: disable=maybe-no-member
-    return SecretsStore(options.path, timeout=timeout)
+    return SecretsStore(options.path, timeout=timeout, backoff=backoff)

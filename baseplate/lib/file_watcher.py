@@ -47,6 +47,8 @@ from baseplate.lib.retry import RetryPolicy
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_FILEWATCHER_BACKOFF = 0.01
+
 
 class _NOT_LOADED:
     pass
@@ -100,6 +102,7 @@ class FileWatcher(Generic[T]):
         binary: bool = False,
         encoding: Optional[str] = None,
         newline: Optional[str] = None,
+        backoff: Optional[float] = DEFAULT_FILEWATCHER_BACKOFF,
     ):
         if binary and encoding is not None:
             raise TypeError("'encoding' is not supported in binary mode.")
@@ -117,7 +120,7 @@ class FileWatcher(Generic[T]):
 
         if timeout is not None:
             last_error = None
-            for _ in RetryPolicy.new(budget=timeout, backoff=0.01):
+            for _ in RetryPolicy.new(budget=timeout, backoff=backoff):
                 if self._data is not _NOT_LOADED:
                     break
 

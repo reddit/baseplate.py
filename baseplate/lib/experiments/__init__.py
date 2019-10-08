@@ -15,6 +15,7 @@ from baseplate.lib.events import DebugLogger
 from baseplate.lib.events import EventLogger
 from baseplate.lib.experiments.providers import parse_experiment
 from baseplate.lib.experiments.providers.base import Experiment
+from baseplate.lib.file_watcher import DEFAULT_FILEWATCHER_BACKOFF
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 
@@ -44,9 +45,13 @@ class ExperimentsContextFactory(ContextFactory):
     """
 
     def __init__(
-        self, path: str, event_logger: Optional[EventLogger] = None, timeout: Optional[float] = None
+        self,
+        path: str,
+        event_logger: Optional[EventLogger] = None,
+        timeout: Optional[float] = None,
+        backoff: Optional[float] = DEFAULT_FILEWATCHER_BACKOFF,
     ):
-        self._filewatcher = FileWatcher(path, json.load, timeout=timeout)
+        self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
         self._event_logger = event_logger
 
     def make_object_for_context(self, name: str, span: Span) -> "Experiments":
@@ -290,6 +295,7 @@ def experiments_client_from_config(
             config_prefix: {
                 "path": config.Optional(config.String, default="/var/local/experiments.json"),
                 "timeout": config.Optional(config.Timespan),
+                "backoff": config.Optional(config.Timespan),
             }
         },
     )
@@ -301,4 +307,9 @@ def experiments_client_from_config(
     else:
         timeout = None
 
-    return ExperimentsContextFactory(options.path, event_logger, timeout=timeout)
+    if options.backoff:
+        backoff = options.backoff.total_seconds()
+    else:
+        backoff = DEFAULT_FILEWATCHER_BACKOFF
+
+    return ExperimentsContextFactory(options.path, event_logger, timeout=timeout, backoff=backoff)
