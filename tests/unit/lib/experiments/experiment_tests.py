@@ -525,7 +525,9 @@ class ExperimentsClientFromConfigTests(unittest.TestCase):
             {"experiments.path": "/tmp/test"}, event_logger
         )
         self.assertIsInstance(experiments, ExperimentsContextFactory)
-        file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=None)
+        file_watcher_mock.assert_called_once_with(
+            "/tmp/test", json.load, timeout=None, backoff=None
+        )
 
     def test_timeout(self, file_watcher_mock):
         event_logger = mock.Mock(spec=DebugLogger)
@@ -533,7 +535,9 @@ class ExperimentsClientFromConfigTests(unittest.TestCase):
             {"experiments.path": "/tmp/test", "experiments.timeout": "60 seconds"}, event_logger
         )
         self.assertIsInstance(experiments, ExperimentsContextFactory)
-        file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=60.0)
+        file_watcher_mock.assert_called_once_with(
+            "/tmp/test", json.load, timeout=60.0, backoff=None
+        )
 
     def test_prefix(self, file_watcher_mock):
         event_logger = mock.Mock(spec=DebugLogger)
@@ -543,4 +547,6 @@ class ExperimentsClientFromConfigTests(unittest.TestCase):
             prefix="r2_experiments.",
         )
         self.assertIsInstance(experiments, ExperimentsContextFactory)
-        file_watcher_mock.assert_called_once_with("/tmp/test", json.load, timeout=60.0)
+        file_watcher_mock.assert_called_once_with(
+            "/tmp/test", json.load, timeout=60.0, backoff=None
+        )

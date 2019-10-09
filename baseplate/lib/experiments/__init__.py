@@ -41,12 +41,18 @@ class ExperimentsContextFactory(ContextFactory):
     :param timeout: How long, in seconds, to block instantiation waiting
         for the watched experiments file to become available (defaults to not
         blocking).
+    :param backoff: retry backoff time for experiments file watcher. Defaults to
+        None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
     """
 
     def __init__(
-        self, path: str, event_logger: Optional[EventLogger] = None, timeout: Optional[float] = None
+        self,
+        path: str,
+        event_logger: Optional[EventLogger] = None,
+        timeout: Optional[float] = None,
+        backoff: Optional[float] = None,
     ):
-        self._filewatcher = FileWatcher(path, json.load, timeout=timeout)
+        self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
         self._event_logger = event_logger
 
     def make_object_for_context(self, name: str, span: Span) -> "Experiments":
@@ -279,6 +285,8 @@ def experiments_client_from_config(
         settings for the experiments client.
     :param event_logger: The EventLogger to be used to log bucketing events.
     :param prefix: the prefix used to filter keys (defaults to "experiments.").
+    :param backoff: retry backoff time for experiments file watcher. Defaults to
+        None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
 
     """
     assert prefix.endswith(".")
@@ -290,6 +298,7 @@ def experiments_client_from_config(
             config_prefix: {
                 "path": config.Optional(config.String, default="/var/local/experiments.json"),
                 "timeout": config.Optional(config.Timespan),
+                "backoff": config.Optional(config.Timespan),
             }
         },
     )
@@ -301,4 +310,9 @@ def experiments_client_from_config(
     else:
         timeout = None
 
-    return ExperimentsContextFactory(options.path, event_logger, timeout=timeout)
+    if options.backoff:
+        backoff = options.backoff.total_seconds()
+    else:
+        backoff = None
+
+    return ExperimentsContextFactory(options.path, event_logger, timeout=timeout, backoff=backoff)

@@ -127,8 +127,8 @@ class SecretsStore(ContextFactory):
 
     """
 
-    def __init__(self, path: str, timeout: Optional[int] = None):
-        self._filewatcher = FileWatcher(path, json.load, timeout=timeout)
+    def __init__(self, path: str, timeout: Optional[int] = None, backoff: Optional[float] = None):
+        self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
 
     def _get_data(self) -> Any:
         try:
@@ -326,6 +326,8 @@ def secrets_store_from_config(
         for the secrets data to become available (defaults to not blocking).
     :param prefix: Specifies the prefix used to filter keys. Defaults
         to "secrets."
+    :param backoff: retry backoff time for secrets file watcher. Defaults to
+        None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
 
     """
     assert prefix.endswith(".")
@@ -335,11 +337,17 @@ def secrets_store_from_config(
         app_config,
         {
             config_prefix: {
-                "path": config.Optional(config.String, default="/var/local/secrets.json")
+                "path": config.Optional(config.String, default="/var/local/secrets.json"),
+                "backoff": config.Optional(config.Timespan),
             }
         },
     )
     options = getattr(cfg, config_prefix)
 
+    if options.backoff:
+        backoff = options.backoff.total_seconds()
+    else:
+        backoff = None
+
     # pylint: disable=maybe-no-member
-    return SecretsStore(options.path, timeout=timeout)
+    return SecretsStore(options.path, timeout=timeout, backoff=backoff)
