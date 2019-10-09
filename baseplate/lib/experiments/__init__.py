@@ -283,7 +283,7 @@ def experiments_client_from_config(
         settings for the experiments client.
     :param event_logger: The EventLogger to be used to log bucketing events.
     :param prefix: the prefix used to filter keys (defaults to "experiments.").
-    :param backoff: retry backoff time for experiments file watcher. Defaults to 
+    :param backoff: retry backoff time for experiments file watcher. Defaults to
         None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
 
     """
