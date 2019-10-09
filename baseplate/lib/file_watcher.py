@@ -91,6 +91,8 @@ class FileWatcher(Generic[T]):
     :param newline: Controls how universal newlines mode works
         (it only applies to text mode). It can be `None`, `""`, `"\\n"`, `"\\r"`,
         and `"\\r\\n"`.  This is not supported if `binary` is set to `True`.
+    :param backoff: retry backoff time for the file watcher. Defaults to 
+        None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
 
     """
 
