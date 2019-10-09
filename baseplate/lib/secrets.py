@@ -326,6 +326,8 @@ def secrets_store_from_config(
         for the secrets data to become available (defaults to not blocking).
     :param prefix: Specifies the prefix used to filter keys. Defaults
         to "secrets."
+    :param backoff: retry backoff time for secrets file watcher. Defaults to
+        None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
 
     """
     assert prefix.endswith(".")
