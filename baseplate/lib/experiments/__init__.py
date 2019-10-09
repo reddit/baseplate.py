@@ -41,6 +41,8 @@ class ExperimentsContextFactory(ContextFactory):
     :param timeout: How long, in seconds, to block instantiation waiting
         for the watched experiments file to become available (defaults to not
         blocking).
+    :param backoff: retry backoff time for experiments file watcher. Defaults to
+        None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
     """
 
     def __init__(
