@@ -102,7 +102,7 @@ class FileWatcher(Generic[T]):
         binary: bool = False,
         encoding: Optional[str] = None,
         newline: Optional[str] = None,
-        backoff: Optional[float] = DEFAULT_FILEWATCHER_BACKOFF,
+        backoff: Optional[float] = None,
     ):
         if binary and encoding is not None:
             raise TypeError("'encoding' is not supported in binary mode.")
@@ -117,6 +117,8 @@ class FileWatcher(Generic[T]):
         self._open_options = _OpenOptions(
             mode="rb" if binary else "r", encoding=encoding, newline=newline
         )
+
+        backoff = backoff or DEFAULT_FILEWATCHER_BACKOFF
 
         if timeout is not None:
             last_error = None

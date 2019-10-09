@@ -13,7 +13,6 @@ from baseplate.lib.experiments import EventType
 from baseplate.lib.experiments import Experiments
 from baseplate.lib.experiments import experiments_client_from_config
 from baseplate.lib.experiments import ExperimentsContextFactory
-from baseplate.lib.file_watcher import DEFAULT_FILEWATCHER_BACKOFF
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 
@@ -527,7 +526,7 @@ class ExperimentsClientFromConfigTests(unittest.TestCase):
         )
         self.assertIsInstance(experiments, ExperimentsContextFactory)
         file_watcher_mock.assert_called_once_with(
-            "/tmp/test", json.load, timeout=None, backoff=DEFAULT_FILEWATCHER_BACKOFF
+            "/tmp/test", json.load, timeout=None, backoff=None
         )
 
     def test_timeout(self, file_watcher_mock):
@@ -537,7 +536,7 @@ class ExperimentsClientFromConfigTests(unittest.TestCase):
         )
         self.assertIsInstance(experiments, ExperimentsContextFactory)
         file_watcher_mock.assert_called_once_with(
-            "/tmp/test", json.load, timeout=60.0, backoff=DEFAULT_FILEWATCHER_BACKOFF
+            "/tmp/test", json.load, timeout=60.0, backoff=None
         )
 
     def test_prefix(self, file_watcher_mock):
@@ -549,5 +548,5 @@ class ExperimentsClientFromConfigTests(unittest.TestCase):
         )
         self.assertIsInstance(experiments, ExperimentsContextFactory)
         file_watcher_mock.assert_called_once_with(
-            "/tmp/test", json.load, timeout=60.0, backoff=DEFAULT_FILEWATCHER_BACKOFF
+            "/tmp/test", json.load, timeout=60.0, backoff=None
         )
