@@ -4,7 +4,7 @@ name: Lint
 
 steps:
     - name: Lint
-      image: python:3.7
+      image: python:3.8
       environment:
           PIP_OPTIONS:
               from_secret: pip_options
@@ -47,8 +47,23 @@ steps:
           - pytest
       depends_on: [clone]
 
+    - name: "Python 3.8"
+      image: python:3.8
+      environment:
+          BASEPLATE_CASSANDRA_ADDR: "cassandra:9042"
+          BASEPLATE_MEMCACHED_ADDR: "memcached:11211"
+          BASEPLATE_REDIS_ADDR: "redis:6379"
+          BASEPLATE_VAULT_ADDR: "vault:8200"
+          BASEPLATE_ZOOKEEPER_ADDR: "zookeeper:2181"
+          PIP_OPTIONS:
+              from_secret: pip_options
+      commands:
+          - pip install $PIP_OPTIONS -r requirements-test.txt
+          - pytest
+      depends_on: [clone]
+
     - name: "Doctests"
-      image: python:3.7-buster
+      image: python:3.8-buster
       commands:
           - apt-get update && apt-get install -y libenchant1c2a
           - pip install -r requirements-docs.txt
