@@ -47,6 +47,7 @@ class NoDbQueryStringFormatChecker(BaseChecker):
             and self.check_string_is_query(node.value.func.expr.value)
         ):
             variable_is_query = True
+
         if variable_is_query and node.targets[0].name not in self.string_sub_queries:
             self.string_sub_queries.add(node.targets[0].name)
         elif not variable_is_query and node.targets[0].name in self.string_sub_queries:

@@ -39,7 +39,8 @@ class NoReassignmentChecker(BaseChecker):
         super().__init__(linter)
         self.variables: set = set()
 
-    # The following two methods are how we visit and leave desired nodes from the astroid library
+    # The following two methods are called for us by pylint/astroid
+    # The linter walks through the tree, visiting and leaving desired nodes
     # Methods should start with visit_ or leave_ followed by lowercase class name of nodes
     # List of available nodes: https://astroid.readthedocs.io/en/latest/api/astroid.nodes.html
 

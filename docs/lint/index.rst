@@ -23,7 +23,7 @@ Follow the `Pylint user guide`_ for instructions to generate a default pylintrc 
 Adding Custom Checkers
 ^^^^^^^^^^^^^^^^^^^^^^
 
-In your pylintrc file, add baseplate.lint to the [MASTER] load-plugins configuration.
+In your ``pylintrc`` file, add ``baseplate.lint`` to the ``[MASTER]`` load-plugins configuration.
 
 .. code-block:: none
 
