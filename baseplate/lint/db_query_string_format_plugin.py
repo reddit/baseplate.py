@@ -11,7 +11,7 @@ class NoDbQueryStringFormatChecker(BaseChecker):
     priority = -1
     msgs = {
         "W9000": (
-            "Python string formatting found in Cassandra database query. Database queries should be using Cassandra driver parameter substitution.",
+            "Python string formatting found in database query. Database queries should use native parameter substitution.",
             "database-query-string-format",
             "This allows CQL/SQL injection.",
         )
