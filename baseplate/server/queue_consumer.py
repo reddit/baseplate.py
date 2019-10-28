@@ -36,7 +36,7 @@ HealthcheckCallback = Callable[[WSGIEnvironment], bool]
 def make_simple_healthchecker(
     listener: socket.socket, callback: Optional[HealthcheckCallback] = None
 ) -> WSGIServer:
-    def healthcheck(environ: WSGIEnvironment, start_response: "StartResponse") -> List[str]:
+    def healthcheck(environ: WSGIEnvironment, start_response: "StartResponse") -> List[bytes]:
         ok = True
         if callback:
             ok = callback(environ)
