@@ -43,9 +43,9 @@ def make_simple_healthchecker(
 
         if ok:
             start_response("200 OK", [("Content-Type", "text/plain")])
-            return ["all good, boss"]
+            return [b"all good, boss"]
         start_response("503 UNAVAILABLE", [("Content-Type", "text/plain")])
-        return ["he's dead jim"]
+        return [b"he's dead jim"]
 
     return WSGIServer(listener=listener, application=healthcheck)
 
