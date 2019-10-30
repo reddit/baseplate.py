@@ -277,14 +277,14 @@ class Timer:
     def start(self) -> None:
         """Record the current time as the start of the timer."""
         assert not self.start_time, "timer already started"
-        assert not self.stopped, "time already stopped"
+        assert not self.stopped, "timer already stopped"
 
         self.start_time = time.time()
 
     def stop(self) -> None:
         """Stop the timer and record the total elapsed time."""
         assert self.start_time, "timer not started"
-        assert not self.stopped, "time already stopped"
+        assert not self.stopped, "timer already stopped"
 
         now = time.time()
         elapsed = now - self.start_time
