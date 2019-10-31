@@ -60,7 +60,7 @@ def engine_from_config(
     options = parser.parse(prefix[:-1], app_config)
     url = make_url(options.url)
 
-    if options.pool_recycle:
+    if options.pool_recycle is not None:
         kwargs.setdefault("pool_recycle", options.pool_recycle)
 
     if options.credentials_secret:
