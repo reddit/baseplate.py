@@ -45,14 +45,23 @@ def engine_from_config(
         credentials from ``secrets`` as a :py:class:`~baseplate.lib.secrets.CredentialSecret`.
         If this is supplied, any credentials given in ``url`` we be replaced by
         these.
+    * ``pool_recycle`` (optional): this setting causes the pool to recycle connections after
+        the given number of seconds has passed. It defaults to -1, or no timeout.
 
     """
     assert prefix.endswith(".")
     parser = config.SpecParser(
-        {"url": config.String, "credentials_secret": config.Optional(config.String)}
+        {
+            "url": config.String,
+            "credentials_secret": config.Optional(config.String),
+            "pool_recycle": config.Optional(config.Integer),
+        }
     )
     options = parser.parse(prefix[:-1], app_config)
     url = make_url(options.url)
+
+    if options.pool_recycle is not None:
+        kwargs.setdefault("pool_recycle", options.pool_recycle)
 
     if options.credentials_secret:
         if not secrets:
