@@ -60,6 +60,9 @@ def engine_from_config(
     options = parser.parse(prefix[:-1], app_config)
     url = make_url(options.url)
 
+    if options.pool_recycle:
+        kwargs.setdefault("pool_recycle", options.pool_recycle)
+
     if options.credentials_secret:
         if not secrets:
             raise TypeError("'secrets' is required if 'credentials_secret' is set")
@@ -67,10 +70,7 @@ def engine_from_config(
         url.username = credentials.username
         url.password = credentials.password
 
-    if options.pool_recycle:
-        return create_engine(url, pool_recycle=int(options.pool_recycle), **kwargs)
-    else:
-        return create_engine(url, **kwargs)
+    return create_engine(url, **kwargs)
 
 
 class SQLAlchemySession(config.Parser):
