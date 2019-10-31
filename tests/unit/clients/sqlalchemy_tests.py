@@ -39,7 +39,7 @@ class EngineFromConfigTests(unittest.TestCase):
             {
                 "database.url": "postgresql://fizz:buzz@localhost:9000/db",
                 "database.credentials_secret": "secret/sql/account",
-                "database.pool_recycle": 60,
+                "database.pool_recycle": "60",
             },
             self.secrets,
         )

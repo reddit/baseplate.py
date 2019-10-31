@@ -54,7 +54,7 @@ def engine_from_config(
         {
             "url": config.String,
             "credentials_secret": config.Optional(config.String),
-            "pool_recycle": config.Optional(config.String),
+            "pool_recycle": config.Optional(config.Integer),
         }
     )
     options = parser.parse(prefix[:-1], app_config)
