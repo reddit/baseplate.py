@@ -45,11 +45,17 @@ def engine_from_config(
         credentials from ``secrets`` as a :py:class:`~baseplate.lib.secrets.CredentialSecret`.
         If this is supplied, any credentials given in ``url`` we be replaced by
         these.
+    * ``pool_recycle`` (optional): this setting causes the pool to recycle connections after
+        the given number of seconds has passed. It defaults to -1, or no timeout.
 
     """
     assert prefix.endswith(".")
     parser = config.SpecParser(
-        {"url": config.String, "credentials_secret": config.Optional(config.String)}
+        {
+            "url": config.String,
+            "credentials_secret": config.Optional(config.String),
+            "pool_recycle": config.Optional(config.String),
+        }
     )
     options = parser.parse(prefix[:-1], app_config)
     url = make_url(options.url)
@@ -61,7 +67,10 @@ def engine_from_config(
         url.username = credentials.username
         url.password = credentials.password
 
-    return create_engine(url, **kwargs)
+    if options.pool_recycle:
+        return create_engine(url, pool_recycle=int(options.pool_recycle), **kwargs)
+    else:
+        return create_engine(url, **kwargs)
 
 
 class SQLAlchemySession(config.Parser):
