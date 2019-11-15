@@ -3,6 +3,8 @@ baseplate.py
 
 |Build Status|
 
+Documentation: https://baseplate.readthedocs.io/en/stable/
+
 It's much easier to manage a bunch of services when they all have the same
 shape: the way they're developed, the way they interact with the infrastructure
 they run on, and the way they interact with each other. Baseplate is reddit's
