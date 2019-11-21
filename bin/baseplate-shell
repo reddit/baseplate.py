@@ -11,7 +11,4 @@ patch_all()
 
 from baseplate.server import load_and_run_shell
 
-print("baseplate-tshell has been renamed to baseplate-shell. Please use that in the future!")
-print()
-
 load_and_run_shell()

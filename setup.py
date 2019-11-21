@@ -32,8 +32,9 @@ setup(
         "zookeeper": ["kazoo>=2.5.0"],
     },
     scripts=[
-        "bin/baseplate-serve",
         "bin/baseplate-script",
+        "bin/baseplate-serve",
+        "bin/baseplate-shell",
         "bin/baseplate-tshell",
         "bin/baseplate-healthcheck",
     ],

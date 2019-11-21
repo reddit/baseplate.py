@@ -87,7 +87,7 @@ class Configuration(NamedTuple):
     server: Optional[Dict[str, str]]
     app: Dict[str, str]
     has_logging_options: bool
-    tshell: Optional[Dict[str, str]]
+    shell: Optional[Dict[str, str]]
 
 
 def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) -> Configuration:
@@ -100,11 +100,13 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
     server_config = dict(parser.items("server:" + server_name)) if server_name else None
     app_config = dict(parser.items("app:" + app_name))
     has_logging_config = parser.has_section("loggers")
-    tshell_config = None
-    if parser.has_section("tshell"):
-        tshell_config = dict(parser.items("tshell"))
+    shell_config = None
+    if parser.has_section("shell"):
+        shell_config = dict(parser.items("shell"))
+    elif parser.has_section("tshell"):
+        shell_config = dict(parser.items("tshell"))
 
-    return Configuration(filename, server_config, app_config, has_logging_config, tshell_config)
+    return Configuration(filename, server_config, app_config, has_logging_config, shell_config)
 
 
 def configure_logging(config: Configuration, debug: bool) -> None:
@@ -313,7 +315,7 @@ def _fn_accepts_additional_args(script_fn: Callable[..., Any], fn_args: Sequence
     return allows_additional_args
 
 
-def load_and_run_tshell() -> None:
+def load_and_run_shell() -> None:
     """Launch a shell for a thrift service."""
 
     sys.path.append(os.getcwd())
@@ -355,8 +357,8 @@ def load_and_run_tshell() -> None:
     span = baseplate.make_server_span(context, "shell")
     env["context"] = span.context
 
-    if config.tshell and "setup" in config.tshell:
-        setup = _load_factory(config.tshell["setup"])
+    if config.shell and "setup" in config.shell:
+        setup = _load_factory(config.shell["setup"])
         setup(env, env_banner)
 
     # generate banner text
