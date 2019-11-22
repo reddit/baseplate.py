@@ -81,9 +81,21 @@ class AuthenticationToken:
     def oauth_client_type(self) -> Optional[str]:
         raise NotImplementedError
 
+    @property
+    def scopes(self) -> Set[str]:
+        raise NotImplementedError
+
+    @property
+    def loid_id(self) -> Optional[str]:
+        raise NotImplementedError
+
+    @property
+    def loid_created_ms(self) -> Optional[int]:
+        raise NotImplementedError
+
 
 class ValidatedAuthenticationToken(AuthenticationToken):
-    def __init__(self, payload: Dict[str, str]):
+    def __init__(self, payload: Dict[str, Any]):
         self.payload = payload
 
     @property
@@ -92,7 +104,7 @@ class ValidatedAuthenticationToken(AuthenticationToken):
 
     @cached_property
     def user_roles(self) -> Set[str]:  # type: ignore # pylint: disable=W0236
-        return set(self.payload.get("roles", []))
+        return set(self.payload.get("roles") or [])
 
     @property
     def oauth_client_id(self) -> Optional[str]:
@@ -101,6 +113,18 @@ class ValidatedAuthenticationToken(AuthenticationToken):
     @property
     def oauth_client_type(self) -> Optional[str]:
         return self.payload.get("client_type")
+
+    @property
+    def scopes(self) -> Set[str]:
+        return set(self.payload.get("scopes") or [])
+
+    @property
+    def loid_id(self) -> Optional[str]:
+        return (self.payload.get("loid") or {}).get("id")
+
+    @property
+    def loid_created_ms(self) -> Optional[int]:
+        return (self.payload.get("loid") or {}).get("created_ms")
 
 
 class InvalidAuthenticationToken(AuthenticationToken):
@@ -118,6 +142,18 @@ class InvalidAuthenticationToken(AuthenticationToken):
 
     @property
     def oauth_client_type(self) -> Optional[str]:
+        raise NoAuthenticationError
+
+    @property
+    def scopes(self) -> Set[str]:
+        raise NoAuthenticationError
+
+    @property
+    def loid_id(self) -> Optional[str]:
+        raise NoAuthenticationError
+
+    @property
+    def loid_created_ms(self) -> Optional[int]:
         raise NoAuthenticationError
 
 
