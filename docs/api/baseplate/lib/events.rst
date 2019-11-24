@@ -36,9 +36,8 @@ instantiate and fill out an event object, and pass it into the queue::
    def make_wsgi_app(app_config):
        ...
 
-       baseplate = Baseplate()
+       baseplate = Baseplate(app_config)
        baseplate.configure_context(
-           app_config,
            {
                ...
 

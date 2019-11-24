@@ -15,7 +15,7 @@ An abbreviated example of it in use::
 
 
     def make_processor(app_config):
-        baseplate = Baseplate()
+        baseplate = Baseplate(app_config)
 
         handler = MyHandler()
         processor = my_thrift.MyService.Processor(handler)

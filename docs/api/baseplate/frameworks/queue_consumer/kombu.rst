@@ -21,7 +21,7 @@ An abbreviated example of it in use::
         print(f"processing {body}")
 
     def make_consumer_factory(app_config):
-        baseplate = Baseplate()
+        baseplate = Baseplate(app_config)
         exchange = Exchange("reddit_exchange", "direct")
         connection = Connection(
           hostname="amqp://guest:guest@reddit.local:5672",

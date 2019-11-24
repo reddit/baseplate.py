@@ -20,7 +20,7 @@ An abbreviated example of it in use::
         print(f"processing {data}")
 
     def make_consumer_factory(app_config):
-        baseplate = Baseplate()
+        baseplate = Baseplate(app_config)
         return InOrderConsumerFactory.new(
             name="kafka_consumer.link_consumer_v0",
             baseplate=baseplate,
