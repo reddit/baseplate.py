@@ -45,8 +45,8 @@ class _ContextAwareHandler:
                 # this is an expected exception, as defined in the IDL
                 span.finish()
                 raise
-            except Exception:
-                # the handler crashed!
+            except:  # noqa: E722
+                # the handler crashed (or timed out)!
                 span.finish(exc_info=sys.exc_info())
                 raise
             else:

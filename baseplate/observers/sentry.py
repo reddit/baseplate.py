@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 
@@ -15,6 +16,7 @@ from baseplate import RequestContext
 from baseplate import ServerSpanObserver
 from baseplate import Span
 from baseplate.lib import config
+from baseplate.observers.timeout import ServerTimeout
 
 
 if TYPE_CHECKING:
@@ -88,7 +90,7 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
             break
 
     # pylint: disable=maybe-no-member
-    return raven.Client(
+    client = raven.Client(
         dsn=cfg.sentry.dsn,
         site=cfg.sentry.site,
         release=release,
@@ -99,6 +101,9 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
         sample_rate=cfg.sentry.sample_rate,
         processors=cfg.sentry.processors,
     )
+
+    client.ignore_exceptions.add(ServerTimeout)
+    return client
 
 
 class SentryBaseplateObserver(BaseplateObserver):
@@ -155,13 +160,23 @@ class SentryUnhandledErrorReporter:
     def __init__(self, hub: "Hub", client: raven.Client):
         self.original_print_exception = getattr(hub, "print_exception")
         self.raven = client
+        self.logger = logging.getLogger(__name__)
 
     def __call__(
         self,
-        context: RequestContext,
+        context: Any,
         exc_type: Optional[Type[BaseException]],
         value: Optional[BaseException],
         tb: Optional[TracebackType],
     ) -> None:
         self.raven.captureException((exc_type, value, tb))
-        self.original_print_exception(context, exc_type, value, tb)
+
+        if value and isinstance(value, ServerTimeout):
+            self.logger.warning(
+                "Server timed out processing for %r after %0.2f seconds",
+                value.span_name,
+                value.timeout_seconds,
+                exc_info=(exc_type, value, tb) if value.debug else None,  # type: ignore
+            )
+        else:
+            self.original_print_exception(context, exc_type, value, tb)

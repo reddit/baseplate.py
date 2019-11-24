@@ -14,6 +14,8 @@ from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
 
+import gevent.monkey
+
 from baseplate.lib import config
 from baseplate.lib import metrics
 
@@ -360,6 +362,15 @@ class Baseplate:
             raise Exception("configuration must be passed to Baseplate() or here")
 
         self.configure_logging()
+
+        if gevent.monkey.is_module_patched("socket"):
+            # pylint: disable=cyclic-import
+            from baseplate.observers.timeout import TimeoutBaseplateObserver
+
+            timeout_observer = TimeoutBaseplateObserver.from_config(app_config)
+            self.register(timeout_observer)
+        else:
+            skipped.append("timeout")
 
         if "metrics.namespace" in app_config:
             from baseplate.lib.metrics import metrics_client_from_config
