@@ -9,6 +9,7 @@ from typing import Dict
 from typing import List
 from typing import NamedTuple
 from typing import Optional
+from typing import overload
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -242,10 +243,11 @@ class Baseplate:
 
     """
 
-    def __init__(self) -> None:
+    def __init__(self, app_config: Optional[config.RawConfig] = None) -> None:
         self.observers: List[BaseplateObserver] = []
         self._metrics_client: Optional[metrics.Client] = None
         self._context_config: Dict[str, Any] = {}
+        self._app_config = app_config
 
     def register(self, observer: BaseplateObserver) -> None:
         """Register an observer.
@@ -334,7 +336,7 @@ class Baseplate:
         self.register(SentryBaseplateObserver(client))
 
     def configure_observers(
-        self, app_config: config.RawConfig, module_name: Optional[str] = None
+        self, app_config: Optional[config.RawConfig] = None, module_name: Optional[str] = None
     ) -> None:
         """Configure diagnostics observers based on application configuration.
 
@@ -345,12 +347,17 @@ class Baseplate:
         available for each observer.
 
         :param app_config: The application configuration which should have
-            settings for the error reporter.
+            settings for the error reporter. If not specified, the config must be passed
+            to the Baseplate() constructor.
         :param module_name: Name of the root package of the application. If not specified,
             will be guessed from the package calling this function.
 
         """
         skipped = []
+
+        app_config = app_config or self._app_config
+        if not app_config:
+            raise Exception("configuration must be passed to Baseplate() or here")
 
         self.configure_logging()
 
@@ -389,7 +396,15 @@ class Baseplate:
                 "The following observers are unconfigured and won't run: %s", ", ".join(skipped)
             )
 
+    @overload
+    def configure_context(self, context_spec: Dict[str, Any]) -> None:
+        ...
+
+    @overload  # noqa: F811
     def configure_context(self, app_config: config.RawConfig, context_spec: Dict[str, Any]) -> None:
+        ...
+
+    def configure_context(self, *args: Any, **kwargs: Any) -> None:  # noqa: F811
         """Add a number of objects to each request's context object.
 
         Configure and attach multiple clients to the
@@ -400,8 +415,8 @@ class Baseplate:
 
         For example, a configuration like::
 
-            baseplate = Baseplate()
-            baseplate.configure_context(app_config, {
+            baseplate = Baseplate(app_config)
+            baseplate.configure_context({
                 "cfg": {
                     "doggo_is_good": config.Boolean,
                 },
@@ -423,6 +438,21 @@ class Baseplate:
             look like.
 
         """
+
+        if len(args) == 1:
+            kwargs["context_spec"] = args[0]
+        elif len(args) == 2:
+            kwargs["app_config"] = args[0]
+            kwargs["context_spec"] = args[1]
+        else:
+            raise Exception("bad parameters to configure_context")
+
+        app_config = kwargs.get("app_config", self._app_config)
+        context_spec = kwargs["context_spec"]
+
+        if app_config is None:
+            raise Exception("configuration must be passed to Baseplate() or here")
+
         cfg = config.parse_config(app_config, context_spec)
         self._context_config.update(cfg)
 

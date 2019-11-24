@@ -16,8 +16,8 @@ configuration options are available.
 .. code-block:: python
 
    def make_wsgi_app(app_config):
-       baseplate = Baseplate()
-       baseplate.configure_observers(app_config)
+       baseplate = Baseplate(app_config)
+       baseplate.configure_observers()
 
        ...
 
