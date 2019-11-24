@@ -31,6 +31,7 @@ from baseplate.lib import config
 from baseplate.lib import warn_deprecated
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
+from baseplate.observers.timeout import ServerTimeout
 
 
 if typing.TYPE_CHECKING:
@@ -363,6 +364,12 @@ class TraceServerSpanObserver(TraceSpanObserver):
 
     def on_start(self) -> None:
         self.start = current_epoch_microseconds()
+
+    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+        if exc_info and exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):
+            self.on_set_tag("timed_out", True)
+
+        super().on_finish(exc_info)
 
     def on_child_span_created(self, span: Span) -> None:
         """Perform tracing-related actions for child spans creation.

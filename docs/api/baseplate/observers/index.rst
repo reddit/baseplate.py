@@ -27,3 +27,4 @@ configuration options are available.
    statsd
    sentry
    tracing
+   timeout
