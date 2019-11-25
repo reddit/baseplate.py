@@ -11,12 +11,15 @@ Baseplate's facilities into the Thrift request lifecycle.
 
 An abbreviated example of it in use::
 
+    logger = logging.getLogger(__name__)
+
+
     def make_processor(app_config):
         baseplate = Baseplate()
 
         handler = MyHandler()
         processor = my_thrift.MyService.Processor(handler)
-        return baseplateify_processor(processor, baseplate)
+        return baseplateify_processor(processor, logger, baseplate)
 
 .. _`Thrift`: https://thrift.apache.org/
 
