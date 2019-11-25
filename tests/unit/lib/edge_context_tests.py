@@ -22,7 +22,7 @@ class AuthenticationTokenTests(unittest.TestCase):
         self.assertEqual(token.oauth_client_id, "client_id")
         self.assertEqual(token.oauth_client_type, "type_a")
         self.assertEqual(token.scopes, {"scope_a"})
-        self.assertEqual(token.loid_id, "t2_user")
+        self.assertEqual(token.loid, "t2_user")
         self.assertEqual(token.loid_created_ms, 1574458470)
 
     def test_validated_authentication_token_none(self):
@@ -41,7 +41,7 @@ class AuthenticationTokenTests(unittest.TestCase):
         self.assertEqual(token.oauth_client_id, None)
         self.assertEqual(token.oauth_client_type, None)
         self.assertEqual(token.scopes, set())
-        self.assertEqual(token.loid_id, None)
+        self.assertEqual(token.loid, None)
         self.assertEqual(token.loid_created_ms, None)
 
     def test_invalidated_authentication_token(self):

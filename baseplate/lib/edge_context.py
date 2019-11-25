@@ -86,7 +86,7 @@ class AuthenticationToken:
         raise NotImplementedError
 
     @property
-    def loid_id(self) -> Optional[str]:
+    def loid(self) -> Optional[str]:
         raise NotImplementedError
 
     @property
@@ -119,7 +119,7 @@ class ValidatedAuthenticationToken(AuthenticationToken):
         return set(self.payload.get("scopes") or [])
 
     @property
-    def loid_id(self) -> Optional[str]:
+    def loid(self) -> Optional[str]:
         return (self.payload.get("loid") or {}).get("id")
 
     @property
@@ -149,7 +149,7 @@ class InvalidAuthenticationToken(AuthenticationToken):
         raise NoAuthenticationError
 
     @property
-    def loid_id(self) -> Optional[str]:
+    def loid(self) -> Optional[str]:
         raise NoAuthenticationError
 
     @property
