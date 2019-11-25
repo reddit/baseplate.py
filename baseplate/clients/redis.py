@@ -13,7 +13,7 @@ from baseplate.lib import message_queue
 
 def pool_from_config(
     app_config: config.RawConfig, prefix: str = "redis.", **kwargs: Any
-) -> redis.BlockingConnectionPool:
+) -> redis.ConnectionPool:
     """Make a ConnectionPool from a configuration dictionary.
 
     The keys useful to :py:func:`pool_from_config` should be prefixed, e.g.
@@ -113,15 +113,15 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
         super().__init__(connection_pool=connection_pool)
 
-    # pylint: disable=arguments-differ
-    def execute_command(self, command: str, *args: Any, **kwargs: Any) -> Any:
+    def execute_command(self, *args: Any, **kwargs: Any) -> Any:
+        command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
         with self.server_span.make_child(trace_name):
             return super().execute_command(command, *args, **kwargs)
 
     # pylint: disable=arguments-differ
-    def pipeline(
+    def pipeline(  # type: ignore
         self, name: str, transaction: bool = True, shard_hint: Optional[str] = None
     ) -> "MonitoredRedisPipeline":
         """Create a pipeline.
@@ -171,7 +171,8 @@ class MonitoredRedisPipeline(redis.client.StrictPipeline):
         self.server_span = server_span
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
-    def execute(self, **kwargs: Any) -> Any:  # pylint: disable=arguments-differ
+    # pylint: disable=arguments-differ
+    def execute(self, **kwargs: Any) -> Any:  # type: ignore
         with self.server_span.make_child(self.trace_name):
             return super().execute(**kwargs)
 
@@ -211,7 +212,7 @@ class MessageQueue:
         if timeout == 0:
             message = self.client.lpop(self.queue)
         else:
-            message = self.client.blpop(self.queue, timeout=timeout)
+            message = self.client.blpop(self.queue, timeout=timeout or 0)
 
             if message:
                 message = message[1]
@@ -230,7 +231,7 @@ class MessageQueue:
                out of the queue as a string regardless of what type they are
                when passed into this method.
         """
-        return self.client.rpush(self.queue, message)
+        self.client.rpush(self.queue, message)
 
     def unlink(self) -> None:
         """Not implemented for Redis variant."""

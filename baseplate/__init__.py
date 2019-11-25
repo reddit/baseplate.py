@@ -374,7 +374,10 @@ class Baseplate:
             from baseplate.observers.sentry import error_reporter_from_config
 
             if module_name is None:
-                module_name = inspect.getmodule(inspect.stack()[1].frame).__name__
+                module = inspect.getmodule(inspect.stack()[1].frame)
+                if not module:
+                    raise Exception("failed to detect module name, pass one explicitly")
+                module_name = module.__name__
 
             error_reporter = error_reporter_from_config(app_config, module_name)
             self.configure_error_reporting(error_reporter)

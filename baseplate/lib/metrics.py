@@ -212,9 +212,9 @@ class Batch(BaseClient):
         exc_type: Optional[Type[BaseException]],
         value: Optional[BaseException],
         traceback: Optional[TracebackType],
-    ) -> bool:
+    ) -> None:
         self.flush()
-        return False  # don't swallow exception
+        return None  # don't swallow exception
 
     def flush(self) -> None:
         """Immediately send the batched metrics."""
@@ -311,9 +311,9 @@ class Timer:
         exc_type: Optional[Type[BaseException]],
         value: Optional[BaseException],
         traceback: Optional[TracebackType],
-    ) -> bool:
+    ) -> None:
         self.stop()
-        return False  # don't swallow exception
+        return None  # don't swallow exception
 
 
 class Counter:
