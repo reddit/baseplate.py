@@ -91,7 +91,7 @@ class ValidatedAuthenticationToken(AuthenticationToken):
         return self.payload.get("sub")
 
     @cached_property
-    def user_roles(self) -> Set[str]:  # type: ignore
+    def user_roles(self) -> Set[str]:  # type: ignore # pylint: disable=W0236
         return set(self.payload.get("roles", []))
 
     @property

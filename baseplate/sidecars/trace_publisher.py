@@ -79,7 +79,7 @@ class ZipkinPublisher:
             "User-Agent": "baseplate-trace-publisher/1.0",
             "Content-Type": "application/json",
         }
-        for time_remaining in RetryPolicy.new(attempts=self.retry_limit):
+        for _ in RetryPolicy.new(attempts=self.retry_limit):
             try:
                 with self.metrics.timer("post"):
                     response = self.session.post(

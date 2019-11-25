@@ -343,7 +343,7 @@ def load_and_run_shell() -> None:
         config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     logging.basicConfig(level=logging.INFO)
 
-    env = dict()
+    env: Dict[str, Any] = {}
     env_banner = {
         "app": "This project's app instance",
         "context": "The context for this shell instance's span",
