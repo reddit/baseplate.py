@@ -76,7 +76,8 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
     )
 
     application_module = sys.modules[module_name]
-    directory = os.path.dirname(application_module.__file__)
+    module_path = os.path.abspath(application_module.__file__)
+    directory = os.path.dirname(module_path)
     release = None
     while directory != "/":
         try:
