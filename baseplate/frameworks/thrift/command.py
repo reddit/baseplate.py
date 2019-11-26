@@ -61,9 +61,10 @@ class BuildThriftCommand(Command):
                         for line in lines:
                             prefix = "from " + module_name
                             if line.startswith(prefix):
-                                f.write("from " + full_package_name + line[len(prefix) :])
-                            else:
-                                f.write(line)
+                                if not line.startswith("from " + full_package_name):
+                                    f.write("from " + full_package_name + line[len(prefix) :])
+                                    continue
+                            f.write(line)
 
 
 class ThriftBuildPyCommand(build_py):
