@@ -48,7 +48,7 @@ class _OpenConnectionsReporter(_Reporter):
 
 class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
     def __init__(self) -> None:
-        self.live_requests: Dict[int:float] = {}
+        self.live_requests: Dict[int, float] = {}
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         observer = _ActiveRequestsServerSpanObserver(self, server_span.trace_id)
