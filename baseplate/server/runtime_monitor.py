@@ -11,7 +11,6 @@ from typing import Dict
 from typing import List
 from typing import NoReturn
 from typing import Optional
-from typing import Set
 
 import gevent.events
 
@@ -28,6 +27,7 @@ from baseplate.lib import metrics
 
 
 REPORT_INTERVAL_SECONDS = 10
+MAX_REQUEST_AGE = 60
 
 
 logger = logging.getLogger(__name__)
@@ -48,13 +48,22 @@ class _OpenConnectionsReporter(_Reporter):
 
 class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
     def __init__(self) -> None:
-        self.live_requests: Set[int] = set()
+        self.live_requests: Dict[int:float] = {}
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         observer = _ActiveRequestsServerSpanObserver(self, server_span.trace_id)
         server_span.register(observer)
 
     def report(self, batch: metrics.Batch) -> None:
+        threshold = time.time() - MAX_REQUEST_AGE
+        stale_requests = [
+            trace_id
+            for trace_id, start_time in self.live_requests.items()
+            if start_time < threshold
+        ]
+        for stale_request_id in stale_requests:
+            self.live_requests.pop(stale_request_id, None)
+
         batch.gauge("active_requests").replace(len(self.live_requests))
 
 
@@ -64,10 +73,10 @@ class _ActiveRequestsServerSpanObserver(ServerSpanObserver):
         self.trace_id = trace_id
 
     def on_start(self) -> None:
-        self.reporter.live_requests.add(self.trace_id)
+        self.reporter.live_requests[self.trace_id] = time.time()
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.reporter.live_requests.remove(self.trace_id)
+        self.reporter.live_requests.pop(self.trace_id, None)
 
 
 class _BlockedGeventHubReporter(_Reporter):
