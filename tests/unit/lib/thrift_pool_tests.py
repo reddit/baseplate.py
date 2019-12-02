@@ -4,6 +4,8 @@ import unittest
 
 from unittest import mock
 
+import pytest
+
 from thrift.protocol import TBinaryProtocol
 from thrift.protocol import THeaderProtocol
 from thrift.Thrift import TException
@@ -36,6 +38,53 @@ class MakeTransportTests(unittest.TestCase):
 
         with self.assertRaises(Exception):
             thrift_pool._make_transport(endpoint)
+
+
+@mock.patch("baseplate.lib.thrift_pool.RetryPolicy.new")
+class MaxRetriesRenameTests(unittest.TestCase):
+    def test_default_is_3(self, new_retry_policy):
+        thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT)
+        new_retry_policy.assert_called_with(attempts=3)
+
+    def test_default_through_parser(self, new_retry_policy):
+        config = {"example.endpoint": "127.0.0.1:1234"}
+        thrift_pool.thrift_pool_from_config(config, prefix="example.")
+        new_retry_policy.assert_called_with(attempts=3)
+
+    def test_dont_pass_both(self, new_retry_policy):
+        with self.assertRaises(Exception):
+            thrift_pool.ThriftConnectionPool(
+                EXAMPLE_ENDPOINT, max_retries=5, max_connection_attempts=5
+            )
+
+    def test_dont_configure_both(self, new_retry_policy):
+        config = {
+            "example.endpoint": "127.0.0.1:1234",
+            "example.max_retries": "5",
+            "example.max_connection_attempts": "5",
+        }
+        with self.assertRaises(Exception):
+            thrift_pool.thrift_pool_from_config(config, prefix="example.")
+
+    def test_max_retries_still_works_but_deprecated(self, new_retry_policy):
+        with pytest.deprecated_call():
+            thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT, max_retries=5)
+        new_retry_policy.assert_called_with(attempts=5)
+
+    def test_max_retries_still_works_through_config(self, new_retry_policy):
+        config = {"example.endpoint": "127.0.0.1:1234", "example.max_retries": "5"}
+        with pytest.deprecated_call():
+            thrift_pool.thrift_pool_from_config(config, prefix="example.")
+        new_retry_policy.assert_called_with(attempts=5)
+
+    def test_max_connection_attempts_works(self, new_retry_policy):
+        thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT, max_connection_attempts=5)
+        new_retry_policy.assert_called_with(attempts=5)
+
+    def test_max_connection_attempts_works_through_config(self, new_retry_policy):
+        config = {"example.endpoint": "127.0.0.1:1234", "example.max_connection_attempts": "5"}
+        thrift_pool.thrift_pool_from_config(config, prefix="example.")
+        new_retry_policy.assert_called_with(attempts=5)
 
 
 class ThriftConnectionPoolTests(unittest.TestCase):
