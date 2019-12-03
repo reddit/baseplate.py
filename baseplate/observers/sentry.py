@@ -102,7 +102,7 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
         processors=cfg.sentry.processors,
     )
 
-    client.ignore_exceptions.add(ServerTimeout)
+    client.ignore_exceptions.add("ServerTimeout")
     return client
 
 
