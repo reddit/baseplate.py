@@ -118,7 +118,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         trace_name = f"{self.context_name}.{command}"
 
         with self.server_span.make_child(trace_name):
-            return super().execute_command(command, *args, **kwargs)
+            return super().execute_command(command, *args[1:], **kwargs)
 
     # pylint: disable=arguments-differ
     def pipeline(  # type: ignore

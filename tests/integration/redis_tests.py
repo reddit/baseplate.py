@@ -33,7 +33,9 @@ class RedisIntegrationTests(unittest.TestCase):
 
     def test_simple_command(self):
         with self.server_span:
-            self.context.redis.ping()
+            result = self.context.redis.ping()
+
+        self.assertTrue(result)
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
