@@ -19,6 +19,8 @@ The file should contain a section looking like:
         secret/two,
         secret/three,
 
+    callback = scripts/my-transformer  # optional
+
 where each secret is a path to look up in Vault. The daemon authenticates with
 Vault as a role using a token obtained from an auth backend designated by `auth_type`.
 
@@ -52,6 +54,11 @@ be refetched.
 The `store` module in this package contains utilities for interacting with this
 file from a running service.
 
+Some applications require a specific format for their secrets. The `callback` option may
+be provided if a different format is needed. This script will be invoked as a subprocess
+with the JSON file as its first and only argument. This allows you to read in the secrets,
+write to a new file in whatever format needed, and restart other services if necessary.
+
 """
 import argparse
 import configparser
@@ -60,6 +67,7 @@ import json
 import logging
 import os
 import posixpath
+import subprocess
 import time
 import urllib.parse
 import uuid
@@ -332,6 +340,11 @@ def fetch_secrets(
     return soonest_expiration
 
 
+def trigger_callback(callback: Optional[str], secrets_file: str) -> None:
+    if callback:
+        subprocess.Popen([callback, secrets_file])
+
+
 def main() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
@@ -377,6 +390,7 @@ def main() -> None:
                 "mode": config.Optional(config.Integer(base=8), default=0o400),  # type: ignore
             },
             "secrets": config.Optional(config.TupleOf(config.String), default=[]),
+            "callback": config.Optional(config.String),
         },
     )
 
@@ -388,10 +402,12 @@ def main() -> None:
     if args.once:
         logger.info("Running secret fetcher once")
         fetch_secrets(cfg, client_factory)
+        trigger_callback(cfg.callback, cfg.output.path)
     else:
         logger.info("Running secret fetcher as a daemon")
         while True:
             soonest_expiration = fetch_secrets(cfg, client_factory)
+            trigger_callback(cfg.callback, cfg.output.path)
             time_til_expiration = soonest_expiration - datetime.datetime.utcnow()
             time_to_sleep = time_til_expiration - VAULT_TOKEN_PREFETCH_TIME
             time.sleep(max(int(time_to_sleep.total_seconds()), 1))
