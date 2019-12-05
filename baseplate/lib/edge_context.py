@@ -81,9 +81,21 @@ class AuthenticationToken:
     def oauth_client_type(self) -> Optional[str]:
         raise NotImplementedError
 
+    @property
+    def scopes(self) -> Set[str]:
+        raise NotImplementedError
+
+    @property
+    def loid(self) -> Optional[str]:
+        raise NotImplementedError
+
+    @property
+    def loid_created_ms(self) -> Optional[int]:
+        raise NotImplementedError
+
 
 class ValidatedAuthenticationToken(AuthenticationToken):
-    def __init__(self, payload: Dict[str, str]):
+    def __init__(self, payload: Dict[str, Any]):
         self.payload = payload
 
     @property
@@ -102,6 +114,18 @@ class ValidatedAuthenticationToken(AuthenticationToken):
     def oauth_client_type(self) -> Optional[str]:
         return self.payload.get("client_type")
 
+    @property
+    def scopes(self) -> Set[str]:
+        return set(self.payload.get("scopes") or [])
+
+    @property
+    def loid(self) -> Optional[str]:
+        return (self.payload.get("loid") or {}).get("id")
+
+    @property
+    def loid_created_ms(self) -> Optional[int]:
+        return (self.payload.get("loid") or {}).get("created_ms")
+
 
 class InvalidAuthenticationToken(AuthenticationToken):
     @property
@@ -118,6 +142,18 @@ class InvalidAuthenticationToken(AuthenticationToken):
 
     @property
     def oauth_client_type(self) -> Optional[str]:
+        raise NoAuthenticationError
+
+    @property
+    def scopes(self) -> Set[str]:
+        raise NoAuthenticationError
+
+    @property
+    def loid(self) -> Optional[str]:
+        raise NoAuthenticationError
+
+    @property
+    def loid_created_ms(self) -> Optional[int]:
         raise NoAuthenticationError
 
 
