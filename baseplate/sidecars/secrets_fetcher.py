@@ -344,7 +344,7 @@ def trigger_callback(
     callback: Optional[str], secrets_file: str, last_proc: Optional[subprocess.Popen] = None
 ) -> Optional[subprocess.Popen]:
     if callback:
-        if last_proc is not None and last_proc.poll() is None:
+        if last_proc and last_proc.poll() is None:
             logger.info("Previous callback process is still running. Skipping")
         else:
             return subprocess.Popen([callback, secrets_file])
