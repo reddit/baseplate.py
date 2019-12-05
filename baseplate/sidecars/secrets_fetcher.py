@@ -340,9 +340,15 @@ def fetch_secrets(
     return soonest_expiration
 
 
-def trigger_callback(callback: Optional[str], secrets_file: str) -> None:
+def trigger_callback(
+    callback: Optional[str], secrets_file: str, last_proc: Optional[subprocess.Popen] = None
+) -> Optional[subprocess.Popen]:
     if callback:
-        subprocess.Popen([callback, secrets_file])
+        if last_proc is not None and last_proc.poll() is None:
+            logger.info("Previous callback process is still running. Skipping")
+        else:
+            return subprocess.Popen([callback, secrets_file])
+    return last_proc
 
 
 def main() -> None:
@@ -405,9 +411,10 @@ def main() -> None:
         trigger_callback(cfg.callback, cfg.output.path)
     else:
         logger.info("Running secret fetcher as a daemon")
+        last_proc = None
         while True:
             soonest_expiration = fetch_secrets(cfg, client_factory)
-            trigger_callback(cfg.callback, cfg.output.path)
+            last_proc = trigger_callback(cfg.callback, cfg.output.path, last_proc)
             time_til_expiration = soonest_expiration - datetime.datetime.utcnow()
             time_to_sleep = time_til_expiration - VAULT_TOKEN_PREFETCH_TIME
             time.sleep(max(int(time_to_sleep.total_seconds()), 1))
