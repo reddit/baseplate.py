@@ -104,7 +104,7 @@ class ValidatedAuthenticationToken(AuthenticationToken):
 
     @cached_property
     def user_roles(self) -> Set[str]:  # type: ignore # pylint: disable=W0236
-        return set(self.payload.get("roles") or [])
+        return set(self.payload.get("roles", []))
 
     @property
     def oauth_client_id(self) -> Optional[str]:

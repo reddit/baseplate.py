@@ -30,7 +30,6 @@ class AuthenticationTokenTests(unittest.TestCase):
             "sub": "t2_user",
             "exp": 1574458470,
             "client_id": None,
-            "roles": None,
             "client_type": None,
             "scopes": None,
             "loid": None,
