@@ -40,7 +40,10 @@ setup(
     ],
     # the thrift compiler must be able to find baseplate.thrift to build
     # services which extend BaseplateService.
-    package_data={"baseplate.thrift": ["*.thrift"]},
+    package_data={
+        "baseplate": ["py.typed"],
+        "baseplate.thrift": ["*.thrift"],
+    },
     zip_safe=False,
     entry_points={
         "distutils.commands": [
