@@ -25,12 +25,17 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
         server_config,
         {
             "handler": config.Optional(config.String, default=None),
-            "max_concurrency": config.Integer,
+            "max_concurrency": config.Optional(config.Integer),
             "stop_timeout": config.Optional(
                 config.TimespanWithLegacyFallback, default=datetime.timedelta(seconds=10)
             ),
         },
     )
+
+    if cfg.max_concurrency is not None:
+        logger.warning(
+            "The max_concurrency setting is deprecated for WSGI servers. See https://git.io/Jeywc."
+        )
 
     pool = Pool(size=cfg.max_concurrency)
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
