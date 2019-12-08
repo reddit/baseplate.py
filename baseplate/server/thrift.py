@@ -7,10 +7,15 @@ from typing import Dict
 from typing import Tuple
 from typing import Union
 
+import wrapt
+
 from gevent.pool import Pool
 from gevent.server import StreamServer
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TMessageType
 from thrift.Thrift import TProcessor
+from thrift.Thrift import TType
 from thrift.transport.THeaderTransport import THeaderClientType
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TBufferedTransportFactory
@@ -19,21 +24,21 @@ from thrift.transport.TTransport import TTransportException
 from baseplate.lib import config
 from baseplate.server import runtime_monitor
 
-import wrapt
-
 logger = logging.getLogger(__name__)
 
 Address = Union[Tuple[str, int], str]
 
+
 class ReplayIprot(wrapt.ObjectProxy):
     def __init__(self, inner, name, type, seqid):
-        super(ReplayIprot, self).__init(wrapped)
+        super(ReplayIprot, self).__init(inner)
         self.____name = name
         self.___type = type
         self.___seqid = seqid
 
     def readMessageBegin(self):
         return (self.____name, self.___type, self.___seqid)
+
 
 class CircuitBreakingProcessor(TProcessor):
     def __init__(self, inner, max_concurrency, *args: Any, **kwargs: Any):
@@ -59,9 +64,7 @@ class CircuitBreakingProcessor(TProcessor):
         else:
             iprot.skip(TType.STRUCT)
             iprot.readMessageEnd()
-            x = TApplicationException(
-                TApplicationException.INTERNAL_ERROR, "slow down, tiger"
-            )
+            x = TApplicationException(TApplicationException.INTERNAL_ERROR, "slow down, tiger")
             oprot.writeMessageBegin(name, TMessageType.EXCEPTION, seqid)
             x.write(oprot)
             oprot.writeMessageEnd()
@@ -116,7 +119,9 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
     )
 
     pool = Pool(size=None)
-    server = GeventServer(processor=app, listener=listener, spawn=pool, max_concurrency=cfg.max_concurrency)
+    server = GeventServer(
+        processor=app, listener=listener, spawn=pool, max_concurrency=cfg.max_concurrency
+    )
     server.stop_timeout = cfg.stop_timeout.total_seconds()
 
     runtime_monitor.start(server_config, app, pool)

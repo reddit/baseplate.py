@@ -19,7 +19,7 @@ setup(
         "requests>=2.21.0",
         "thrift>=0.12.0",
         "gevent>=1.3",
-        "wrapt>=1.11"
+        "wrapt>=1.11",
     ],
     extras_require={
         "amqp": ["kombu>=4.0.0"],
@@ -41,10 +41,7 @@ setup(
     ],
     # the thrift compiler must be able to find baseplate.thrift to build
     # services which extend BaseplateService.
-    package_data={
-        "baseplate": ["py.typed"],
-        "baseplate.thrift": ["*.thrift"],
-    },
+    package_data={"baseplate": ["py.typed"], "baseplate.thrift": ["*.thrift"],},
     zip_safe=False,
     entry_points={
         "distutils.commands": [

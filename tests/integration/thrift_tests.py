@@ -7,6 +7,7 @@ from unittest import mock
 import gevent.monkey
 import jwt
 
+from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
 
 from baseplate import Baseplate
@@ -454,3 +455,43 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
             self.assertEqual(handler.request_context.session.id, "beefdead")
         except jwt.exceptions.InvalidAlgorithmError:
             raise unittest.SkipTest("cryptography is not installed")
+
+
+class ThriftConcurrencyTests(GeventPatchedTestCase):
+    def test_end_to_end(self):
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.request_context = None
+
+            def example(self, context):
+                self.request_context = context.request_context
+                return True
+
+            def sleep(self, context):
+                gevent.sleep(1)
+                self.request_context = context.request_context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        errors = []
+        with serve_thrift(handler) as server:
+            with baseplate_thrift_client(server.endpoint, span_observer) as context:
+                n = 101
+                greenlets = []
+
+                for i in range(n):
+
+                    def go():
+                        try:
+                            context.example_service.sleep()
+                        except (TApplicationException, TProtocolException):
+                            errors.append(i)
+
+                    greenlets.append(gevent.spawn(go))
+                gevent.wait(greenlets)
+
+                context.example_service.example()  # should not raise
+
+        self.assertEqual(errors, [101])
