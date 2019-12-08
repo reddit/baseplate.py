@@ -19,6 +19,7 @@ setup(
         "requests>=2.21.0",
         "thrift>=0.12.0",
         "gevent>=1.3",
+        "wrapt>=1.11"
     ],
     extras_require={
         "amqp": ["kombu>=4.0.0"],
