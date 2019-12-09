@@ -30,6 +30,7 @@ from .. import AUTH_TOKEN_PUBLIC_KEY
 from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 from .test_thrift import TestService
 
+MAX_TEST_CONCURRENCY = 5
 
 cryptography_installed = True
 try:
@@ -83,7 +84,7 @@ def serve_thrift(handler, server_span_observer=None):
     # bind a server socket on an available port
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
     listener = make_listener(server_bind_endpoint)
-    server = make_server({"max_concurrency": "5"}, listener, processor)
+    server = make_server({"max_concurrency": str(MAX_TEST_CONCURRENCY)}, listener, processor)
 
     # figure out what port the server ended up on
     server_address = listener.getsockname()
@@ -482,17 +483,16 @@ class ThriftConcurrencyTests(GeventPatchedTestCase):
         start = datetime.now()
         with serve_thrift(handler) as server:
             with baseplate_thrift_client(server.endpoint, span_observer) as context:
-                n = 10
+                n = MAX_TEST_CONCURRENCY * 2
                 greenlets = []
 
                 for i in range(n):
-                    x = str(i)
 
                     def go():
                         try:
                             context.example_service.sleep()
                         except TApplicationException:
-                            errors.append(x)
+                            errors.append("😡")
 
                     greenlets.append(gevent.spawn(go))
 
@@ -500,7 +500,7 @@ class ThriftConcurrencyTests(GeventPatchedTestCase):
 
                 context.example_service.example()  # should not raise
                 # so if max_concurrency is 5, and we spam it with 10 requests, that means 5 failed.
-                self.assertEqual(len(errors), 5)
+                self.assertEqual(len(errors), n - MAX_TEST_CONCURRENCY)
 
                 # let's assert that the tests failed quickly, cause that's the whole point of this effort
                 duration = datetime.now() - start
