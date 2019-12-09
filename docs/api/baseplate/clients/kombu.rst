@@ -53,6 +53,45 @@ and then use the attached :py:class:`~kombu.Producer`-like object in request::
    def my_method(request):
        request.foo.publish("boo!", routing_key="route_me")
 
+Serialization
+-------------
+
+This integration also supports adding custom serializers to
+:doc:`Kombu <kombu:index>` via the :py:class:`baseplate.clients.kombu.KombuSerializer`
+interface and the :py:class:`baseplate.clients.kombu.register_serializer`
+function.  This serializer can be passed to the
+:py:class:`baseplate.clients.kombu.KombuProducerContextFactory` for use by the
+:py:class:`baseplate.clients.kombu.KombuProducer` to allow for automatic
+serialization when publishing.
+
+In order to use a custom serializer, you must first register it with Kombu using
+the provided :py:class:`baseplate.clients.kombu.register_serializer` function.
+
+In-addition to the base interface, we also provide a serializer for Thrift
+objects: :py:class:`baseplate.clients.kombu.KombuThriftSerializer`.
+
+Example
+^^^^^^^
+
+.. code-block:: python
+
+   serializer = KombuThriftSerializer[ThriftStruct](ThriftStruct)
+   register_serializer(serializer)
+
+
+Interface
+^^^^^^^^^
+
+.. autoclass:: KombuSerializer
+
+.. autofunction:: register_serializer
+
+Serializers
+^^^^^^^^^^^
+
+.. autoclass:: KombuThriftSerializer
+
+
 Configuration
 -------------
 

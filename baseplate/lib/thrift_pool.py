@@ -22,6 +22,7 @@ import time
 
 from typing import Any
 from typing import Generator
+from typing import Optional
 from typing import TYPE_CHECKING
 
 from thrift.protocol import THeaderProtocol
@@ -34,6 +35,7 @@ from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TTransportException
 
 from baseplate.lib import config
+from baseplate.lib import warn_deprecated
 from baseplate.lib.retry import RetryPolicy
 
 
@@ -81,8 +83,11 @@ def thrift_pool_from_config(
     * ``timeout``: The maximum amount of time a connection attempt or RPC call
         can take before a TimeoutError is raised.
         (:py:func:`~baseplate.lib.config.Timespan`)
-    * ``max_retries``: The maximum number of times the pool will attempt to
+    * ``max_connection_attempts``: The maximum number of times the pool will attempt to
         open a connection.
+
+    .. versionchanged:: 1.2
+        ``max_retries`` was renamed ``max_connection_attempts``.
 
     """
     assert prefix.endswith(".")
@@ -92,7 +97,8 @@ def thrift_pool_from_config(
             "size": config.Optional(config.Integer, default=10),
             "max_age": config.Optional(config.Timespan, default=config.Timespan("1 minute")),
             "timeout": config.Optional(config.Timespan, default=config.Timespan("1 second")),
-            "max_retries": config.Optional(config.Integer, default=3),
+            "max_connection_attempts": config.Optional(config.Integer),
+            "max_retries": config.Optional(config.Integer),
         }
     )
     options = parser.parse(prefix[:-1], app_config)
@@ -103,6 +109,8 @@ def thrift_pool_from_config(
         kwargs.setdefault("max_age", options.max_age.total_seconds())
     if options.timeout is not None:
         kwargs.setdefault("timeout", options.timeout.total_seconds())
+    if options.max_connection_attempts is not None:
+        kwargs.setdefault("max_connection_attempts", options.max_connection_attempts)
     if options.max_retries is not None:
         kwargs.setdefault("max_retries", options.max_retries)
 
@@ -120,7 +128,7 @@ class ThriftConnectionPool:
         kept alive. Connections older than this will be reaped.
     :param timeout: The maximum number of seconds a connection attempt or
         RPC call can take before a TimeoutError is raised.
-    :param max_retries: The maximum number of times the pool will attempt
+    :param max_connection_attempts: The maximum number of times the pool will attempt
         to open a connection.
     :param protocol_factory: The factory to use for creating protocols from
         transports. This is useful for talking to services that don't support
@@ -128,6 +136,9 @@ class ThriftConnectionPool:
 
     All exceptions raised by this class derive from
     :py:exc:`~thrift.transport.TTransport.TTransportException`.
+
+    .. versionchanged:: 1.2
+        ``max_retries`` was renamed ``max_connection_attempts``.
 
     """
 
@@ -138,12 +149,24 @@ class ThriftConnectionPool:
         size: int = 10,
         max_age: int = 120,
         timeout: int = 1,
-        max_retries: int = 3,
+        max_connection_attempts: Optional[int] = None,
+        max_retries: Optional[int] = None,
         protocol_factory: TProtocolFactory = THeaderProtocol.THeaderProtocolFactory(),
     ):
+        if max_connection_attempts and max_retries:
+            raise Exception("do not mix max_retries and max_connection_attempts")
+
+        if max_retries:
+            warn_deprecated(
+                "ThriftConnectionPool's max_retries is now named max_connection_attempts"
+            )
+            max_connection_attempts = max_retries
+        elif not max_connection_attempts:
+            max_connection_attempts = 3
+
         self.endpoint = endpoint
         self.max_age = max_age
-        self.retry_policy = RetryPolicy.new(attempts=max_retries)
+        self.retry_policy = RetryPolicy.new(attempts=max_connection_attempts)
         self.timeout = timeout
         self.protocol_factory = protocol_factory
 

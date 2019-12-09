@@ -226,6 +226,16 @@ class TraceSpanObserverTests(TraceTestBase):
         span_obj = self.test_span_observer._to_span_obj([], [])
         self.assertEqual(span_obj["parentId"], 0)
 
+    def test_incr_tag_adds_binary_annotation(self):
+        self.test_span_observer.binary_annotations = []
+        self.test_span_observer.on_start()
+        self.test_span_observer.on_incr_tag("test-key", 3)
+        self.test_span_observer.on_incr_tag("test-key", 5)
+        self.test_span_observer.on_finish(None)
+        annotation = self.test_span_observer.binary_annotations[0]
+        self.assertEquals(annotation["key"], "counter.test-key")
+        self.assertEquals(annotation["value"], "8.0")
+
 
 class TraceServerSpanObserverTests(TraceTestBase):
     def setUp(self):

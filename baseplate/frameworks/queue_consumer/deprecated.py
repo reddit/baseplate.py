@@ -8,31 +8,28 @@ from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
 
-import kombu
-
 from kombu import Connection
 from kombu import Exchange
 from kombu import Message
 from kombu import Queue
-from kombu.mixins import ConsumerMixin
-from kombu.transport.virtual import Channel
 
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import Span
+from baseplate.frameworks.queue_consumer.kombu import KombuConsumerWorker
+from baseplate.lib import warn_deprecated
 from baseplate.lib.retry import RetryPolicy
 
-
 logger = logging.getLogger(__name__)
-
-
-Handler = Callable[[RequestContext, str, Message], None]
 
 
 if TYPE_CHECKING:
     WorkQueue = queue.Queue[Message]  # pylint: disable=unsubscriptable-object
 else:
     WorkQueue = queue.Queue
+
+
+Handler = Callable[[RequestContext, str, Message], None]
 
 
 def consume(
@@ -72,6 +69,12 @@ def consume(
     :param handler: The handler method.
 
     """
+    warn_deprecated(
+        "baseplate.frameworks.queue_consumer is deprecated and will be removed "
+        "in the next major release.  You should migrate your consumers to use "
+        "baseplate.server.queue_consumer.\n"
+        "https://baseplate.readthedocs.io/en/stable/api/baseplate/frameworks/queue_consumer/deprecated.html"
+    )
     queues = []
     for routing_key in routing_keys:
         queues.append(Queue(name=queue_name, exchange=exchange, routing_key=routing_key))
@@ -88,25 +91,6 @@ def consume(
             message.ack()
 
 
-class _ConsumerWorker(ConsumerMixin):
-    def __init__(self, connection: Connection, queues: Sequence[Queue], work_queue: WorkQueue):
-        self.connection = connection
-        self.queues = queues
-        self.work_queue = work_queue
-
-    def get_consumers(self, Consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
-        return [Consumer(queues=self.queues, on_message=self.on_message)]
-
-    def on_message(self, message: Message) -> None:
-        self.work_queue.put(message)
-
-    def get_message(self, block: bool, timeout: Optional[float]) -> Message:
-        try:
-            return self.work_queue.get(block=block, timeout=timeout)
-        except queue.Empty:
-            return None
-
-
 class BaseKombuConsumer:
     """Base object for consuming messages from a queue.
 
@@ -120,9 +104,10 @@ class BaseKombuConsumer:
 
     """
 
-    def __init__(self, worker: _ConsumerWorker, worker_thread: Thread):
+    def __init__(self, worker: KombuConsumerWorker, worker_thread: Thread, work_queue: WorkQueue):
         self.worker = worker
         self.worker_thread = worker_thread
+        self.work_queue = work_queue
 
     @classmethod
     def new(
@@ -138,17 +123,17 @@ class BaseKombuConsumer:
 
         """
         work_queue: WorkQueue = queue.Queue(maxsize=queue_size)
-        worker = _ConsumerWorker(connection, queues, work_queue)
+        worker = KombuConsumerWorker(connection, queues, work_queue)
         worker_thread = Thread(target=worker.run)
         worker_thread.name = "consumer message pump"
         worker_thread.daemon = True
         worker_thread.start()
 
-        return cls(worker, worker_thread)
+        return cls(worker, worker_thread, work_queue)
 
-    def get_message(self) -> Message:
+    def get_message(self, timeout: Optional[float] = None) -> Message:
         """Return a single message."""
-        batch = self.get_batch(max_items=1, timeout=None)
+        batch = self.get_batch(max_items=1, timeout=timeout)
         return batch[0]
 
     def get_batch(self, max_items: int, timeout: Optional[float]) -> Sequence[Message]:
@@ -167,7 +152,7 @@ class BaseKombuConsumer:
         batch = []
         retry_policy = RetryPolicy.new(attempts=max_items, budget=timeout)
         for time_remaining in retry_policy:
-            item = self.worker.get_message(block=block, timeout=time_remaining)
+            item = self.work_queue.get(block=block, timeout=time_remaining)
             if item is None:
                 break
 

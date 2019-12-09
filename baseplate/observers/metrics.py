@@ -10,6 +10,7 @@ from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import metrics
+from baseplate.observers.timeout import ServerTimeout
 
 
 class MetricsBaseplateObserver(BaseplateObserver):
@@ -47,10 +48,20 @@ class MetricsServerSpanObserver(SpanObserver):
     def on_start(self) -> None:
         self.timer.start()
 
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        self.batch.counter(key).increment(delta)
+
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         self.timer.stop()
-        suffix = "success" if not exc_info else "failure"
-        self.batch.counter(self.base_name + "." + suffix).increment()
+
+        if not exc_info:
+            self.batch.counter(f"{self.base_name}.success").increment()
+        else:
+            self.batch.counter(f"{self.base_name}.failure").increment()
+
+            if exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):
+                self.batch.counter(f"{self.base_name}.timed_out").increment()
+
         self.batch.flush()
 
     def on_child_span_created(self, span: Span) -> None:
@@ -64,10 +75,14 @@ class MetricsServerSpanObserver(SpanObserver):
 
 class MetricsLocalSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span):
+        self.batch = batch
         self.timer = batch.timer(typing.cast(str, span.component_name) + "." + span.name)
 
     def on_start(self) -> None:
         self.timer.start()
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        self.batch.counter(key).increment(delta)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         self.timer.stop()
@@ -76,11 +91,14 @@ class MetricsLocalSpanObserver(SpanObserver):
 class MetricsClientSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span):
         self.batch = batch
-        self.base_name = "clients." + span.name
+        self.base_name = f"clients.{span.name}"
         self.timer = batch.timer(self.base_name)
 
     def on_start(self) -> None:
         self.timer.start()
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        self.batch.counter(key).increment(delta)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         self.timer.stop()

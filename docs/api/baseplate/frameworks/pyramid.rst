@@ -14,7 +14,7 @@ An abbreviated example of it in use::
     def make_app(app_config):
         configurator = Configurator()
 
-        baseplate = Baseplate()
+        baseplate = Baseplate(app_config)
         baseplate_config = BaseplateConfigurator(
             baseplate,
             trust_trace_headers=True,

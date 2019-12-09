@@ -62,6 +62,12 @@ class SerdeTests(unittest.TestCase):
         self.assertEqual(value, b"val")
         self.assertEqual(flags, 0)
 
+    def test_serialize_bytes(self):
+        dump_no_compress = memcache_lib.make_dump_and_compress_fn()
+        value, flags = dump_no_compress(key="key", value=b"val")
+        self.assertEqual(value, b"val")
+        self.assertEqual(flags, 0)
+
     def test_serialize_int(self):
         dump_no_compress = memcache_lib.make_dump_and_compress_fn()
         value, flags = dump_no_compress(key="key", value=100)
@@ -85,6 +91,10 @@ class SerdeTests(unittest.TestCase):
     def test_deserialize_str(self):
         value = memcache_lib.decompress_and_load(key="key", serialized="val", flags=0)
         self.assertEqual(value, "val")
+
+    def test_deserialize_bytes(self):
+        value = memcache_lib.decompress_and_load(key="key", serialized=b"val", flags=0)
+        self.assertEqual(value, b"val")
 
     def test_deserialize_int(self):
         value = memcache_lib.decompress_and_load(
@@ -236,6 +246,12 @@ class R2CompatSerdeTests(unittest.TestCase):
         self.assertEqual(value, b"val")
         self.assertEqual(flags, 0)
 
+    def test_serialize_bytes(self):
+        pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
+        value, flags = pickle_no_compress(key="key", value=b"val")
+        self.assertEqual(value, b"val")
+        self.assertEqual(flags, 0)
+
     def test_serialize_int(self):
         pickle_no_compress = memcache_lib.make_pickle_and_compress_fn()
         value, flags = pickle_no_compress(key="key", value=100)
@@ -260,6 +276,10 @@ class R2CompatSerdeTests(unittest.TestCase):
     def test_deserialize_str(self):
         value = memcache_lib.decompress_and_unpickle(key="key", serialized="val", flags=0)
         self.assertEqual(value, "val")
+
+    def test_deserialize_bytes(self):
+        value = memcache_lib.decompress_and_unpickle(key="key", serialized=b"val", flags=0)
+        self.assertEqual(value, b"val")
 
     def test_deserialize_int(self):
         value = memcache_lib.decompress_and_unpickle(

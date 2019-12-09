@@ -43,12 +43,17 @@ of the span (failure being an unexpected exception).
 For the :py:class:`~baseplate.ServerSpan` representing the request the server
 is handling, the timer has a name like
 ``{namespace}.server.{route_or_method_name}`` and the counter looks like
-``{namespace}.server.{route_or_method_name}.{success,failure}``.
+``{namespace}.server.{route_or_method_name}.{success,failure}``. If the request
+:doc:`timed out <timeout>` an additional counter will be emitted with path
+``{namespace}.server.{route_or_method_name}.timed_out``.
 
 For each span representing a call to a remote service or database, the timer
 has a name like ``{namespace}.clients.{context_name}.{method}`` and the counter
 ``{namespace}.clients.{context_name}.{method}.{success,failure}`` where
 ``context_name`` is the name of the client in the context configuration.
+
+Calls to :py:meth:`~baseplate.Span.incr_tag` will increment a counter like
+``{namespace}.{tag_name}`` by the amount specified.
 
 When using :program:`baseplate-serve`, various process-level runtime metrics
 will also be emitted. These are not tied to individual requests but instead
@@ -64,3 +69,7 @@ When enabled, the metrics observer also adds a
 
    def my_handler(request):
        request.metrics.counter("foo").increment()
+
+To keep your application more generic, it's better to use local spans for
+custom local timers and :py:meth:`~baseplate.Span.incr_tag` for custom
+counters.

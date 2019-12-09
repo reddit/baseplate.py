@@ -22,10 +22,12 @@ from types import FrameType
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import List
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import TextIO
+from typing import Tuple
 
 from gevent.server import StreamServer
 
@@ -85,7 +87,7 @@ class Configuration(NamedTuple):
     server: Optional[Dict[str, str]]
     app: Dict[str, str]
     has_logging_options: bool
-    tshell: Optional[Dict[str, str]]
+    shell: Optional[Dict[str, str]]
 
 
 def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) -> Configuration:
@@ -98,11 +100,13 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
     server_config = dict(parser.items("server:" + server_name)) if server_name else None
     app_config = dict(parser.items("app:" + app_name))
     has_logging_config = parser.has_section("loggers")
-    tshell_config = None
-    if parser.has_section("tshell"):
-        tshell_config = dict(parser.items("tshell"))
+    shell_config = None
+    if parser.has_section("shell"):
+        shell_config = dict(parser.items("shell"))
+    elif parser.has_section("tshell"):
+        shell_config = dict(parser.items("tshell"))
 
-    return Configuration(filename, server_config, app_config, has_logging_config, tshell_config)
+    return Configuration(filename, server_config, app_config, has_logging_config, shell_config)
 
 
 def configure_logging(config: Configuration, debug: bool) -> None:
@@ -123,6 +127,9 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
 
+    sentry_logger = logging.getLogger("raven.base.Client")
+    sentry_logger.setLevel(logging.WARNING)
+
     if config.has_logging_options:
         logging.config.fileConfig(config.filename)
 
@@ -140,14 +147,14 @@ def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
     flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFD)
     fcntl.fcntl(sock.fileno(), fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
 
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
     # on linux, SO_REUSEPORT is supported for IPv4 and IPv6 but not other
     # families. we prefer it when available because it more evenly spreads load
     # among multiple processes sharing a port. (though it does have some
     # downsides, specifically regarding behaviour during restarts)
-    socket_options = socket.SO_REUSEADDR
     if endpoint.family in (socket.AF_INET, socket.AF_INET6):
-        socket_options |= socket.SO_REUSEPORT
-    sock.setsockopt(socket.SOL_SOCKET, socket_options, 1)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 
     sock.bind(endpoint.address)
     sock.listen(128)
@@ -249,6 +256,18 @@ def load_and_run_script() -> None:
 
     sys.path.append(os.getcwd())
 
+    args, extra_args = _parse_baseplate_script_args()
+    with args.config_file:
+        config = read_config(args.config_file, server_name=None, app_name=args.app_name)
+    configure_logging(config, args.debug)
+
+    if _fn_accepts_additional_args(args.entrypoint, extra_args):
+        args.entrypoint(config.app, extra_args)
+    else:
+        args.entrypoint(config.app)
+
+
+def _parse_baseplate_script_args() -> Tuple[argparse.Namespace, List[str]]:
     parser = argparse.ArgumentParser(
         description="Run a function with app configuration loaded.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -269,19 +288,7 @@ def load_and_run_script() -> None:
     parser.add_argument(
         "entrypoint", type=_load_factory, help="function to call, e.g. module.path:fn_name"
     )
-    parser.add_argument(
-        "args", nargs=argparse.REMAINDER, help="arguments to pass along to the invoked script"
-    )
-
-    args = parser.parse_args(sys.argv[1:])
-    with args.config_file:
-        config = read_config(args.config_file, server_name=None, app_name=args.app_name)
-    configure_logging(config, args.debug)
-
-    if _fn_accepts_additional_args(args.entrypoint, args.args):
-        args.entrypoint(config.app, args.args)
-    else:
-        args.entrypoint(config.app)
+    return parser.parse_known_args(sys.argv[1:])
 
 
 def _fn_accepts_additional_args(script_fn: Callable[..., Any], fn_args: Sequence[str]) -> bool:
@@ -311,7 +318,7 @@ def _fn_accepts_additional_args(script_fn: Callable[..., Any], fn_args: Sequence
     return allows_additional_args
 
 
-def load_and_run_tshell() -> None:
+def load_and_run_shell() -> None:
     """Launch a shell for a thrift service."""
 
     sys.path.append(os.getcwd())
@@ -339,7 +346,7 @@ def load_and_run_tshell() -> None:
         config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     logging.basicConfig(level=logging.INFO)
 
-    env = dict()
+    env: Dict[str, Any] = {}
     env_banner = {
         "app": "This project's app instance",
         "context": "The context for this shell instance's span",
@@ -353,8 +360,8 @@ def load_and_run_tshell() -> None:
     span = baseplate.make_server_span(context, "shell")
     env["context"] = span.context
 
-    if config.tshell and "setup" in config.tshell:
-        setup = _load_factory(config.tshell["setup"])
+    if config.shell and "setup" in config.shell:
+        setup = _load_factory(config.shell["setup"])
         setup(env, env_banner)
 
     # generate banner text

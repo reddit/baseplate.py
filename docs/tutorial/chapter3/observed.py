@@ -10,8 +10,8 @@ def hello_world(request):
 
 
 def make_wsgi_app(app_config):
-    baseplate = Baseplate()
-    baseplate.configure_observers(app_config)
+    baseplate = Baseplate(app_config)
+    baseplate.configure_observers()
 
     configurator = Configurator(settings=app_config)
     configurator.include(BaseplateConfigurator(baseplate).includeme)
