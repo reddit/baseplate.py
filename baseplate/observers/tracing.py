@@ -1,4 +1,5 @@
 """Components for processing Baseplate spans for service request tracing."""
+import collections
 import json
 import logging
 import queue
@@ -10,6 +11,7 @@ import typing
 
 from datetime import datetime
 from typing import Any
+from typing import DefaultDict
 from typing import Dict
 from typing import List
 from typing import NamedTuple
@@ -29,6 +31,7 @@ from baseplate.lib import config
 from baseplate.lib import warn_deprecated
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
+from baseplate.observers.timeout import ServerTimeout
 
 
 if typing.TYPE_CHECKING:
@@ -198,6 +201,7 @@ class TraceSpanObserver(SpanObserver):
         self.end: Optional[int] = None
         self.elapsed: Optional[int] = None
         self.binary_annotations: List[Dict[str, Any]] = []
+        self.counters: DefaultDict[str, float] = collections.defaultdict(float)
         self.on_set_tag(ANNOTATIONS["COMPONENT"], "baseplate")
         super().__init__()
 
@@ -216,7 +220,11 @@ class TraceSpanObserver(SpanObserver):
 
         self.end = current_epoch_microseconds()
         self.elapsed = self.end - typing.cast(int, self.start)
-        self.record()
+
+        for key, value in self.counters.items():
+            self.binary_annotations.append(self._create_binary_annotation(f"counter.{key}", value))
+
+        self.recorder.send(self)
 
     def on_set_tag(self, key: str, value: Any) -> None:
         """Translate set tags to tracing binary annotations.
@@ -224,6 +232,9 @@ class TraceSpanObserver(SpanObserver):
         Number-type values are coerced to strings.
         """
         self.binary_annotations.append(self._create_binary_annotation(key, value))
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        self.counters[key] += delta
 
     def _endpoint_info(self) -> Dict[str, str]:
         return {"serviceName": self.service_name, "ipv4": self.hostname}
@@ -281,10 +292,6 @@ class TraceSpanObserver(SpanObserver):
         )
 
         return self._to_span_obj(annotations, self.binary_annotations)
-
-    def record(self) -> None:
-        """Record serialized span."""
-        self.recorder.send(self)
 
 
 class TraceLocalSpanObserver(TraceSpanObserver):
@@ -357,6 +364,12 @@ class TraceServerSpanObserver(TraceSpanObserver):
 
     def on_start(self) -> None:
         self.start = current_epoch_microseconds()
+
+    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+        if exc_info and exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):
+            self.on_set_tag("timed_out", True)
+
+        super().on_finish(exc_info)
 
     def on_child_span_created(self, span: Span) -> None:
         """Perform tracing-related actions for child spans creation.

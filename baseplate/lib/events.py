@@ -21,6 +21,7 @@ from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
+from baseplate.lib import config
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
@@ -80,7 +81,7 @@ class DebugLogger(EventLogger):
 T = TypeVar("T")
 
 
-class EventQueue(ContextFactory, Generic[T]):
+class EventQueue(ContextFactory, config.Parser, Generic[T]):
     """A queue to transfer events to the publisher.
 
     :param name: The name of the event queue to send to. This specifies
@@ -122,4 +123,7 @@ class EventQueue(ContextFactory, Generic[T]):
             raise EventQueueFullError
 
     def make_object_for_context(self, name: str, span: Span) -> "EventQueue[T]":
+        return self
+
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> "EventQueue[T]":
         return self

@@ -1,3 +1,4 @@
+import datetime
 import logging
 import socket
 
@@ -70,12 +71,15 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
         server_config,
         {
             "handler": config.Optional(config.String, default=None),
-            "max_concurrency": config.Integer,
-            "stop_timeout": config.Optional(config.Integer, default=0),
+            "max_concurrency": config.Optional(config.Integer),
+            "stop_timeout": config.Optional(
+                config.TimespanWithLegacyFallback, default=datetime.timedelta(seconds=10)
+            ),
         },
     )
 
     pool = Pool(size=None)
+
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
     kwargs: Dict[str, Any] = {}
     if cfg.handler:
@@ -95,7 +99,7 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
         error_log=LoggingLogAdapter(logger, level=logging.ERROR),
         **kwargs,
     )
-    server.stop_timeout = cfg.stop_timeout
+    server.stop_timeout = cfg.stop_timeout.total_seconds()
 
     runtime_monitor.start(server_config, app, pool)
     return server

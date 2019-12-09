@@ -39,7 +39,9 @@ class ServerSpanObserverTests(unittest.TestCase):
     def test_server_span_events(self):
         mock_batch = mock.Mock(spec=Batch)
         mock_timer = mock.Mock(spec=Timer)
+        mock_counter = mock.Mock(spec=Counter)
         mock_batch.timer.return_value = mock_timer
+        mock_batch.counter.return_value = mock_counter
 
         mock_server_span = mock.Mock(spec=ServerSpan)
         mock_server_span.name = "request_name"
@@ -48,6 +50,9 @@ class ServerSpanObserverTests(unittest.TestCase):
 
         observer.on_start()
         self.assertEqual(mock_timer.start.call_count, 1)
+
+        observer.on_incr_tag("test", delta=1)
+        self.assertEqual(mock_counter.increment.call_count, 1)
 
         mock_child_span = mock.Mock()
         mock_child_span.name = "example"
@@ -77,6 +82,10 @@ class ClientSpanObserverTests(unittest.TestCase):
         observer.on_start()
         self.assertEqual(mock_timer.start.call_count, 1)
 
+        observer.on_incr_tag("test", delta=1)
+        mock_counter.increment.assert_called()
+        mock_counter.reset_mock()
+
         observer.on_finish(exc_info=None)
         self.assertEqual(mock_timer.stop.call_count, 1)
         self.assertEqual(mock_counter.increment.call_count, 1)
@@ -90,8 +99,10 @@ class ClientSpanObserverTests(unittest.TestCase):
 class LocalSpanObserverTests(unittest.TestCase):
     def test_metrics(self):
         mock_timer = mock.Mock(spec=Timer)
+        mock_counter = mock.Mock(spec=Counter)
         mock_batch = mock.Mock(spec=Batch)
         mock_batch.timer.return_value = mock_timer
+        mock_batch.counter.return_value = mock_counter
 
         mock_local_span = mock.Mock(spec=LocalSpan)
         mock_local_span.name = "example"
@@ -103,6 +114,10 @@ class LocalSpanObserverTests(unittest.TestCase):
 
         observer.on_start()
         self.assertEqual(mock_timer.start.call_count, 1)
+
+        observer.on_incr_tag("test", delta=1)
+        mock_counter.increment.assert_called()
+        mock_counter.reset_mock()
 
         observer.on_finish(exc_info=None)
         self.assertEqual(mock_timer.stop.call_count, 1)

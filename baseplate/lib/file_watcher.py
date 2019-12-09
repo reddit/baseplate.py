@@ -47,6 +47,8 @@ from baseplate.lib.retry import RetryPolicy
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_FILEWATCHER_BACKOFF = 0.01
+
 
 class _NOT_LOADED:
     pass
@@ -89,6 +91,8 @@ class FileWatcher(Generic[T]):
     :param newline: Controls how universal newlines mode works
         (it only applies to text mode). It can be `None`, `""`, `"\\n"`, `"\\r"`,
         and `"\\r\\n"`.  This is not supported if `binary` is set to `True`.
+    :param backoff: retry backoff time for the file watcher. Defaults to
+        None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
 
     """
 
@@ -100,6 +104,7 @@ class FileWatcher(Generic[T]):
         binary: bool = False,
         encoding: Optional[str] = None,
         newline: Optional[str] = None,
+        backoff: Optional[float] = None,
     ):
         if binary and encoding is not None:
             raise TypeError("'encoding' is not supported in binary mode.")
@@ -115,9 +120,11 @@ class FileWatcher(Generic[T]):
             mode="rb" if binary else "r", encoding=encoding, newline=newline
         )
 
+        backoff = backoff or DEFAULT_FILEWATCHER_BACKOFF
+
         if timeout is not None:
             last_error = None
-            for _ in RetryPolicy.new(budget=timeout, backoff=0.01):
+            for _ in RetryPolicy.new(budget=timeout, backoff=backoff):
                 if self._data is not _NOT_LOADED:
                     break
 

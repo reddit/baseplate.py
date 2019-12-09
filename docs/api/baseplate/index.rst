@@ -10,9 +10,9 @@ incomplete example of an application built with the framework::
    def make_app(app_config):
        ... snip ...
 
-       baseplate = Baseplate()
-       baseplate.configure_observers(app_config)
-       baseplate.configure_context(app_config, {"db": SQLAlchemySession()})
+       baseplate = Baseplate(app_config)
+       baseplate.configure_observers()
+       baseplate.configure_context({"db": SQLAlchemySession()})
 
        ... snip ...
 

@@ -9,9 +9,12 @@ from typing import Dict
 from typing import List
 from typing import NamedTuple
 from typing import Optional
+from typing import overload
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
+
+import gevent.monkey
 
 from baseplate.lib import config
 from baseplate.lib import metrics
@@ -53,6 +56,9 @@ class SpanObserver:
 
     def on_set_tag(self, key: str, value: Any) -> None:
         """Do something when a tag is set on the observed span."""
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        """Do something when a tag value is incremented on the observed span."""
 
     def on_log(self, name: str, payload: Any) -> None:
         """Do something when a log entry is added to the span."""
@@ -239,10 +245,11 @@ class Baseplate:
 
     """
 
-    def __init__(self) -> None:
+    def __init__(self, app_config: Optional[config.RawConfig] = None) -> None:
         self.observers: List[BaseplateObserver] = []
         self._metrics_client: Optional[metrics.Client] = None
         self._context_config: Dict[str, Any] = {}
+        self._app_config = app_config
 
     def register(self, observer: BaseplateObserver) -> None:
         """Register an observer.
@@ -331,7 +338,7 @@ class Baseplate:
         self.register(SentryBaseplateObserver(client))
 
     def configure_observers(
-        self, app_config: config.RawConfig, module_name: Optional[str] = None
+        self, app_config: Optional[config.RawConfig] = None, module_name: Optional[str] = None
     ) -> None:
         """Configure diagnostics observers based on application configuration.
 
@@ -341,15 +348,29 @@ class Baseplate:
         See :py:mod:`baseplate.observers` for the configuration settings
         available for each observer.
 
-        :param raw_config: The application configuration which should have
-            settings for the error reporter.
+        :param app_config: The application configuration which should have
+            settings for the error reporter. If not specified, the config must be passed
+            to the Baseplate() constructor.
         :param module_name: Name of the root package of the application. If not specified,
             will be guessed from the package calling this function.
 
         """
         skipped = []
 
+        app_config = app_config or self._app_config
+        if not app_config:
+            raise Exception("configuration must be passed to Baseplate() or here")
+
         self.configure_logging()
+
+        if gevent.monkey.is_module_patched("socket"):
+            # pylint: disable=cyclic-import
+            from baseplate.observers.timeout import TimeoutBaseplateObserver
+
+            timeout_observer = TimeoutBaseplateObserver.from_config(app_config)
+            self.register(timeout_observer)
+        else:
+            skipped.append("timeout")
 
         if "metrics.namespace" in app_config:
             from baseplate.lib.metrics import metrics_client_from_config
@@ -371,18 +392,30 @@ class Baseplate:
             from baseplate.observers.sentry import error_reporter_from_config
 
             if module_name is None:
-                module_name = inspect.getmodule(inspect.stack()[1].frame).__name__
+                module = inspect.getmodule(inspect.stack()[1].frame)
+                if not module:
+                    raise Exception("failed to detect module name, pass one explicitly")
+                module_name = module.__name__
 
             error_reporter = error_reporter_from_config(app_config, module_name)
             self.configure_error_reporting(error_reporter)
         else:
             skipped.append("error_reporter")
 
-        logger.debug(
-            "The following observers are unconfigured and won't run: %s", ", ".join(skipped)
-        )
+        if skipped:
+            logger.debug(
+                "The following observers are unconfigured and won't run: %s", ", ".join(skipped)
+            )
 
+    @overload
+    def configure_context(self, context_spec: Dict[str, Any]) -> None:
+        ...
+
+    @overload  # noqa: F811
     def configure_context(self, app_config: config.RawConfig, context_spec: Dict[str, Any]) -> None:
+        ...
+
+    def configure_context(self, *args: Any, **kwargs: Any) -> None:  # noqa: F811
         """Add a number of objects to each request's context object.
 
         Configure and attach multiple clients to the
@@ -393,8 +426,8 @@ class Baseplate:
 
         For example, a configuration like::
 
-            baseplate = Baseplate()
-            baseplate.configure_context(app_config, {
+            baseplate = Baseplate(app_config)
+            baseplate.configure_context({
                 "cfg": {
                     "doggo_is_good": config.Boolean,
                 },
@@ -411,12 +444,26 @@ class Baseplate:
             context.cache.get("example")
             context.cassandra.foo.execute()
 
-        :param config: The raw stringy configuration dictionary.
+        :param app_config: The raw stringy configuration dictionary.
         :param context_spec: A specification of what the configuration should
-            look like. This should only contain context clients and nested
-            dictionaries.  Unrelated configuration values should not be included.
+            look like.
 
         """
+
+        if len(args) == 1:
+            kwargs["context_spec"] = args[0]
+        elif len(args) == 2:
+            kwargs["app_config"] = args[0]
+            kwargs["context_spec"] = args[1]
+        else:
+            raise Exception("bad parameters to configure_context")
+
+        app_config = kwargs.get("app_config", self._app_config)
+        context_spec = kwargs["context_spec"]
+
+        if app_config is None:
+            raise Exception("configuration must be passed to Baseplate() or here")
+
         cfg = config.parse_config(app_config, context_spec)
         self._context_config.update(cfg)
 
@@ -554,6 +601,20 @@ class Span:
         """
         for observer in self.observers:
             observer.on_set_tag(key, value)
+
+    def incr_tag(self, key: str, delta: float = 1) -> None:
+        """Increment a tag value on the span.
+
+        This is useful to count instances of an event in your application. In
+        addition to showing up as a tag on the span, the value may also be
+        aggregated separately as an independent counter.
+
+        :param key: The name of the tag.
+        :param value: The amount to increment the value. Defaults to 1.
+
+        """
+        for observer in self.observers:
+            observer.on_incr_tag(key, delta)
 
     def log(self, name: str, payload: Optional[Any] = None) -> None:
         """Add a log entry to the span.

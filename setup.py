@@ -11,7 +11,7 @@ setup(
     url="https://baseplate.readthedocs.io/en/stable/",
     use_scm_version=True,
     packages=find_packages(exclude=["tests", "tests.*"]),
-    python_requires=">=3.6",
+    python_requires=">=3.6.2",
     setup_requires=["setuptools_scm"],
     install_requires=[
         "posix_ipc>=1.0.0",
@@ -32,14 +32,18 @@ setup(
         "zookeeper": ["kazoo>=2.5.0"],
     },
     scripts=[
-        "bin/baseplate-serve",
         "bin/baseplate-script",
+        "bin/baseplate-serve",
+        "bin/baseplate-shell",
         "bin/baseplate-tshell",
         "bin/baseplate-healthcheck",
     ],
     # the thrift compiler must be able to find baseplate.thrift to build
     # services which extend BaseplateService.
-    package_data={"baseplate.thrift": ["*.thrift"]},
+    package_data={
+        "baseplate": ["py.typed"],
+        "baseplate.thrift": ["*.thrift"],
+    },
     zip_safe=False,
     entry_points={
         "distutils.commands": [
