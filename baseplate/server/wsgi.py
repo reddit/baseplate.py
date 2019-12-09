@@ -79,10 +79,8 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
     kwargs: Dict[str, Any] = {}
     if cfg.handler:
-        # pdb.set_trace()
         kwargs["handler_class"] = _load_factory(cfg.handler, default_name=None)
     elif cfg.max_concurrency:
-        # pdb.set_trace()
         kwargs["handler_class"] = CircuitBreakingWSGIHandlerFactory(
             cfg.max_concurrency
         ).create_handler
