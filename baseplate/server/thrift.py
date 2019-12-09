@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 Address = Union[Tuple[str, int], str]
 
 
-class ReplayIprot(wrapt.ObjectProxy):  # noqa: W0223
+class ReplayIprot(wrapt.ObjectProxy):  # noqa
     def __init__(self, inner, name, typ, seqid):
         super(ReplayIprot, self).__init__(inner)
         self.____name = name
