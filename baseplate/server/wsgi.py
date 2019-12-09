@@ -18,21 +18,27 @@ from baseplate.server import runtime_monitor
 logger = logging.getLogger(__name__)
 
 
-class CircuitBreakingWSGIHandlerFactory(object):
-    def __init__(self, max_concurrency):
+class CircuitBreakingWSGIHandlerFactory:
+    def __init__(self, max_concurrency: int):
         self.max_concurrency = max_concurrency
         self.open_requests = 0
 
-    def create_handler(self, sock, address, server):
+    def create_handler(self, sock: socket.socket, address: str, server: WSGIServer) -> WSGIHandler:
         return CircuitBreakingWSGIHandler(sock, address, server, self)
 
 
 class CircuitBreakingWSGIHandler(WSGIHandler):
-    def __init__(self, sock, address, server, factory):
+    def __init__(
+        self,
+        sock: socket.socket,
+        address: str,
+        server: WSGIServer,
+        factory: CircuitBreakingWSGIHandlerFactory,
+    ):
         super(CircuitBreakingWSGIHandler, self).__init__(sock, address, server)
         self.factory = factory
 
-    def run_application(self):
+    def run_application(self) -> None:
         if self.factory.open_requests < self.factory.max_concurrency:
             try:
                 self.factory.open_requests += 1
@@ -59,8 +65,6 @@ class CircuitBreakingWSGIHandler(WSGIHandler):
                 self.start_response(status, headers[:])
                 self.write(body)
             except socket.error:
-                if not PY3:
-                    sys.exc_clear()
                 self.close_connection = True
 
 

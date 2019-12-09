@@ -99,7 +99,6 @@ MAX_TEST_CONCURRENCY = 5
 class ConcurrencyTests(GeventPatchedTestCase):
     @contextlib.contextmanager
     def serve_http(self):
-        baseplate = Baseplate()
         configurator = Configurator()
         configurator.add_route("slow", "/slow", request_method="GET")
         configurator.add_view(slow_application, route_name="slow", renderer="json")
