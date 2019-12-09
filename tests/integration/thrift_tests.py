@@ -25,6 +25,9 @@ from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 
+from datetime import datetime
+from datetime import timedelta
+
 from .. import AUTH_TOKEN_PUBLIC_KEY
 from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
 from .test_thrift import TestService
@@ -82,7 +85,7 @@ def serve_thrift(handler, server_span_observer=None):
     # bind a server socket on an available port
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
     listener = make_listener(server_bind_endpoint)
-    server = make_server({"max_concurrency": "100"}, listener, processor)
+    server = make_server({"max_concurrency": "5"}, listener, processor)
 
     # figure out what port the server ended up on
     server_address = listener.getsockname()
@@ -468,30 +471,40 @@ class ThriftConcurrencyTests(GeventPatchedTestCase):
                 return True
 
             def sleep(self, context):
-                gevent.sleep(1)
+                gevent.sleep(0.5)
                 self.request_context = context.request_context
                 return True
 
         handler = Handler()
 
+        logging.basicConfig(format = "%(asctime)s;%(levelname)s;%(message)s", force = True)
+        
         span_observer = mock.Mock(spec=SpanObserver)
         errors = []
+        start = datetime.now()
         with serve_thrift(handler) as server:
             with baseplate_thrift_client(server.endpoint, span_observer) as context:
-                n = 101
+                n = 10
                 greenlets = []
 
                 for i in range(n):
-
+                    x = str(i)
                     def go():
                         try:
                             context.example_service.sleep()
-                        except (TApplicationException, TProtocolException):
-                            errors.append(i)
+                        except:
+                            errors.append(x)
 
                     greenlets.append(gevent.spawn(go))
-                gevent.wait(greenlets)
+                
+                gevent.joinall(greenlets)
 
                 context.example_service.example()  # should not raise
+                # so if max_concurrency is 5, and we spam it with 10 requests, that means 5 failed.
+                self.assertEqual(len(errors), 5)
+        
+                # let's assert that the tests failed quickly, cause that's the whole point of this effort
+                duration = datetime.now() - start
+                self.assertTrue(duration < timedelta(seconds = 1))
+                
 
-        self.assertEqual(errors, [101])

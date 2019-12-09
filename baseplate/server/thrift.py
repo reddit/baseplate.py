@@ -31,7 +31,7 @@ Address = Union[Tuple[str, int], str]
 
 class ReplayIprot(wrapt.ObjectProxy):
     def __init__(self, inner, name, type, seqid):
-        super(ReplayIprot, self).__init(inner)
+        super(ReplayIprot, self).__init__(inner)
         self.____name = name
         self.___type = type
         self.___seqid = seqid
@@ -74,10 +74,10 @@ class CircuitBreakingProcessor(TProcessor):
 
 # pylint: disable=too-many-public-methods
 class GeventServer(StreamServer):
-    def __init__(self, processor: TProcessor, *args: Any, **kwargs: Any):
+    def __init__(self, processor: TProcessor, max_concurrency: int, *args: Any, **kwargs: Any):
         self.processor = processor
-        if kwargs["max_concurrency"]:
-            self.processor = CircuitBreakingProcessor(self.processor, kwargs["max_concurrency"])
+        if max_concurrency:
+            self.processor = CircuitBreakingProcessor(self.processor, max_concurrency)
         self.transport_factory = TBufferedTransportFactory()
         self.protocol_factory = THeaderProtocolFactory(
             # allow non-headerprotocol clients to talk with us
