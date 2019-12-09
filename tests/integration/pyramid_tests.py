@@ -1,16 +1,22 @@
+import contextlib
 import unittest
 
 from unittest import mock
 
+import gevent.monkey
 import jwt
+import requests
 
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
+from baseplate.lib import config
 from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.lib.edge_context import NoAuthenticationError
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.secrets import SecretsStore
+from baseplate.server import make_listener
+from baseplate.server.wsgi import make_server
 
 try:
     import webtest
@@ -21,6 +27,12 @@ except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
 from .. import AUTH_TOKEN_PUBLIC_KEY, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
+
+
+try:
+    from importlib import reload
+except ImportError:
+    pass
 
 
 class TestException(Exception):
@@ -37,6 +49,11 @@ class ControlFlowException2(Exception):
 
 class ExceptionViewException(Exception):
     pass
+
+
+def slow_application(request):
+    gevent.sleep(0.5)
+    return {"test": "success"}
 
 
 def example_application(request):
@@ -64,6 +81,65 @@ def local_tracing_within_context(request):
     with request.trace.make_child("local-req", local=True, component_name="in-context"):
         pass
     return {"trace": "success"}
+
+
+class GeventPatchedTestCase(unittest.TestCase):
+    def setUp(self):
+        gevent.monkey.patch_socket()
+
+    def tearDown(self):
+        import socket
+
+        reload(socket)
+
+
+MAX_TEST_CONCURRENCY = 5
+
+
+class ConcurrencyTests(GeventPatchedTestCase):
+    @contextlib.contextmanager
+    def serve_http(self):
+        baseplate = Baseplate()
+        configurator = Configurator()
+        configurator.add_route("slow", "/slow", request_method="GET")
+        configurator.add_view(slow_application, route_name="slow", renderer="json")
+        app = configurator.make_wsgi_app()
+        server_bind_endpoint = config.Endpoint("127.0.0.1:0")
+        listener = make_listener(server_bind_endpoint)
+        server = make_server({"max_concurrency": str(MAX_TEST_CONCURRENCY)}, listener, app)
+        server_address = listener.getsockname()
+        server.endpoint = config.Endpoint(f"{server_address[0]}:{server_address[1]}")
+
+        # run the server until our caller is done with it
+        server_greenlet = gevent.spawn(server.serve_forever)
+        try:
+            yield server
+        finally:
+            server_greenlet.kill()
+
+    def test_concurrency(self):
+        with self.serve_http() as server:
+            greenlets = []
+            errors = []
+            n = MAX_TEST_CONCURRENCY * 2
+            for i in range(n):  # overload the server
+
+                def go():
+                    rsp = requests.get("http://" + str(server.endpoint) + "/slow", timeout=1)
+                    if rsp.status_code == 503:
+                        errors.append("🤓")
+                    else:
+                        self.assertEqual(rsp.status_code, 200)
+
+                greenlets.append(gevent.spawn(go))
+            gevent.joinall(greenlets)
+            rsp = requests.get("http://" + str(server.endpoint) + "/slow", timeout=1)
+
+            # the server recovers very quickly
+            self.assertEqual(rsp.status_code, 200)
+
+            # if we overloaded the server, we should expect half the message to fail
+            self.assertEqual(len(errors), n - MAX_TEST_CONCURRENCY)
 
 
 class ConfiguratorTests(unittest.TestCase):

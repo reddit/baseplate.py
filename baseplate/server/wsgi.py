@@ -6,6 +6,7 @@ from typing import Dict
 
 from gevent.pool import Pool
 from gevent.pywsgi import LoggingLogAdapter
+from gevent.pywsgi import WSGIHandler
 from gevent.pywsgi import WSGIServer
 from gevent.server import StreamServer
 
@@ -13,8 +14,53 @@ from baseplate.lib import config
 from baseplate.server import _load_factory
 from baseplate.server import runtime_monitor
 
-
 logger = logging.getLogger(__name__)
+
+
+class CircuitBreakingWSGIHandlerFactory(object):
+    def __init__(self, max_concurrency):
+        self.max_concurrency = max_concurrency
+        self.open_requests = 0
+
+    def create_handler(self, sock, address, server):
+        return CircuitBreakingWSGIHandler(sock, address, server, self)
+
+
+class CircuitBreakingWSGIHandler(WSGIHandler):
+    def __init__(self, sock, address, server, factory):
+        super(CircuitBreakingWSGIHandler, self).__init__(sock, address, server)
+        self.factory = factory
+
+    def run_application(self):
+        if self.factory.open_requests < self.factory.max_concurrency:
+            try:
+                self.factory.open_requests += 1
+                self.result = self.application(self.environ, self.start_response)
+                self.process_result()
+            finally:
+                self.factory.open_requests -= 1
+                close = getattr(self.result, "close", None)
+                try:
+                    if close is not None:
+                        close()
+                finally:
+                    close = None
+                    self.result = None
+        else:
+            status = "503 Service Unavailable"
+            body = b"503 Service Unavailable (temporarily)"
+            headers = [
+                ("Content-Type", "text/plain"),
+                ("Connection", "close"),
+                ("Content-Length", str(len(body))),
+            ]
+            try:
+                self.start_response(status, headers[:])
+                self.write(body)
+            except socket.error:
+                if not PY3:
+                    sys.exc_clear()
+                self.close_connection = True
 
 
 def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
@@ -29,12 +75,17 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
         },
     )
 
-    pool = Pool(size=cfg.max_concurrency)
+    pool = Pool(size=None)
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
-
     kwargs: Dict[str, Any] = {}
     if cfg.handler:
+        # pdb.set_trace()
         kwargs["handler_class"] = _load_factory(cfg.handler, default_name=None)
+    elif cfg.max_concurrency:
+        # pdb.set_trace()
+        kwargs["handler_class"] = CircuitBreakingWSGIHandlerFactory(
+            cfg.max_concurrency
+        ).create_handler
 
     server = WSGIServer(
         listener,
