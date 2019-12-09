@@ -29,11 +29,11 @@ logger = logging.getLogger(__name__)
 Address = Union[Tuple[str, int], str]
 
 
-class ReplayIprot(wrapt.ObjectProxy):
-    def __init__(self, inner, name, type, seqid):
+class ReplayIprot(wrapt.ObjectProxy):  # noqa: W0223
+    def __init__(self, inner, name, typ, seqid):
         super(ReplayIprot, self).__init__(inner)
         self.____name = name
-        self.___type = type
+        self.___type = typ
         self.___seqid = seqid
 
     def readMessageBegin(self):
@@ -41,21 +41,21 @@ class ReplayIprot(wrapt.ObjectProxy):
 
 
 class CircuitBreakingProcessor(TProcessor):
-    def __init__(self, inner, max_concurrency, *args: Any, **kwargs: Any):
+    def __init__(self, inner, max_concurrency):
         self.max_concurrency = max_concurrency
         self.current_requests = 0
         self.inner = inner
 
     def process(self, iprot, oprot):
         # wait for the first byte before declaring the message in-progress
-        (name, type, seqid) = iprot.readMessageBegin()
+        (name, typ, seqid) = iprot.readMessageBegin()
 
         if self.current_requests < self.max_concurrency:
             # I'd use atomics, but the GIL takes care of this
             self.current_requests += 1
             try:
                 # now we'll have to replay the first byte, so we have this wrapper
-                wrapped = ReplayIprot(iprot, name, type, seqid)
+                wrapped = ReplayIprot(iprot, name, typ, seqid)
 
                 # do the real work
                 self.inner.process(wrapped, oprot)
