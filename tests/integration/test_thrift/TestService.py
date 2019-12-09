@@ -238,9 +238,7 @@ class example_result(object):
 
     """
 
-    def __init__(
-        self, success=None, exc=None,
-    ):
+    def __init__(self, success=None, exc=None):
         self.success = success
         self.exc = exc
 
@@ -305,8 +303,8 @@ class example_result(object):
 
 all_structs.append(example_result)
 example_result.thrift_spec = (
-    (0, TType.BOOL, "success", None, None,),  # 0
-    (1, TType.STRUCT, "exc", [ExpectedException, None], None,),  # 1
+    (0, TType.BOOL, "success", None, None),  # 0
+    (1, TType.STRUCT, "exc", [ExpectedException, None], None),  # 1
 )
 
 
@@ -363,9 +361,7 @@ class sleep_result(object):
 
     """
 
-    def __init__(
-        self, success=None, exc=None,
-    ):
+    def __init__(self, success=None, exc=None):
         self.success = success
         self.exc = exc
 
@@ -430,8 +426,8 @@ class sleep_result(object):
 
 all_structs.append(sleep_result)
 sleep_result.thrift_spec = (
-    (0, TType.BOOL, "success", None, None,),  # 0
-    (1, TType.STRUCT, "exc", [ExpectedException, None], None,),  # 1
+    (0, TType.BOOL, "success", None, None),  # 0
+    (1, TType.STRUCT, "exc", [ExpectedException, None], None),  # 1
 )
 fix_spec(all_structs)
 del all_structs
