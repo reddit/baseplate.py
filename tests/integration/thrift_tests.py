@@ -2,12 +2,13 @@ import contextlib
 import logging
 import unittest
 
+from datetime import datetime
+from datetime import timedelta
 from unittest import mock
 
 import gevent.monkey
 import jwt
 
-from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
 
 from baseplate import Baseplate
@@ -24,9 +25,6 @@ from baseplate.lib.secrets import SecretsStore
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
-
-from datetime import datetime
-from datetime import timedelta
 
 from .. import AUTH_TOKEN_PUBLIC_KEY
 from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
@@ -477,8 +475,8 @@ class ThriftConcurrencyTests(GeventPatchedTestCase):
 
         handler = Handler()
 
-        logging.basicConfig(format = "%(asctime)s;%(levelname)s;%(message)s", force = True)
-        
+        logging.basicConfig(format="%(asctime)s;%(levelname)s;%(message)s", force=True)
+
         span_observer = mock.Mock(spec=SpanObserver)
         errors = []
         start = datetime.now()
@@ -489,22 +487,21 @@ class ThriftConcurrencyTests(GeventPatchedTestCase):
 
                 for i in range(n):
                     x = str(i)
+
                     def go():
                         try:
                             context.example_service.sleep()
-                        except:
+                        except TApplicationException:
                             errors.append(x)
 
                     greenlets.append(gevent.spawn(go))
-                
+
                 gevent.joinall(greenlets)
 
                 context.example_service.example()  # should not raise
                 # so if max_concurrency is 5, and we spam it with 10 requests, that means 5 failed.
                 self.assertEqual(len(errors), 5)
-        
+
                 # let's assert that the tests failed quickly, cause that's the whole point of this effort
                 duration = datetime.now() - start
-                self.assertTrue(duration < timedelta(seconds = 1))
-                
-
+                self.assertTrue(duration < timedelta(seconds=1))

@@ -5,16 +5,21 @@
 #
 #  options string: py
 #
+import logging
+import sys
 
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
 from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
+from thrift.Thrift import TFrozenDict
+from thrift.Thrift import TMessageType
+from thrift.Thrift import TProcessor
+from thrift.Thrift import TType
+from thrift.transport import TTransport
 from thrift.TRecursive import fix_spec
 
-import sys
-import logging
 from .ttypes import *
-from thrift.Thrift import TProcessor
-from thrift.transport import TTransport
+
 all_structs = []
 
 
@@ -38,7 +43,7 @@ class Client(Iface):
         return self.recv_example()
 
     def send_example(self):
-        self._oprot.writeMessageBegin('example', TMessageType.CALL, self._seqid)
+        self._oprot.writeMessageBegin("example", TMessageType.CALL, self._seqid)
         args = example_args()
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
@@ -59,14 +64,16 @@ class Client(Iface):
             return result.success
         if result.exc is not None:
             raise result.exc
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "example failed: unknown result")
+        raise TApplicationException(
+            TApplicationException.MISSING_RESULT, "example failed: unknown result"
+        )
 
     def sleep(self):
         self.send_sleep()
         return self.recv_sleep()
 
     def send_sleep(self):
-        self._oprot.writeMessageBegin('sleep', TMessageType.CALL, self._seqid)
+        self._oprot.writeMessageBegin("sleep", TMessageType.CALL, self._seqid)
         args = sleep_args()
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
@@ -87,7 +94,9 @@ class Client(Iface):
             return result.success
         if result.exc is not None:
             raise result.exc
-        raise TApplicationException(TApplicationException.MISSING_RESULT, "sleep failed: unknown result")
+        raise TApplicationException(
+            TApplicationException.MISSING_RESULT, "sleep failed: unknown result"
+        )
 
 
 class Processor(Iface, TProcessor):
@@ -108,7 +117,9 @@ class Processor(Iface, TProcessor):
         if name not in self._processMap:
             iprot.skip(TType.STRUCT)
             iprot.readMessageEnd()
-            x = TApplicationException(TApplicationException.UNKNOWN_METHOD, 'Unknown function %s' % (name))
+            x = TApplicationException(
+                TApplicationException.UNKNOWN_METHOD, "Unknown function %s" % (name)
+            )
             oprot.writeMessageBegin(name, TMessageType.EXCEPTION, seqid)
             x.write(oprot)
             oprot.writeMessageEnd()
@@ -132,13 +143,13 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.REPLY
             result.exc = exc
         except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
+            logging.exception("TApplication exception in handler")
             msg_type = TMessageType.EXCEPTION
             result = ex
         except Exception:
-            logging.exception('Unexpected exception in handler')
+            logging.exception("Unexpected exception in handler")
             msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
+            result = TApplicationException(TApplicationException.INTERNAL_ERROR, "Internal error")
         oprot.writeMessageBegin("example", msg_type, seqid)
         result.write(oprot)
         oprot.writeMessageEnd()
@@ -158,26 +169,29 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.REPLY
             result.exc = exc
         except TApplicationException as ex:
-            logging.exception('TApplication exception in handler')
+            logging.exception("TApplication exception in handler")
             msg_type = TMessageType.EXCEPTION
             result = ex
         except Exception:
-            logging.exception('Unexpected exception in handler')
+            logging.exception("Unexpected exception in handler")
             msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, 'Internal error')
+            result = TApplicationException(TApplicationException.INTERNAL_ERROR, "Internal error")
         oprot.writeMessageBegin("sleep", msg_type, seqid)
         result.write(oprot)
         oprot.writeMessageEnd()
         oprot.trans.flush()
 
+
 # HELPER FUNCTIONS AND STRUCTURES
 
 
 class example_args(object):
-
-
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -194,7 +208,7 @@ class example_args(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('example_args')
+        oprot.writeStructBegin("example_args")
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -202,18 +216,18 @@ class example_args(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, value) for key, value in self.__dict__.items()]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
 
     def __ne__(self, other):
         return not (self == other)
+
+
 all_structs.append(example_args)
-example_args.thrift_spec = (
-)
+example_args.thrift_spec = ()
 
 
 class example_result(object):
@@ -224,13 +238,18 @@ class example_result(object):
 
     """
 
-
-    def __init__(self, success=None, exc=None,):
+    def __init__(
+        self, success=None, exc=None,
+    ):
         self.success = success
         self.exc = exc
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -258,13 +277,13 @@ class example_result(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('example_result')
+        oprot.writeStructBegin("example_result")
         if self.success is not None:
-            oprot.writeFieldBegin('success', TType.BOOL, 0)
+            oprot.writeFieldBegin("success", TType.BOOL, 0)
             oprot.writeBool(self.success)
             oprot.writeFieldEnd()
         if self.exc is not None:
-            oprot.writeFieldBegin('exc', TType.STRUCT, 1)
+            oprot.writeFieldBegin("exc", TType.STRUCT, 1)
             self.exc.write(oprot)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -274,27 +293,30 @@ class example_result(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, value) for key, value in self.__dict__.items()]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
 
     def __ne__(self, other):
         return not (self == other)
+
+
 all_structs.append(example_result)
 example_result.thrift_spec = (
-    (0, TType.BOOL, 'success', None, None, ),  # 0
-    (1, TType.STRUCT, 'exc', [ExpectedException, None], None, ),  # 1
+    (0, TType.BOOL, "success", None, None,),  # 0
+    (1, TType.STRUCT, "exc", [ExpectedException, None], None,),  # 1
 )
 
 
 class sleep_args(object):
-
-
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -311,7 +333,7 @@ class sleep_args(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('sleep_args')
+        oprot.writeStructBegin("sleep_args")
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -319,18 +341,18 @@ class sleep_args(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, value) for key, value in self.__dict__.items()]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
 
     def __ne__(self, other):
         return not (self == other)
+
+
 all_structs.append(sleep_args)
-sleep_args.thrift_spec = (
-)
+sleep_args.thrift_spec = ()
 
 
 class sleep_result(object):
@@ -341,13 +363,18 @@ class sleep_result(object):
 
     """
 
-
-    def __init__(self, success=None, exc=None,):
+    def __init__(
+        self, success=None, exc=None,
+    ):
         self.success = success
         self.exc = exc
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -375,13 +402,13 @@ class sleep_result(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('sleep_result')
+        oprot.writeStructBegin("sleep_result")
         if self.success is not None:
-            oprot.writeFieldBegin('success', TType.BOOL, 0)
+            oprot.writeFieldBegin("success", TType.BOOL, 0)
             oprot.writeBool(self.success)
             oprot.writeFieldEnd()
         if self.exc is not None:
-            oprot.writeFieldBegin('exc', TType.STRUCT, 1)
+            oprot.writeFieldBegin("exc", TType.STRUCT, 1)
             self.exc.write(oprot)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -391,20 +418,20 @@ class sleep_result(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, value) for key, value in self.__dict__.items()]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
 
     def __ne__(self, other):
         return not (self == other)
+
+
 all_structs.append(sleep_result)
 sleep_result.thrift_spec = (
-    (0, TType.BOOL, 'success', None, None, ),  # 0
-    (1, TType.STRUCT, 'exc', [ExpectedException, None], None, ),  # 1
+    (0, TType.BOOL, "success", None, None,),  # 0
+    (1, TType.STRUCT, "exc", [ExpectedException, None], None,),  # 1
 )
 fix_spec(all_structs)
 del all_structs
-
