@@ -244,13 +244,13 @@ class ThriftConnectionPool:
                 )
             except socket.error as exc:
                 raise TTransportException(type=TTransportException.UNKNOWN, message=str(exc))
-        except (TApplicationException, TProtocolException, TTransportException):
+        except (TProtocolException, TTransportException):
             # these exceptions usually indicate something low-level went wrong,
             # so it's safest to just close this connection because we don't
             # know what state it's in.
             prot.trans.close()
             raise
-        except TException:
+        except (TApplicationException, TException):
             # the only other TException-derived errors are application level
             # (expected) errors which should be safe for the connection.
             # don't close the transport here!
