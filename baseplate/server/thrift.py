@@ -12,6 +12,7 @@ import wrapt
 from gevent.pool import Pool
 from gevent.server import StreamServer
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
+from thrift.protocol.TProtocol import TProtocolBase
 from thrift.Thrift import TApplicationException
 from thrift.Thrift import TMessageType
 from thrift.Thrift import TProcessor
@@ -29,24 +30,25 @@ logger = logging.getLogger(__name__)
 Address = Union[Tuple[str, int], str]
 
 
-class ReplayIprot(wrapt.ObjectProxy):  # noqa
-    def __init__(self, inner, name, typ, seqid):
+# pylint: disable=W0223
+class ReplayIprot(wrapt.ObjectProxy):
+    def __init__(self, inner: TProtocolBase, name: str, typ: TMessageType, seqid: int) -> None:
         super(ReplayIprot, self).__init__(inner)
         self.____name = name
         self.___type = typ
         self.___seqid = seqid
 
-    def readMessageBegin(self):
+    def readMessageBegin(self) -> Tuple[str, TMessageType, int]:
         return (self.____name, self.___type, self.___seqid)
 
 
 class CircuitBreakingProcessor(TProcessor):
-    def __init__(self, inner, max_concurrency):
+    def __init__(self, inner: TProcessor, max_concurrency: int):
         self.max_concurrency = max_concurrency
         self.current_requests = 0
         self.inner = inner
 
-    def process(self, iprot, oprot):
+    def process(self, iprot: TProtocolBase, oprot: TProtocolBase) -> None:
         # wait for the first byte before declaring the message in-progress
         (name, typ, seqid) = iprot.readMessageBegin()
 
