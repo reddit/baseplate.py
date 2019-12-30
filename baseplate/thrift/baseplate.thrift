@@ -1,5 +1,5 @@
 namespace py baseplate.thrift
-
+namespace go reddit.baseplate
 namespace java com.reddit.baseplate
 
 /** The base for any baseplate-based service.
