@@ -357,6 +357,9 @@ class Baseplate:
             will be guessed from the package calling this function.
 
         """
+        # pylint: disable=cyclic-import
+        from baseplate.observers.concurrency import ConcurrencyObserver
+
         skipped = []
 
         app_config = app_config or self._app_config
@@ -364,6 +367,7 @@ class Baseplate:
             raise Exception("configuration must be passed to Baseplate() or here")
 
         self.configure_logging()
+        self.register(ConcurrencyObserver.from_config(app_config))
 
         if gevent.monkey.is_module_patched("socket"):
             # pylint: disable=cyclic-import

@@ -16,14 +16,10 @@ import gevent.events
 
 from gevent.pool import Pool
 
-from baseplate import _ExcInfo
 from baseplate import Baseplate
-from baseplate import BaseplateObserver
-from baseplate import RequestContext
-from baseplate import ServerSpan
-from baseplate import ServerSpanObserver
 from baseplate.lib import config
 from baseplate.lib import metrics
+from baseplate.observers.concurrency import ConcurrencyObserver
 
 
 REPORT_INTERVAL_SECONDS = 10
@@ -38,45 +34,16 @@ class _Reporter:
         raise NotImplementedError
 
 
-class _OpenConnectionsReporter(_Reporter):
-    def __init__(self, pool: Pool):
+class _ConcurrencyReporter(_Reporter):
+    def __init__(self, pool: Pool, observer: ConcurrencyObserver):
         self.pool = pool
+        self.observer = observer
 
     def report(self, batch: metrics.Batch) -> None:
+        self.observer.cull_old_requests()
+
         batch.gauge("open_connections").replace(len(self.pool.greenlets))
-
-
-class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
-    def __init__(self) -> None:
-        self.live_requests: Dict[int, float] = {}
-
-    def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
-        observer = _ActiveRequestsServerSpanObserver(self, server_span.trace_id)
-        server_span.register(observer)
-
-    def report(self, batch: metrics.Batch) -> None:
-        threshold = time.time() - MAX_REQUEST_AGE
-        stale_requests = [
-            trace_id
-            for trace_id, start_time in self.live_requests.items()
-            if start_time < threshold
-        ]
-        for stale_request_id in stale_requests:
-            self.live_requests.pop(stale_request_id, None)
-
-        batch.gauge("active_requests").replace(len(self.live_requests))
-
-
-class _ActiveRequestsServerSpanObserver(ServerSpanObserver):
-    def __init__(self, reporter: _ActiveRequestsObserver, trace_id: int):
-        self.reporter = reporter
-        self.trace_id = trace_id
-
-    def on_start(self) -> None:
-        self.reporter.live_requests[self.trace_id] = time.time()
-
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.reporter.live_requests.pop(self.trace_id, None)
+        batch.gauge("active_requests").replace(len(self.observer.live_requests))
 
 
 class _BlockedGeventHubReporter(_Reporter):
@@ -237,10 +204,15 @@ def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
     reporters: List[_Reporter] = []
 
     if cfg.monitoring.concurrency:
-        reporters.append(_OpenConnectionsReporter(pool))
-        observer = _ActiveRequestsObserver()
-        reporters.append(observer)
-        baseplate.register(observer)
+        for observer in baseplate.observers:
+            if isinstance(observer, ConcurrencyObserver):
+                concurrency_observer = observer
+                break
+        else:
+            concurrency_observer = ConcurrencyObserver(limit=None)
+            baseplate.register(concurrency_observer)
+        concurrency_reporter = _ConcurrencyReporter(pool, concurrency_observer)
+        reporters.append(concurrency_reporter)
 
     if cfg.monitoring.connection_pool:
         reporters.append(_BaseplateReporter(baseplate.get_runtime_metric_reporters()))

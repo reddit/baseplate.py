@@ -1,4 +1,5 @@
 import contextlib
+import datetime
 import logging
 import unittest
 
@@ -44,6 +45,9 @@ except ImportError:
     pass
 
 
+CONCURRENCY_LIMIT = 5
+
+
 def make_edge_context_factory():
     mock_filewatcher = mock.Mock(spec=FileWatcher)
     mock_filewatcher.get_data.return_value = {
@@ -72,6 +76,8 @@ def serve_thrift(handler, server_span_observer=None):
 
         baseplate.register(TestBaseplateObserver())
 
+    baseplate.configure_observers({"concurrency_limit": str(CONCURRENCY_LIMIT)})
+
     # set up the server's processor
     logger = mock.Mock(spec=logging.Logger)
     edge_context_factory = make_edge_context_factory()
@@ -81,9 +87,7 @@ def serve_thrift(handler, server_span_observer=None):
     # bind a server socket on an available port
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
     listener = make_listener(server_bind_endpoint)
-    server = make_server(
-        {"max_concurrency": "100", "stop_timeout": "1 millisecond"}, listener, processor
-    )
+    server = make_server({"stop_timeout": "1 millisecond"}, listener, processor)
 
     # figure out what port the server ended up on
     server_address = listener.getsockname()
@@ -105,7 +109,7 @@ def raw_thrift_client(endpoint):
 
 
 @contextlib.contextmanager
-def baseplate_thrift_client(endpoint, client_span_observer=None):
+def baseplate_thrift_client(endpoint, client_span_observer=None, trace_id=1234):
     baseplate = Baseplate()
 
     if client_span_observer:
@@ -124,12 +128,12 @@ def baseplate_thrift_client(endpoint, client_span_observer=None):
 
     context = baseplate.make_context_object()
     trace_info = TraceInfo.from_upstream(
-        trace_id=1234, parent_id=2345, span_id=3456, flags=4567, sampled=True
+        trace_id=trace_id, parent_id=2345, span_id=3456, flags=4567, sampled=True
     )
 
     baseplate.configure_context(
         {"example_service.endpoint": str(endpoint)},
-        {"example_service": ThriftClient(TestService.Client)},
+        {"example_service": ThriftClient(TestService.Client, size=CONCURRENCY_LIMIT * 3)},
     )
 
     baseplate.make_server_span(context, "example_service.example", trace_info)
@@ -456,3 +460,41 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
             self.assertEqual(handler.request_context.session.id, "beefdead")
         except jwt.exceptions.InvalidAlgorithmError:
             raise unittest.SkipTest("cryptography is not installed")
+
+
+class ThriftConcurrencyTests(GeventPatchedTestCase):
+    def test_concurrency_limit(self):
+        class Handler(TestService.Iface):
+            def example(self, context):
+                gevent.sleep(0.25)
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        errors = []
+        start = datetime.datetime.now()
+        with serve_thrift(handler) as server:
+            n = CONCURRENCY_LIMIT * 2
+            greenlets = []
+            for i in range(n):
+
+                def go(trace_id):
+                    try:
+                        with baseplate_thrift_client(
+                            server.endpoint, span_observer, trace_id=trace_id
+                        ) as context:
+                            context.example_service.example()
+                    except Exception:
+                        errors.append("😡")
+
+                greenlets.append(gevent.spawn(go, i))
+
+            gevent.joinall(greenlets)
+
+        # so if max_concurrency is 5, and we spam it with 10 requests, that means 5 failed.
+        self.assertEqual(len(errors), n - CONCURRENCY_LIMIT)
+
+        # let's assert that the tests failed quickly, cause that's the whole point of this
+        duration = datetime.datetime.now() - start
+        self.assertTrue(duration < datetime.timedelta(seconds=1))

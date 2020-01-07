@@ -12,6 +12,7 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import config
 from baseplate.lib import metrics
+from baseplate.observers.concurrency import ConcurrencyLimitReachedError
 from baseplate.observers.timeout import ServerTimeout
 
 
@@ -82,10 +83,15 @@ class MetricsServerSpanObserver(SpanObserver):
         else:
             self.batch.counter(f"{self.base_name}.failure").increment(sample_rate=self.sample_rate)
 
-            if exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):
-                self.batch.counter(f"{self.base_name}.timed_out").increment(
-                    sample_rate=self.sample_rate
-                )
+            if exc_info[0] is not None:
+                if issubclass(ServerTimeout, exc_info[0]):
+                    self.batch.counter(f"{self.base_name}.timed_out").increment(
+                        sample_rate=self.sample_rate
+                    )
+                elif issubclass(ConcurrencyLimitReachedError, exc_info[0]):
+                    self.batch.counter(f"{self.base_name}.concurrency_limited").increment(
+                        sample_rate=self.sample_rate
+                    )
 
         self.batch.flush()
 
