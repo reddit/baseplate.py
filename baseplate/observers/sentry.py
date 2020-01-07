@@ -16,6 +16,7 @@ from baseplate import RequestContext
 from baseplate import ServerSpanObserver
 from baseplate import Span
 from baseplate.lib import config
+from baseplate.observers.concurrency import ConcurrencyLimitReachedError
 from baseplate.observers.timeout import ServerTimeout
 
 
@@ -103,6 +104,7 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
     )
 
     client.ignore_exceptions.add("ServerTimeout")
+    client.ignore_exceptions.add("ConcurrencyLimitReachedError")
     return client
 
 
@@ -171,12 +173,17 @@ class SentryUnhandledErrorReporter:
     ) -> None:
         self.raven.captureException((exc_type, value, tb))
 
-        if value and isinstance(value, ServerTimeout):
-            self.logger.warning(
-                "Server timed out processing for %r after %0.2f seconds",
-                value.span_name,
-                value.timeout_seconds,
-                exc_info=(exc_type, value, tb) if value.debug else None,  # type: ignore
-            )
+        if value:
+            if isinstance(value, ServerTimeout):
+                self.logger.warning(
+                    "Server timed out processing for %r after %0.2f seconds",
+                    value.span_name,
+                    value.timeout_seconds,
+                    exc_info=(exc_type, value, tb) if value.debug else None,  # type: ignore
+                )
+            elif isinstance(value, ConcurrencyLimitReachedError):
+                self.logger.warning(
+                    "Server rejected request because concurrency limit (%d) reached", value.limit,
+                )
         else:
             self.original_print_exception(context, exc_type, value, tb)

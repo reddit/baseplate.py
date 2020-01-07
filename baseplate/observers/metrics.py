@@ -10,6 +10,7 @@ from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import metrics
+from baseplate.observers.concurrency import ConcurrencyLimitReachedError
 from baseplate.observers.timeout import ServerTimeout
 
 
@@ -43,24 +44,29 @@ class MetricsServerSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, server_span: Span):
         self.batch = batch
         self.base_name = "server." + server_span.name
-        self.timer = batch.timer(self.base_name)
+        self.timer: Optional[metrics.Timer] = None
 
     def on_start(self) -> None:
+        self.timer = self.batch.timer(self.base_name)
         self.timer.start()
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.timer.stop()
+        if self.timer:
+            self.timer.stop()
 
         if not exc_info:
             self.batch.counter(f"{self.base_name}.success").increment()
         else:
             self.batch.counter(f"{self.base_name}.failure").increment()
 
-            if exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):
-                self.batch.counter(f"{self.base_name}.timed_out").increment()
+            if exc_info[0] is not None:
+                if issubclass(ServerTimeout, exc_info[0]):
+                    self.batch.counter(f"{self.base_name}.timed_out").increment()
+                elif issubclass(ConcurrencyLimitReachedError, exc_info[0]):
+                    self.batch.counter(f"{self.base_name}.concurrency_limited").increment()
 
         self.batch.flush()
 
