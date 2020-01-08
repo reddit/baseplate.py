@@ -48,7 +48,7 @@ class AuthenticationTokenValidator:
                 decoded = jwt.decode(token, public_key, algorithms="RS256")
                 return ValidatedAuthenticationToken(decoded)
             except jwt.ExpiredSignatureError:
-                pass
+                return InvalidAuthenticationToken()
             except jwt.DecodeError:
                 pass
 
