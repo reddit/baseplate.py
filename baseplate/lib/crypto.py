@@ -155,15 +155,15 @@ def validate_signature(secret: VersionedSecret, message: str, signature: bytes) 
     except (struct.error, KeyError, binascii.Error, TypeError, ValueError):
         raise UnreadableSignatureError
 
+    if time.time() > expiration:
+        raise ExpiredSignatureError(expiration)
+
     for secret_value in secret.all_versions:
         digest = _compute_digest(secret_value, header, message)
         if hmac.compare_digest(digest, signature_digest):
             break
     else:
         raise IncorrectSignatureError
-
-    if time.time() > expiration:
-        raise ExpiredSignatureError(expiration)
 
     return SignatureInfo(version, expiration)
 
