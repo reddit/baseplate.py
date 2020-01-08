@@ -2,7 +2,7 @@
 -r requirements-test.txt
 appdirs==1.4.3
 aspy.refactor-imports==1.1.0
-black==19.3b0
+black==19.10b0
 cached-property==1.5.1
 Click==7.0
 entrypoints==0.3
@@ -12,8 +12,10 @@ flake8-polyfill==1.0.2
 lxml==4.3.3
 mypy==0.740
 mypy-extensions==0.4.1
+pathspec==0.7.0
 pycodestyle==2.5.0
 pydocstyle==3.0.0
 pyflakes==2.1.1
+regex==2020.1.8
 reorder-python-imports==1.6.0
 typing-extensions==3.7.4
