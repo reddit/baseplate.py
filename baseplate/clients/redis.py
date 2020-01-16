@@ -102,7 +102,7 @@ class RedisContextFactory(ContextFactory):
 class MonitoredRedisConnection(redis.StrictRedis):
     """Redis connection that collects diagnostic information.
 
-    This connection acts like :py:class:`redis.Redis` except that all
+    This connection acts like :py:class:`redis.StrictRedis` except that all
     operations are automatically wrapped with diagnostic collection.
 
     The interface is the same as that class except for the
