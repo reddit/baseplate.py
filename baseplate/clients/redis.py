@@ -10,6 +10,19 @@ from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
 
+try:
+    # Use redis.StrictRedis if present (redis versions 2.x)
+    BaseRedis = redis.StrictRedis
+except AttributeError:
+    # redis.StrictRedis was renamed to redis.Redis in versions 3.x
+    BaseRedis = redis.Redis
+
+try:
+    # Use redis.client.StrictPipeline if present (redis versions 2.x)
+    BasePipeline = redis.client.StrictPipeline
+except AttributeError:
+    # redis.client.StrictPipeline was renamed to redis.client.Pipeline in versions 3.x
+    BasePipeline = redis.client.Pipeline
 
 def pool_from_config(
     app_config: config.RawConfig, prefix: str = "redis.", **kwargs: Any
@@ -93,10 +106,10 @@ class RedisContextFactory(ContextFactory):
 
 
 # pylint: disable=too-many-public-methods
-class MonitoredRedisConnection(redis.StrictRedis):
+class MonitoredRedisConnection(BaseRedis):
     """Redis connection that collects diagnostic information.
 
-    This connection acts like :py:class:`redis.StrictRedis` except that all
+    This connection acts like :py:class:`redis.Redis` except that all
     operations are automatically wrapped with diagnostic collection.
 
     The interface is the same as that class except for the
@@ -158,7 +171,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         raise NotImplementedError
 
 
-class MonitoredRedisPipeline(redis.client.StrictPipeline):
+class MonitoredRedisPipeline(BasePipeline):
     def __init__(
         self,
         trace_name: str,
