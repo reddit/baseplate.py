@@ -2,27 +2,20 @@ from math import ceil
 from typing import Any
 from typing import Dict
 from typing import Optional
+from typing import Type
 
-import redis.client
+import redis
+
+# redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
+try:
+    from redis.client import StrictPipeline as Pipeline
+except ImportError:
+    from redis.client import Pipeline  # type: ignore
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
-
-try:
-    # Use redis.StrictRedis if present (redis versions 2.x)
-    BaseRedis = redis.StrictRedis
-except AttributeError:
-    # redis.StrictRedis was renamed to redis.Redis in versions 3.x
-    BaseRedis = redis.Redis
-
-try:
-    # Use redis.client.StrictPipeline if present (redis versions 2.x)
-    BasePipeline = redis.client.StrictPipeline
-except AttributeError:
-    # redis.client.StrictPipeline was renamed to redis.client.Pipeline in versions 3.x
-    BasePipeline = redis.client.Pipeline
 
 
 def pool_from_config(
@@ -107,7 +100,7 @@ class RedisContextFactory(ContextFactory):
 
 
 # pylint: disable=too-many-public-methods
-class MonitoredRedisConnection(BaseRedis):
+class MonitoredRedisConnection(redis.StrictRedis):
     """Redis connection that collects diagnostic information.
 
     This connection acts like :py:class:`redis.Redis` except that all
@@ -172,7 +165,7 @@ class MonitoredRedisConnection(BaseRedis):
         raise NotImplementedError
 
 
-class MonitoredRedisPipeline(BasePipeline):
+class MonitoredRedisPipeline(Pipeline):
     def __init__(
         self,
         trace_name: str,
