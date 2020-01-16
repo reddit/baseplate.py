@@ -24,6 +24,7 @@ except AttributeError:
     # redis.client.StrictPipeline was renamed to redis.client.Pipeline in versions 3.x
     BasePipeline = redis.client.Pipeline
 
+
 def pool_from_config(
     app_config: config.RawConfig, prefix: str = "redis.", **kwargs: Any
 ) -> redis.ConnectionPool:
