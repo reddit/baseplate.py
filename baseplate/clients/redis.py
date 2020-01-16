@@ -3,7 +3,13 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
-import redis.client
+import redis
+
+# redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
+try:
+    from redis.client import StrictPipeline as Pipeline
+except ImportError:
+    from redis.client import Pipeline  # type: ignore
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -158,7 +164,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         raise NotImplementedError
 
 
-class MonitoredRedisPipeline(redis.client.StrictPipeline):
+class MonitoredRedisPipeline(Pipeline):
     def __init__(
         self,
         trace_name: str,
