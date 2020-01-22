@@ -31,7 +31,7 @@ def _make_baseplate_tween(
         try:
             response = handler(request)
         except:  # noqa: E722
-            if hasattr(request, "trace"):
+            if hasattr(request, "trace") and request.trace:
                 request.trace.finish(exc_info=sys.exc_info())
             raise
         else:
