@@ -15,6 +15,7 @@ from typing import Union
 
 import confluent_kafka
 
+from confluent_kafka.avro import AvroConsumer
 from gevent.server import StreamServer
 
 from baseplate import Baseplate
@@ -179,8 +180,9 @@ def make_kafka_consumer(
     group_id: str,
     topics: Sequence[str],
     schema_registry: Optional[str] = None,
+    consumer_config: Dict[str, Any] = {},
 ) -> Union[confluent_kafka.Consumer, confluent_kafka.avro.AvroConsumer]:
-    consumer_config = {
+    _consumer_config = {
         "bootstrap.servers": bootstrap_servers,
         "group.id": group_id,
         # reset the offset to the latest offset when no stored offset exists.
@@ -188,6 +190,7 @@ def make_kafka_consumer(
         # process new messages.
         "auto.offset.reset": "latest",
     }
+    consumer_config.update(_consumer_config)
 
     if schema_registry:
         consumer_config["schema.registry.url"] = schema_registry
@@ -307,7 +310,9 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         """
 
         validate_group_id(name, group_id)
-        consumer = make_kafka_consumer(bootstrap_servers, group_id, topics, schema_registry)
+        consumer = make_kafka_consumer(
+            bootstrap_servers, group_id, topics, schema_registry, cls._consumer_config()
+        )
 
         if message_unpack_fn is None:
             if schema_registry:
