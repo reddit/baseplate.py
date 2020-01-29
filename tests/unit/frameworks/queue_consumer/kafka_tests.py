@@ -397,7 +397,9 @@ class TestFastConsumerFactory:
         )
         kafka_consumer.return_value = mock_consumer
 
-        _consumer = FastConsumerFactory.make_kafka_consumer(bootstrap_servers, group_id, topics)
+        _consumer = FastConsumerFactory.new(
+            name, baseplate, bootstrap_servers, group_id, topics, mock.Mock()
+        ).consumer
 
         assert _consumer == mock_consumer
 
@@ -429,7 +431,9 @@ class TestFastConsumerFactory:
         kafka_consumer.return_value = mock_consumer
 
         with pytest.raises(AssertionError):
-            FastConsumerFactory.make_kafka_consumer(bootstrap_servers, group_id, ["topic_4"])
+            FastConsumerFactory.new(
+                name, baseplate, bootstrap_servers, group_id, ["topic_4"], mock.Mock()
+            )
 
         kafka_consumer.assert_called_once_with(
             {
