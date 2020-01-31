@@ -14,6 +14,8 @@ from baseplate.lib import config
 
 logger = logging.getLogger(__name__)
 
+TOPIC_SUFFIX = "_avro"
+
 
 class AvroProducerContextFactory(ContextFactory):
     def __init__(self, bootstrap_servers: str, schema_registry: str, acks: int):
@@ -44,27 +46,22 @@ class KafkaAvroProducer:
     def produce(self, topic: str, schema_id: int, value: Dict[str, Any]) -> None:
         """Encode `value` using the `schema_id` and produce the message to Kafka.
 
-        :param topic: topic name
+        :param topic: topic name that is of the format `<schema_name>_avro`
         :param schema_id: schema id associated with the schema that `value` conforms to. It will
                           be used to look up the schema from Schema Registry. This prevents callers
                           from using unregistered schemas
-       :param value: object to serialize
+        :param value: object to serialize
 
         """
+        assert topic.endswith(TOPIC_SUFFIX)
+
         serializer = self.avro_producer._serializer
 
-        encode_trace_name = "{}.{}".format(self.name, "serializer.encode_record_with_schema_id")
-        encode_span = self.span.make_child(encode_trace_name)
-
-        with encode_span:
+        with self.span.make_child(f"{self.name}.serializer.encode_record_with_schema_id"):
             buffer = serializer.encode_record_with_schema_id(schema_id, value)
 
-        producer_trace_name = "{}.{}".format(self.name, "avro_producer.produce")
-        producer_span = self.span.make_child(producer_trace_name)
-
-        producer = super(AvroProducer, self.avro_producer)  # pylint: disable=bad-super-call;
-        with producer_span:
-            producer.produce(topic=topic, value=buffer)  # type: ignore
+        with self.span.make_child(f"{self.name}.avro_producer.produce"):
+            super(AvroProducer, self.avro_producer).produce(topic=topic, value=buffer)  # type: ignore
 
 
 class AvroProducerSpanObserver(SpanObserver):

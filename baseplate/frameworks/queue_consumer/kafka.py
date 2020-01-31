@@ -15,7 +15,7 @@ from typing import Union
 
 import confluent_kafka
 
-from confluent_kafka.avro import AvroConsumer
+from confluent_kafka.avro import AvroConsumer  # pylint: disable=unused-import
 from gevent.server import StreamServer
 
 from baseplate import Baseplate
@@ -169,69 +169,6 @@ class KafkaMessageHandler(MessageHandler):
             raise
 
 
-def validate_group_id(name: str, group_id: str) -> None:
-    service_name, _, group_name = group_id.partition(".")
-    assert service_name and group_name, "group_id must start with 'SERVICENAME.'"
-    assert name == f"kafka_consumer.{group_name}"
-
-
-def make_kafka_consumer(
-    bootstrap_servers: str,
-    group_id: str,
-    topics: Sequence[str],
-    schema_registry: Optional[str] = None,
-    consumer_config: Dict[str, Any] = {},
-) -> Union[confluent_kafka.Consumer, confluent_kafka.avro.AvroConsumer]:
-    _consumer_config = {
-        "bootstrap.servers": bootstrap_servers,
-        "group.id": group_id,
-        # reset the offset to the latest offset when no stored offset exists.
-        # this means that when a new consumer group is created it will only
-        # process new messages.
-        "auto.offset.reset": "latest",
-    }
-    consumer_config.update(_consumer_config)
-
-    if schema_registry:
-        consumer_config["schema.registry.url"] = schema_registry
-        consumer = confluent_kafka.avro.AvroConsumer(consumer_config)
-    else:
-        consumer = confluent_kafka.Consumer(consumer_config)
-
-    try:
-        # we can allow a blocking timeout here because there is only one
-        # consumer for the entire server
-        metadata = consumer.list_topics(timeout=10)
-    except confluent_kafka.KafkaException:
-        logger.error("failed getting metadata from %s, exiting.", bootstrap_servers)
-        raise
-
-    all_topics = set(metadata.topics.keys())
-    for topic in topics:
-        assert (
-            topic in all_topics
-        ), f"topic '{topic}' does not exist. maybe it's misspelled or on a different kafka cluster?"
-
-    # pylint: disable=unused-argument
-    def log_assign(
-        consumer: Union[confluent_kafka.Consumer, confluent_kafka.avro.AvroConsumer],
-        partitions: List[confluent_kafka.TopicPartition],
-    ) -> None:
-        for topic_partition in partitions:
-            logger.info("assigned %s/%s", topic_partition.topic, topic_partition.partition)
-
-    # pylint: disable=unused-argument
-    def log_revoke(
-        consumer: Union[confluent_kafka.Consumer, confluent_kafka.avro.AvroConsumer],
-        partitions: List[confluent_kafka.TopicPartition],
-    ) -> None:
-        for topic_partition in partitions:
-            logger.info("revoked %s/%s", topic_partition.topic, topic_partition.partition)
-
-    consumer.subscribe(topics, on_assign=log_assign, on_revoke=log_revoke)
-    return consumer
-
-
 class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
     def __init__(
         self,
@@ -301,19 +238,22 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         :param kafka_consume_batch_size: The number of messages the `KafkaConsumerWorker`
             reads from Kafka in each batch. Defaults to 1.
         :param message_unpack_fn: A function that takes one argument, the `bytes` message body
-            and returns the message in the format the handler expects. If no input is provided,
-            a function is automatically picked one based on whether a schema_registry was provided or not.
+            and returns the message in the format the handler expects. If no
+            value is provided, we will use avro decode_message when using schema registry,
+            and json.loads otherwise
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
         :param schema_registry: Schema Registry where the schemas of the Avro messages are stored
 
         """
 
-        validate_group_id(name, group_id)
-        consumer = make_kafka_consumer(
-            bootstrap_servers, group_id, topics, schema_registry, cls._consumer_config()
-        )
+        service_name, _, group_name = group_id.partition(".")
+        assert service_name and group_name, "group_id must start with 'SERVICENAME.'"
+        assert name == f"kafka_consumer.{group_name}"
 
+        consumer = cls.make_kafka_consumer(bootstrap_servers, group_id, topics, schema_registry)
+
+        # choose the correct deserializer (avro or json) if it is not specified
         if message_unpack_fn is None:
             if schema_registry:
                 message_unpack_fn = consumer._serializer.decode_message
@@ -333,6 +273,63 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
     @classmethod
     def _consumer_config(cls) -> Dict[str, Any]:
         raise NotImplementedError
+
+    @classmethod
+    def make_kafka_consumer(
+        cls,
+        bootstrap_servers: str,
+        group_id: str,
+        topics: Sequence[str],
+        schema_registry: Optional[str] = None,
+    ) -> Union[confluent_kafka.Consumer, confluent_kafka.avro.AvroConsumer]:
+        consumer_config = {
+            "bootstrap.servers": bootstrap_servers,
+            "group.id": group_id,
+            # reset the offset to the latest offset when no stored offset exists.
+            # this means that when a new consumer group is created it will only
+            # process new messages.
+            "auto.offset.reset": "latest",
+        }
+        consumer_config.update(cls._consumer_config())
+
+        if schema_registry:
+            consumer_config["schema.registry.url"] = schema_registry
+            consumer = confluent_kafka.avro.AvroConsumer(consumer_config)
+        else:
+            consumer = confluent_kafka.Consumer(consumer_config)
+
+        try:
+            # we can allow a blocking timeout here because there is only one
+            # consumer for the entire server
+            metadata = consumer.list_topics(timeout=10)
+        except confluent_kafka.KafkaException:
+            logger.error("failed getting metadata from %s, exiting.", bootstrap_servers)
+            raise
+
+        all_topics = set(metadata.topics.keys())
+        for topic in topics:
+            assert (
+                topic in all_topics
+            ), f"topic '{topic}' does not exist. maybe it's misspelled or on a different kafka cluster?"
+
+        # pylint: disable=unused-argument
+        def log_assign(
+            consumer: Union[confluent_kafka.Consumer, confluent_kafka.avro.AvroConsumer],
+            partitions: List[confluent_kafka.TopicPartition],
+        ) -> None:
+            for topic_partition in partitions:
+                logger.info("assigned %s/%s", topic_partition.topic, topic_partition.partition)
+
+        # pylint: disable=unused-argument
+        def log_revoke(
+            consumer: Union[confluent_kafka.Consumer, confluent_kafka.avro.AvroConsumer],
+            partitions: List[confluent_kafka.TopicPartition],
+        ) -> None:
+            for topic_partition in partitions:
+                logger.info("revoked %s/%s", topic_partition.topic, topic_partition.partition)
+
+        consumer.subscribe(topics, on_assign=log_assign, on_revoke=log_revoke)
+        return consumer
 
     def build_pump_worker(self, work_queue: WorkQueue) -> KafkaConsumerWorker:
         return KafkaConsumerWorker(

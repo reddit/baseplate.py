@@ -6,6 +6,7 @@ from unittest import mock
 import confluent_kafka
 import pytest
 
+from confluent_kafka.avro import AvroConsumer
 from gevent.server import StreamServer
 
 from baseplate import Baseplate
@@ -246,6 +247,11 @@ def topics():
     return ["topic_1"]
 
 
+@pytest.fixture
+def schema_registry():
+    return "http://127.0.0.1:8081"
+
+
 class TestInOrderConsumerFactory:
     @mock.patch("confluent_kafka.Consumer")
     def test_make_kafka_consumer(
@@ -386,6 +392,173 @@ class TestInOrderConsumerFactory:
         assert isinstance(health_checker, StreamServer)
 
 
+class TestAvroInOrderConsumerFactory:
+    @mock.patch("confluent_kafka.avro.AvroConsumer")
+    def test_make_kafka_avro_consumer(
+        self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics, schema_registry
+    ):
+        mock_consumer = mock.Mock()
+        mock_consumer.list_topics.return_value = mock.Mock(
+            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+        )
+        kafka_consumer.return_value = mock_consumer
+
+        _consumer = InOrderConsumerFactory.new(
+            name,
+            baseplate,
+            bootstrap_servers,
+            group_id,
+            topics,
+            mock.Mock(),
+            schema_registry=schema_registry,
+        ).consumer
+
+        assert _consumer == mock_consumer
+
+        kafka_consumer.assert_called_once_with(
+            {
+                "bootstrap.servers": bootstrap_servers,
+                "group.id": group_id,
+                "auto.offset.reset": "latest",
+                "heartbeat.interval.ms": 3000,
+                "session.timeout.ms": 10000,
+                "max.poll.interval.ms": 300000,
+                "enable.auto.commit": "false",
+                "schema.registry.url": schema_registry,
+            }
+        )
+        mock_consumer.subscribe.assert_called_once()
+        assert mock_consumer.subscribe.call_args_list[0][0][0] == topics
+
+    @mock.patch("confluent_kafka.avro.AvroConsumer")
+    def test_make_kafka_avro_consumer_unknown_topic(
+        self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics, schema_registry
+    ):
+        mock_consumer = mock.Mock()
+        mock_consumer.list_topics.return_value = mock.Mock(
+            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+        )
+        kafka_consumer.return_value = mock_consumer
+
+        with pytest.raises(AssertionError):
+            InOrderConsumerFactory.new(
+                name,
+                baseplate,
+                bootstrap_servers,
+                group_id,
+                ["topic_4"],
+                mock.Mock(),
+                schema_registry=schema_registry,
+            )
+
+        kafka_consumer.assert_called_once_with(
+            {
+                "bootstrap.servers": bootstrap_servers,
+                "group.id": group_id,
+                "auto.offset.reset": "latest",
+                "heartbeat.interval.ms": 3000,
+                "session.timeout.ms": 10000,
+                "max.poll.interval.ms": 300000,
+                "enable.auto.commit": "false",
+                "schema.registry.url": schema_registry,
+            }
+        )
+        mock_consumer.subscribe.assert_not_called()
+
+    @mock.patch("confluent_kafka.avro.AvroConsumer")
+    def test_avro_init(
+        self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics, schema_registry
+    ):
+        mock_consumer = mock.Mock()
+        mock_consumer.list_topics.return_value = mock.Mock(
+            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+        )
+        kafka_consumer.return_value = mock_consumer
+
+        handler_fn = mock.Mock()
+        message_unpack_fn = mock.Mock()
+        health_check_fn = mock.Mock()
+        factory = InOrderConsumerFactory.new(
+            name=name,
+            baseplate=baseplate,
+            bootstrap_servers=bootstrap_servers,
+            group_id=group_id,
+            topics=topics,
+            handler_fn=handler_fn,
+            message_unpack_fn=message_unpack_fn,
+            health_check_fn=health_check_fn,
+            schema_registry=schema_registry,
+        )
+        assert factory.name == name
+        assert factory.baseplate == baseplate
+        assert factory.handler_fn == handler_fn
+        assert factory.message_unpack_fn == message_unpack_fn
+        assert factory.health_check_fn == health_check_fn
+        assert factory.consumer == mock_consumer
+
+    @pytest.fixture
+    def make_avro_queue_consumer_factory(
+        self, name, baseplate, bootstrap_servers, group_id, topics, schema_registry
+    ):
+        @mock.patch.object(confluent_kafka.avro.AvroConsumer, "list_topics")
+        def _make_queue_consumer_factory(mock_consumer, health_check_fn=None):
+            mock_consumer.return_value = mock.Mock(
+                topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+            )
+
+            queue_consumer_factory = InOrderConsumerFactory.new(
+                name=name,
+                baseplate=baseplate,
+                bootstrap_servers=bootstrap_servers,
+                group_id=group_id,
+                topics=topics,
+                handler_fn=lambda ctx, data, msg: True,
+                message_unpack_fn=None,
+                health_check_fn=health_check_fn,
+                schema_registry=schema_registry,
+            )
+            assert isinstance(queue_consumer_factory.consumer, AvroConsumer)
+            return queue_consumer_factory
+
+        return _make_queue_consumer_factory
+
+    def test_avro_build_pump_worker(self, make_avro_queue_consumer_factory):
+        factory = make_avro_queue_consumer_factory()
+        work_queue = Queue(maxsize=10)
+        pump = factory.build_pump_worker(work_queue)
+        assert isinstance(pump, KafkaConsumerWorker)
+        assert pump.consumer == factory.consumer
+        assert isinstance(pump.consumer, AvroConsumer)
+        assert pump.work_queue == work_queue
+
+    def test_avro_build_message_handler(self, make_avro_queue_consumer_factory):
+        factory = make_avro_queue_consumer_factory()
+        handler = factory.build_message_handler()
+        assert isinstance(handler, KafkaMessageHandler)
+        assert handler.baseplate == factory.baseplate
+        assert handler.name == factory.name
+        assert handler.handler_fn == factory.handler_fn
+        assert handler.message_unpack_fn == factory.message_unpack_fn
+        assert handler.on_success_fn.__name__ == "commit_offset"
+        assert handler.message_unpack_fn.__qualname__ == "MessageSerializer.decode_message"
+        assert handler.message_unpack_fn.__name__ == "decode_message"
+
+    def test_avro_build_multiple_message_handlers(self, make_avro_queue_consumer_factory):
+        factory = make_avro_queue_consumer_factory()
+
+        factory.build_message_handler()
+
+        with pytest.raises(AssertionError):
+            factory.build_message_handler()
+
+    @pytest.mark.parametrize("health_check_fn", [None, lambda req: True])
+    def test_avro_build_health_checker(self, health_check_fn, make_avro_queue_consumer_factory):
+        factory = make_avro_queue_consumer_factory(health_check_fn=health_check_fn)
+        listener = mock.Mock(spec=socket.socket)
+        health_checker = factory.build_health_checker(listener)
+        assert isinstance(health_checker, StreamServer)
+
+
 class TestFastConsumerFactory:
     @mock.patch("confluent_kafka.Consumer")
     def test_make_kafka_consumer(
@@ -397,9 +570,7 @@ class TestFastConsumerFactory:
         )
         kafka_consumer.return_value = mock_consumer
 
-        _consumer = FastConsumerFactory.new(
-            name, baseplate, bootstrap_servers, group_id, topics, mock.Mock()
-        ).consumer
+        _consumer = FastConsumerFactory.make_kafka_consumer(bootstrap_servers, group_id, topics)
 
         assert _consumer == mock_consumer
 
@@ -431,9 +602,7 @@ class TestFastConsumerFactory:
         kafka_consumer.return_value = mock_consumer
 
         with pytest.raises(AssertionError):
-            FastConsumerFactory.new(
-                name, baseplate, bootstrap_servers, group_id, ["topic_4"], mock.Mock()
-            )
+            FastConsumerFactory.make_kafka_consumer(bootstrap_servers, group_id, ["topic_4"])
 
         kafka_consumer.assert_called_once_with(
             {
@@ -523,6 +692,169 @@ class TestFastConsumerFactory:
     @pytest.mark.parametrize("health_check_fn", [None, lambda req: True])
     def test_build_health_checker(self, health_check_fn, make_queue_consumer_factory):
         factory = make_queue_consumer_factory(health_check_fn=health_check_fn)
+        listener = mock.Mock(spec=socket.socket)
+        health_checker = factory.build_health_checker(listener)
+        assert isinstance(health_checker, StreamServer)
+
+
+class TestAvroFastConsumerFactory:
+    @mock.patch("confluent_kafka.avro.AvroConsumer")
+    def test_make_kafka_avro_consumer(
+        self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics
+    ):
+        mock_consumer = mock.Mock()
+        mock_consumer.list_topics.return_value = mock.Mock(
+            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+        )
+        kafka_consumer.return_value = mock_consumer
+
+        _consumer = FastConsumerFactory.new(
+            name,
+            baseplate,
+            bootstrap_servers,
+            group_id,
+            topics,
+            mock.Mock(),
+            schema_registry=schema_registry,
+        ).consumer
+
+        assert _consumer == mock_consumer
+
+        kafka_consumer.assert_called_once_with(
+            {
+                "bootstrap.servers": bootstrap_servers,
+                "group.id": group_id,
+                "auto.offset.reset": "latest",
+                "heartbeat.interval.ms": 3000,
+                "session.timeout.ms": 10000,
+                "max.poll.interval.ms": 300000,
+                "enable.auto.commit": "true",
+                "auto.commit.interval.ms": 5000,
+                "enable.auto.offset.store": "true",
+                "on_commit": FastConsumerFactory._commit_callback,
+                "schema.registry.url": schema_registry,
+            }
+        )
+        mock_consumer.subscribe.assert_called_once()
+        assert mock_consumer.subscribe.call_args_list[0][0][0] == topics
+
+    @mock.patch("confluent_kafka.avro.AvroConsumer")
+    def test_make_kafka_avro_consumer_unknown_topic(
+        self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics
+    ):
+        mock_consumer = mock.Mock()
+        mock_consumer.list_topics.return_value = mock.Mock(
+            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+        )
+        kafka_consumer.return_value = mock_consumer
+
+        with pytest.raises(AssertionError):
+            FastConsumerFactory.new(
+                name,
+                baseplate,
+                bootstrap_servers,
+                group_id,
+                ["topic_4"],
+                mock.Mock(),
+                schema_registry=schema_registry,
+            )
+
+        kafka_consumer.assert_called_once_with(
+            {
+                "bootstrap.servers": bootstrap_servers,
+                "group.id": group_id,
+                "auto.offset.reset": "latest",
+                "heartbeat.interval.ms": 3000,
+                "session.timeout.ms": 10000,
+                "max.poll.interval.ms": 300000,
+                "enable.auto.commit": "true",
+                "auto.commit.interval.ms": 5000,
+                "enable.auto.offset.store": "true",
+                "on_commit": FastConsumerFactory._commit_callback,
+                "schema.registry.url": schema_registry,
+            }
+        )
+        mock_consumer.subscribe.assert_not_called()
+
+    @mock.patch("confluent_kafka.avro.AvroConsumer")
+    def test_avro_init(self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics):
+        mock_consumer = mock.Mock()
+        mock_consumer.list_topics.return_value = mock.Mock(
+            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+        )
+        kafka_consumer.return_value = mock_consumer
+
+        handler_fn = mock.Mock()
+        message_unpack_fn = mock.Mock()
+        health_check_fn = mock.Mock()
+        factory = FastConsumerFactory.new(
+            name=name,
+            baseplate=baseplate,
+            bootstrap_servers=bootstrap_servers,
+            group_id=group_id,
+            topics=topics,
+            handler_fn=handler_fn,
+            message_unpack_fn=message_unpack_fn,
+            health_check_fn=health_check_fn,
+            schema_registry=schema_registry,
+        )
+        assert factory.name == name
+        assert factory.baseplate == baseplate
+        assert factory.handler_fn == handler_fn
+        assert factory.message_unpack_fn == message_unpack_fn
+        assert factory.health_check_fn == health_check_fn
+        assert factory.consumer == mock_consumer
+
+    @pytest.fixture
+    def make_avro_queue_consumer_factory(
+        self, name, baseplate, bootstrap_servers, group_id, topics, schema_registry
+    ):
+        @mock.patch.object(confluent_kafka.avro.AvroConsumer, "list_topics")
+        def _make_queue_consumer_factory(mock_consumer, health_check_fn=None):
+            mock_consumer.return_value = mock.Mock(
+                topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+            )
+
+            queue_consumer_factory = FastConsumerFactory.new(
+                name=name,
+                baseplate=baseplate,
+                bootstrap_servers=bootstrap_servers,
+                group_id=group_id,
+                topics=topics,
+                handler_fn=lambda ctx, data, msg: True,
+                message_unpack_fn=None,
+                health_check_fn=health_check_fn,
+                schema_registry=schema_registry,
+            )
+            assert isinstance(queue_consumer_factory.consumer, AvroConsumer)
+            return queue_consumer_factory
+
+        return _make_queue_consumer_factory
+
+    def test_avro_build_pump_worker(self, make_avro_queue_consumer_factory):
+        factory = make_avro_queue_consumer_factory()
+        work_queue = Queue(maxsize=10)
+        pump = factory.build_pump_worker(work_queue)
+        assert isinstance(pump, KafkaConsumerWorker)
+        assert pump.consumer == factory.consumer
+        assert isinstance(pump.consumer, AvroConsumer)
+        assert pump.work_queue == work_queue
+
+    def test_avro_build_message_handler(self, make_avro_queue_consumer_factory):
+        factory = make_avro_queue_consumer_factory()
+        handler = factory.build_message_handler()
+        assert isinstance(handler, KafkaMessageHandler)
+        assert handler.baseplate == factory.baseplate
+        assert handler.name == factory.name
+        assert handler.handler_fn == factory.handler_fn
+        assert handler.message_unpack_fn == factory.message_unpack_fn
+        assert handler.on_success_fn is None
+        assert handler.message_unpack_fn.__qualname__ == "MessageSerializer.decode_message"
+        assert handler.message_unpack_fn.__name__ == "decode_message"
+
+    @pytest.mark.parametrize("health_check_fn", [None, lambda req: True])
+    def test_avro_build_health_checker(self, health_check_fn, make_avro_queue_consumer_factory):
+        factory = make_avro_queue_consumer_factory(health_check_fn=health_check_fn)
         listener = mock.Mock(spec=socket.socket)
         health_checker = factory.build_health_checker(listener)
         assert isinstance(health_checker, StreamServer)
