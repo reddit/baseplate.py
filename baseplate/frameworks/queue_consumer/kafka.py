@@ -15,7 +15,7 @@ from typing import Union
 
 import confluent_kafka
 
-from confluent_kafka.avro import AvroConsumer  # pylint: disable=unused-import
+from confluent_kafka.avro import AvroConsumer  # noqa pylint: disable=unused-import
 from gevent.server import StreamServer
 
 from baseplate import Baseplate
