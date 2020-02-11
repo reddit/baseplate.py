@@ -1,5 +1,6 @@
 import typing
 
+from random import random
 from typing import Any
 from typing import Optional
 
@@ -11,8 +12,6 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import metrics
 from baseplate.observers.timeout import ServerTimeout
-
-from random import random
 
 
 class MetricsBaseplateObserver(BaseplateObserver):
