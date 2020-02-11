@@ -12,6 +12,8 @@ from baseplate import SpanObserver
 from baseplate.lib import metrics
 from baseplate.observers.timeout import ServerTimeout
 
+from random import random
+
 
 class MetricsBaseplateObserver(BaseplateObserver):
     """Metrics collecting observer.
@@ -93,15 +95,18 @@ class MetricsClientSpanObserver(SpanObserver):
         self.batch = batch
         self.base_name = f"clients.{span.name}"
         self.timer = batch.timer(self.base_name)
+        self.sample_histogram = random() < batch.histogram_sampling_rate
 
     def on_start(self) -> None:
-        self.timer.start()
+        if self.sample_histogram:
+            self.timer.start()
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.timer.stop()
+        if self.sample_histogram:
+            self.timer.stop()
         suffix = "success" if not exc_info else "failure"
         self.batch.counter(self.base_name + "." + suffix).increment()
 

@@ -130,9 +130,10 @@ class BufferedTransport(Transport):
 
 
 class BaseClient:
-    def __init__(self, transport: Transport, namespace: str):
+    def __init__(self, transport: Transport, namespace: str, histogram_sampling_rate: float = 1.0):
         self.transport = transport
         self.namespace = namespace.encode("ascii")
+        self.histogram_sampling_rate = histogram_sampling_rate
 
     def timer(self, name: str) -> "Timer":
         """Return a Timer with the given name.
@@ -183,7 +184,7 @@ class Client(BaseClient):
         the stats aggregator.
 
         """
-        return Batch(self.transport, self.namespace)
+        return Batch(self.transport, self.namespace, self.histogram_sampling_rate)
 
 
 class Batch(BaseClient):
@@ -199,10 +200,11 @@ class Batch(BaseClient):
     """
 
     # pylint: disable=super-init-not-called
-    def __init__(self, transport: Transport, namespace: bytes):
+    def __init__(self, transport: Transport, namespace: bytes, histogram_sampling_rate: float = 1.0):
         self.transport = BufferedTransport(transport)
         self.namespace = namespace
         self.counters: Dict[bytes, BatchCounter] = {}
+        self.histogram_sampling_rate = histogram_sampling_rate
 
     def __enter__(self) -> "Batch":
         return self
@@ -501,7 +503,7 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
     """
     cfg = config.parse_config(
         raw_config,
-        {"metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint)}},
+        {"metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint), "histogram_sampling_rate": config.Optional(config.Float)}},
     )
 
     # pylint: disable=maybe-no-member
