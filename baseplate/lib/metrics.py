@@ -200,9 +200,7 @@ class Batch(BaseClient):
     """
 
     # pylint: disable=super-init-not-called
-    def __init__(
-        self, transport: Transport, namespace: bytes, timer_sampling_rate: float = 1.0
-    ):
+    def __init__(self, transport: Transport, namespace: bytes, timer_sampling_rate: float = 1.0):
         self.transport = BufferedTransport(transport)
         self.namespace = namespace
         self.counters: Dict[bytes, BatchCounter] = {}
@@ -467,7 +465,9 @@ class Gauge:
         self.transport.send(serialized)
 
 
-def make_client(namespace: str, endpoint: config.EndpointConfiguration, timer_sampling_rate: float = 1.0) -> Client:
+def make_client(
+    namespace: str, endpoint: config.EndpointConfiguration, timer_sampling_rate: float = 1.0
+) -> Client:
     """Return a configured client.
 
     :param namespace: The root key to prefix all metrics with.
@@ -506,13 +506,12 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
     cfg = config.parse_config(
         raw_config,
         {
-            "metrics": {
-                "namespace": config.String,
-                "endpoint": config.Optional(config.Endpoint),
-            },
+            "metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint)},
             "metrics_observer": {"timer_sampling_rate": config.Optional(config.Float)},
         },
     )
 
     # pylint: disable=maybe-no-member
-    return make_client(cfg.metrics.namespace, cfg.metrics.endpoint, cfg.metrics_observer.timer_sampling_rate)
+    return make_client(
+        cfg.metrics.namespace, cfg.metrics.endpoint, cfg.metrics_observer.timer_sampling_rate
+    )

@@ -94,7 +94,9 @@ class MetricsClientSpanObserver(SpanObserver):
         self.batch = batch
         self.base_name = f"clients.{span.name}"
         self.timer = batch.timer(self.base_name)
-        self.sample_histogram = batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
+        self.sample_histogram = (
+            batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
+        )
 
     def on_start(self) -> None:
         if self.sample_histogram:
