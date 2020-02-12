@@ -207,7 +207,7 @@ class TraceSpanObserverTests(TraceTestBase):
                 debug_annotation = annotation
                 break
         self.assertIsNotNone(debug_annotation)
-        self.assertTrue(debug_annotation["value"])
+        self.assertEqual(debug_annotation["value"], "true")
 
     def test_on_finish_sets_error_annotation(self):
         self.assertIsNone(self.test_span_observer.end)
@@ -219,7 +219,7 @@ class TraceSpanObserverTests(TraceTestBase):
                 error_annotation = annotation
                 break
         self.assertIsNotNone(error_annotation)
-        self.assertTrue(error_annotation["value"])
+        self.assertEqual(error_annotation["value"], "true")
 
     def test_create_binary_annotation(self):
         annotation = self.test_span_observer._create_binary_annotation("test-key", "test-value")
