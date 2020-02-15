@@ -345,6 +345,7 @@ class EdgeRequestContextTests(unittest.TestCase):
             request_context.oauth_client.is_type("third_party")
 
         self.assertEqual(request_context.session.id, self.SESSION_ID)
+        self.assertEqual(request_context.device.id, self.DEVICE_ID)
         self.assertEqual(
             request_context.event_fields(),
             {
@@ -353,6 +354,7 @@ class EdgeRequestContextTests(unittest.TestCase):
                 "cookie_created_timestamp": self.LOID_CREATED_MS,
                 "session_id": self.SESSION_ID,
                 "oauth_client_id": None,
+                "device_id": self.DEVICE_ID,
             },
         )
 
