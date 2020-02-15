@@ -351,12 +351,14 @@ class EdgeRequestContextFactory:
             token = request.authentication_service.authenticate_cookie(cookie)
             loid = parse_loid(request.cookies["loid"])
             session = parse_session(request.cookies["session"])
+            device_id = request.headers["x-device-id"]
 
             edge_context = self.edgecontext_factory.new(
                 authentication_token=token,
                 loid_id=loid.id,
                 loid_created_ms=loid.created,
                 session_id=session.id,
+                device_id=device_id,
             )
             edge_context.attach_context(request)
 
@@ -366,6 +368,7 @@ class EdgeRequestContextFactory:
         :param loid_created_ms: Epoch milliseconds when the current LoID cookie
             was created.
         :param session_id: ID for the current session cookie.
+        :param session_id: ID for the device where the request originated from.
 
         """
         if loid_id is not None and not loid_id.startswith("t2_"):
