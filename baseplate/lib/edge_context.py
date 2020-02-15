@@ -14,6 +14,7 @@ from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from baseplate import RequestContext
 from baseplate.lib import cached_property
 from baseplate.lib.secrets import SecretsStore
+from baseplate.thrift.ttypes import Device as TDevice
 from baseplate.thrift.ttypes import Loid as TLoid
 from baseplate.thrift.ttypes import Request as TRequest
 from baseplate.thrift.ttypes import Session as TSession
@@ -159,6 +160,12 @@ class InvalidAuthenticationToken(AuthenticationToken):
 
 class Session(NamedTuple):
     """Wrapper for the session values in the EdgeRequestContext."""
+
+    id: str
+
+
+class Device(NamedTuple):
+    """Wrapper for the device values in the EdgeRequestContext."""
 
     id: str
 
@@ -327,6 +334,7 @@ class EdgeRequestContextFactory:
         loid_id: Optional[str] = None,
         loid_created_ms: Optional[int] = None,
         session_id: Optional[str] = None,
+        device_id: Optional[str] = None,
     ) -> "EdgeRequestContext":
         """Return a new EdgeRequestContext object made from scratch.
 
@@ -370,6 +378,7 @@ class EdgeRequestContextFactory:
             loid=TLoid(id=loid_id, created_ms=loid_created_ms),
             session=TSession(id=session_id),
             authentication_token=authentication_token,
+            device=TDevice(id=device_id),
         )
         header = TSerialization.serialize(t_request, EdgeRequestContext._HEADER_PROTOCOL_FACTORY)
 
@@ -420,6 +429,8 @@ class EdgeRequestContext:
     def event_fields(self) -> Dict[str, Any]:
         """Return fields to be added to events."""
         fields = {"session_id": self.session.id}
+        if self.device.id:
+            fields["device_id"] = self.device.id
         fields.update(self.user.event_fields())
         fields.update(self.oauth_client.event_fields())
         return fields
@@ -443,6 +454,11 @@ class EdgeRequestContext:
         return OAuthClient(self.authentication_token)
 
     @cached_property
+    def device(self) -> Device:
+        """:py:class:`~baseplate.lib.edge_context.Device` object for the current context."""
+        return Device(id=self._t_request.device.id)
+
+    @cached_property
     def session(self) -> Session:
         """:py:class:`~baseplate.lib.edge_context.Session` object for the current context."""
         return Session(id=self._t_request.session.id)
@@ -457,6 +473,7 @@ class EdgeRequestContext:
         _t_request = TRequest()
         _t_request.loid = TLoid()
         _t_request.session = TSession()
+        _t_request.device = TDevice()
         if self._header:
             try:
                 TSerialization.deserialize(_t_request, self._header, self._HEADER_PROTOCOL_FACTORY)
