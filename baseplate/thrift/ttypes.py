@@ -5,14 +5,17 @@
 #
 #  options string: py:slots
 #
-
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
-from thrift.protocol.TProtocol import TProtocolException
-from thrift.TRecursive import fix_spec
-
 import sys
 
+from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
+from thrift.Thrift import TFrozenDict
+from thrift.Thrift import TMessageType
+from thrift.Thrift import TType
 from thrift.transport import TTransport
+from thrift.TRecursive import fix_spec
+
 all_structs = []
 
 
@@ -34,18 +37,18 @@ class Loid(object):
 
     """
 
-    __slots__ = (
-        'id',
-        'created_ms',
-    )
+    __slots__ = ("id", "created_ms")
 
-
-    def __init__(self, id=None, created_ms=None,):
+    def __init__(self, id=None, created_ms=None):
         self.id = id
         self.created_ms = created_ms
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -55,7 +58,11 @@ class Loid(object):
                 break
             if fid == 1:
                 if ftype == TType.STRING:
-                    self.id = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                    self.id = (
+                        iprot.readString().decode("utf-8")
+                        if sys.version_info[0] == 2
+                        else iprot.readString()
+                    )
                 else:
                     iprot.skip(ftype)
             elif fid == 2:
@@ -72,13 +79,13 @@ class Loid(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('Loid')
+        oprot.writeStructBegin("Loid")
         if self.id is not None:
-            oprot.writeFieldBegin('id', TType.STRING, 1)
-            oprot.writeString(self.id.encode('utf-8') if sys.version_info[0] == 2 else self.id)
+            oprot.writeFieldBegin("id", TType.STRING, 1)
+            oprot.writeString(self.id.encode("utf-8") if sys.version_info[0] == 2 else self.id)
             oprot.writeFieldEnd()
         if self.created_ms is not None:
-            oprot.writeFieldBegin('created_ms', TType.I64, 2)
+            oprot.writeFieldBegin("created_ms", TType.I64, 2)
             oprot.writeI64(self.created_ms)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -88,9 +95,8 @@ class Loid(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -122,16 +128,17 @@ class Session(object):
 
     """
 
-    __slots__ = (
-        'id',
-    )
+    __slots__ = ("id",)
 
-
-    def __init__(self, id=None,):
+    def __init__(self, id=None):
         self.id = id
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -141,7 +148,11 @@ class Session(object):
                 break
             if fid == 1:
                 if ftype == TType.STRING:
-                    self.id = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                    self.id = (
+                        iprot.readString().decode("utf-8")
+                        if sys.version_info[0] == 2
+                        else iprot.readString()
+                    )
                 else:
                     iprot.skip(ftype)
             else:
@@ -153,10 +164,10 @@ class Session(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('Session')
+        oprot.writeStructBegin("Session")
         if self.id is not None:
-            oprot.writeFieldBegin('id', TType.STRING, 1)
-            oprot.writeString(self.id.encode('utf-8') if sys.version_info[0] == 2 else self.id)
+            oprot.writeFieldBegin("id", TType.STRING, 1)
+            oprot.writeString(self.id.encode("utf-8") if sys.version_info[0] == 2 else self.id)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -165,9 +176,8 @@ class Session(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -282,16 +292,26 @@ class Request(object):
 
     """
 
+<<<<<<< HEAD
     __slots__ = ("loid", "session", "authentication_token", "device")
 
     def __init__(self, loid=None, session=None, authentication_token=None, device=None):
+=======
+    __slots__ = ("loid", "session", "authentication_token")
+
+    def __init__(self, loid=None, session=None, authentication_token=None):
+>>>>>>> updated unit tests to patch timer sampling rate onto the other spans
         self.loid = loid
         self.session = session
         self.authentication_token = authentication_token
         self.device = device
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -313,7 +333,11 @@ class Request(object):
                     iprot.skip(ftype)
             elif fid == 3:
                 if ftype == TType.STRING:
-                    self.authentication_token = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                    self.authentication_token = (
+                        iprot.readString().decode("utf-8")
+                        if sys.version_info[0] == 2
+                        else iprot.readString()
+                    )
                 else:
                     iprot.skip(ftype)
             elif fid == 4:
@@ -331,18 +355,22 @@ class Request(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('Request')
+        oprot.writeStructBegin("Request")
         if self.loid is not None:
-            oprot.writeFieldBegin('loid', TType.STRUCT, 1)
+            oprot.writeFieldBegin("loid", TType.STRUCT, 1)
             self.loid.write(oprot)
             oprot.writeFieldEnd()
         if self.session is not None:
-            oprot.writeFieldBegin('session', TType.STRUCT, 2)
+            oprot.writeFieldBegin("session", TType.STRUCT, 2)
             self.session.write(oprot)
             oprot.writeFieldEnd()
         if self.authentication_token is not None:
-            oprot.writeFieldBegin('authentication_token', TType.STRING, 3)
-            oprot.writeString(self.authentication_token.encode('utf-8') if sys.version_info[0] == 2 else self.authentication_token)
+            oprot.writeFieldBegin("authentication_token", TType.STRING, 3)
+            oprot.writeString(
+                self.authentication_token.encode("utf-8")
+                if sys.version_info[0] == 2
+                else self.authentication_token
+            )
             oprot.writeFieldEnd()
         if self.device is not None:
             oprot.writeFieldBegin("device", TType.STRUCT, 4)
@@ -355,9 +383,8 @@ class Request(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -371,11 +398,13 @@ class Request(object):
 
     def __ne__(self, other):
         return not (self == other)
+
+
 all_structs.append(Loid)
 Loid.thrift_spec = (
     None,  # 0
-    (1, TType.STRING, 'id', 'UTF8', None, ),  # 1
-    (2, TType.I64, 'created_ms', None, None, ),  # 2
+    (1, TType.STRING, "id", "UTF8", None),  # 1
+    (2, TType.I64, "created_ms", None, None),  # 2
 )
 all_structs.append(Session)
 Session.thrift_spec = (None, (1, TType.STRING, "id", "UTF8", None))  # 0  # 1
@@ -388,7 +417,6 @@ Request.thrift_spec = (
     (2, TType.STRUCT, "session", [Session, None], None),  # 2
     (3, TType.STRING, "authentication_token", "UTF8", None),  # 3
     (4, TType.STRUCT, "device", [Device, None], None),  # 4
-
 )
 fix_spec(all_structs)
 del all_structs

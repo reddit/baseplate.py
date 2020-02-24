@@ -45,9 +45,7 @@ class MetricsServerSpanObserver(SpanObserver):
         self.batch = batch
         self.base_name = "server." + server_span.name
         self.timer = batch.timer(self.base_name)
-        self.sample_timer = (
-            batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
-        )
+        self.sample_timer = batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
 
     def on_start(self) -> None:
         if self.sample_timer:
@@ -83,9 +81,7 @@ class MetricsLocalSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span):
         self.batch = batch
         self.timer = batch.timer(typing.cast(str, span.component_name) + "." + span.name)
-        self.sample_timer = (
-            batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
-        )
+        self.sample_timer = batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
 
     def on_start(self) -> None:
         if self.sample_timer:
@@ -104,9 +100,7 @@ class MetricsClientSpanObserver(SpanObserver):
         self.batch = batch
         self.base_name = f"clients.{span.name}"
         self.timer = batch.timer(self.base_name)
-        self.sample_timer = (
-            batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
-        )
+        self.sample_timer = batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
 
     def on_start(self) -> None:
         if self.sample_timer:
