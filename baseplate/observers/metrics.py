@@ -45,15 +45,20 @@ class MetricsServerSpanObserver(SpanObserver):
         self.batch = batch
         self.base_name = "server." + server_span.name
         self.timer = batch.timer(self.base_name)
+        self.sample_timer = (
+            batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
+        )
 
     def on_start(self) -> None:
-        self.timer.start()
+        if self.sample_timer:
+            self.timer.start()
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.timer.stop()
+        if self.sample_timer:
+            self.timer.stop()
 
         if not exc_info:
             self.batch.counter(f"{self.base_name}.success").increment()
@@ -78,15 +83,20 @@ class MetricsLocalSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span):
         self.batch = batch
         self.timer = batch.timer(typing.cast(str, span.component_name) + "." + span.name)
+        self.sample_timer = (
+            batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
+        )
 
     def on_start(self) -> None:
-        self.timer.start()
+        if self.sample_timer:
+            self.timer.start()
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.timer.stop()
+        if self.sample_timer:
+            self.timer.stop()
 
 
 class MetricsClientSpanObserver(SpanObserver):
@@ -94,19 +104,19 @@ class MetricsClientSpanObserver(SpanObserver):
         self.batch = batch
         self.base_name = f"clients.{span.name}"
         self.timer = batch.timer(self.base_name)
-        self.sample_histogram = (
+        self.sample_timer = (
             batch.timer_sampling_rate == 1.0 or random() < batch.timer_sampling_rate
         )
 
     def on_start(self) -> None:
-        if self.sample_histogram:
+        if self.sample_timer:
             self.timer.start()
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        if self.sample_histogram:
+        if self.sample_timer:
             self.timer.stop()
         suffix = "success" if not exc_info else "failure"
         self.batch.counter(self.base_name + "." + suffix).increment()
