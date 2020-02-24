@@ -507,7 +507,7 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
         raw_config,
         {
             "metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint)},
-            "metrics_observer": {"timer_sampling_rate": config.Optional(config.Float)},
+            "metrics_observer": {"timer_sampling_rate": config.Optional(config.Float, default=1.0)},
         },
     )
 
