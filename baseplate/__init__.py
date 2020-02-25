@@ -433,8 +433,8 @@ class Baseplate:
                 },
                 "cache": MemcachedClient(),
                 "cassandra": {
-                    "foo": CassandraClient(),
-                    "bar": CassandraClient(),
+                    "foo": CassandraClient("foo_keyspace"),
+                    "bar": CassandraClient("bar_keyspace"),
                 },
             })
 

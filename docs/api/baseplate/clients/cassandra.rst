@@ -23,7 +23,7 @@ client declaration to your context configuration::
       app_config,
       {
          ...
-         "foo": CassandraClient(),
+         "foo": CassandraClient("mykeyspace"),
          ...
       }
    )
