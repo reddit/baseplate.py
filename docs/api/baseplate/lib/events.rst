@@ -61,7 +61,7 @@ The ``EventQueue`` also implements
 :py:class:`~baseplate.clients.ContextFactory` so it can be used with
 :py:meth:`~baseplate.Baseplate.add_to_context`::
 
-   event_queue = EventQueue("production")
+   event_queue = EventQueue("production", serialize_v2_event)
    baseplate.add_to_context("events_production", event_queue)
 
 It can then be used from the :py:class:`~baseplate.RequestContext` during
