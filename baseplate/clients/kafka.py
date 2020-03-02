@@ -1,18 +1,21 @@
 import logging
 import time
 
+from concurrent.futures import wait
 from typing import Any
 from typing import Dict
+from typing import List
+from typing import Optional
 
 import confluent_kafka
 
 from confluent_kafka.avro import AvroProducer
 from confluent_kafka.avro import Producer
+from gevent.threadpool import ThreadPoolExecutor
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
-
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +24,14 @@ CHECK_INTERVAL_SECONDS = 0.001
 
 
 class AvroProducerContextFactory(ContextFactory):
-    def __init__(self, bootstrap_servers: str, schema_registry: str, acks: int):
+    def __init__(
+        self,
+        bootstrap_servers: str,
+        schema_registry: str,
+        acks: int,
+        thread_pool_max_size: int = 10,
+        prefetch_schema_ids: Optional[List[int]] = None,
+    ):
         self.avro_producer = AvroProducer(
             {
                 "bootstrap.servers": bootstrap_servers,
@@ -30,10 +40,55 @@ class AvroProducerContextFactory(ContextFactory):
                 # force sending 1 message at a time--don't wait for larger batches
                 "queue.buffering.max.ms": 0,
                 "max.in.flight": 1,
+                # hardcode the defaults here because we reference them with our manual refreshing
+                "topic.metadata.refresh.interval.ms": 300000,
+                "metadata.max.age.ms": 900000,
             }
         )
+        self.threadpool = ThreadPoolExecutor(thread_pool_max_size)
+        self.initialize(self.threadpool, prefetch_schema_ids or [])
+        self.last_initialized_at = time.time()
+
+    def initialize(
+        self, threadpool: ThreadPoolExecutor, prefetch_schema_ids: List[int], block: bool = True
+    ) -> None:
+        """Do some setup tasks to make sure the producer is ready to use."""
+        futures = []
+
+        # make a metadata request, otherwise we'll have to do this on our
+        # first produce which can add up to 1s of extra latency.
+        # list_topics() is a blocking call, so we have to use a separate
+        # thread to avoid blocking the gevent event loop. We can't easily
+        # make confluent_kafka gevent compatible here because it's wrapping
+        # the C library librdkafka.
+        futures.append(threadpool.submit(self.avro_producer.list_topics))
+
+        # fetch and cache all the schemas we plan to use
+        if prefetch_schema_ids:
+            for schema_id in prefetch_schema_ids:
+                futures.append(
+                    threadpool.submit(
+                        self.avro_producer._serializer.registry_client.get_by_id, schema_id
+                    )
+                )
+
+        if block:
+            _, not_done = wait(futures, timeout=1)
+            if not_done:
+                logger.info("AvroProducer timeout while initializing")
 
     def make_object_for_context(self, name: str, span: Span) -> "KafkaAvroProducer":
+        # When initializing the producer we request the metadata by calling list_topics()
+        # Metadata is automatically refreshed every 5 minutes (topic.metadata.refresh.interval.ms)
+        # and expires from cache after 15 minutes (metadata.max.age.ms). We should attempt to
+        # refresh manually before it expires (after 10 minutes).
+        METADATA_REFRESH_INTERVAL = 600
+
+        now = time.time()
+        if now - self.last_initialized_at > METADATA_REFRESH_INTERVAL:
+            self.last_initialized_at = now
+            self.initialize(threadpool=self.threadpool, prefetch_schema_ids=[], block=False)
+
         return KafkaAvroProducer(name, span, self.avro_producer)
 
 
@@ -42,7 +97,6 @@ class KafkaAvroProducer:
         self.name = name
         self.span = span
         self.avro_producer = avro_producer
-        self.initialized = False
 
     def produce(self, topic: str, schema_id: int, value: Dict[str, Any]) -> None:
         """Encode `value` using the `schema_id` and produce the message to Kafka.
@@ -58,33 +112,10 @@ class KafkaAvroProducer:
         if not topic.endswith(TOPIC_SUFFIX):
             raise ValueError("Avro Producers must publish to topics ending with '_avro'")
 
-        if not self.initialized:
-            # make a metadata request, otherwise we'll have to do this on our
-            # first produce which can add up to 1s of extra latency
-            with self.span.make_child(f"{self.name}.avro_producer.list_topics"):
-                for _ in range(3):
-                    try:
-                        # list_topics() is a blocking call, so we have to use
-                        # a very short timeout and retry after a short sleep.
-                        self.avro_producer.list_topics(timeout=0.001)
-                        break
-                    except confluent_kafka.KafkaException:
-                        time.sleep(0.001)
-                else:
-                    logger.info("list_topics() failed after 3 attempts")
-
-            self.initialized = True
-
         serializer = self.avro_producer._serializer
 
-        encode_trace_name = f"{self.name}.serializer.encode_record_with_schema_id"
-        encode_span = self.span.make_child(encode_trace_name)
-
-        with encode_span:
+        with self.span.make_child(f"{self.name}.serializer.encode_record_with_schema_id"):
             encoded = serializer.encode_record_with_schema_id(schema_id, value)
-
-        producer_trace_name = f"{self.name}.avro_producer.produce"
-        producer_span = self.span.make_child(producer_trace_name)
 
         # Producer.produce() is asynchronous so we have to jump through some
         # hoops to get the result here at the call site.
@@ -95,7 +126,7 @@ class KafkaAvroProducer:
             delivery_result["message"] = msg
             delivery_result["complete"] = True
 
-        with producer_span:
+        with self.span.make_child(f"{self.name}.avro_producer.produce"):
             # call the base class Producer.produce() method so we can do our own
             # interactions with schema registry to avoid a bug where the schema
             # can be re-registered.
@@ -141,6 +172,19 @@ def avro_producer_from_config(
     :param app_config: The raw configuration information.
     :param prefix: The name of the kafka cluster to publish messages to.
 
+    The keys useful to :py:func:`avro_producer_from_config` should be prefixed, e.g.
+    ``kafka_cluster_name.bootstrap_servers`` etc. The ``prefix`` argument specifies the
+    prefix used to filter keys. It should map to the name of the kafka cluster
+    that will be published too.
+
+    Supported keys:
+
+    * ``bootstrap_servers`` (required): comma delimited list of kafka brokers to
+      try connecting to, including the port, kafka-01.data.net:9092.
+    * ``schema_registry``: url to connect to the schema-registry on, http://cp-schema-registry.data.net:80.
+    * ``threadpool_size`` (optional): metadata is requested from kafka in it's own thread, option to specify the size of that threadpool.
+    * ``prefetch_schema_ids`` (optional): to optimize initialization pass in list of int ids used by producers.
+
     """
     assert prefix.endswith(".")
 
@@ -149,10 +193,16 @@ def avro_producer_from_config(
             "bootstrap_servers": config.String,
             "schema_registry": config.String,
             "acks": config.Integer,
+            "threadpool_size": config.Optional(config.Integer, default=10),
+            "prefetch_schema_ids": config.Optional(config.TupleOf(config.Integer), default=()),
         }
     )
     options = parser.parse(prefix[:-1], app_config)
 
     return AvroProducerContextFactory(
-        options.bootstrap_servers, options.schema_registry, options.acks
+        options.bootstrap_servers,
+        options.schema_registry,
+        options.acks,
+        options.threadpool_size,
+        options.prefetch_schema_ids,
     )
