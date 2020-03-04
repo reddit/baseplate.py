@@ -12,6 +12,7 @@ from baseplate import Baseplate
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
 from baseplate.clients.redis import MessageQueue
+from baseplate.clients.redis import MonitoredRedisConnection
 from baseplate.lib.message_queue import TimedOutError
 
 
@@ -67,6 +68,25 @@ class RedisIntegrationTests(unittest.TestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
+
+
+class RedisDecodingIntegrationTests(unittest.TestCase):
+    qname = "redisTestDecode"
+
+    def setUp(self):
+        baseplate = Baseplate()
+        baseplate.configure_context(
+            {"redis.url": f"redis://{redis_endpoint}/0"}, {"redis": RedisClient(decode_responses=True)}
+        )
+
+        self.context = baseplate.make_context_object()
+
+    def test_put_get(self):
+        context_redis: MonitoredRedisConnection = self.context.redis
+        context_redis.set("test", "value")
+        message = context_redis.get("test")
+
+        self.assertEqual(message, "value")
 
 
 class RedisMessageQueueTests(unittest.TestCase):

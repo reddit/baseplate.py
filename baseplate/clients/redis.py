@@ -67,14 +67,36 @@ class RedisClient(config.Parser):
 
     See :py:func:`pool_from_config` for available configuration settings.
 
+    :param decode_responses: When True, all string responses will automatically
+    be decoded using the specified encoding.
+
+    :param encoding: String encoding for given bytes. Default is '`utf-8`'
+    See :py:func:`bytes.decode` for more info.
+
+    :param encoding_errors: Default for errors is '`strict`' meaning errors will 
+    raise a `UnicodeError`. See :py:func:`bytes.decode` for more info. 
     """
 
-    def __init__(self, **kwargs: Any):
+    def __init__(
+        self,
+        encoding: Optional[str] = None,
+        encoding_errors: Optional[str] = None,
+        decode_responses: Optional[bool] = None,
+        **kwargs: Any,
+    ):
+        self.decode_responses = decode_responses
+        self.encoding = encoding
+        self.encoding_errors = encoding_errors
         self.kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "RedisContextFactory":
         connection_pool = pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return RedisContextFactory(connection_pool)
+        return RedisContextFactory(
+            connection_pool,
+            encoding=self.encoding,
+            encoding_errors=self.encoding_errors,
+            decode_responses=self.decode_responses,
+        )
 
 
 class RedisContextFactory(ContextFactory):
@@ -91,11 +113,27 @@ class RedisContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, connection_pool: redis.ConnectionPool):
+    def __init__(
+        self,
+        connection_pool: redis.ConnectionPool,
+        encoding: Optional[str] = None,
+        encoding_errors: Optional[str] = None,
+        decode_responses: Optional[bool] = None,
+    ):
         self.connection_pool = connection_pool
+        self.decode_responses = decode_responses
+        self.encoding = encoding
+        self.encoding_errors = encoding_errors
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
-        return MonitoredRedisConnection(name, span, self.connection_pool)
+        return MonitoredRedisConnection(
+            name,
+            span,
+            self.connection_pool,
+            encoding=self.encoding,
+            encoding_errors=self.encoding_errors,
+            decode_responses=self.decode_responses,
+        )
 
 
 # pylint: disable=too-many-public-methods
@@ -113,11 +151,24 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     """
 
-    def __init__(self, context_name: str, server_span: Span, connection_pool: redis.ConnectionPool):
+    def __init__(
+        self,
+        context_name: str,
+        server_span: Span,
+        connection_pool: redis.ConnectionPool,
+        encoding: Optional[str] = None,
+        encoding_errors: Optional[str] = None,
+        decode_responses: Optional[bool] = None,
+    ):
         self.context_name = context_name
         self.server_span = server_span
 
-        super().__init__(connection_pool=connection_pool)
+        super().__init__(
+            connection_pool=connection_pool,
+            encoding=encoding,
+            encoding_errors=encoding_errors,
+            decode_responses=decode_responses,
+        )
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         command = args[0]
