@@ -163,20 +163,17 @@ class MonitoredRedisConnection(redis.StrictRedis):
         self.context_name = context_name
         self.server_span = server_span
 
-        superkwargs = {}
+        kwargs = {}
         if encoding is not None:
-            superkwargs['encoding'] = encoding
+            kwargs["encoding"] = encoding
         if encoding_errors is not None:
-            superkwargs['encoding_errors'] = encoding_errors
+            kwargs["encoding_errors"] = encoding_errors
         if decode_responses is not None:
-            superkwargs['decode_responses'] = decode_responses
+            kwargs["decode_responses"] = decode_responses
 
-        print(superkwargs)
+        print(kwargs)
 
-        super().__init__(
-            connection_pool=connection_pool,
-            **superkwargs,
-        )
+        super().__init__(connection_pool=connection_pool, **kwargs)
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         command = args[0]
