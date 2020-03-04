@@ -76,7 +76,7 @@ class RedisDecodingIntegrationTests(unittest.TestCase):
     def setUp(self):
         baseplate = Baseplate()
         baseplate.configure_context(
-            {"redis.url": f"redis://{redis_endpoint}/0"}, 
+            {"redis.url": f"redis://{redis_endpoint}/0"},
             {"redis": RedisClient(decode_responses=True)},
         )
 
