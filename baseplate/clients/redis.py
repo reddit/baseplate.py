@@ -171,6 +171,8 @@ class MonitoredRedisConnection(redis.StrictRedis):
         if decode_responses is not None:
             superkwargs['decode_responses'] = decode_responses
 
+        print(superkwargs)
+
         super().__init__(
             connection_pool=connection_pool,
             **superkwargs,
