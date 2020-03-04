@@ -73,8 +73,8 @@ class RedisClient(config.Parser):
     :param encoding: String encoding for given bytes. Default is '`utf-8`'
     See :py:func:`bytes.decode` for more info.
 
-    :param encoding_errors: Default for errors is '`strict`' meaning errors will 
-    raise a `UnicodeError`. See :py:func:`bytes.decode` for more info. 
+    :param encoding_errors: Default for errors is '`strict`' meaning errors will
+    raise a `UnicodeError`. See :py:func:`bytes.decode` for more info.
     """
 
     def __init__(
