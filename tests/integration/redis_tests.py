@@ -81,6 +81,7 @@ class RedisDecodingIntegrationTests(unittest.TestCase):
         )
 
         self.context = baseplate.make_context_object()
+        self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_put_get(self):
         context_redis: MonitoredRedisConnection = self.context.redis
