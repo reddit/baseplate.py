@@ -71,7 +71,7 @@ class RedisIntegrationTests(unittest.TestCase):
 
 
 class RedisDecodingIntegrationTests(unittest.TestCase):
-    qname = "redisTestDecode"
+    test_field = "redisTestDecode"
 
     def setUp(self):
         baseplate = Baseplate()
@@ -83,12 +83,21 @@ class RedisDecodingIntegrationTests(unittest.TestCase):
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
-    def test_put_get(self):
+    def test_set_get(self):
         context_redis: MonitoredRedisConnection = self.context.redis
-        context_redis.set("test", "value")
-        message = context_redis.get("test")
+        context_redis.set(self.test_field, "value")
+        message = context_redis.get(self.test_field)
+
+
+        client = RedisClient(decode_responses=True)
+        print(f"client {client.decode_responses}")
+
+        print(context_redis.connection_pool.__dict__)
 
         self.assertEqual(message, "value")
+
+    def tearDown(self):
+        self.context.redis.delete(self.test_field)
 
 
 class RedisMessageQueueTests(unittest.TestCase):
