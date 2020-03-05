@@ -130,10 +130,9 @@ class BufferedTransport(Transport):
 
 
 class BaseClient:
-    def __init__(self, transport: Transport, namespace: str, timer_sampling_rate: float = 1.0):
+    def __init__(self, transport: Transport, namespace: str):
         self.transport = transport
         self.namespace = namespace.encode("ascii")
-        self.timer_sampling_rate = timer_sampling_rate
 
     def timer(self, name: str) -> "Timer":
         """Return a Timer with the given name.
@@ -184,7 +183,7 @@ class Client(BaseClient):
         the stats aggregator.
 
         """
-        return Batch(self.transport, self.namespace, self.timer_sampling_rate)
+        return Batch(self.transport, self.namespace)
 
 
 class Batch(BaseClient):
@@ -200,11 +199,10 @@ class Batch(BaseClient):
     """
 
     # pylint: disable=super-init-not-called
-    def __init__(self, transport: Transport, namespace: bytes, timer_sampling_rate: float = 1.0):
+    def __init__(self, transport: Transport, namespace: bytes):
         self.transport = BufferedTransport(transport)
         self.namespace = namespace
         self.counters: Dict[bytes, BatchCounter] = {}
-        self.timer_sampling_rate = timer_sampling_rate
 
     def __enter__(self) -> "Batch":
         return self
@@ -465,9 +463,7 @@ class Gauge:
         self.transport.send(serialized)
 
 
-def make_client(
-    namespace: str, endpoint: config.EndpointConfiguration, timer_sampling_rate: float = 1.0
-) -> Client:
+def make_client(namespace: str, endpoint: config.EndpointConfiguration) -> Client:
     """Return a configured client.
 
     :param namespace: The root key to prefix all metrics with.
@@ -484,7 +480,7 @@ def make_client(
         transport = RawTransport(endpoint)
     else:
         transport = NullTransport()
-    return Client(transport, namespace, timer_sampling_rate)
+    return Client(transport, namespace)
 
 
 def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
@@ -507,11 +503,10 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
         raw_config,
         {
             "metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint)},
-            "metrics_observer": {"timer_sampling_rate": config.Optional(config.Float, default=1.0)},
-        },
+        }
     )
 
     # pylint: disable=maybe-no-member
     return make_client(
-        cfg.metrics.namespace, cfg.metrics.endpoint, cfg.metrics_observer.timer_sampling_rate
+        cfg.metrics.namespace, cfg.metrics.endpoint
     )
