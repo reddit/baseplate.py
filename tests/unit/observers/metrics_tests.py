@@ -23,7 +23,6 @@ class ObserverTests(unittest.TestCase):
     def test_add_to_context(self):
         mock_client = mock.Mock(spec=Client)
         mock_batch = mock_client.batch.return_value
-        mock_batch.timer_sampling_rate = 1.0
         mock_context = mock.Mock()
         mock_server_span = mock.Mock(spec=ServerSpan)
         mock_server_span.name = "name"
@@ -43,7 +42,6 @@ class ServerSpanObserverTests(unittest.TestCase):
         mock_counter = mock.Mock(spec=Counter)
         mock_batch.timer.return_value = mock_timer
         mock_batch.counter.return_value = mock_counter
-        mock_batch.timer_sampling_rate = 1.0
 
         mock_server_span = mock.Mock(spec=ServerSpan)
         mock_server_span.name = "request_name"
@@ -73,7 +71,6 @@ class ClientSpanObserverTests(unittest.TestCase):
         mock_batch = mock.Mock(spec=Batch)
         mock_batch.timer.return_value = mock_timer
         mock_batch.counter.return_value = mock_counter
-        mock_batch.timer_sampling_rate = 1.0
 
         mock_client_span = mock.Mock(spec=Span)
         mock_client_span.name = "example"
@@ -106,7 +103,6 @@ class LocalSpanObserverTests(unittest.TestCase):
         mock_batch = mock.Mock(spec=Batch)
         mock_batch.timer.return_value = mock_timer
         mock_batch.counter.return_value = mock_counter
-        mock_batch.timer_sampling_rate = 1.0
 
         mock_local_span = mock.Mock(spec=LocalSpan)
         mock_local_span.name = "example"
