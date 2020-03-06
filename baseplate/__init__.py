@@ -291,7 +291,9 @@ class Baseplate:
         from baseplate.observers.metrics import MetricsBaseplateObserver
 
         self._metrics_client = metrics_client
-        self.register(MetricsBaseplateObserver.from_client_and_config(metrics_client, self._app_config))
+        self.register(
+            MetricsBaseplateObserver.from_config_and_client(self._app_config, metrics_client)
+        )
 
     def configure_tracing(
         self, tracing_client: "baseplate.observers.tracing.TracingClient"

@@ -10,6 +10,7 @@ from baseplate import LocalSpan
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
+from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.observers.timeout import ServerTimeout
 
@@ -30,32 +31,41 @@ class MetricsBaseplateObserver(BaseplateObserver):
 
     """
 
-    def __init__(self, client: metrics.Client, timer_sampling_rate: float):
+    def __init__(self, client: metrics.Client, timer_sampling_rate: float = 1.0):
         self.client = client
         self.timer_sampling_rate = timer_sampling_rate
 
     @classmethod
-    def from_config_and_client(cls, raw_config: config.RawConfig, client: metrics.Client) -> "MetricsBaseplateObserver":
-        cfg = config.parse_config(raw_config, {
-            "metrics_observer": {
-               "timer_sampling_rate": config.Optional(config.Float, default=1.0),
-            }
-        })
+    def from_config_and_client(
+        cls, raw_config: Optional[config.RawConfig], client: metrics.Client
+    ) -> "MetricsBaseplateObserver":
+        timer_sampling_rate = 1.0
+        if raw_config:
+            cfg = config.parse_config(
+                raw_config,
+                {
+                    "metrics_observer": {
+                        "timer_sampling_rate": config.Optional(config.Float, default=1.0)
+                    }
+                },
+            )
+            timer_sampling_rate = cfg.metrics_observer.timer_sampling_rate
 
-       return cls(client, sample_rate=cfg.metrics_observer.sample_rate)
+        return cls(client, timer_sampling_rate=timer_sampling_rate)
 
     def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
         batch = self.client.batch()
         context.metrics = batch
-        observer = MetricsServerSpanObserver(batch, server_span)
+        observer = MetricsServerSpanObserver(batch, server_span, self.timer_sampling_rate)
         server_span.register(observer)
 
 
 class MetricsServerSpanObserver(SpanObserver):
-    def __init__(self, batch: metrics.Batch, server_span: Span):
+    def __init__(self, batch: metrics.Batch, server_span: Span, timer_sampling_rate: float = 1.0):
         self.batch = batch
         self.base_name = "server." + server_span.name
         self.timer = batch.timer(self.base_name)
+        self.timer_sampling_rate = timer_sampling_rate
         self.sample_timer = self.timer_sampling_rate == 1.0 or random() < self.timer_sampling_rate
 
     def on_start(self) -> None:
@@ -82,17 +92,17 @@ class MetricsServerSpanObserver(SpanObserver):
     def on_child_span_created(self, span: Span) -> None:
         observer: SpanObserver
         if isinstance(span, LocalSpan):
-            observer = MetricsLocalSpanObserver(self.batch, span)
+            observer = MetricsLocalSpanObserver(self.batch, span, self.timer_sampling_rate)
         else:
-            observer = MetricsClientSpanObserver(self.batch, span)
+            observer = MetricsClientSpanObserver(self.batch, span, self.timer_sampling_rate)
         span.register(observer)
 
 
 class MetricsLocalSpanObserver(SpanObserver):
-    def __init__(self, batch: metrics.Batch, span: Span):
+    def __init__(self, batch: metrics.Batch, span: Span, timer_sampling_rate: float = 1.0):
         self.batch = batch
         self.timer = batch.timer(typing.cast(str, span.component_name) + "." + span.name)
-        self.sample_timer = self.timer_sampling_rate == 1.0 or random() < self.timer_sampling_rate
+        self.sample_timer = timer_sampling_rate == 1.0 or random() < timer_sampling_rate
 
     def on_start(self) -> None:
         if self.sample_timer:
@@ -107,11 +117,11 @@ class MetricsLocalSpanObserver(SpanObserver):
 
 
 class MetricsClientSpanObserver(SpanObserver):
-    def __init__(self, batch: metrics.Batch, span: Span):
+    def __init__(self, batch: metrics.Batch, span: Span, timer_sampling_rate: float = 1.0):
         self.batch = batch
         self.base_name = f"clients.{span.name}"
         self.timer = batch.timer(self.base_name)
-        self.sample_timer = self.timer_sampling_rate == 1.0 or random() < self.timer_sampling_rate
+        self.sample_timer = timer_sampling_rate == 1.0 or random() < timer_sampling_rate
 
     def on_start(self) -> None:
         if self.sample_timer:

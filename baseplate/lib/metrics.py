@@ -501,12 +501,8 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
     """
     cfg = config.parse_config(
         raw_config,
-        {
-            "metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint)},
-        }
+        {"metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint)}},
     )
 
     # pylint: disable=maybe-no-member
-    return make_client(
-        cfg.metrics.namespace, cfg.metrics.endpoint
-    )
+    return make_client(cfg.metrics.namespace, cfg.metrics.endpoint)
