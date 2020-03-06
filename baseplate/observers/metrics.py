@@ -65,8 +65,7 @@ class MetricsServerSpanObserver(SpanObserver):
         self.batch = batch
         self.base_name = "server." + server_span.name
         self.timer = batch.timer(self.base_name)
-        self.timer_sampling_rate = timer_sampling_rate
-        self.sample_timer = self.timer_sampling_rate == 1.0 or random() < self.timer_sampling_rate
+        self.sample_timer = timer_sampling_rate == 1.0 or random() < timer_sampling_rate
 
     def on_start(self) -> None:
         if self.sample_timer:
@@ -92,17 +91,17 @@ class MetricsServerSpanObserver(SpanObserver):
     def on_child_span_created(self, span: Span) -> None:
         observer: SpanObserver
         if isinstance(span, LocalSpan):
-            observer = MetricsLocalSpanObserver(self.batch, span, self.timer_sampling_rate)
+            observer = MetricsLocalSpanObserver(self.batch, span, self.sample_timer)
         else:
-            observer = MetricsClientSpanObserver(self.batch, span, self.timer_sampling_rate)
+            observer = MetricsClientSpanObserver(self.batch, span, self.sample_timer)
         span.register(observer)
 
 
 class MetricsLocalSpanObserver(SpanObserver):
-    def __init__(self, batch: metrics.Batch, span: Span, timer_sampling_rate: float = 1.0):
+    def __init__(self, batch: metrics.Batch, span: Span, sample_timer: bool = True):
         self.batch = batch
         self.timer = batch.timer(typing.cast(str, span.component_name) + "." + span.name)
-        self.sample_timer = timer_sampling_rate == 1.0 or random() < timer_sampling_rate
+        self.sample_timer = sample_timer
 
     def on_start(self) -> None:
         if self.sample_timer:
@@ -117,11 +116,11 @@ class MetricsLocalSpanObserver(SpanObserver):
 
 
 class MetricsClientSpanObserver(SpanObserver):
-    def __init__(self, batch: metrics.Batch, span: Span, timer_sampling_rate: float = 1.0):
+    def __init__(self, batch: metrics.Batch, span: Span, sample_timer: bool = True):
         self.batch = batch
         self.base_name = f"clients.{span.name}"
         self.timer = batch.timer(self.base_name)
-        self.sample_timer = timer_sampling_rate == 1.0 or random() < timer_sampling_rate
+        self.sample_timer = sample_timer
 
     def on_start(self) -> None:
         if self.sample_timer:
