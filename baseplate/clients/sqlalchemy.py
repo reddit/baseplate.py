@@ -47,6 +47,14 @@ def engine_from_config(
         these.
     * ``pool_recycle`` (optional): this setting causes the pool to recycle connections after
         the given number of seconds has passed. It defaults to -1, or no timeout.
+    * ``pool_pre_ping`` (optional): when set to true, this setting causes
+        sqlalchemy to perform a liveness-check query each time a connection is
+        checked out of the pool.  If the liveness-check fails, the connection
+        is gracefully recycled.  This ensures severed connections are handled
+        more gracefully, at the cost of doing a `SELECT 1` at the start of each
+        checkout. When used, this obviates most of the reasons you might use
+        pool_recycle, and as such they shouldn't normally be used
+        simultaneously.  Requires SQLAlchemy 1.3.
 
     """
     assert prefix.endswith(".")
@@ -55,6 +63,7 @@ def engine_from_config(
             "url": config.String,
             "credentials_secret": config.Optional(config.String),
             "pool_recycle": config.Optional(config.Integer),
+            "pool_pre_ping": config.Optional(config.Boolean),
         }
     )
     options = parser.parse(prefix[:-1], app_config)
@@ -62,6 +71,9 @@ def engine_from_config(
 
     if options.pool_recycle is not None:
         kwargs.setdefault("pool_recycle", options.pool_recycle)
+
+    if options.pool_pre_ping is not None:
+        kwargs.setdefault("pool_pre_ping", options.pool_pre_ping)
 
     if options.credentials_secret:
         if not secrets:
