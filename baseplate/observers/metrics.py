@@ -43,7 +43,7 @@ class MetricsBaseplateObserver(BaseplateObserver):
         if raw_config:
             cfg = config.parse_config(
                 raw_config,
-                {"metrics_observer": {"sample_rate": config.Optional(config.Float, default=1.0)}},
+                {"metrics_observer": {"sample_rate": config.Optional(config.Fallback(config.Percent, config.Float), default=1.0)}},
             )
             sample_rate = cfg.metrics_observer.sample_rate
 

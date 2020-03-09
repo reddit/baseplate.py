@@ -30,9 +30,10 @@ the StatsD metrics observer.
    # if not specified, metrics will only be emitted to debug logs.
    metrics.endpoint = statsd.local:8125
 
-   # optional: the fraction of statsd metrics to sample
-   # if not specified, it will default to 1.0 (all metrics sent)
-   metrics_observer.sample_rate = 1.0
+   # optional: the percent of statsd metrics to sample
+   # if not specified, it will default to 100% (all metrics sent)
+   # config must be passed to the `Baseplate` constructor to use this option
+   metrics_observer.sample_rate = 100%
 
    ...
 
