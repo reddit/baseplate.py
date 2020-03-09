@@ -34,7 +34,7 @@ def main() -> NoReturn:
     parser = configparser.RawConfigParser()
     parser.read(args.config_file.name)
     watcher_config = dict(parser.items("file-age-watcher"))
-    cfg = config.parse_config(watcher_config, {"file": config.DictOf({"dest": config.String})})
+    cfg = config.parse_config(watcher_config, {"file": config.DictOf({"path": config.String})})
 
     metrics_client = metrics_client_from_config(watcher_config)
     while True:
@@ -42,7 +42,7 @@ def main() -> NoReturn:
         now = time.time()
         for name, file in cfg.file.items():
             try:
-                mtime = os.path.getmtime(file.dest)
+                mtime = os.path.getmtime(file.path)
             except OSError:
                 mtime = 0
 
