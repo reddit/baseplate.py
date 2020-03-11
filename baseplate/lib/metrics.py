@@ -347,6 +347,8 @@ class Counter:
         :param sample_rate: What rate this counter is sampled at. [0-1].
 
         """
+        if delta == 0:
+            return
         parts = [self.name + (f":{delta:g}".encode()), b"c"]
 
         if sample_rate != 1.0:
