@@ -50,9 +50,9 @@ class MetricsBaseplateObserver(BaseplateObserver):
         return cls(client, sample_rate=sample_rate)
 
     def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
+        batch = self.client.batch()
+        context.metrics = batch
         if self.sample_rate == 1.0 or random() < self.sample_rate:
-            batch = self.client.batch()
-            context.metrics = batch
             observer = MetricsServerSpanObserver(batch, server_span, self.sample_rate)
             server_span.register(observer)
 

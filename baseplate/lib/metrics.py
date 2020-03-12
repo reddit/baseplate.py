@@ -124,9 +124,10 @@ class BufferedTransport(Transport):
         self.buffer.append(serialized_metric)
 
     def flush(self) -> None:
-        metrics, self.buffer = self.buffer, []
-        message = b"\n".join(metrics)
-        self.transport.send(message)
+        if self.buffer:
+            metrics, self.buffer = self.buffer, []
+            message = b"\n".join(metrics)
+            self.transport.send(message)
 
 
 class BaseClient:
