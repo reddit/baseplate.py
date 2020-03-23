@@ -291,7 +291,9 @@ class Baseplate:
         from baseplate.observers.metrics import MetricsBaseplateObserver
 
         self._metrics_client = metrics_client
-        self.register(MetricsBaseplateObserver(metrics_client))
+        self.register(
+            MetricsBaseplateObserver.from_config_and_client(self._app_config, metrics_client)
+        )
 
     def configure_tracing(
         self, tracing_client: "baseplate.observers.tracing.TracingClient"
@@ -437,8 +439,8 @@ class Baseplate:
                 },
                 "cache": MemcachedClient(),
                 "cassandra": {
-                    "foo": CassandraClient(),
-                    "bar": CassandraClient(),
+                    "foo": CassandraClient("foo_keyspace"),
+                    "bar": CassandraClient("bar_keyspace"),
                 },
             })
 

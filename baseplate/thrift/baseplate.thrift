@@ -56,6 +56,21 @@ struct Session {
     1: string id;
 }
 
+/** The components of the device making a request to our services that we want to
+propogate between services.
+
+This model is a component of the "Edge-Request" header.  You should not need to
+interact with this model directly, but rather through the EdgeRequestContext
+interface provided by baseplate.
+
+*/
+struct Device {
+    /** The ID of the device.
+
+    */
+    1: string id;
+}
+
 /**A raw authentication token as returned by the authentication service.
 
 */
@@ -73,4 +88,5 @@ struct Request {
     1: Loid loid;
     2: Session session;
     3: AuthenticationToken authentication_token;
+    4: Device device;
 }

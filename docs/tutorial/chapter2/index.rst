@@ -61,11 +61,7 @@ called ``make_wsgi_app``.
 
 The second section defines what kind of server we'll run and the settings for
 that server. Since our application is built for HTTP/WSGI, we use the WSGI
-server in Baseplate.py.  The ``max_concurrency`` here is a mandatory setting
-for the server that defines the maximum number of requests our server will
-handle at a time (any more will be forced to wait in a queue to give our
-service some breathing room.) For now, we just give it an arbitrary value of
-100.
+server in Baseplate.py.
 
 .. note::
 

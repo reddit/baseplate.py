@@ -257,8 +257,11 @@ class TraceSpanObserver(SpanObserver):
         """
         endpoint_info = self._endpoint_info()
 
-        # Annotation values must be bool or str type.
-        if not isinstance(annotation_value, (bool, str)):
+        # Annotation values must be str type.
+        if isinstance(annotation_value, bool):
+            # only "lower" bool values so we aren't affecting any other types
+            annotation_value = str(annotation_value).lower()
+        elif not isinstance(annotation_value, str):
             annotation_value = str(annotation_value)
 
         return {"key": annotation_type, "value": annotation_value, "endpoint": endpoint_info}

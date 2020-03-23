@@ -284,6 +284,7 @@ class EdgeRequestContextTests(unittest.TestCase):
     LOID_ID = "t2_deadbeef"
     LOID_CREATED_MS = 100000
     SESSION_ID = "beefdead"
+    DEVICE_ID = "becc50f6-ff3d-407a-aa49-fa49531363be"
 
     def setUp(self):
         mock_filewatcher = mock.Mock(spec=FileWatcher)
@@ -306,6 +307,7 @@ class EdgeRequestContextTests(unittest.TestCase):
             loid_id=self.LOID_ID,
             loid_created_ms=self.LOID_CREATED_MS,
             session_id=self.SESSION_ID,
+            device_id=self.DEVICE_ID,
         )
         self.assertIsNot(request_context._t_request, None)
         self.assertEqual(request_context._header, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
@@ -321,7 +323,9 @@ class EdgeRequestContextTests(unittest.TestCase):
 
     def test_create_empty_context(self):
         request_context = self.factory.new()
-        self.assertEqual(request_context._header, b"\x0c\x00\x01\x00\x0c\x00\x02\x00\x00")
+        self.assertEqual(
+            request_context._header, b"\x0c\x00\x01\x00\x0c\x00\x02\x00\x0c\x00\x04\x00\x00"
+        )
 
     def test_logged_out_user(self):
         request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_NO_AUTH)
@@ -341,6 +345,7 @@ class EdgeRequestContextTests(unittest.TestCase):
             request_context.oauth_client.is_type("third_party")
 
         self.assertEqual(request_context.session.id, self.SESSION_ID)
+        self.assertEqual(request_context.device.id, self.DEVICE_ID)
         self.assertEqual(
             request_context.event_fields(),
             {
@@ -349,6 +354,7 @@ class EdgeRequestContextTests(unittest.TestCase):
                 "cookie_created_timestamp": self.LOID_CREATED_MS,
                 "session_id": self.SESSION_ID,
                 "oauth_client_id": None,
+                "device_id": self.DEVICE_ID,
             },
         )
 
@@ -365,6 +371,7 @@ class EdgeRequestContextTests(unittest.TestCase):
         self.assertIs(request_context.oauth_client.id, None)
         self.assertFalse(request_context.oauth_client.is_type("third_party"))
         self.assertEqual(request_context.session.id, self.SESSION_ID)
+        self.assertEqual(request_context.device.id, self.DEVICE_ID)
         self.assertEqual(
             request_context.event_fields(),
             {
@@ -373,6 +380,7 @@ class EdgeRequestContextTests(unittest.TestCase):
                 "cookie_created_timestamp": self.LOID_CREATED_MS,
                 "session_id": self.SESSION_ID,
                 "oauth_client_id": None,
+                "device_id": self.DEVICE_ID,
             },
         )
 

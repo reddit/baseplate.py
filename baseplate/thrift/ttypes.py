@@ -193,6 +193,87 @@ class Session(object):
         return not (self == other)
 
 
+class Device(object):
+    """
+    The components of the device making a request to our services that we want to
+    propogate between services.
+
+    This model is a component of the "Edge-Request" header.  You should not need to
+    interact with this model directly, but rather through the EdgeRequestContext
+    interface provided by baseplate.
+
+
+    Attributes:
+     - id: The ID of the device.
+
+
+    """
+
+    __slots__ = ("id",)
+
+    def __init__(self, id=None):
+        self.id = id
+
+    def read(self, iprot):
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRING:
+                    self.id = (
+                        iprot.readString().decode("utf-8")
+                        if sys.version_info[0] == 2
+                        else iprot.readString()
+                    )
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin("Device")
+        if self.id is not None:
+            oprot.writeFieldBegin("id", TType.STRING, 1)
+            oprot.writeString(self.id.encode("utf-8") if sys.version_info[0] == 2 else self.id)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        for attr in self.__slots__:
+            my_val = getattr(self, attr)
+            other_val = getattr(other, attr)
+            if my_val != other_val:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
 class Request(object):
     """
     Container model for the Edge-Request context header.
@@ -207,15 +288,17 @@ class Request(object):
      - loid
      - session
      - authentication_token
+     - device
 
     """
 
-    __slots__ = ("loid", "session", "authentication_token")
+    __slots__ = ("loid", "session", "authentication_token", "device")
 
-    def __init__(self, loid=None, session=None, authentication_token=None):
+    def __init__(self, loid=None, session=None, authentication_token=None, device=None):
         self.loid = loid
         self.session = session
         self.authentication_token = authentication_token
+        self.device = device
 
     def read(self, iprot):
         if (
@@ -251,6 +334,12 @@ class Request(object):
                     )
                 else:
                     iprot.skip(ftype)
+            elif fid == 4:
+                if ftype == TType.STRUCT:
+                    self.device = Device()
+                    self.device.read(iprot)
+                else:
+                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -276,6 +365,10 @@ class Request(object):
                 if sys.version_info[0] == 2
                 else self.authentication_token
             )
+            oprot.writeFieldEnd()
+        if self.device is not None:
+            oprot.writeFieldBegin("device", TType.STRUCT, 4)
+            self.device.write(oprot)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -309,12 +402,15 @@ Loid.thrift_spec = (
 )
 all_structs.append(Session)
 Session.thrift_spec = (None, (1, TType.STRING, "id", "UTF8", None))  # 0  # 1
+all_structs.append(Device)
+Device.thrift_spec = (None, (1, TType.STRING, "id", "UTF8", None))  # 0  # 1
 all_structs.append(Request)
 Request.thrift_spec = (
     None,  # 0
     (1, TType.STRUCT, "loid", [Loid, None], None),  # 1
     (2, TType.STRUCT, "session", [Session, None], None),  # 2
     (3, TType.STRING, "authentication_token", "UTF8", None),  # 3
+    (4, TType.STRUCT, "device", [Device, None], None),  # 4
 )
 fix_spec(all_structs)
 del all_structs
