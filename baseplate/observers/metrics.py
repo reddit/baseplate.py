@@ -62,12 +62,8 @@ class MetricsServerSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, server_span: Span, sample_rate: float = 1.0):
         self.batch = batch
         self.base_name = "server." + server_span.name
-<<<<<<< HEAD
-        self.timer: Optional[metrics.Timer] = None
-=======
         self.timer = batch.timer(self.base_name)
         self.sample_rate = sample_rate
->>>>>>> origin/master
 
     def on_start(self) -> None:
         self.timer = self.batch.timer(self.base_name)
@@ -85,18 +81,10 @@ class MetricsServerSpanObserver(SpanObserver):
         else:
             self.batch.counter(f"{self.base_name}.failure").increment(sample_rate=self.sample_rate)
 
-<<<<<<< HEAD
-            if exc_info[0] is not None:
-                if issubclass(ServerTimeout, exc_info[0]):
-                    self.batch.counter(f"{self.base_name}.timed_out").increment()
-                elif issubclass(ConcurrencyLimitReachedError, exc_info[0]):
-                    self.batch.counter(f"{self.base_name}.concurrency_limited").increment()
-=======
             if exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):
                 self.batch.counter(f"{self.base_name}.timed_out").increment(
                     sample_rate=self.sample_rate
                 )
->>>>>>> origin/master
 
         self.batch.flush()
 
