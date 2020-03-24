@@ -153,8 +153,9 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param queue_name: Name for your queue.
         :param routing_keys: List of routing keys that you will create :py:class:`~kombu.Queue` s
             to consume from.
-        :param handler_fn: A `baseplate.frameworks.queue_consumer.komub.Handler`
-            function that will process an individual message from a queue.
+        :param handler_fn: A function that will process an individual message from a queue.
+        :param error_handler_fn: A function that will be called when an error is thrown
+            while executing the `handler_fn`.
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
@@ -195,11 +196,9 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param queue_name: Name for your queue.
         :param routing_keys: List of routing keys that you will create
             :py:class:`~kombu.Queue` s to consume from.
-        :param handler_fn: A `baseplate.frameworks.queue_consumer.kombu.Handler`
-            function that will process an individual message from a queue.
-        :param error_handler_fn: A `baseplate.frameworks.queue_consumer.kombu.Handler`
-            function that will be called when an error is thrown while executing the
-            `handler_fn`.
+        :param handler_fn: A function that will process an individual message from a queue.
+        :param error_handler_fn: A function that will be called when an error is thrown
+            while executing the `handler_fn`.
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
