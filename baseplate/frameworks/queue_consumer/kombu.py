@@ -81,10 +81,17 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
 
 
 class KombuMessageHandler(MessageHandler):
-    def __init__(self, baseplate: Baseplate, name: str, handler_fn: Handler):
+    def __init__(
+        self,
+        baseplate: Baseplate,
+        name: str,
+        handler_fn: Handler,
+        error_handler_fn: Optional[Handler] = None,
+    ):
         self.baseplate = baseplate
         self.name = name
         self.handler_fn = handler_fn
+        self.error_handler_fn = error_handler_fn
 
     def handle(self, message: kombu.Message) -> None:
         context = self.baseplate.make_context_object()
@@ -105,7 +112,10 @@ class KombuMessageHandler(MessageHandler):
                 "Unhandled error while trying to process a message.  The message "
                 "has been returned to the queue broker."
             )
-            message.requeue()
+            if self.error_handler_fn:
+                self.error_handler_fn(context, message.decode(), message)
+            else:
+                message.requeue()
             if isinstance(exc, FatalMessageHandlerError):
                 logger.info("Recieved a fatal error, terminating the server.")
                 raise
@@ -130,6 +140,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         connection: kombu.Connection,
         queues: Sequence[kombu.Queue],
         handler_fn: Handler,
+        error_handler_fn: Optional[Handler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
     ):
@@ -154,6 +165,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         self.queues = queues
         self.name = name
         self.handler_fn = handler_fn
+        self.error_handler_fn = error_handler_fn
         self.health_check_fn = health_check_fn
         self.serializer = serializer
 
@@ -166,6 +178,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         queue_name: str,
         routing_keys: Sequence[str],
         handler_fn: Handler,
+        error_handler_fn: Optional[Handler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
     ) -> "KombuQueueConsumerFactory":
@@ -182,8 +195,11 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param queue_name: Name for your queue.
         :param routing_keys: List of routing keys that you will create
             :py:class:`~kombu.Queue` s to consume from.
-        :param handler_fn: A `baseplate.frameworks.queue_consumer.komub.Handler`
+        :param handler_fn: A `baseplate.frameworks.queue_consumer.kombu.Handler`
             function that will process an individual message from a queue.
+        :param error_handler_fn: A `baseplate.frameworks.queue_consumer.kombu.Handler`
+            function that will be called when an error is thrown while executing the
+            `handler_fn`.
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
@@ -198,6 +214,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             connection=connection,
             queues=queues,
             handler_fn=handler_fn,
+            error_handler_fn=error_handler_fn,
             health_check_fn=health_check_fn,
             serializer=serializer,
         )
@@ -211,7 +228,9 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         )
 
     def build_message_handler(self) -> KombuMessageHandler:
-        return KombuMessageHandler(self.baseplate, self.name, self.handler_fn)
+        return KombuMessageHandler(
+            self.baseplate, self.name, self.handler_fn, self.error_handler_fn
+        )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
         return make_simple_healthchecker(listener, callback=self.health_check_fn)
