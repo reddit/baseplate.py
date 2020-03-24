@@ -120,7 +120,8 @@ class KombuMessageHandler(MessageHandler):
                 logger.info("Recieved a fatal error, terminating the server.")
                 raise
         else:
-            message.ack()
+            if not self.error_handler_fn:
+                message.ack()
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):

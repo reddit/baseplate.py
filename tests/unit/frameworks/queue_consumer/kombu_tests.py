@@ -114,6 +114,7 @@ class TestKombuMessageHandler:
         with expectation:
             handler.handle(message)
         error_handler_fn.assert_called_once_with(context, message.decode(), message)
+        message.ack.assert_not_called()
         message.requeue.assert_not_called()
 
 
