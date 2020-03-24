@@ -101,19 +101,21 @@ class KombuMessageHandler(MessageHandler):
             # handle the error (publish it to error reporting)
             with self.baseplate.make_server_span(context, self.name) as span:
                 delivery_info = message.delivery_info
+                message_body = None
+                message_body = message.decode()
                 span.set_tag("kind", "consumer")
                 span.set_tag("amqp.routing_key", delivery_info.get("routing_key", ""))
                 span.set_tag("amqp.consumer_tag", delivery_info.get("consumer_tag", ""))
                 span.set_tag("amqp.delivery_tag", delivery_info.get("delivery_tag", ""))
                 span.set_tag("amqp.exchange", delivery_info.get("exchange", ""))
-                self.handler_fn(context, message.decode(), message)
+                self.handler_fn(context, message_body, message)
         except Exception as exc:
             logger.exception(
                 "Unhandled error while trying to process a message.  The message "
                 "has been returned to the queue broker."
             )
             if self.error_handler_fn:
-                self.error_handler_fn(context, message.decode(), message)
+                self.error_handler_fn(context, message_body, message)
             else:
                 message.requeue()
             if isinstance(exc, FatalMessageHandlerError):
