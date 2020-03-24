@@ -157,8 +157,12 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param routing_keys: List of routing keys that you will create :py:class:`~kombu.Queue` s
             to consume from.
         :param handler_fn: A function that will process an individual message from a queue.
+            If `error_handler_fn` is passed in, this function is responsible for calling
+            `message.ack` or `message.requeue` when a message is successfully processed.
         :param error_handler_fn: A function that will be called when an error is thrown
-            while executing the `handler_fn`.
+            while executing the `handler_fn`. This function will be responsible for calling
+            `message.ack` or `message.requeue` as it will not be automatically called by
+            `KombuMessageHandler`'s `handle` function.
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
@@ -200,8 +204,12 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param routing_keys: List of routing keys that you will create
             :py:class:`~kombu.Queue` s to consume from.
         :param handler_fn: A function that will process an individual message from a queue.
+            If `error_handler_fn` is passed in, this function is responsible for calling
+            `message.ack` or `message.requeue` when a message is successfully processed.
         :param error_handler_fn: A function that will be called when an error is thrown
-            while executing the `handler_fn`.
+            while executing the `handler_fn`. This function will be responsible for calling
+            `message.ack` or `message.requeue` as it will not be automatically called by
+            `KombuMessageHandler`'s `handle` function.
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
