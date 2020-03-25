@@ -109,7 +109,6 @@ class KombuMessageHandler(MessageHandler):
                 span.set_tag("amqp.delivery_tag", delivery_info.get("delivery_tag", ""))
                 span.set_tag("amqp.exchange", delivery_info.get("exchange", ""))
                 self.handler_fn(context, message_body, message)
-                message.ack()
         except Exception as exc:
             logger.exception(
                 "Unhandled error while trying to process a message.  The message "
@@ -123,6 +122,8 @@ class KombuMessageHandler(MessageHandler):
             if isinstance(exc, FatalMessageHandlerError):
                 logger.info("Recieved a fatal error, terminating the server.")
                 raise
+        else:
+            message.ack()
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):
