@@ -109,6 +109,7 @@ class KombuMessageHandler(MessageHandler):
                 span.set_tag("amqp.delivery_tag", delivery_info.get("delivery_tag", ""))
                 span.set_tag("amqp.exchange", delivery_info.get("exchange", ""))
                 self.handler_fn(context, message_body, message)
+                message.ack()
         except Exception as exc:
             logger.exception(
                 "Unhandled error while trying to process a message.  The message "
@@ -118,12 +119,10 @@ class KombuMessageHandler(MessageHandler):
                 self.error_handler_fn(context, message_body, message)
             else:
                 message.requeue()
+
             if isinstance(exc, FatalMessageHandlerError):
                 logger.info("Recieved a fatal error, terminating the server.")
                 raise
-        else:
-            if not self.error_handler_fn:
-                message.ack()
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):
@@ -157,8 +156,6 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param routing_keys: List of routing keys that you will create :py:class:`~kombu.Queue` s
             to consume from.
         :param handler_fn: A function that will process an individual message from a queue.
-            If `error_handler_fn` is passed in, this function is responsible for calling
-            `message.ack` or `message.requeue` when a message is successfully processed.
         :param error_handler_fn: A function that will be called when an error is thrown
             while executing the `handler_fn`. This function will be responsible for calling
             `message.ack` or `message.requeue` as it will not be automatically called by
@@ -204,8 +201,6 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param routing_keys: List of routing keys that you will create
             :py:class:`~kombu.Queue` s to consume from.
         :param handler_fn: A function that will process an individual message from a queue.
-            If `error_handler_fn` is passed in, this function is responsible for calling
-            `message.ack` or `message.requeue` when a message is successfully processed.
         :param error_handler_fn: A function that will be called when an error is thrown
             while executing the `handler_fn`. This function will be responsible for calling
             `message.ack` or `message.requeue` as it will not be automatically called by
