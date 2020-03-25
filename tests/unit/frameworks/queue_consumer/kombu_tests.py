@@ -113,7 +113,7 @@ class TestKombuMessageHandler:
         handler = KombuMessageHandler(baseplate, name, handler_fn, error_handler_fn)
         with expectation:
             handler.handle(message)
-        error_handler_fn.assert_called_once_with(context, message.decode(), message)
+        error_handler_fn.assert_called_once_with(context, message.decode(), message, err)
         message.ack.assert_not_called()
         message.requeue.assert_not_called()
 

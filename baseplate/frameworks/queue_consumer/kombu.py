@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 Handler = Callable[[RequestContext, Any, kombu.Message], None]
+ErrorHandler = Callable[[RequestContext, Any, kombu.Message, Exception], None]
 
 
 class FatalMessageHandlerError(Exception):
@@ -86,7 +87,7 @@ class KombuMessageHandler(MessageHandler):
         baseplate: Baseplate,
         name: str,
         handler_fn: Handler,
-        error_handler_fn: Optional[Handler] = None,
+        error_handler_fn: Optional[ErrorHandler] = None,
     ):
         self.baseplate = baseplate
         self.name = name
@@ -115,7 +116,7 @@ class KombuMessageHandler(MessageHandler):
                 "has been returned to the queue broker."
             )
             if self.error_handler_fn:
-                self.error_handler_fn(context, message_body, message)
+                self.error_handler_fn(context, message_body, message, exc)
             else:
                 message.requeue()
 
@@ -143,7 +144,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         connection: kombu.Connection,
         queues: Sequence[kombu.Queue],
         handler_fn: Handler,
-        error_handler_fn: Optional[Handler] = None,
+        error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
     ):
@@ -184,7 +185,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         queue_name: str,
         routing_keys: Sequence[str],
         handler_fn: Handler,
-        error_handler_fn: Optional[Handler] = None,
+        error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
     ) -> "KombuQueueConsumerFactory":
