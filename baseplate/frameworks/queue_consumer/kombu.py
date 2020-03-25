@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 Handler = Callable[[RequestContext, Any, kombu.Message], None]
+ErrorHandler = Callable[[RequestContext, Any, kombu.Message, Exception], None]
 
 
 class FatalMessageHandlerError(Exception):
@@ -81,10 +82,17 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
 
 
 class KombuMessageHandler(MessageHandler):
-    def __init__(self, baseplate: Baseplate, name: str, handler_fn: Handler):
+    def __init__(
+        self,
+        baseplate: Baseplate,
+        name: str,
+        handler_fn: Handler,
+        error_handler_fn: Optional[ErrorHandler] = None,
+    ):
         self.baseplate = baseplate
         self.name = name
         self.handler_fn = handler_fn
+        self.error_handler_fn = error_handler_fn
 
     def handle(self, message: kombu.Message) -> None:
         context = self.baseplate.make_context_object()
@@ -94,18 +102,24 @@ class KombuMessageHandler(MessageHandler):
             # handle the error (publish it to error reporting)
             with self.baseplate.make_server_span(context, self.name) as span:
                 delivery_info = message.delivery_info
+                message_body = None
+                message_body = message.decode()
                 span.set_tag("kind", "consumer")
                 span.set_tag("amqp.routing_key", delivery_info.get("routing_key", ""))
                 span.set_tag("amqp.consumer_tag", delivery_info.get("consumer_tag", ""))
                 span.set_tag("amqp.delivery_tag", delivery_info.get("delivery_tag", ""))
                 span.set_tag("amqp.exchange", delivery_info.get("exchange", ""))
-                self.handler_fn(context, message.decode(), message)
+                self.handler_fn(context, message_body, message)
         except Exception as exc:
             logger.exception(
                 "Unhandled error while trying to process a message.  The message "
                 "has been returned to the queue broker."
             )
-            message.requeue()
+            if self.error_handler_fn:
+                self.error_handler_fn(context, message_body, message, exc)
+            else:
+                message.requeue()
+
             if isinstance(exc, FatalMessageHandlerError):
                 logger.info("Recieved a fatal error, terminating the server.")
                 raise
@@ -130,6 +144,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         connection: kombu.Connection,
         queues: Sequence[kombu.Queue],
         handler_fn: Handler,
+        error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
     ):
@@ -142,8 +157,11 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param queue_name: Name for your queue.
         :param routing_keys: List of routing keys that you will create :py:class:`~kombu.Queue` s
             to consume from.
-        :param handler_fn: A `baseplate.frameworks.queue_consumer.komub.Handler`
-            function that will process an individual message from a queue.
+        :param handler_fn: A function that will process an individual message from a queue.
+        :param error_handler_fn: A function that will be called when an error is thrown
+            while executing the `handler_fn`. This function will be responsible for calling
+            `message.ack` or `message.requeue` as it will not be automatically called by
+            `KombuMessageHandler`'s `handle` function.
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
@@ -154,6 +172,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         self.queues = queues
         self.name = name
         self.handler_fn = handler_fn
+        self.error_handler_fn = error_handler_fn
         self.health_check_fn = health_check_fn
         self.serializer = serializer
 
@@ -166,6 +185,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         queue_name: str,
         routing_keys: Sequence[str],
         handler_fn: Handler,
+        error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
     ) -> "KombuQueueConsumerFactory":
@@ -182,8 +202,11 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param queue_name: Name for your queue.
         :param routing_keys: List of routing keys that you will create
             :py:class:`~kombu.Queue` s to consume from.
-        :param handler_fn: A `baseplate.frameworks.queue_consumer.komub.Handler`
-            function that will process an individual message from a queue.
+        :param handler_fn: A function that will process an individual message from a queue.
+        :param error_handler_fn: A function that will be called when an error is thrown
+            while executing the `handler_fn`. This function will be responsible for calling
+            `message.ack` or `message.requeue` as it will not be automatically called by
+            `KombuMessageHandler`'s `handle` function.
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
@@ -198,6 +221,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             connection=connection,
             queues=queues,
             handler_fn=handler_fn,
+            error_handler_fn=error_handler_fn,
             health_check_fn=health_check_fn,
             serializer=serializer,
         )
@@ -211,7 +235,9 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         )
 
     def build_message_handler(self) -> KombuMessageHandler:
-        return KombuMessageHandler(self.baseplate, self.name, self.handler_fn)
+        return KombuMessageHandler(
+            self.baseplate, self.name, self.handler_fn, self.error_handler_fn
+        )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
         return make_simple_healthchecker(listener, callback=self.health_check_fn)

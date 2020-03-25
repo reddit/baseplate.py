@@ -95,6 +95,28 @@ class TestKombuMessageHandler:
             handler.handle(message)
         message.requeue.assert_called_once()
 
+    @pytest.mark.parametrize(
+        "err,expectation",
+        [
+            (ValueError(), does_not_raise()),
+            (FatalMessageHandlerError(), pytest.raises(FatalMessageHandlerError)),
+        ],
+    )
+    def test_errors_with_error_handler_fn(
+        self, err, expectation, context, baseplate, name, message
+    ):
+        def handler_fn(ctx, body, msg):
+            raise err
+
+        error_handler_fn = mock.Mock()
+
+        handler = KombuMessageHandler(baseplate, name, handler_fn, error_handler_fn)
+        with expectation:
+            handler.handle(message)
+        error_handler_fn.assert_called_once_with(context, message.decode(), message, err)
+        message.ack.assert_not_called()
+        message.requeue.assert_not_called()
+
 
 @pytest.fixture
 def connection():
@@ -122,6 +144,7 @@ class TestQueueConsumerFactory:
                 queue_name=name,
                 routing_keys=routing_keys,
                 handler_fn=lambda ctx, body, msg: True,
+                error_handler_fn=lambda ctx, body, msg: True,
                 health_check_fn=health_check_fn,
             )
 
@@ -129,6 +152,7 @@ class TestQueueConsumerFactory:
 
     def test_new(self, baseplate, exchange, connection, name, routing_keys):
         handler_fn = mock.Mock()
+        error_handler_fn = mock.Mock()
         health_check_fn = mock.Mock()
         factory = KombuQueueConsumerFactory.new(
             baseplate=baseplate,
@@ -137,12 +161,14 @@ class TestQueueConsumerFactory:
             queue_name=name,
             routing_keys=routing_keys,
             handler_fn=handler_fn,
+            error_handler_fn=error_handler_fn,
             health_check_fn=health_check_fn,
         )
         assert factory.baseplate == baseplate
         assert factory.connection == connection
         assert factory.name == name
         assert factory.handler_fn == handler_fn
+        assert factory.error_handler_fn == error_handler_fn
         assert factory.health_check_fn == health_check_fn
         for routing_key, queue in zip(routing_keys, factory.queues):
             assert queue.routing_key == routing_key
@@ -165,6 +191,7 @@ class TestQueueConsumerFactory:
         assert handler.baseplate == factory.baseplate
         assert handler.name == factory.name
         assert handler.handler_fn == factory.handler_fn
+        assert handler.error_handler_fn == factory.error_handler_fn
 
     @pytest.mark.parametrize("health_check_fn", [None, lambda req: True])
     def test_build_health_checker(self, health_check_fn, make_queue_consumer_factory):
