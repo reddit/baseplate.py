@@ -33,8 +33,8 @@ class _ContextAwareHandler:
             handler_fn = getattr(self.handler, fn_name)
 
             span = self.context.trace
-            span.start()
             try:
+                span.start()
                 result = handler_fn(self.context, *args, **kwargs)
             except (TApplicationException, TProtocolException, TTransportException):
                 # these are subclasses of TException but aren't ones that
