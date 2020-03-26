@@ -135,14 +135,14 @@ class BaseClient:
         self.transport = transport
         self.namespace = namespace.encode("ascii")
 
-    def timer(self, name: str) -> "Timer":
+    def timer(self, name: str, sample_rate: float = 1.0) -> "Timer":
         """Return a Timer with the given name.
 
         :param name: The name the timer should have.
 
         """
         timer_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Timer(self.transport, timer_name)
+        return Timer(self.transport, timer_name, sample_rate)
 
     def counter(self, name: str) -> "Counter":
         """Return a Counter with the given name.
@@ -268,12 +268,13 @@ class Timer:
 
     """
 
-    def __init__(self, transport: Transport, name: bytes):
+    def __init__(self, transport: Transport, name: bytes, sample_rate: float = 1.0):
         self.transport = transport
         self.name = name
 
         self.start_time: Optional[float] = None
         self.stopped: bool = False
+        self.sample_rate = sample_rate
 
     def start(self) -> None:
         """Record the current time as the start of the timer."""
@@ -302,6 +303,9 @@ class Timer:
 
         """
         serialized = self.name + (f":{(elapsed * 1000.0):g}|ms".encode())
+        if self.sample_rate < 1.0:
+            sampling_info = f"@{self.sample_rate:g}".encode()
+            serialized = serialized + b"|" + sampling_info
         self.transport.send(serialized)
 
     def __enter__(self) -> None:
@@ -350,7 +354,7 @@ class Counter:
         """
         parts = [self.name + (f":{delta:g}".encode()), b"c"]
 
-        if sample_rate != 1.0:
+        if sample_rate < 1.0:
             parts.append(f"@{sample_rate:g}".encode())
 
         serialized = b"|".join(parts)
