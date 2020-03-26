@@ -61,17 +61,21 @@ class MetricsServerSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, server_span: Span, sample_rate: float = 1.0):
         self.batch = batch
         self.base_name = "server." + server_span.name
-        self.timer = batch.timer(self.base_name)
+        self.timer: Optional[metrics.Timer] = None
         self.sample_rate = sample_rate
 
     def on_start(self) -> None:
+        self.timer = self.batch.timer(self.base_name)
         self.timer.start()
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.timer.stop()
+        # the timer might not exist if another observer threw an exception
+        # before we got our on_start() called
+        if self.timer:
+            self.timer.stop()
 
         if not exc_info:
             self.batch.counter(f"{self.base_name}.success").increment(sample_rate=self.sample_rate)
