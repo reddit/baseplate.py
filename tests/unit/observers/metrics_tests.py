@@ -29,7 +29,6 @@ class ObserverTests(unittest.TestCase):
 
         observer = MetricsBaseplateObserver(mock_client)
         observer.on_server_span_created(mock_context, mock_server_span)
-        self.assertEqual(mock_batch.timer.call_args, mock.call("server.name"))
 
         self.assertEqual(mock_context.metrics, mock_batch)
         self.assertEqual(mock_server_span.register.call_count, 1)
