@@ -274,7 +274,7 @@ class Timer:
 
         self.start_time: Optional[float] = None
         self.stopped: bool = False
-        self.sample_rate = None
+        self.sample_rate = 1.0
 
     def start(self, sample_rate: float = 1.0) -> None:
         """Record the current time as the start of the timer."""
@@ -304,7 +304,7 @@ class Timer:
 
         """
         serialized = self.name + (f":{(elapsed * 1000.0):g}|ms".encode())
-        if self.sample_rate and self.sample_rate < 1.0:
+        if self.sample_rate < 1.0:
             sampling_info = f"@{self.sample_rate:g}".encode()
             serialized = serialized + b"|" + sampling_info
         self.transport.send(serialized)
