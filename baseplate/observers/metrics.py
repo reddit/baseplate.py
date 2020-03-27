@@ -1,5 +1,3 @@
-import typing
-
 from random import random
 from typing import Any
 from typing import Optional
@@ -53,8 +51,28 @@ class MetricsBaseplateObserver(BaseplateObserver):
         batch = self.client.batch()
         context.metrics = batch
         if self.sample_rate == 1.0 or random() < self.sample_rate:
-            observer = MetricsServerSpanObserver(batch, server_span, self.sample_rate)
-            server_span.register(observer)
+            observer: SpanObserver = MetricsServerSpanObserver(batch, server_span, self.sample_rate)
+        else:
+            observer = MetricsServerSpanDummyObserver(batch)
+        server_span.register(observer)
+
+
+class MetricsServerSpanDummyObserver(SpanObserver):
+    # for requests that aren't sampled
+    def __init__(self, batch: metrics.Batch):
+        self.batch = batch
+
+    def on_start(self) -> None:
+        pass
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        pass
+
+    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+        self.batch.flush()
+
+    def on_child_span_created(self, span: Span) -> None:
+        pass
 
 
 class MetricsServerSpanObserver(SpanObserver):
@@ -66,7 +84,7 @@ class MetricsServerSpanObserver(SpanObserver):
 
     def on_start(self) -> None:
         self.timer = self.batch.timer(self.base_name)
-        self.timer.start()
+        self.timer.start(self.sample_rate)
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
@@ -101,11 +119,11 @@ class MetricsServerSpanObserver(SpanObserver):
 class MetricsLocalSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span, sample_rate: float = 1.0):
         self.batch = batch
-        self.timer = batch.timer(typing.cast(str, span.component_name) + "." + span.name)
+        self.timer = batch.timer(f"{span.component_name}.{span.name}")
         self.sample_rate = sample_rate
 
     def on_start(self) -> None:
-        self.timer.start()
+        self.timer.start(self.sample_rate)
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
@@ -122,7 +140,7 @@ class MetricsClientSpanObserver(SpanObserver):
         self.sample_rate = sample_rate
 
     def on_start(self) -> None:
-        self.timer.start()
+        self.timer.start(self.sample_rate)
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
