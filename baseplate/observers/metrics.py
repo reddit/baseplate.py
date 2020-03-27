@@ -1,5 +1,3 @@
-import typing
-
 from random import random
 from typing import Any
 from typing import Optional
@@ -85,8 +83,8 @@ class MetricsServerSpanObserver(SpanObserver):
         self.sample_rate = sample_rate
 
     def on_start(self) -> None:
-        self.timer = self.batch.timer(self.base_name, self.sample_rate)
-        self.timer.start()
+        self.timer = self.batch.timer(self.base_name)
+        self.timer.start(self.sample_rate)
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
@@ -121,13 +119,11 @@ class MetricsServerSpanObserver(SpanObserver):
 class MetricsLocalSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span, sample_rate: float = 1.0):
         self.batch = batch
-        self.timer = batch.timer(
-            typing.cast(str, span.component_name) + "." + span.name, sample_rate
-        )
+        self.timer = batch.timer(f"{span.component_name}.{span.name}")
         self.sample_rate = sample_rate
 
     def on_start(self) -> None:
-        self.timer.start()
+        self.timer.start(self.sample_rate)
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
@@ -140,11 +136,11 @@ class MetricsClientSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span, sample_rate: float = 1.0):
         self.batch = batch
         self.base_name = f"clients.{span.name}"
-        self.timer = batch.timer(self.base_name, sample_rate)
+        self.timer = batch.timer(self.base_name)
         self.sample_rate = sample_rate
 
     def on_start(self) -> None:
-        self.timer.start()
+        self.timer.start(self.sample_rate)
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
