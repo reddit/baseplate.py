@@ -274,9 +274,11 @@ class Timer:
 
         self.start_time: Optional[float] = None
         self.stopped: bool = False
+        self.sample_rate = None
 
-    def start(self) -> None:
+    def start(self, sample_rate: float = 1.0) -> None:
         """Record the current time as the start of the timer."""
+        self.sample_rate = sample_rate
         assert not self.start_time, "timer already started"
         assert not self.stopped, "timer already stopped"
 
@@ -292,7 +294,7 @@ class Timer:
         self.send(elapsed)
         self.stopped = True
 
-    def send(self, elapsed: float, sample_rate: float = 1.0) -> None:
+    def send(self, elapsed: float) -> None:
         """Directly send a timer value without having to stop/start.
 
         This can be useful when the timing was managed elsewhere and we just
@@ -302,8 +304,8 @@ class Timer:
 
         """
         serialized = self.name + (f":{(elapsed * 1000.0):g}|ms".encode())
-        if sample_rate < 1.0:
-            sampling_info = f"@{sample_rate:g}".encode()
+        if self.sample_rate and self.sample_rate < 1.0:
+            sampling_info = f"@{self.sample_rate:g}".encode()
             serialized = serialized + b"|" + sampling_info
         self.transport.send(serialized)
 
