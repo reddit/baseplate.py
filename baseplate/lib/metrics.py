@@ -306,7 +306,7 @@ class Timer:
         serialized = self.name + (f":{(elapsed * 1000.0):g}|ms".encode())
         if self.sample_rate < 1.0:
             sampling_info = f"@{self.sample_rate:g}".encode()
-            serialized = serialized + b"|" + sampling_info
+            serialized = b"|".join([serialized, sampling_info])
         self.transport.send(serialized)
 
     def __enter__(self) -> None:
