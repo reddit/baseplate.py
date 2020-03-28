@@ -71,6 +71,22 @@ struct Device {
     1: string id;
 }
 
+/** Metadata about the origin service for a request.
+
+The "origin" service is the service responsible for handling the request from
+the client.
+
+This model is a component of the "Edge-Request" header.  You should not need to
+interact with this model directly, but rather through the EdgeRequestContext
+interface provided by baseplate.
+*/
+struct OriginService {
+    /** The name of the origin service.
+
+    */
+    1: string name
+}
+
 /**A raw authentication token as returned by the authentication service.
 
 */
@@ -89,4 +105,5 @@ struct Request {
     2: Session session;
     3: AuthenticationToken authentication_token;
     4: Device device;
+    5: OriginService origin_service;
 }
