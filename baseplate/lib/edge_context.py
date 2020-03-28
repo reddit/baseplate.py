@@ -16,6 +16,7 @@ from baseplate.lib import cached_property
 from baseplate.lib.secrets import SecretsStore
 from baseplate.thrift.ttypes import Device as TDevice
 from baseplate.thrift.ttypes import Loid as TLoid
+from baseplate.thrift.ttypes import OriginService as TOriginService
 from baseplate.thrift.ttypes import Request as TRequest
 from baseplate.thrift.ttypes import Session as TSession
 
@@ -168,6 +169,12 @@ class Device(NamedTuple):
     """Wrapper for the device values in the EdgeRequestContext."""
 
     id: str
+
+
+class OriginService(NamedTuple):
+    """Wrapper for the origin values in the EdgeRequestContext."""
+
+    name: str
 
 
 class User(NamedTuple):
@@ -335,6 +342,7 @@ class EdgeRequestContextFactory:
         loid_created_ms: Optional[int] = None,
         session_id: Optional[str] = None,
         device_id: Optional[str] = None,
+        origin_service_name: Optional[str] = None,
     ) -> "EdgeRequestContext":
         """Return a new EdgeRequestContext object made from scratch.
 
@@ -368,7 +376,9 @@ class EdgeRequestContextFactory:
         :param loid_created_ms: Epoch milliseconds when the current LoID cookie
             was created.
         :param session_id: ID for the current session cookie.
-        :param session_id: ID for the device where the request originated from.
+        :param device_id: ID for the device where the request originated from.
+        :param origin_service_name: Name for the "origin" service handling the
+            request from the client.
 
         """
         if loid_id is not None and not loid_id.startswith("t2_"):
@@ -382,6 +392,7 @@ class EdgeRequestContextFactory:
             session=TSession(id=session_id),
             authentication_token=authentication_token,
             device=TDevice(id=device_id),
+            origin_service=TOriginService(name=origin_service_name),
         )
         header = TSerialization.serialize(t_request, EdgeRequestContext._HEADER_PROTOCOL_FACTORY)
 
@@ -472,11 +483,17 @@ class EdgeRequestContext:
         return Service(self.authentication_token)
 
     @cached_property
+    def origin_service(self) -> OriginService:
+        """:py:class:`~baseplate.lib.edge_context.Origin` object for the current context."""
+        return OriginService(self._t_request.origin_service.name)
+
+    @cached_property
     def _t_request(self) -> TRequest:  # pylint: disable=method-hidden
         _t_request = TRequest()
         _t_request.loid = TLoid()
         _t_request.session = TSession()
         _t_request.device = TDevice()
+        _t_request.origin_service = TOriginService()
         if self._header:
             try:
                 TSerialization.deserialize(_t_request, self._header, self._HEADER_PROTOCOL_FACTORY)
