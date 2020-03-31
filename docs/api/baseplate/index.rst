@@ -69,6 +69,7 @@ else might be helpful.
 
 .. automethod:: Baseplate.make_context_object
 .. automethod:: Baseplate.make_server_span
+.. automethod:: Baseplate.server_context
 
 .. autoclass:: ServerSpan
    :members:
