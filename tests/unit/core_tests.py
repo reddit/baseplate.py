@@ -5,6 +5,7 @@ from unittest import mock
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import LocalSpan
+from baseplate import RequestContext
 from baseplate import ServerSpan
 from baseplate import ServerSpanObserver
 from baseplate import Span
@@ -98,6 +99,16 @@ class BaseplateTests(unittest.TestCase):
             self.assertTrue(context.enable_some_fancy_feature)
             self.assertIsNotNone(context.thrift.foo)
             self.assertIsNotNone(context.thrift.bar)
+
+    def test_with_server_context(self):
+        baseplate = Baseplate()
+        observer = mock.Mock(spec=BaseplateObserver)
+        baseplate.register(observer)
+
+        observer.on_server_span_created.assert_not_called()
+        with baseplate.server_context("example") as context:
+            observer.on_server_span_created.assert_called_once()
+            self.assertIsInstance(context, RequestContext)
 
 
 class SpanTests(unittest.TestCase):

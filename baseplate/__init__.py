@@ -2,10 +2,12 @@ import inspect
 import logging
 import random
 
+from contextlib import contextmanager
 from types import TracebackType
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterator
 from typing import List
 from typing import NamedTuple
 from typing import Optional
@@ -526,6 +528,32 @@ class Baseplate:
         for observer in self.observers:
             observer.on_server_span_created(context, server_span)
         return server_span
+
+    @contextmanager
+    def server_context(self, name: str) -> Iterator[RequestContext]:
+        """Create a server span and return a context manager for its lifecycle.
+
+        This is a convenience wrapper around a common pattern seen outside of
+        servers handling requests. For example, simple cron jobs or one-off
+        scripts might want to create a temporary span and access the context
+        object. Instead of calling
+        :py:meth:`~baseplate.Baseplate.make_context_object` followed by
+        :py:meth:`~baseplate.Baseplate.make_server_span` manually, this method
+        bundles it all up for you::
+
+            with baseplate.server_context("foo") as context:
+                context.redis.ping()
+
+        .. note::
+
+            This should not be used within an existing span context (such as
+            during request processing) as it creates a new span unrelated to
+            any other ones.
+
+        """
+        context = self.make_context_object()
+        with self.make_server_span(context, name):
+            yield context
 
     def get_runtime_metric_reporters(self) -> Dict[str, Callable[[Any], None]]:
         specs: List[Tuple[Optional[str], Dict[str, Any]]] = [(None, self._context_config)]
