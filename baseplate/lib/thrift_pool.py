@@ -212,8 +212,8 @@ class ThriftConnectionPool:
             message="giving up after multiple attempts to connect",
         )
 
-    def _release(self, prot: TProtocolBase) -> None:
-        if prot.trans.isOpen():
+    def _release(self, prot: Optional[TProtocolBase]) -> None:
+        if prot and prot.trans.isOpen():
             self.pool.put(prot)
         else:
             self.pool.put(None)
@@ -232,8 +232,9 @@ class ThriftConnectionPool:
         unknown.
 
         """
-        prot = self._acquire()
+        prot: Optional[TProtocolBase] = None
         try:
+            prot = self._acquire()
             try:
                 yield prot
             except socket.timeout:
@@ -248,7 +249,8 @@ class ThriftConnectionPool:
             # these exceptions usually indicate something low-level went wrong,
             # so it's safest to just close this connection because we don't
             # know what state it's in.
-            prot.trans.close()
+            if prot:
+                prot.trans.close()
             raise
         except TException:
             # the only other TException-derived errors are application level
@@ -259,7 +261,8 @@ class ThriftConnectionPool:
             # anything else coming out of thrift usually means parsing failed
             # or something nastier. we'll just play it safe and close the
             # connection.
-            prot.trans.close()
+            if prot:
+                prot.trans.close()
             raise
         finally:
             self._release(prot)
