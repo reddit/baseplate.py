@@ -35,17 +35,13 @@ class MetricsBaseplateObserver(BaseplateObserver):
 
     @classmethod
     def from_config_and_client(
-        cls, raw_config: Optional[config.RawConfig], client: metrics.Client
+        cls, raw_config: config.RawConfig, client: metrics.Client
     ) -> "MetricsBaseplateObserver":
-        sample_rate = 1.0
-        if raw_config:
-            cfg = config.parse_config(
-                raw_config,
-                {"metrics_observer": {"sample_rate": config.Optional(config.Percent, default=1.0)}},
-            )
-            sample_rate = cfg.metrics_observer.sample_rate
-
-        return cls(client, sample_rate=sample_rate)
+        cfg = config.parse_config(
+            raw_config,
+            {"metrics_observer": {"sample_rate": config.Optional(config.Percent, default=1.0)}},
+        )
+        return cls(client, sample_rate=cfg.metrics_observer.sample_rate)
 
     def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
         batch = self.client.batch()

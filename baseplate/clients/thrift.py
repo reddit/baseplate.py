@@ -151,6 +151,12 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
             try:
                 with self.pool.connection() as prot:
+                    baseplate = span.baseplate
+                    if baseplate:
+                        service_name = baseplate.service_name
+                        if service_name:
+                            prot.trans.set_header(b"User-Agent", service_name.encode())
+
                     prot.trans.set_header(b"Trace", str(span.trace_id).encode())
                     prot.trans.set_header(b"Parent", str(span.parent_id).encode())
                     prot.trans.set_header(b"Span", str(span.id).encode())
