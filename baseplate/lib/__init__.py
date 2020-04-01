@@ -1,5 +1,6 @@
 """Internal library helpers."""
 import functools
+import inspect
 import warnings
 
 from typing import Callable
@@ -45,3 +46,15 @@ class cached_property(Generic[T, R]):
         ret = self.wrapped(instance)
         setattr(instance, self.wrapped.__name__, ret)
         return ret
+
+
+class UnknownCallerError(Exception):
+    def __init__(self) -> None:
+        super().__init__("Could not determine calling module's name")
+
+
+def get_calling_module_name() -> str:
+    module = inspect.getmodule(inspect.stack()[2].frame)
+    if not module:
+        raise UnknownCallerError
+    return module.__name__

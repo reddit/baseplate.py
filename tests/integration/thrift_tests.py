@@ -106,7 +106,12 @@ def raw_thrift_client(endpoint):
 
 @contextlib.contextmanager
 def baseplate_thrift_client(endpoint, client_span_observer=None):
-    baseplate = Baseplate()
+    baseplate = Baseplate(
+        app_config={
+            "baseplate.service_name": "fancy test client",
+            "example_service.endpoint": str(endpoint),
+        }
+    )
 
     if client_span_observer:
 
@@ -127,10 +132,7 @@ def baseplate_thrift_client(endpoint, client_span_observer=None):
         trace_id=1234, parent_id=2345, span_id=3456, flags=4567, sampled=True
     )
 
-    baseplate.configure_context(
-        {"example_service.endpoint": str(endpoint)},
-        {"example_service": ThriftClient(TestService.Client)},
-    )
+    baseplate.configure_context({"example_service": ThriftClient(TestService.Client)})
 
     baseplate.make_server_span(context, "example_service.example", trace_info)
 
@@ -152,6 +154,22 @@ class GeventPatchedTestCase(unittest.TestCase):
 
 
 class ThriftTraceHeaderTests(GeventPatchedTestCase):
+    def test_user_agent(self):
+        """We should accept user-agent headers and apply them to the server span tags."""
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+
+        handler = Handler()
+
+        server_span_observer = mock.Mock(spec=ServerSpanObserver)
+        with serve_thrift(handler, server_span_observer) as server:
+            with baseplate_thrift_client(server.endpoint) as context:
+                context.example_service.example()
+
+        server_span_observer.on_set_tag.assert_called_once_with("peer.service", "fancy test client")
+
     def test_no_headers(self):
         """We should accept requests without headers and generate a trace."""
 

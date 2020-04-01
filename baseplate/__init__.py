@@ -1,4 +1,3 @@
-import inspect
 import logging
 import random
 
@@ -19,7 +18,10 @@ from typing import TYPE_CHECKING
 import gevent.monkey
 
 from baseplate.lib import config
+from baseplate.lib import get_calling_module_name
 from baseplate.lib import metrics
+from baseplate.lib import UnknownCallerError
+from baseplate.lib import warn_deprecated
 
 
 if TYPE_CHECKING:
@@ -248,10 +250,42 @@ class Baseplate:
     """
 
     def __init__(self, app_config: Optional[config.RawConfig] = None) -> None:
+        """Initialize the core observability framework.
+
+        :param app_config: The raw configuration dictionary for your
+            application as supplied by :program:`baseplate-serve` or
+            :program:`baseplate-script`. In addition to allowing
+            framework-level configuration (described next), if this is supplied
+            you do not need to pass the configuration again when calling
+            :py:meth:`configure_observers` or :py:meth:`configure_context`.
+
+        Baseplate services can identify themselves to downstream services in
+        requests. The name a service identifies as defaults to the Python
+        module the :py:class:`~baseplate.Baseplate` object is instantiated in.
+        To override the default, make sure you are passing in an `app_config`
+        and configure the name in your INI file:
+
+        .. code-block:: ini
+
+            [app:main]
+            baseplate.service_name = foo_service
+
+            ...
+
+        """
+
         self.observers: List[BaseplateObserver] = []
         self._metrics_client: Optional[metrics.Client] = None
         self._context_config: Dict[str, Any] = {}
-        self._app_config = app_config
+        self._app_config = app_config or {}
+
+        self.service_name = self._app_config.get("baseplate.service_name")
+        if not self.service_name:
+            try:
+                self.service_name = get_calling_module_name()
+            except UnknownCallerError:
+                # this happens e.g. when instantiating Baseplate() in a shell
+                pass
 
     def register(self, observer: BaseplateObserver) -> None:
         """Register an observer.
@@ -361,9 +395,16 @@ class Baseplate:
         """
         skipped = []
 
-        app_config = app_config or self._app_config
-        if not app_config:
-            raise Exception("configuration must be passed to Baseplate() or here")
+        if app_config:
+            if self._app_config:
+                raise Exception("pass app_config to the constructor or this method but not both")
+
+            warn_deprecated(
+                "Passing configuration to configure_observers is deprecated in "
+                "favor of passing it to the Baseplate constructor"
+            )
+        else:
+            app_config = self._app_config
 
         self.configure_logging()
 
@@ -396,10 +437,7 @@ class Baseplate:
             from baseplate.observers.sentry import error_reporter_from_config
 
             if module_name is None:
-                module = inspect.getmodule(inspect.stack()[1].frame)
-                if not module:
-                    raise Exception("failed to detect module name, pass one explicitly")
-                module_name = module.__name__
+                module_name = get_calling_module_name()
 
             error_reporter = error_reporter_from_config(app_config, module_name)
             self.configure_error_reporting(error_reporter)
@@ -462,11 +500,18 @@ class Baseplate:
         else:
             raise Exception("bad parameters to configure_context")
 
-        app_config = kwargs.get("app_config", self._app_config)
-        context_spec = kwargs["context_spec"]
+        if "app_config" in kwargs:
+            if self._app_config:
+                raise Exception("pass app_config to the constructor or this method but not both")
 
-        if app_config is None:
-            raise Exception("configuration must be passed to Baseplate() or here")
+            warn_deprecated(
+                "Passing configuration to configure_context is deprecated in "
+                "favor of passing it to the Baseplate constructor"
+            )
+            app_config = kwargs["app_config"]
+        else:
+            app_config = self._app_config
+        context_spec = kwargs["context_spec"]
 
         cfg = config.parse_config(app_config, context_spec)
         self._context_config.update(cfg)
@@ -522,6 +567,7 @@ class Baseplate:
             trace_info.flags,
             name,
             context,
+            baseplate=self,
         )
         context.trace = server_span
 
@@ -585,6 +631,7 @@ class Span:
         flags: Optional[int],
         name: str,
         context: RequestContext,
+        baseplate: Optional[Baseplate] = None,
     ):
         self.trace_id = trace_id
         self.parent_id = parent_id
@@ -593,6 +640,7 @@ class Span:
         self.flags = flags
         self.name = name
         self.context = context
+        self.baseplate = baseplate
         self.component_name: Optional[str] = None
         self.observers: List[SpanObserver] = []
 
@@ -725,12 +773,26 @@ class LocalSpan(Span):
         span: Span
         if local:
             span = LocalSpan(
-                self.trace_id, self.id, span_id, self.sampled, self.flags, name, context_copy
+                self.trace_id,
+                self.id,
+                span_id,
+                self.sampled,
+                self.flags,
+                name,
+                context_copy,
+                self.baseplate,
             )
             span.component_name = component_name
         else:
             span = Span(
-                self.trace_id, self.id, span_id, self.sampled, self.flags, name, context_copy
+                self.trace_id,
+                self.id,
+                span_id,
+                self.sampled,
+                self.flags,
+                name,
+                context_copy,
+                self.baseplate,
             )
         context_copy.trace = span
 

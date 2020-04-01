@@ -107,7 +107,14 @@ def baseplateify_processor(
                 # downstream even if we don't know how to handle it.
                 context.raw_request_context = edge_payload
 
-            baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
+            span = baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
+
+            try:
+                service_name = headers[b"User-Agent"].decode()
+            except (KeyError, UnicodeDecodeError):
+                pass
+            else:
+                span.set_tag("peer.service", service_name)
 
             context.headers = headers
 

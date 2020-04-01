@@ -44,7 +44,7 @@ various other frameworks (e.g. Thrift, Pyramid, etc.) using one of :doc:`the
 integrations <frameworks/index>`.
 
 .. autoclass:: Baseplate
-   :members: configure_observers, configure_context, add_to_context
+   :members: __init__, configure_observers, configure_context, add_to_context
 
 Per-request Context
 -------------------
