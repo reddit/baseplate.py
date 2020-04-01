@@ -15,6 +15,7 @@ from thrift.transport import TTransport
 
 from baseplate.lib import config
 from baseplate.lib import thrift_pool
+from baseplate.observers.timeout import ServerTimeout
 
 
 EXAMPLE_ENDPOINT = config.EndpointConfiguration(socket.AF_INET, ("127.0.0.1", 1234))
@@ -255,3 +256,23 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertEqual(self.mock_queue.get.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_args, mock.call(mock_prot))
+
+    @mock.patch("baseplate.lib.thrift_pool._make_transport")
+    @mock.patch("time.time")
+    def test_context_server_timeout(self, mock_time, mock_make_transport):
+        mock_time.return_value = 123
+
+        self.mock_queue.get.return_value = None
+
+        fresh_trans = mock.Mock(spec=TSocket.TSocket)
+        fresh_trans.protocol_id = THeaderTransport.THeaderSubprotocolID.BINARY
+        fresh_trans.open.side_effect = ServerTimeout("span", 10.0, False)
+        mock_make_transport.return_value = fresh_trans
+
+        with self.assertRaises(ServerTimeout):
+            with self.pool.connection() as _:
+                pass
+
+        self.assertEqual(self.mock_queue.get.call_count, 1)
+        self.assertEqual(self.mock_queue.put.call_count, 1)
+        self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
