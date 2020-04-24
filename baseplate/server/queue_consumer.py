@@ -16,6 +16,7 @@ from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
 
+from gevent.pywsgi import LoggingLogAdapter
 from gevent.pywsgi import WSGIServer
 from gevent.server import StreamServer
 
@@ -47,7 +48,11 @@ def make_simple_healthchecker(
         start_response("503 UNAVAILABLE", [("Content-Type", "text/plain")])
         return [b"he's dead jim"]
 
-    return WSGIServer(listener=listener, application=healthcheck)
+    return WSGIServer(
+        listener=listener,
+        application=healthcheck,
+        log=LoggingLogAdapter(logger, level=logging.DEBUG),
+    )
 
 
 class PumpWorker(abc.ABC):
