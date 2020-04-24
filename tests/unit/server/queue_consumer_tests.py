@@ -10,9 +10,11 @@ from threading import Thread
 from unittest import mock
 
 import pytest
+import webtest
 
 from gevent.server import StreamServer
 
+from baseplate.server.queue_consumer import HealthcheckApp
 from baseplate.server.queue_consumer import MessageHandler
 from baseplate.server.queue_consumer import PumpWorker
 from baseplate.server.queue_consumer import QueueConsumer
@@ -227,3 +229,12 @@ class TestQueueConsumerServer:
         server.start()
         time.sleep(0.5)
         server._terminate.assert_called_once()
+
+
+def test_healthcheck():
+    healthcheck_app = HealthcheckApp()
+    test_app = webtest.TestApp(healthcheck_app)
+
+    response = test_app.get("/health")
+    assert response.content_type == "application/json"
+    assert isinstance(response.json, dict)
