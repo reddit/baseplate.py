@@ -21,7 +21,7 @@ all_structs = []
 
 class Loid(object):
     """
-    The components of the Reddit LoID cookie that we want to propogate between
+    The components of the Reddit LoID cookie that we want to propagate between
     services.
 
     This model is a component of the "Edge-Request" header.  You should not need to
@@ -115,7 +115,7 @@ class Loid(object):
 class Session(object):
     """
     The components of the Reddit Session tracker cookie that we want to
-    propogate between services.
+    propagate between services.
 
     This model is a component of the "Edge-Request" header.  You should not need to
     interact with this model directly, but rather through the EdgeRequestContext
@@ -356,6 +356,88 @@ class OriginService(object):
         return not (self == other)
 
 
+class Geolocation(object):
+    """
+    Geolocation data from a request to our services that we want to
+    propagate between services.
+
+    This model is a component of the "Edge-Request" header.  You should not need to
+    interact with this model directly, but rather through the EdgeRequestContext
+    interface provided by baseplate.
+
+
+    Attributes:
+     - country_code: The country code of the requesting client.
+
+    """
+
+    __slots__ = ("country_code",)
+
+    def __init__(self, country_code=None):
+        self.country_code = country_code
+
+    def read(self, iprot):
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRING:
+                    self.country_code = (
+                        iprot.readString().decode("utf-8")
+                        if sys.version_info[0] == 2
+                        else iprot.readString()
+                    )
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin("Geolocation")
+        if self.country_code is not None:
+            oprot.writeFieldBegin("country_code", TType.STRING, 1)
+            oprot.writeString(
+                self.country_code.encode("utf-8") if sys.version_info[0] == 2 else self.country_code
+            )
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        for attr in self.__slots__:
+            my_val = getattr(self, attr)
+            other_val = getattr(other, attr)
+            if my_val != other_val:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
 class Request(object):
     """
     Container model for the Edge-Request context header.
@@ -372,19 +454,34 @@ class Request(object):
      - authentication_token
      - device
      - origin_service
+     - geolocation
 
     """
 
-    __slots__ = ("loid", "session", "authentication_token", "device", "origin_service")
+    __slots__ = (
+        "loid",
+        "session",
+        "authentication_token",
+        "device",
+        "origin_service",
+        "geolocation",
+    )
 
     def __init__(
-        self, loid=None, session=None, authentication_token=None, device=None, origin_service=None
+        self,
+        loid=None,
+        session=None,
+        authentication_token=None,
+        device=None,
+        origin_service=None,
+        geolocation=None,
     ):
         self.loid = loid
         self.session = session
         self.authentication_token = authentication_token
         self.device = device
         self.origin_service = origin_service
+        self.geolocation = geolocation
 
     def read(self, iprot):
         if (
@@ -432,6 +529,12 @@ class Request(object):
                     self.origin_service.read(iprot)
                 else:
                     iprot.skip(ftype)
+            elif fid == 6:
+                if ftype == TType.STRUCT:
+                    self.geolocation = Geolocation()
+                    self.geolocation.read(iprot)
+                else:
+                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -465,6 +568,10 @@ class Request(object):
         if self.origin_service is not None:
             oprot.writeFieldBegin("origin_service", TType.STRUCT, 5)
             self.origin_service.write(oprot)
+            oprot.writeFieldEnd()
+        if self.geolocation is not None:
+            oprot.writeFieldBegin("geolocation", TType.STRUCT, 6)
+            self.geolocation.write(oprot)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -502,6 +609,8 @@ all_structs.append(Device)
 Device.thrift_spec = (None, (1, TType.STRING, "id", "UTF8", None))  # 0  # 1
 all_structs.append(OriginService)
 OriginService.thrift_spec = (None, (1, TType.STRING, "name", "UTF8", None))  # 0  # 1
+all_structs.append(Geolocation)
+Geolocation.thrift_spec = (None, (1, TType.STRING, "country_code", "UTF8", None))  # 0  # 1
 all_structs.append(Request)
 Request.thrift_spec = (
     None,  # 0
@@ -510,6 +619,7 @@ Request.thrift_spec = (
     (3, TType.STRING, "authentication_token", "UTF8", None),  # 3
     (4, TType.STRUCT, "device", [Device, None], None),  # 4
     (5, TType.STRUCT, "origin_service", [OriginService, None], None),  # 5
+    (6, TType.STRUCT, "geolocation", [Geolocation, None], None),  # 6
 )
 fix_spec(all_structs)
 del all_structs

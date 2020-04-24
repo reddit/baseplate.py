@@ -1,4 +1,5 @@
 import logging
+import re
 
 from typing import Any
 from typing import Dict
@@ -15,6 +16,7 @@ from baseplate import RequestContext
 from baseplate.lib import cached_property
 from baseplate.lib.secrets import SecretsStore
 from baseplate.thrift.ttypes import Device as TDevice
+from baseplate.thrift.ttypes import Geolocation as TGeolocation
 from baseplate.thrift.ttypes import Loid as TLoid
 from baseplate.thrift.ttypes import OriginService as TOriginService
 from baseplate.thrift.ttypes import Request as TRequest
@@ -22,6 +24,9 @@ from baseplate.thrift.ttypes import Session as TSession
 
 
 logger = logging.getLogger(__name__)
+
+
+COUNTRY_CODE_RE = re.compile(r"^[A-Z]{2}$")
 
 
 class NoAuthenticationError(Exception):
@@ -175,6 +180,12 @@ class OriginService(NamedTuple):
     """Wrapper for the origin values in the EdgeRequestContext."""
 
     name: str
+
+
+class Geolocation(NamedTuple):
+    """Wrapper for the geolocation values in the EdgeRequestContext."""
+
+    country_code: str
 
 
 class User(NamedTuple):
@@ -343,6 +354,7 @@ class EdgeRequestContextFactory:
         session_id: Optional[str] = None,
         device_id: Optional[str] = None,
         origin_service_name: Optional[str] = None,
+        country_code: Optional[str] = None,
     ) -> "EdgeRequestContext":
         """Return a new EdgeRequestContext object made from scratch.
 
@@ -379,6 +391,8 @@ class EdgeRequestContextFactory:
         :param device_id: ID for the device where the request originated from.
         :param origin_service_name: Name for the "origin" service handling the
             request from the client.
+        :param country_code: two-character ISO 3166-1 country code where the
+            request orginated from.
 
         """
         if loid_id is not None and not loid_id.startswith("t2_"):
@@ -387,12 +401,19 @@ class EdgeRequestContextFactory:
                 "fullname format with the '0' padding removed: 't2_loid_id'" % loid_id
             )
 
+        if country_code is not None and not COUNTRY_CODE_RE.match(country_code):
+            raise ValueError(
+                "country_code <%s> is not in a valid format, it should be in "
+                "ISO 3166-1 alpha-2 format: 'US'" % country_code
+            )
+
         t_request = TRequest(
             loid=TLoid(id=loid_id, created_ms=loid_created_ms),
             session=TSession(id=session_id),
             authentication_token=authentication_token,
             device=TDevice(id=device_id),
             origin_service=TOriginService(name=origin_service_name),
+            geolocation=TGeolocation(country_code=country_code),
         )
         header = TSerialization.serialize(t_request, EdgeRequestContext._HEADER_PROTOCOL_FACTORY)
 
@@ -488,12 +509,18 @@ class EdgeRequestContext:
         return OriginService(self._t_request.origin_service.name)
 
     @cached_property
+    def geolocation(self) -> Geolocation:
+        """:py:class:`~baseplate.core.Geolocation` object for the current context."""
+        return Geolocation(country_code=self._t_request.geolocation.country_code)
+
+    @cached_property
     def _t_request(self) -> TRequest:  # pylint: disable=method-hidden
         _t_request = TRequest()
         _t_request.loid = TLoid()
         _t_request.session = TSession()
         _t_request.device = TDevice()
         _t_request.origin_service = TOriginService()
+        _t_request.geolocation = TGeolocation()
         if self._header:
             try:
                 TSerialization.deserialize(_t_request, self._header, self._HEADER_PROTOCOL_FACTORY)

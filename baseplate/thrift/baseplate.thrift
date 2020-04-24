@@ -2,6 +2,16 @@ namespace py baseplate.thrift
 namespace go reddit.baseplate
 namespace java com.reddit.baseplate
 
+/**A raw authentication token as returned by the authentication service.
+
+*/
+typedef string AuthenticationToken
+
+/** A two-character ISO 3166-1 country code
+
+*/
+typedef string CountryCode
+
 /** The base for any baseplate-based service.
 
 Your service should inherit from this one so that common tools can interact
@@ -22,7 +32,7 @@ service BaseplateService {
 }
 
 
-/** The components of the Reddit LoID cookie that we want to propogate between
+/** The components of the Reddit LoID cookie that we want to propagate between
 services.
 
 This model is a component of the "Edge-Request" header.  You should not need to
@@ -42,7 +52,7 @@ struct Loid {
 }
 
 /** The components of the Reddit Session tracker cookie that we want to
-propogate between services.
+propagate between services.
 
 This model is a component of the "Edge-Request" header.  You should not need to
 interact with this model directly, but rather through the EdgeRequestContext
@@ -87,10 +97,19 @@ struct OriginService {
     1: string name
 }
 
-/**A raw authentication token as returned by the authentication service.
+/** Geolocation data from a request to our services that we want to
+propagate between services.
+
+This model is a component of the "Edge-Request" header.  You should not need to
+interact with this model directly, but rather through the EdgeRequestContext
+interface provided by baseplate.
 
 */
-typedef string AuthenticationToken
+struct Geolocation {
+    /** The country code of the requesting client.
+    */
+    1: CountryCode country_code
+}
 
 /** Container model for the Edge-Request context header.
 
@@ -106,4 +125,5 @@ struct Request {
     3: AuthenticationToken authentication_token;
     4: Device device;
     5: OriginService origin_service;
+    6: Geolocation geolocation;
 }
