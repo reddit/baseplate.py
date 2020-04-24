@@ -34,23 +34,28 @@ WSGIEnvironment = Dict[str, Any]
 HealthcheckCallback = Callable[[WSGIEnvironment], bool]
 
 
-def make_simple_healthchecker(
-    listener: socket.socket, callback: Optional[HealthcheckCallback] = None
-) -> WSGIServer:
-    def healthcheck(environ: WSGIEnvironment, start_response: "StartResponse") -> List[bytes]:
+class HealthcheckApp:
+    def __init__(self, callback: Optional[HealthcheckCallback] = None) -> None:
+        self.callback = callback
+
+    def __call__(self, environ: WSGIEnvironment, start_response: "StartResponse") -> List[bytes]:
         ok = True
-        if callback:
-            ok = callback(environ)
+        if self.callback:
+            ok = self.callback(environ)
 
         if ok:
-            start_response("200 OK", [("Content-Type", "text/plain")])
-            return [b"all good, boss"]
+            start_response("200 OK", [("Content-Type", "application/json")])
+            return [b'{"fun message": "all good, boss"}']
         start_response("503 UNAVAILABLE", [("Content-Type", "text/plain")])
         return [b"he's dead jim"]
 
+
+def make_simple_healthchecker(
+    listener: socket.socket, callback: Optional[HealthcheckCallback] = None
+) -> WSGIServer:
     return WSGIServer(
         listener=listener,
-        application=healthcheck,
+        application=HealthcheckApp(callback),
         log=LoggingLogAdapter(logger, level=logging.DEBUG),
     )
 
