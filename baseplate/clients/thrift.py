@@ -21,6 +21,14 @@ from baseplate.lib.thrift_pool import thrift_pool_from_config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 
 
+class ThriftTransportException(TTransportException):
+    def __init__(self, namespace: str, name: str, last_error: Optional[str], **kwargs: Any):
+        super().__init__(**kwargs)
+        self.namespace = namespace
+        self.name = name
+        self.last_error = last_error
+
+
 class ThriftClient(config.Parser):
     """Configure a Thrift client.
 
@@ -200,7 +208,10 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                 span.finish()
                 return result
 
-        raise TTransportException(
+        raise ThriftTransportException(
+            namespace=self.namespace,
+            name=name,
+            last_error=last_error,
             type=TTransportException.TIMED_OUT,
             message="retry policy exhausted while attempting {}.{}, "
             "last error was: {}".format(self.namespace, name, last_error),
