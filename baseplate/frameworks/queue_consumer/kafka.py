@@ -3,6 +3,7 @@ import logging
 import queue
 import socket
 import time
+import warnings
 
 from typing import Any
 from typing import Callable
@@ -130,6 +131,10 @@ class KafkaMessageHandler(MessageHandler):
                 span.set_tag("kafka.timestamp", message.timestamp())
 
                 blob: bytes = message.value()
+
+                if not blob:
+                    warnings.warn("empty message body", BytesWarning)
+                    return
 
                 try:
                     data = self.message_unpack_fn(blob)
