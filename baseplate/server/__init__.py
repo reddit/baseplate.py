@@ -34,6 +34,7 @@ from gevent.server import StreamServer
 from baseplate import Baseplate
 from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
+from baseplate.lib.log_formatter import CustomJsonFormatter
 from baseplate.server import einhorn
 from baseplate.server import reloader
 
@@ -118,7 +119,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     else:
         logging_level = logging.INFO
 
-    formatter = logging.Formatter("%(process)s:%(threadName)s:%(name)s:%(levelname)s:%(message)s")
+    formatter = CustomJsonFormatter("%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d")
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
