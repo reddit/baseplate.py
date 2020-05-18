@@ -119,7 +119,9 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     else:
         logging_level = logging.INFO
 
-    formatter = CustomJsonFormatter("%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d")
+    formatter = CustomJsonFormatter(
+        "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d"
+    )
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
