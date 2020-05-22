@@ -306,4 +306,4 @@ class ThriftConnectionPoolTests(unittest.TestCase):
             with pool.connection() as _:
                 pass
 
-        self.assertEqual(-1, pool.checkedout)  # the issue: it should be 0
+        self.assertEqual(0, pool.checkedout)

@@ -142,6 +142,9 @@ class ThriftConnectionPool:
 
     """
 
+    class _PoolCheckoutException(Exception):
+        pass
+
     # pylint: disable=too-many-arguments
     def __init__(
         self,
@@ -182,6 +185,11 @@ class ThriftConnectionPool:
             raise TTransportException(
                 type=TTransportException.NOT_OPEN, message="timed out waiting for a connection slot"
             )
+        except:  # noqa: E722
+            # at least ServerTimeout exception can be caught here, but expecting others too.
+            # raising the special exception to flag the case where connection
+            # hasn't left the pool.
+            raise self._PoolCheckoutException
 
         for _ in self.retry_policy:
             if prot:
@@ -231,6 +239,7 @@ class ThriftConnectionPool:
 
         """
         prot: Optional[TProtocolBase] = None
+        skip_release = False
         try:
             prot = self._acquire()
             try:
@@ -255,6 +264,10 @@ class ThriftConnectionPool:
             # (expected) errors which should be safe for the connection.
             # don't close the transport here!
             raise
+        except self._PoolCheckoutException:
+            # acquisition from the pool hasn't happened and thus releasing
+            # should be skipped too.
+            skip_release = True
         except:  # noqa: E722
             # anything else coming out of thrift usually means parsing failed
             # or something nastier. we'll just play it safe and close the
@@ -263,7 +276,8 @@ class ThriftConnectionPool:
                 prot.trans.close()
             raise
         finally:
-            self._release(prot)
+            if not skip_release:
+                self._release(prot)
 
     @property
     def checkedout(self) -> int:
