@@ -293,3 +293,17 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertEqual(self.mock_queue.get.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
+
+    def test_pool_checkout_exception(self):
+        pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT)
+
+        def mock_get():
+            raise Exception
+
+        pool.pool.get = mock_get
+
+        with self.assertRaises(Exception):
+            with pool.connection() as _:
+                pass
+
+        self.assertEqual(-1, pool.checkedout)  # the issue: it should be 0
