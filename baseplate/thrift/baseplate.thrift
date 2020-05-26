@@ -133,124 +133,113 @@ struct Request {
 HTTP layers can easily map errors to an appropriate status code.
 */
 enum ErrorCode {
-    /** This is appropriate if the client sent an invalid request.
-
-    You can send the details using the details map in the Error struct.
+    /** This indicates that the request was invalid. More details may be
+    present in the details map of the Error struct.
     */
     BAD_REQUEST = 400,
-    /** This is appropriate when you fail to authenticate the request.
-
-    It may be appropriate for the client to retry this request in the event, for
-    example, if they used an expired authentication credential, they can retry
+    /** This indicates that the request could not be authenticated. It may be
+    appropriate to retry the request in some scenarios. For example, a retry is
+    appropriate if an expired authentication credential was initially used.
     */
     UNAUTHORIZED = 401,
-    /** This is appropriate if you need to communicate to the client that their
-    request can not be completed until a payment is made.
+    /** This indicates that the request can not be completed until a payment is
+    made.
     */
     PAYMENT_REQUIRED = 402,
-    /** This is appropriate when you can authenticate a request but the client
-    does not have access to the requested resource.
-
-    Unlike Unauthorized, refreshing an authentication resource and trying again
-    will not make a difference.
+    /** This indicates that the client does not have access to the requested
+    resource. Unlike UNAUTHORIZED, refreshing an authentication resource and
+    trying again will not make a difference.
     */
     FORBIDDEN = 403,
-    /** This is appropriate when the client tries to access something that does
-    not exist.
+    /** This indicates that the request was made for a resource that does not
+    exist.
     */
     NOT_FOUND = 404,
-    /** This is appropriate when a client request would cause a conflict with
-    the current state of the server.
+    /** This indicates that the request would cause a conflict with the current
+    state of the server.
     */
     CONFLICT = 409,
-    /** This is appropriate when the resource requested was once available but is
-    no longer.
+    /** This indicates that the requested resource was once available but is no
+    longer.
     */
     GONE = 410,
-    /** This is appropriate when the server is not in a state required to complete
-    the clients request. For example, deleting an entity that has children which must
-    by deleted first.
+    /** This indicates that the server is not in a state required to complete
+    the request. For example, the server may require that a resource's children
+    must be deleted before the resource itself is deleted.
     */
     PRECONDITION_FAILED = 412,
-    /** This is appropriate when the client sends a request that is larger than
-    the limits set by the server, such as when they try to upload a file that is
-    too big.
+    /** This indicates that the request is larger than the limits set by the
+    server, such as when a file that is too big is uploaded.
     */
     PAYLOAD_TOO_LARGE = 413,
-    /** This is appropriate when the server is a teapot rather than a coffee maker.
+    /** This indicates that the server is a teapot rather than a coffee maker.
     */
     IM_A_TEAPOT = 418,
-    /** This is appropriate when the request was directed at a server that is not
+    /** This indicates that the request was directed at a server that is not
     able to produce a response. For example, because of connection reuse.
     */
     MISDIRECTED_REQUEST = 421,
-    /** This is appropriate when the request is valid but the server is unable to
-    process the request instructions.
-
-    The request should not be retried without modification.
+    /** This indicates that the request was valid, but the server is unable to
+    process the request instructions. The request should not be retried without
+    modification.
     */
-    UNPROCESSSABLE_ENTITY = 422,
-    /** This is appropriate when the client tries to operate on a resource that is
+    UNPROCESSABLE_ENTITY = 422,
+    /** This indicates that the request tried to operate on a resource that is
     locked.
     */
     LOCKED = 423,
-    /** This is appropriate when the request failed because it depended on another
-    request and that request failed.
+    /** This indicates that the request failed because it depends on another
+    request that has failed.
     */
     FAILED_DEPENDENCY = 424,
-    /** This is appropriate when the server is concerned that the request may be
-    replayed, resulting in a replay attack.
+    /** This indicates that the server is concerned that the request may be
+    replayed, resulting in a reply attack.
     */
     TOO_EARLY = 425,
-    /** This is appropriate if the server requires a precondition to be specified in
-    order to process a request. For example, a server may require clients to specify
-    a version number for a resource that they are trying to update in order to avoid
-    lost updates. If the client does not specify a version number then the server may
-    respond with `PRECONDITION_REQUIRED`.
+    /** This indicates that the server requires a precondition to be specified
+    in order to process the request. For example, the server may require
+    clients to specify a version number for a resource that they are trying to
+    update in order to avoid lost updates. If the client does not specify a
+    version number then the server may respond with `PRECONDITION_REQUIRED`.
     */
     PRECONDITION_REQUIRED = 428,
-    /** This is appropriate when the client has been rate limited by the server.
-
-    It may be appropriate for the client to retry the request after some time has
-    passed, it is encouraged to use this along with Retryable to communicate to
-    the client when they are able to retry.
+    /** This indicates that the client has been rate limited by the server. It
+    may be appropriate to retry the request after some time has passed.
     */
     TOO_MANY_REQUESTS = 429,
-    /** This is appropriate when the client sends a header value that is too large.
+    /** This indicates that the request contained a header value that is too
+    large.
     */
     REQUEST_HEADER_FIELDS_TOO_LARGE = 431,
-    /** This is appropriate when the requested resource is unavailable for
-    legal reasons, such as when the content is censored in a country.
+    /** This indicates that the requested resource is unavailable for legal
+    reasons such as when the content is censored in a country.
     */
     UNAVAILABLE_FOR_LEGAL_REASONS = 451,
-    /** This is appropriate for generic, unhandled server errors.
+    /** This indicates a generic, unhandled server errors.
     */
     INTERNAL_SERVER_ERROR = 500,
-    /** This applies when a request is made for an HTTP method that the server
+    /** This indicates that the request was made for a method that the server
     understands but does not support.
     */
     NOT_IMPLEMENTED = 501,
-    /** This is appropriate to use when your service is responsible for making
-    requests to other services and one returns a bad (unexpected error or malformed)
-    response.
+    /** This indicates that a downstream service returned a bad (unexpected
+    error or malformed) response.
     */
     BAD_GATEWAY = 502,
-    /** This is appropriate when a server is not ready to handle a request such
-    as when it is down for maintenance or overloaded.
-
-    Clients may retry 503's with exponential backoff.
+    /** This indicates that the server is not ready to handle the request such
+    as when it is down for maintenance or overloaded. Clients may retry the
+    request with exponential backoff.
     */
     SERVICE_UNAVAILABLE = 503,
-    /** This is appropriate to use when your service is responsible for making
-    requests to other services and one times out.
+    /** This indicates that the server timed out.
     */
     TIMEOUT = 504,
-    /** This is appropriate when a server does not have sufficient storage to complete
-    the client's request.
+    /** This indicates that the server does not have sufficient storage to
+    complete the request.
     */
     INSUFFICIENT_STORAGE = 507,
-    /** This is appropriate if the server is able to detect that an infinite loop has been
-    detected between services.
+    /** This indicates that the server detected that an infinite loop between
+    services.
     */
     LOOP_DETECTED = 508,
     /** Developers should use a value higher than 1000
@@ -270,8 +259,8 @@ exception Error {
     */
     1: optional i32 code
     /** A human-readable error message. It should both explain the error
-    and offer an actionable resolution to it, if applicable. Displaying 
-    this message to a user should not be dangerous.
+    and offer an actionable resolution to it, if applicable. It should
+    be safe to desplay this message in a user-facing client.
     */
     2: optional string message
     /** A map of additional error information. This is most useful
