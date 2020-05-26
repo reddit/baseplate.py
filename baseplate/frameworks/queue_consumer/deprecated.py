@@ -148,17 +148,21 @@ class BaseKombuConsumer:
             block = False
         else:
             block = True
-
         batch = []
         retry_policy = RetryPolicy.new(attempts=max_items, budget=timeout)
         for time_remaining in retry_policy:
-            item = self.work_queue.get(block=block, timeout=time_remaining)
+            item = self._get_next_item(block=block, timeout=time_remaining)
             if item is None:
                 break
-
             batch.append(item)
 
         return batch
+
+    def _get_next_item(self, block: bool, timeout: Optional[float]) -> Optional[Message]:
+        try:
+            return self.work_queue.get(block=block, timeout=timeout)
+        except queue.Empty:
+            return None
 
 
 class KombuConsumer:
