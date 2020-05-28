@@ -3,7 +3,6 @@ import logging
 import queue
 import socket
 import time
-import warnings
 
 from typing import Any
 from typing import Callable
@@ -131,29 +130,32 @@ class KafkaMessageHandler(MessageHandler):
                 span.set_tag("kafka.timestamp", message.timestamp())
 
                 blob: bytes = message.value()
+                message_latency: Optional[int] = None
 
                 if not blob:
-                    warnings.warn("empty message body", BytesWarning)
-                    return
+                    data = None
+                    logger.debug("null message value")
+                    context.trace.incr_tag(f"{self.name}.{topic}.null_message_value")
 
-                try:
-                    data = self.message_unpack_fn(blob)
-                except Exception:
-                    logger.error("skipping invalid message")
-                    context.trace.incr_tag(f"{self.name}.{topic}.invalid_message")
-                    return
+                else:
+                    try:
+                        data = self.message_unpack_fn(blob)
+                    except Exception:
+                        logger.error("skipping invalid message")
+                        context.trace.incr_tag(f"{self.name}.{topic}.invalid_message")
+                        return
 
-                try:
-                    ingest_timestamp_ms = data["endpoint_timestamp"]
-                    now_ms = int(time.time() * 1000)
-                    message_latency = (now_ms - ingest_timestamp_ms) / 1000
-                except KeyError:
-                    # we can't guarantee that all publishers populate this field
-                    # v2 events publishers (event collectors) do, but future
-                    # kafka publishers may not
-                    message_latency = None
+                    try:
+                        ingest_timestamp_ms = data["endpoint_timestamp"]
+                        now_ms = int(time.time() * 1000)
+                        message_latency = (now_ms - ingest_timestamp_ms) / 1000
+                    except KeyError:
+                        # we can't guarantee that all publishers populate this field
+                        # v2 events publishers (event collectors) do, but future
+                        # kafka publishers may not
+                        pass
 
-                self.handler_fn(context, data, message)
+                    self.handler_fn(context, data, message)
 
                 if self.on_success_fn:
                     self.on_success_fn(context, data, message)
