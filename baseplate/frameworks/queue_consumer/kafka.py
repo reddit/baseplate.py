@@ -130,10 +130,10 @@ class KafkaMessageHandler(MessageHandler):
                 span.set_tag("kafka.timestamp", message.timestamp())
 
                 blob: bytes = message.value()
+                data: Any = None
                 message_latency: Optional[int] = None
 
                 if not blob:
-                    data = None
                     logger.debug("null message value")
                     context.trace.incr_tag(f"{self.name}.{topic}.null_message_value")
 
