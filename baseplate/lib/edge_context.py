@@ -167,7 +167,7 @@ class User(NamedTuple):
     """Wrapper for the user values in AuthenticationToken and the LoId cookie."""
 
     authentication_token: AuthenticationToken
-    loid_: str
+    _loid: str
     cookie_created_ms: int
 
     @property
@@ -236,8 +236,8 @@ class User(NamedTuple):
             pass
 
         # Next, return the loid from thrift payload if it's non-empty
-        if self.loid_:
-            return self.loid_
+        if self._loid:
+            return self._loid
 
         # Finally, return loid from authentication token
         loid = self.authentication_token.loid
@@ -453,7 +453,7 @@ class EdgeRequestContext:
         """:py:class:`~baseplate.lib.edge_context.User` object for the current context."""
         return User(
             authentication_token=self.authentication_token,
-            loid_=self._t_request.loid.id,
+            _loid=self._t_request.loid.id,
             cookie_created_ms=self._t_request.loid.created_ms,
         )
 

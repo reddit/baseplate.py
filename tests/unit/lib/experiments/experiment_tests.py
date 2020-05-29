@@ -34,7 +34,7 @@ class TestExperiments(unittest.TestCase):
         self.mock_authentication_token.user_roles = set()
         self.user = User(
             authentication_token=self.mock_authentication_token,
-            loid_="t2_1",
+            _loid="t2_1",
             cookie_created_ms=10000,
         )
 
