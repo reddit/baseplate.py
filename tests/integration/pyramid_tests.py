@@ -179,7 +179,8 @@ class ConfiguratorTests(unittest.TestCase):
             self.assertEqual(context.request_context.user.id, "t2_example")
             self.assertEqual(context.request_context.user.roles, set())
             self.assertEqual(context.request_context.user.is_logged_in, True)
-            self.assertEqual(context.request_context.user.loid, "t2_deadbeef")
+            # For logged in user, we expect loid returns logged in user id
+            self.assertEqual(context.request_context.user.loid, "t2_example")
             self.assertEqual(context.request_context.user.cookie_created_ms, 100000)
             self.assertEqual(context.request_context.oauth_client.id, None)
             self.assertFalse(context.request_context.oauth_client.is_type("third_party"))

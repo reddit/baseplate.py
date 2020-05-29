@@ -167,7 +167,7 @@ class User(NamedTuple):
     """Wrapper for the user values in AuthenticationToken and the LoId cookie."""
 
     authentication_token: AuthenticationToken
-    loid: str
+    loid_: str
     cookie_created_ms: int
 
     @property
@@ -215,16 +215,36 @@ class User(NamedTuple):
 
     def event_fields(self) -> Dict[str, Any]:
         """Return fields to be added to events."""
-        if self.is_logged_in:
-            user_id = self.id
-        else:
-            user_id = self.loid
+        loid: Optional[str] = self.loid
+        if loid == "":
+            loid = None
 
         return {
-            "user_id": user_id,
+            "user_id": loid,
             "logged_in": self.is_logged_in,
             "cookie_created_timestamp": self.cookie_created_ms,
         }
+
+    @property
+    def loid(self) -> str:
+        # First, if it's logged in user, return logged in user id.
+        try:
+            user_id = self.id
+            if user_id is not None:
+                return user_id
+        except NoAuthenticationError:
+            pass
+
+        # Next, return the loid from thrift payload if it's non-empty
+        if self.loid_:
+            return self.loid_
+
+        # Finally, return loid from authentication token
+        loid = self.authentication_token.loid
+        if loid:
+            return loid
+
+        return ""
 
 
 class OAuthClient(NamedTuple):
@@ -433,7 +453,7 @@ class EdgeRequestContext:
         """:py:class:`~baseplate.lib.edge_context.User` object for the current context."""
         return User(
             authentication_token=self.authentication_token,
-            loid=self._t_request.loid.id,
+            loid_=self._t_request.loid.id,
             cookie_created_ms=self._t_request.loid.created_ms,
         )
 

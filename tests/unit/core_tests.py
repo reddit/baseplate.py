@@ -358,7 +358,8 @@ class EdgeRequestContextTests(unittest.TestCase):
 
         self.assertEqual(request_context.user.id, "t2_example")
         self.assertTrue(request_context.user.is_logged_in)
-        self.assertEqual(request_context.user.loid, self.LOID_ID)
+        # For logged in user, we expect loid returns logged in user id
+        self.assertEqual(request_context.user.loid, "t2_example")
         self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
         self.assertEqual(request_context.user.roles, set())
         self.assertFalse(request_context.user.has_role("test"))

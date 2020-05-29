@@ -269,7 +269,8 @@ class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
         self.assertEqual(handler.request_context.user.id, "t2_example")
         self.assertEqual(handler.request_context.user.roles, set())
         self.assertEqual(handler.request_context.user.is_logged_in, True)
-        self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
+        # For logged in user, we expect loid returns logged in user id
+        self.assertEqual(handler.request_context.user.loid, "t2_example")
         self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
         self.assertEqual(handler.request_context.oauth_client.id, None)
         self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
@@ -300,7 +301,8 @@ class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
         self.assertEqual(handler.request_context.user.id, "t2_example")
         self.assertEqual(handler.request_context.user.roles, set())
         self.assertEqual(handler.request_context.user.is_logged_in, True)
-        self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
+        # For logged in user, we expect loid returns logged in user id
+        self.assertEqual(handler.request_context.user.loid, "t2_example")
         self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
         self.assertEqual(handler.request_context.oauth_client.id, None)
         self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
@@ -449,7 +451,8 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
             self.assertEqual(handler.request_context.user.id, "t2_example")
             self.assertEqual(handler.request_context.user.roles, set())
             self.assertEqual(handler.request_context.user.is_logged_in, True)
-            self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
+            # For logged in user, we expect loid returns logged in user id
+            self.assertEqual(handler.request_context.user.loid, "t2_example")
             self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
             self.assertEqual(handler.request_context.oauth_client.id, None)
             self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
