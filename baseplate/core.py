@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import collections
 import logging
 import random
+import re
 
 import jwt
 from thrift import TSerialization
@@ -282,12 +283,18 @@ class InvalidAuthenticationToken(AuthenticationToken):
         raise NoAuthenticationError
 
 
+COUNTRY_CODE_RE = re.compile(r"^[A-Z]{2}$")
+
 _User = collections.namedtuple(
     "_User", ["authentication_token", "loid", "cookie_created_ms"])
 _OAuthClient = collections.namedtuple(
     "_OAuthClient", ["authentication_token"])
 Session = collections.namedtuple("Session", ["id"])
 _Service = collections.namedtuple("_Service", ["authentication_token"])
+
+OriginService = collections.namedtuple("OriginService", ["name"])
+Device = collections.namedtuple("Device", ["id"])
+Geolocation = collections.namedtuple("Geolocation", ["country_code"])
 
 
 class User(_User):
@@ -448,7 +455,8 @@ class EdgeRequestContextFactory(object):
     def new(self,
             authentication_token=None,
             loid_id=None, loid_created_ms=None,
-            session_id=None):
+            session_id=None, device_id=None,
+            origin_service_name=None, country_code=None):
         """Return a new EdgeRequestContext object made from scratch.
 
         Services at the edge that communicate directly with clients should use
@@ -464,12 +472,16 @@ class EdgeRequestContextFactory(object):
             token = request.authentication_service.authenticate_cookie(cookie)
             loid = parse_loid(request.cookies["loid"])
             session = parse_session(request.cookies["session"])
+            device_id = request.headers["x-device-id"]
+            origin_service_name = request.headers["X-Origin-Service"]
 
             edge_context = self.edgecontext_factory.new(
                 authentication_token=token,
                 loid_id=loid.id,
                 loid_created_ms=loid.created,
                 session_id=session.id,
+                device_id=device_id,
+                origin_service_name=origin_service_name,
             )
             edge_context.attach_context(request)
 
@@ -480,6 +492,11 @@ class EdgeRequestContextFactory(object):
         :param int loid_created_ms: (Optional) Epoch milliseconds when the
             current LoID cookie was created.
         :param str session_id: (Optional) ID for the current session cookie.
+        :param device_id: ID for the device where the request originated from.
+        :param origin_service_name: Name for the "origin" service handling the
+            request from the client.
+        :param country_code: two-character ISO 3166-1 country code where the
+            request orginated from.
 
         """
         # Importing the Thrift models inline so that building them is not a
@@ -487,6 +504,9 @@ class EdgeRequestContextFactory(object):
         from .thrift.ttypes import Loid as TLoid
         from .thrift.ttypes import Request as TRequest
         from .thrift.ttypes import Session as TSession
+        from .thrift.ttypes import OriginService as TOriginService
+        from .thrift.ttypes import Device as TDevice
+        from .thrift.ttypes import Geolocation as TGeolocation
 
         if loid_id is not None and not loid_id.startswith("t2_"):
             raise ValueError(
@@ -494,10 +514,19 @@ class EdgeRequestContextFactory(object):
                 "fullname format with the '0' padding removed: 't2_loid_id'" % loid_id
             )
 
+        if country_code is not None and not COUNTRY_CODE_RE.match(country_code):
+            raise ValueError(
+                "country_code <%s> is not in a valid format, it should be in "
+                "ISO 3166-1 alpha-2 format: 'US'" % country_code
+            )
+
         t_request = TRequest(
             loid=TLoid(id=loid_id, created_ms=loid_created_ms),
             session=TSession(id=session_id),
             authentication_token=authentication_token,
+            device=TDevice(id=device_id),
+            origin_service=TOriginService(name=origin_service_name),
+            geolocation=TGeolocation(country_code=country_code),
         )
         header = TSerialization.serialize(
             t_request, EdgeRequestContext._HEADER_PROTOCOL_FACTORY)
@@ -582,15 +611,36 @@ class EdgeRequestContext(object):
         return Service(self.authentication_token)
 
     @cached_property
+    def device(self):
+        """:py:class:`~baseplate.lib.edge_context.Device` object for the current context."""
+        return Device(id=self._t_request.device.id)
+
+    @cached_property
+    def origin_service(self):
+        """:py:class:`~baseplate.core.OriginService` object for the current context."""
+        return OriginService(self._t_request.origin_service.name)
+
+    @cached_property
+    def geolocation(self):
+        """:py:class:`~baseplate.core.Geolocation` object for the current context."""
+        return Geolocation(country_code=self._t_request.geolocation.country_code)
+
+    @cached_property
     def _t_request(self):  # pylint: disable=method-hidden
         # Importing the Thrift models inline so that building them is not a
         # hard, import-time dependency for tasks like building the docs.
         from .thrift.ttypes import Loid as TLoid
         from .thrift.ttypes import Request as TRequest
         from .thrift.ttypes import Session as TSession
+        from .thrift.ttypes import OriginService as TOriginService
+        from .thrift.ttypes import Device as TDevice
+        from .thrift.ttypes import Geolocation as TGeolocation
         _t_request = TRequest()
         _t_request.loid = TLoid()
         _t_request.session = TSession()
+        _t_request.device = TDevice()
+        _t_request.origin_service = TOriginService()
+        _t_request.geolocation = TGeolocation()
         if self._header:
             try:
                 TSerialization.deserialize(
