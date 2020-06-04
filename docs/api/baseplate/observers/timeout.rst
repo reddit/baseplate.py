@@ -28,9 +28,11 @@ configuration settings allow you to customize this.
 
    ...
 
-   # optional: defaults to 10 seconds if not specified. this timeout
+   # optional: defaults to no timeout if not specified. this timeout
    # is used for any endpoint not specified in the by_endpoint
    # section below.
+   # note: leaving this unconfigured is deprecated.
+   # can be set to 'infinite' to disable the timeout altogether.
    server_timeout.default = 200 milliseconds
 
    # optional: defaults to false. if enabled, tracebacks will be
@@ -42,6 +44,7 @@ configuration settings allow you to customize this.
    # this overrides the default timeout.
    # - thrift services: the name of the thrift RPC method
    # - pyramid services: the name of the route (config.add_route)
+   # can be set to 'infinite' to disable the timeout altogether.
    server_timeout.by_endpoint.is_healthy = 300 milliseoncds
    server_timeout.by_endpoint.my_method = 12 seconds
 
