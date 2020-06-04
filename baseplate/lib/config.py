@@ -89,6 +89,7 @@ from typing import Dict
 from typing import Generic
 from typing import IO
 from typing import NamedTuple
+from typing import NewType
 from typing import Optional as OptionalType
 from typing import Sequence
 from typing import Set
@@ -273,6 +274,17 @@ def TimespanWithLegacyFallback(text: str) -> datetime.timedelta:  # noqa: D401
         return Timespan(text)
     except ValueError:
         return datetime.timedelta(seconds=Float(text))
+
+
+InfiniteTimespanType = NewType("InfiniteTimespanType", object)
+InfiniteTimespan = InfiniteTimespanType(object())
+
+
+def TimespanOrInfinite(text: str) -> Union[datetime.timedelta, InfiniteTimespanType]:  # noqa: D401
+    """A span of time or the string 'infinite' indicating forever."""
+    if text == "infinite":
+        return InfiniteTimespan
+    return Timespan(text)
 
 
 def Percent(text: str) -> float:  # noqa: D401

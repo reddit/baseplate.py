@@ -1,5 +1,3 @@
-import datetime
-
 from typing import Optional
 
 import gevent
@@ -10,6 +8,7 @@ from baseplate import RequestContext
 from baseplate import ServerSpan
 from baseplate import SpanObserver
 from baseplate.lib import config
+from baseplate.lib import warn_deprecated
 
 
 # this deliberately inherits from BaseException rather than Exception, just
@@ -30,14 +29,21 @@ class TimeoutBaseplateObserver(BaseplateObserver):
             app_config,
             {
                 "server_timeout": {
-                    "default": config.Optional(
-                        config.Timespan, default=datetime.timedelta(seconds=10)
-                    ),
+                    "default": config.Optional(config.TimespanOrInfinite, default=None),
                     "debug": config.Optional(config.Boolean, default=False),
-                    "by_endpoint": config.DictOf(config.Timespan),
+                    "by_endpoint": config.DictOf(config.TimespanOrInfinite),
                 }
             },
         )
+
+        if cfg.server_timeout.default is None:
+            warn_deprecated(
+                "No server_timeout.default configured. Defaulting to no timeout. "
+                "Set the default timeout to 'infinite' or a timespan like '2 seconds'. "
+                "This will become mandatory in Baseplate.py 2.0."
+            )
+            cfg.server_timeout.default = config.InfiniteTimespan
+
         return cls(cfg.server_timeout)
 
     def __init__(self, timeout_config: config.ConfigNamespace):
@@ -45,13 +51,15 @@ class TimeoutBaseplateObserver(BaseplateObserver):
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         timeout = self.config.by_endpoint.get(server_span.name, self.config.default)
-        observer = TimeoutServerSpanObserver(server_span, timeout, self.config.debug)
-        server_span.register(observer)
+        if timeout is not config.InfiniteTimespan:
+            observer = TimeoutServerSpanObserver(
+                server_span, timeout.total_seconds(), self.config.debug
+            )
+            server_span.register(observer)
 
 
 class TimeoutServerSpanObserver(SpanObserver):
-    def __init__(self, span: ServerSpan, timeout: datetime.timedelta, debug: bool):
-        timeout_seconds = timeout.total_seconds()
+    def __init__(self, span: ServerSpan, timeout_seconds: float, debug: bool):
         exception = ServerTimeout(span.name, timeout_seconds, debug)
         self.timeout = gevent.Timeout(timeout_seconds, exception)
 
