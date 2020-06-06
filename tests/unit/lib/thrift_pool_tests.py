@@ -276,3 +276,22 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertEqual(self.mock_queue.get.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
+
+    @mock.patch("baseplate.lib.thrift_pool._make_transport")
+    @mock.patch("time.time")
+    def test_context_t_transport_exception(self, mock_time, mock_make_transport):
+        mock_time.return_value = 123
+
+        self.mock_queue.get.return_value = None
+
+        broken_trans = mock.Mock(spec=TSocket.TSocket)
+        broken_trans.protocol_id = THeaderTransport.THeaderSubprotocolID.BINARY
+        broken_trans.open.side_effect = TTransport.TTransportException
+        mock_make_transport.return_value = broken_trans
+
+        with self.assertRaises(TTransport.TTransportException):
+            with self.pool.connection() as _:
+                pass
+
+        self.assertEqual(self.mock_queue.get.call_count, 1)
+        self.assertEqual(self.mock_queue.put.call_count, 2)  # <- the issue: it should be 1
