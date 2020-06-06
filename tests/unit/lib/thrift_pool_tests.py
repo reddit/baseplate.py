@@ -179,9 +179,6 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         with self.assertRaises(TTransport.TTransportException):
             self.pool._acquire()
 
-        self.assertEqual(self.mock_queue.put.call_count, 1)
-        self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
-
     def test_release_open(self):
         mock_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
         mock_prot.trans = mock.Mock(spec=TSocket.TSocket)
@@ -294,4 +291,5 @@ class ThriftConnectionPoolTests(unittest.TestCase):
                 pass
 
         self.assertEqual(self.mock_queue.get.call_count, 1)
-        self.assertEqual(self.mock_queue.put.call_count, 2)  # <- the issue: it should be 1
+        self.assertEqual(self.mock_queue.put.call_count, 1)
+        self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
