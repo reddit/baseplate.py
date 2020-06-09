@@ -21,11 +21,9 @@ try:
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
-from .. import (
-    AUTH_TOKEN_PUBLIC_KEY,
-    SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
-    SERIALIZED_EDGECONTEXT_WITH_NO_AUTH,
-)
+from .. import AUTH_TOKEN_PUBLIC_KEY
+from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
+from .. import SERIALIZED_EDGECONTEXT_WITH_NO_AUTH
 
 
 class TestException(Exception):
