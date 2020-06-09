@@ -144,7 +144,7 @@ class ConfiguratorTests(unittest.TestCase):
             "/example",
             headers={
                 "X-Trace": "1234",
-                "X-Edge-Request": base64.b64encode(SERIALIZED_EDGECONTEXT_WITH_NO_AUTH),
+                "X-Edge-Request": base64.b64encode(SERIALIZED_EDGECONTEXT_WITH_NO_AUTH).decode(),
                 "X-Parent": "2345",
                 "X-Span": "3456",
                 "X-Sampled": "1",
@@ -173,7 +173,7 @@ class ConfiguratorTests(unittest.TestCase):
             "/example",
             headers={
                 "X-Trace": "1234",
-                "X-Edge-Request": base64.b64encode(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH),
+                "X-Edge-Request": base64.b64encode(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH).decode(),
                 "X-Parent": "2345",
                 "X-Span": "3456",
                 "X-Sampled": "1",

@@ -191,7 +191,7 @@ class BaseplateConfigurator:
             try:
                 edge_payload = request.headers.get("X-Edge-Request", None)
                 if self.edge_context_factory and edge_payload:
-                    edge_payload_decoded = base64.b64decode(edge_payload)
+                    edge_payload_decoded = base64.b64decode(edge_payload.encode())
                     edge_context = self.edge_context_factory.from_upstream(edge_payload_decoded)
                     edge_context.attach_context(request)
                 else:
