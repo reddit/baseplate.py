@@ -1,3 +1,4 @@
+import base64
 import sys
 
 from typing import Any
@@ -23,7 +24,6 @@ from baseplate.lib import warn_deprecated
 from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.server import make_app
 
-import base64
 
 def _make_baseplate_tween(
     handler: Callable[[Request], Response], _registry: Registry
