@@ -1,3 +1,4 @@
+import base64
 import unittest
 
 from unittest import mock
@@ -20,7 +21,9 @@ try:
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
-from .. import AUTH_TOKEN_PUBLIC_KEY, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
+from .. import AUTH_TOKEN_PUBLIC_KEY
+from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
+from .. import SERIALIZED_EDGECONTEXT_WITH_NO_AUTH
 
 
 class TestException(Exception):
@@ -139,6 +142,7 @@ class ConfiguratorTests(unittest.TestCase):
             "/example",
             headers={
                 "X-Trace": "1234",
+                "X-Edge-Request": base64.b64encode(SERIALIZED_EDGECONTEXT_WITH_NO_AUTH).decode(),
                 "X-Parent": "2345",
                 "X-Span": "3456",
                 "X-Sampled": "1",
@@ -167,7 +171,7 @@ class ConfiguratorTests(unittest.TestCase):
             "/example",
             headers={
                 "X-Trace": "1234",
-                "X-Edge-Request": SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
+                "X-Edge-Request": base64.b64encode(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH).decode(),
                 "X-Parent": "2345",
                 "X-Span": "3456",
                 "X-Sampled": "1",
