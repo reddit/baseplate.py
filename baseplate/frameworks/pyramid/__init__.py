@@ -190,9 +190,10 @@ class BaseplateConfigurator:
         if self.header_trust_handler.should_trust_edge_context_payload(request):
             try:
                 edge_payload = request.headers.get("X-Edge-Request", None)
-                if self.edge_context_factory and edge_payload:
-                    edge_payload_decoded = base64.b64decode(edge_payload)
-                    edge_context = self.edge_context_factory.from_upstream(edge_payload_decoded)
+                if edge_payload:
+                    edge_payload = base64.b64decode(edge_payload)
+                if self.edge_context_factory:
+                    edge_context = self.edge_context_factory.from_upstream(edge_payload)
                     edge_context.attach_context(request)
                 else:
                     # just attach the raw context so it gets passed on
