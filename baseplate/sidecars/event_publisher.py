@@ -133,7 +133,8 @@ class BatchPublisher:
                     if response.status_code != 422:
                         # Do not exit on validation errors
                         raise
-                logger.exception("HTTP Request failed.")
+                else:
+                    logger.exception("HTTP Request failed.")
             except OSError:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
