@@ -128,9 +128,11 @@ class BatchPublisher:
 
                 # we should crash if it's our fault
                 response = getattr(exc, "response", None)
-                if response is not None and response.status_code < 500:
+                if response and response.status_code < 500:
                     logger.exception("HTTP Request failed. Error: %s", response.text)
-                    raise
+                    if response.status_code != 422:
+                        # Do not exit on validation errors
+                        raise
                 logger.exception("HTTP Request failed.")
             except OSError:
                 self.metrics.counter("error.io").increment()
