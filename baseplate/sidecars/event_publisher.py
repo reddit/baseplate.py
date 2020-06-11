@@ -130,8 +130,11 @@ class BatchPublisher:
                 response = getattr(exc, "response", None)
                 if response is not None and response.status_code < 500:
                     logger.exception("HTTP Request failed. Error: %s", response.text)
-                    raise
-                logger.exception("HTTP Request failed.")
+                    if response.status_code != 422:
+                        # Do not exit on validation errors
+                        raise
+                else:
+                    logger.exception("HTTP Request failed.")
             except OSError:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
