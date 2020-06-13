@@ -161,17 +161,22 @@ class KombuProducer(config.Parser):
     for available configuration settings.
 
     :param max_connections: The maximum number of connections.
-
+    :param serializer: A custom message serializer.
+    :param secrets: `SecretsStore` for non-default connection credentials.
     """
 
     def __init__(
-        self, max_connections: Optional[int] = None, serializer: Optional[KombuSerializer] = None
+        self,
+        max_connections: Optional[int] = None,
+        serializer: Optional[KombuSerializer] = None,
+        secrets: Optional[SecretsStore] = None,
     ):
         self.max_connections = max_connections
         self.serializer = serializer
+        self.secrets = secrets
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "KombuProducerContextFactory":
-        connection = connection_from_config(raw_config, prefix=f"{key_path}.")
+        connection = connection_from_config(raw_config, prefix=f"{key_path}.", secrets=self.secrets)
         exchange = exchange_from_config(raw_config, prefix=f"{key_path}.")
         return KombuProducerContextFactory(
             connection, exchange, max_connections=self.max_connections, serializer=self.serializer
