@@ -6,6 +6,6 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         log_record["level"] = log_record.pop("levelname", None)
         try:
             log_record["traceID"] = int(log_record.get("threadName", None))
-        except ValueError:
+        except (TypeError, ValueError):
             pass
         return super().process_log_record(log_record)
