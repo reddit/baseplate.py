@@ -548,13 +548,13 @@ class TestKafkaConsumerWorker:
             stopped_value.side_effect = [False, False, False, True]
             consumer_worker.run()
 
-        baseplate.make_context_object.mock_calls == [mock.call(), mock.call(), mock.call()]
-        baseplate.make_server_span.mock_calls == [
+        assert baseplate.make_context_object.mock_calls == [mock.call(), mock.call(), mock.call()]
+        baseplate.make_server_span.assert_has_calls([
             mock.call(context, f"{name}.pump"),
             mock.call(context, f"{name}.pump"),
             mock.call(context, f"{name}.pump"),
-        ]
-        span.make_child.mock_calls == [
+        ])
+        assert span.make_child.mock_calls == [
             mock.call("kafka.consume"),
             mock.call("kafka.work_queue_put"),
             mock.call("kafka.consume"),
