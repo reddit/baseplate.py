@@ -54,7 +54,7 @@ class TestMessageQueueCreation(unittest.TestCase):
             with self.assertRaises(TimedOutError):
                 mq.put(b"x", timeout=0.1)
             elapsed = time.time() - start
-            self.assertAlmostEqual(elapsed, 0.1, places=2)
+            self.assertAlmostEqual(elapsed, 0.1, places=1)
 
     def test_put_zero_timeout(self):
         message_queue = MessageQueue(self.qname, max_messages=1, max_message_size=1)

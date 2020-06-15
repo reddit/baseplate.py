@@ -308,6 +308,23 @@ class Baseplate:
 
         self.register(LoggingBaseplateObserver())
 
+    def configure_tagged_metrics(self, metrics_client: metrics.Client) -> None:
+        """Register a Tagged Metrics Observer on the metrics client.
+
+        Only called if already determined that the user has configured tagging to be on.
+
+        :param metrics_client: Metrics client to send request metrics to.
+        :param app_config: The configuration file for the application to parse for metrics tags and flags
+
+        """
+        # pylint: disable=cyclic-import
+        from baseplate.observers.metrics_tagged import TaggedMetricsBaseplateObserver
+
+        self._metrics_client = metrics_client
+        self.register(
+            TaggedMetricsBaseplateObserver.from_config_and_client(self._app_config, metrics_client)
+        )
+
     def configure_metrics(self, metrics_client: metrics.Client) -> None:
         """Send timing metrics to the given client.
 
@@ -416,8 +433,14 @@ class Baseplate:
             self.register(timeout_observer)
         else:
             skipped.append("timeout")
+        if "metrics.tagging" in app_config:
+            if "metrics.namespace" in app_config:
+                raise ValueError("metrics.namespace not allowed with metrics.tagging")
+            from baseplate.lib.metrics import metrics_client_from_config
 
-        if "metrics.namespace" in app_config:
+            metrics_client = metrics_client_from_config(app_config)
+            self.configure_tagged_metrics(metrics_client)
+        elif "metrics.namespace" in app_config:
             from baseplate.lib.metrics import metrics_client_from_config
 
             metrics_client = metrics_client_from_config(app_config)

@@ -25,6 +25,7 @@ configuration options are available.
 
    logging
    statsd
+   tagged_statsd
    sentry
    tracing
    timeout
