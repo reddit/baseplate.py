@@ -49,6 +49,7 @@ import socket
 import time
 
 from types import TracebackType
+from typing import Any
 from typing import DefaultDict
 from typing import Dict
 from typing import List
@@ -62,7 +63,17 @@ logger = logging.getLogger(__name__)
 
 
 def _metric_join(*nodes: bytes) -> bytes:
-    return b".".join(node.strip(b".") for node in nodes)
+    return b".".join(node.strip(b".") for node in nodes if node)
+
+
+def _format_tags(tags: Optional[Dict[str, Any]]) -> Optional[bytes]:
+    if not tags:
+        return None
+
+    parts = []
+    for key, value in tags.items():
+        parts.append(f"{key}={str(value)}")
+    return b"," + ",".join(parts).encode()
 
 
 class TransportError(Exception):
@@ -135,16 +146,16 @@ class BaseClient:
         self.transport = transport
         self.namespace = namespace.encode("ascii")
 
-    def timer(self, name: str) -> "Timer":
+    def timer(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Timer":
         """Return a Timer with the given name.
 
         :param name: The name the timer should have.
 
         """
         timer_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Timer(self.transport, timer_name)
+        return Timer(self.transport, timer_name, tags)
 
-    def counter(self, name: str) -> "Counter":
+    def counter(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Counter":
         """Return a Counter with the given name.
 
         The sample rate is currently up to your application to enforce.
@@ -153,25 +164,25 @@ class BaseClient:
 
         """
         counter_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Counter(self.transport, counter_name)
+        return Counter(self.transport, counter_name, tags)
 
-    def gauge(self, name: str) -> "Gauge":
+    def gauge(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Gauge":
         """Return a Gauge with the given name.
 
         :param name: The name the gauge should have.
 
         """
         gauge_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Gauge(self.transport, gauge_name)
+        return Gauge(self.transport, gauge_name, tags)
 
-    def histogram(self, name: str) -> "Histogram":
+    def histogram(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Histogram":
         """Return a Histogram with the given name.
 
         :param name: The name the histogram should have.
 
         """
         histogram_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Histogram(self.transport, histogram_name)
+        return Histogram(self.transport, histogram_name, tags)
 
 
 class Client(BaseClient):
@@ -238,18 +249,16 @@ class Batch(BaseClient):
         except TransportError as exc:
             logger.warning("Failed to send metrics batch: %s", exc)
 
-    def counter(self, name: str) -> "Counter":
+    def counter(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Counter":
         """Return a BatchCounter with the given name.
 
         The sample rate is currently up to your application to enforce.
-
         :param name: The name the counter should have.
-
         """
         counter_name = _metric_join(self.namespace, name.encode("ascii"))
         batch_counter = self.counters.get(counter_name)
         if batch_counter is None:
-            batch_counter = BatchCounter(self.transport, counter_name)
+            batch_counter = BatchCounter(self.transport, counter_name, tags)
             self.counters[counter_name] = batch_counter
 
         return batch_counter
@@ -268,9 +277,15 @@ class Timer:
 
     """
 
-    def __init__(self, transport: Transport, name: bytes):
+    def __init__(
+        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
+    ):
         self.transport = transport
         self.name = name
+        if tags:
+            self.tags = tags
+        else:
+            self.tags = {}
 
         self.start_time: Optional[float] = None
         self.stopped: bool = False
@@ -299,15 +314,21 @@ class Timer:
 
         This can be useful when the timing was managed elsewhere and we just
         want to report the result.
-
         :param elapsed: The elapsed time in seconds to report.
-
         """
-        serialized = self.name + (f":{(elapsed * 1000.0):g}|ms".encode())
+        serialized = self.name
+        formatted_tags = _format_tags(self.tags)
+        if formatted_tags:
+            serialized += formatted_tags
+        serialized += f":{(elapsed * 1000.0):g}|ms".encode()
         if sample_rate < 1.0:
             sampling_info = f"@{sample_rate:g}".encode()
             serialized = b"|".join([serialized, sampling_info])
         self.transport.send(serialized)
+
+    def update_tags(self, tags: Dict) -> None:
+        assert not self.stopped
+        self.tags.update(tags)
 
     def __enter__(self) -> None:
         self.start()
@@ -325,9 +346,10 @@ class Timer:
 class Counter:
     """A counter for counting events over time."""
 
-    def __init__(self, transport: Transport, name: bytes):
+    def __init__(self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None):
         self.transport = transport
         self.name = name
+        self.tags = tags
 
     def increment(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
         """Increment the counter.
@@ -353,12 +375,14 @@ class Counter:
         :param sample_rate: What rate this counter is sampled at. [0-1].
 
         """
-        parts = [self.name + (f":{delta:g}".encode()), b"c"]
-
+        serialized = self.name
+        formatted_tags = _format_tags(self.tags)
+        if formatted_tags:
+            serialized += formatted_tags
+        serialized += f":{delta:g}".encode() + b"|c"
         if sample_rate < 1.0:
-            parts.append(f"@{sample_rate:g}".encode())
-
-        serialized = b"|".join(parts)
+            sampling_info = f"@{sample_rate:g}".encode()
+            serialized = b"|".join([serialized, sampling_info])
         self.transport.send(serialized)
 
 
@@ -382,9 +406,10 @@ class BatchCounter(Counter):
     should be applied to "counter_name".
     """
 
-    def __init__(self, transport: Transport, name: bytes):
+    def __init__(self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None):
         super().__init__(transport, name)
         self.packets: DefaultDict[float, float] = collections.defaultdict(float)
+        self.tags = tags
 
     def increment(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
         """Increment the counter.
@@ -424,9 +449,15 @@ class Histogram:
     backend must support the :code:`h` key, e.g. :code:`metric_name:320|h`.
     """
 
-    def __init__(self, transport: Transport, name: bytes) -> None:
+    def __init__(
+        self,
+        transport: Transport,
+        name: bytes,
+        tags: Optional[Dict[str, Any]] = None,  # pylint: disable=bad-whitespace
+    ) -> None:
         self.transport = transport
         self.name = name
+        self.tags = tags
 
     def add_sample(self, value: float) -> None:
         """Add a new value to the histogram.
@@ -434,7 +465,13 @@ class Histogram:
         This records a new value to the histogram; the bucket it goes in
         is determined by the backend service configurations.
         """
-        serialized = self.name + (f":{value:g}|h".encode())
+
+        formatted_tags = _format_tags(self.tags)
+        if formatted_tags:
+            serialized = self.name + formatted_tags + (f":{value:g}|h".encode())
+        else:
+            serialized = self.name + (f":{value:g}|h".encode())
+
         self.transport.send(serialized)
 
 
@@ -448,9 +485,12 @@ class Gauge:
 
     """
 
-    def __init__(self, transport: Transport, name: bytes):
+    def __init__(
+        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
+    ):
         self.transport = transport
         self.name = name
+        self.tags = tags
 
     def replace(self, new_value: float) -> None:
         """Replace the value held by the gauge.
@@ -465,7 +505,12 @@ class Gauge:
 
         """
         assert new_value >= 0, "gauges cannot be replaced with negative numbers"
-        serialized = self.name + (f":{new_value:g}|g".encode())
+        formatted_tags = _format_tags(self.tags)
+        if formatted_tags:
+            serialized = self.name + formatted_tags + (f":{new_value:g}|g".encode())
+        else:
+            serialized = self.name + (f":{new_value:g}|g".encode())
+
         self.transport.send(serialized)
 
 
@@ -507,7 +552,12 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
     """
     cfg = config.parse_config(
         raw_config,
-        {"metrics": {"namespace": config.String, "endpoint": config.Optional(config.Endpoint)}},
+        {
+            "metrics": {
+                "namespace": config.Optional(config.String, default=""),
+                "endpoint": config.Optional(config.Endpoint),
+            }
+        },
     )
 
     # pylint: disable=maybe-no-member

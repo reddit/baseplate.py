@@ -28,6 +28,21 @@ class MetricJoinTests(unittest.TestCase):
         joined = metrics._metric_join(b"first.", b"second")
         self.assertEqual(joined, b"first.second")
 
+    def test_join_null_nodes(self):
+        joined = metrics._metric_join(b"first.", None, b"second", None)
+        self.assertEqual(joined, b"first.second")
+
+
+class FormatTagsTest(unittest.TestCase):
+    def test_no_tags(self):
+        formatted_tags = metrics._format_tags(None)
+        self.assertIsNone(formatted_tags)
+
+    def test_tags(self):
+        tags = {"success": True, "error": False}
+        formatted_tags = metrics._format_tags(tags)
+        self.assertEqual(formatted_tags, b",success=True,error=False")
+
 
 class NullTransportTests(unittest.TestCase):
     @mock.patch("socket.socket")
@@ -192,9 +207,15 @@ class TimerTests(unittest.TestCase):
     def setUp(self):
         self.transport = mock.Mock(spec=metrics.NullTransport)
 
+    def test_init_with_tags(self):
+        tags = {"test": "true"}
+        timer = metrics.Timer(self.transport, b"example", tags)
+        self.assertEqual(timer.tags, tags)
+
     @mock.patch("time.time", autospec=True)
     def test_basic_operation(self, mock_time):
         timer = metrics.Timer(self.transport, b"example")
+        self.assertEqual(timer.tags, {})
 
         with self.assertRaises(Exception):
             timer.stop()
@@ -232,6 +253,20 @@ class TimerTests(unittest.TestCase):
         self.assertEqual(self.transport.send.call_count, 1)
         self.assertEqual(self.transport.send.call_args, mock.call(b"example:3140|ms"))
 
+    def test_send_tagged(self):
+        tags = {"test": "true"}
+        timer = metrics.Timer(self.transport, b"example", tags)
+        timer.send(3.14)
+        self.assertEqual(self.transport.send.call_count, 1)
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example,test=true:3140|ms"))
+
+    def test_update_tags(self):
+        tags = {"test": "true"}
+        timer = metrics.Timer(self.transport, b"example", tags)
+        new_tags = {"test2": "false"}
+        timer.update_tags(new_tags)
+        self.assertNotEqual(timer.tags, new_tags)
+
 
 class CounterTests(unittest.TestCase):
     def setUp(self):
@@ -239,6 +274,7 @@ class CounterTests(unittest.TestCase):
 
     def test_incr(self):
         counter = metrics.Counter(self.transport, b"example")
+        self.assertIsNone(counter.tags)
 
         counter.increment()
         self.assertEqual(self.transport.send.call_count, 1)
@@ -266,6 +302,12 @@ class CounterTests(unittest.TestCase):
         counter.decrement(delta=3)
         self.assertEqual(self.transport.send.call_count, 2)
         self.assertEqual(self.transport.send.call_args, mock.call(b"example:-3|c"))
+
+    def test_send_tagged(self):
+        tags = {"test": "true"}
+        counter = metrics.Counter(self.transport, b"example", tags)
+        counter.send(delta=2, sample_rate=0.5)
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example,test=true:2|c|@0.5"))
 
 
 class BatchCounterTests(unittest.TestCase):
@@ -319,6 +361,7 @@ class GaugeTests(unittest.TestCase):
     def test_replace(self):
         gauge = metrics.Gauge(self.transport, b"example")
         gauge.replace(33)
+        self.assertIsNone(gauge.tags)
         self.assertEqual(self.transport.send.call_count, 1)
         self.assertEqual(self.transport.send.call_args, mock.call(b"example:33|g"))
 
@@ -326,6 +369,13 @@ class GaugeTests(unittest.TestCase):
         gauge = metrics.Gauge(self.transport, b"example")
         with self.assertRaises(Exception):
             gauge.replace(-2)
+
+    def test_replace_tagged(self):
+        tags = {"test": "true"}
+        gauge = metrics.Gauge(self.transport, b"example", tags)
+        gauge.replace(33)
+        self.assertEqual(self.transport.send.call_count, 1)
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example,test=true:33|g"))
 
 
 class HistogramTests(unittest.TestCase):
@@ -337,6 +387,14 @@ class HistogramTests(unittest.TestCase):
         histogram.add_sample(33)
         self.assertEqual(self.transport.send.call_count, 1)
         self.assertEqual(self.transport.send.call_args, mock.call(b"example_hist:33|h"))
+
+    def test_log_tagged(self):
+        tags = {"test": "true"}
+        histogram = metrics.Histogram(self.transport, b"example_hist", tags)
+        self.assertEqual(histogram.tags, tags)
+        histogram.add_sample(33)
+        self.assertEqual(self.transport.send.call_count, 1)
+        self.assertEqual(self.transport.send.call_args, mock.call(b"example_hist,test=true:33|h"))
 
 
 class MakeClientTests(unittest.TestCase):
