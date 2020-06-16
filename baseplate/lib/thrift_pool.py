@@ -175,21 +175,16 @@ class ThriftConnectionPool:
         for _ in range(size):
             self.pool.put(None)
 
-    def _acquire(self) -> TProtocolBase:
+    def _get_from_pool(self) -> Optional[TProtocolBase]:
         try:
-            prot = self.pool.get(block=True, timeout=self.timeout)
+            return self.pool.get(block=True, timeout=self.timeout)
         except queue.Empty:
             raise TTransportException(
                 type=TTransportException.NOT_OPEN, message="timed out waiting for a connection slot"
             )
 
+    def _create_connection(self) -> TProtocolBase:
         for _ in self.retry_policy:
-            if prot:
-                if time.time() - prot.baseplate_birthdate < self.max_age:
-                    return prot
-                prot.trans.close()
-                prot = None
-
             trans = _make_transport(self.endpoint)
             trans.setTimeout(self.timeout * 1000.0)
             prot = self.protocol_factory.getProtocol(trans)
@@ -198,7 +193,6 @@ class ThriftConnectionPool:
                 prot.trans.open()
             except TTransportException as exc:
                 logger.info("Failed to connect to %r: %s", self.endpoint, exc)
-                prot = None
                 continue
 
             prot.baseplate_birthdate = time.time()
@@ -209,6 +203,12 @@ class ThriftConnectionPool:
             type=TTransportException.NOT_OPEN,
             message="giving up after multiple attempts to connect",
         )
+
+    def _is_stale(self, prot: TProtocolBase) -> bool:
+        if time.time() - prot.baseplate_birthdate > self.max_age:
+            prot.trans.close()
+            return True
+        return False
 
     def _release(self, prot: Optional[TProtocolBase]) -> None:
         if prot and prot.trans.isOpen():
@@ -230,9 +230,12 @@ class ThriftConnectionPool:
         unknown.
 
         """
-        prot: Optional[TProtocolBase] = None
+        prot = self._get_from_pool()
+
         try:
-            prot = self._acquire()
+            if not prot or self._is_stale(prot):
+                prot = self._create_connection()
+
             try:
                 yield prot
             except socket.timeout:
