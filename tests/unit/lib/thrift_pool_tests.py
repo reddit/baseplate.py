@@ -98,7 +98,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.mock_queue.get.side_effect = queue.Empty
 
         with self.assertRaises(TTransport.TTransportException):
-            self.pool._acquire()
+            self.pool._get_from_pool()
 
     def test_pool_with_framed_protocol_factory(self):
         def framed_protocol_factory(trans):
@@ -121,7 +121,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         mock_prot.baseplate_birthdate = 122
         self.mock_queue.get.return_value = mock_prot
 
-        prot = self.pool._acquire()
+        prot = self.pool._get_from_pool()
 
         self.assertEqual(prot, mock_prot)
 
@@ -139,7 +139,8 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         fresh_trans.protocol_id = THeaderTransport.THeaderSubprotocolID.BINARY
         mock_make_transport.return_value = fresh_trans
 
-        prot = self.pool._acquire()
+        with self.pool.connection() as prot:
+            pass
 
         self.assertTrue(stale_prot.trans.close.called)
         self.assertEqual(prot.trans._transport, fresh_trans)
@@ -159,7 +160,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
 
         mock_make_transport.side_effect = [broken_trans, ok_trans]
 
-        prot = self.pool._acquire()
+        prot = self.pool._create_connection()
 
         self.assertEqual(prot.trans._transport, ok_trans)
         self.assertEqual(ok_trans.open.call_count, 1)
@@ -177,7 +178,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         mock_make_transport.side_effect = [broken_trans] * 3
 
         with self.assertRaises(TTransport.TTransportException):
-            self.pool._acquire()
+            self.pool._create_connection()
 
     def test_release_open(self):
         mock_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
@@ -293,3 +294,17 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertEqual(self.mock_queue.get.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
+
+    def test_pool_checkout_exception(self):
+        pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT)
+
+        def mock_get():
+            raise Exception
+
+        pool.pool.get = mock_get
+
+        with self.assertRaises(Exception):
+            with pool.connection() as _:
+                pass
+
+        self.assertEqual(0, pool.checkedout)
