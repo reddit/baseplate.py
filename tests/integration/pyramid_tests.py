@@ -191,6 +191,22 @@ class ConfiguratorTests(unittest.TestCase):
         except jwt.exceptions.InvalidAlgorithmError:
             raise unittest.SkipTest("cryptography is not installed")
 
+    def test_empty_edge_request_headers(self):
+        self.test_app.get(
+            "/example",
+            headers={
+                "X-Trace": "1234",
+                "X-Edge-Request": "",
+                "X-Parent": "2345",
+                "X-Span": "3456",
+                "X-Sampled": "1",
+                "X-Flags": "1",
+            },
+        )
+        context, _ = self.observer.on_server_span_created.call_args[0]
+        self.assertEqual(context.raw_request_context, b'')
+
+
     def test_not_found(self):
         self.test_app.get("/nope", status=404)
 
