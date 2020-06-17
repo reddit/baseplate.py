@@ -204,8 +204,7 @@ class ConfiguratorTests(unittest.TestCase):
             },
         )
         context, _ = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(context.raw_request_context, b'')
-
+        self.assertEqual(context.raw_request_context, b"")
 
     def test_not_found(self):
         self.test_app.get("/nope", status=404)
