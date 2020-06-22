@@ -12,6 +12,11 @@ typedef string AuthenticationToken
 */
 typedef string CountryCode
 
+/** An integer measuring the number of milliseconds of UTC time since epoch.
+
+*/
+typedef i64 TimestampMilliseconds
+
 /** The base for any baseplate-based service.
 
 Your service should inherit from this one so that common tools can interact
