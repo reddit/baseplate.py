@@ -48,3 +48,11 @@ of the request lifecycle that services can hook into.
 
 .. autoclass:: ServerSpanInitialized
 
+Health Checker Helper
+---------------------
+
+This module also provides a helper function to extract the health check probe
+used by the builtin healthchecker out of the request.
+
+
+.. autofunction:: get_is_healthy_probe
