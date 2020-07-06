@@ -33,7 +33,7 @@ class Iface(object):
 
     """
 
-    def is_healthy(self):
+    def is_healthy(self, request):
         """
         Return whether or not the service is healthy.
 
@@ -43,6 +43,9 @@ class Iface(object):
         This should return True if the service is healthy. If the service is
         unhealthy, it can return False or raise an exception.
 
+
+        Parameters:
+         - request
 
         """
         pass
@@ -64,7 +67,7 @@ class Client(Iface):
             self._oprot = oprot
         self._seqid = 0
 
-    def is_healthy(self):
+    def is_healthy(self, request):
         """
         Return whether or not the service is healthy.
 
@@ -75,13 +78,17 @@ class Client(Iface):
         unhealthy, it can return False or raise an exception.
 
 
+        Parameters:
+         - request
+
         """
-        self.send_is_healthy()
+        self.send_is_healthy(request)
         return self.recv_is_healthy()
 
-    def send_is_healthy(self):
+    def send_is_healthy(self, request):
         self._oprot.writeMessageBegin("is_healthy", TMessageType.CALL, self._seqid)
         args = is_healthy_args()
+        args.request = request
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
         self._oprot.trans.flush()
@@ -139,7 +146,7 @@ class Processor(Iface, TProcessor):
         iprot.readMessageEnd()
         result = is_healthy_result()
         try:
-            result.success = self._handler.is_healthy()
+            result.success = self._handler.is_healthy(args.request)
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
@@ -161,8 +168,18 @@ class Processor(Iface, TProcessor):
 
 
 class is_healthy_args(object):
+    """
+    Attributes:
+     - request
 
-    __slots__ = ()
+    """
+
+    __slots__ = ("request",)
+
+    def __init__(
+        self, request=None,
+    ):
+        self.request = request
 
     def read(self, iprot):
         if (
@@ -177,6 +194,12 @@ class is_healthy_args(object):
             (fname, ftype, fid) = iprot.readFieldBegin()
             if ftype == TType.STOP:
                 break
+            if fid == 1:
+                if ftype == TType.STRUCT:
+                    self.request = IsHealthyRequest()
+                    self.request.read(iprot)
+                else:
+                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -187,6 +210,10 @@ class is_healthy_args(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin("is_healthy_args")
+        if self.request is not None:
+            oprot.writeFieldBegin("request", TType.STRUCT, 1)
+            self.request.write(oprot)
+            oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -212,7 +239,10 @@ class is_healthy_args(object):
 
 
 all_structs.append(is_healthy_args)
-is_healthy_args.thrift_spec = ()
+is_healthy_args.thrift_spec = (
+    None,  # 0
+    (1, TType.STRUCT, "request", [IsHealthyRequest, None], None,),  # 1
+)
 
 
 class is_healthy_result(object):
@@ -224,7 +254,9 @@ class is_healthy_result(object):
 
     __slots__ = ("success",)
 
-    def __init__(self, success=None):
+    def __init__(
+        self, success=None,
+    ):
         self.success = success
 
     def read(self, iprot):
@@ -284,6 +316,6 @@ class is_healthy_result(object):
 
 
 all_structs.append(is_healthy_result)
-is_healthy_result.thrift_spec = ((0, TType.BOOL, "success", None, None),)  # 0
+is_healthy_result.thrift_spec = ((0, TType.BOOL, "success", None, None,),)  # 0
 fix_spec(all_structs)
 del all_structs

@@ -1,4 +1,5 @@
 import base64
+import logging
 import sys
 
 from typing import Any
@@ -23,6 +24,10 @@ from baseplate import TraceInfo
 from baseplate.lib import warn_deprecated
 from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.server import make_app
+from baseplate.thrift.ttypes import IsHealthyProbe
+
+
+logger = logging.getLogger(__name__)
 
 
 def _make_baseplate_tween(
@@ -294,3 +299,20 @@ def pshell_setup(env: Dict[str, Any]) -> None:
 
     """
     env["request"].start_server_span("shell")
+
+
+def get_is_healthy_probe(request: Request) -> int:
+    """Get the thrift enum value of the probe used in http is_healthy request."""
+    code = request.params.get("type", str(IsHealthyProbe.READINESS))
+    try:
+        return int(code)
+    except ValueError:
+        pass
+    # If it's not an int, try to find it in the enum map instead.
+    try:
+        return IsHealthyProbe._NAMES_TO_VALUES[code.upper()]
+    except KeyError:
+        logger.warning(
+            "Unrecognized health check type %s, fallback to READINESS", code,
+        )
+        return IsHealthyProbe.READINESS
