@@ -19,6 +19,38 @@ from thrift.TRecursive import fix_spec
 all_structs = []
 
 
+class IsHealthyProbe(object):
+    """
+    The different types of probes supported by is_healthy endpoint.
+
+    Please refer to Kubernetes' documentation for tge differences between them:
+    https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+
+    Your service should use Readiness probe as the fallback for unsupported probes.
+
+    Note that the HTTP health check use the string names of the probes,
+    so changing the names, even without changing the numeric values,
+    is considered as breaking change and should be avoided.
+
+    """
+
+    READINESS = 1
+    LIVENESS = 2
+    STARTUP = 3
+
+    _VALUES_TO_NAMES = {
+        1: "READINESS",
+        2: "LIVENESS",
+        3: "STARTUP",
+    }
+
+    _NAMES_TO_VALUES = {
+        "READINESS": 1,
+        "LIVENESS": 2,
+        "STARTUP": 3,
+    }
+
+
 class ErrorCode(object):
     """
     The integer values within this enum correspond to HTTP status codes.
@@ -116,6 +148,79 @@ class ErrorCode(object):
     }
 
 
+class IsHealthyRequest(object):
+    """
+    The arg struct for is_healthy endpoint.
+
+
+    Attributes:
+     - probe
+
+    """
+
+    __slots__ = ("probe",)
+
+    def __init__(
+        self, probe=None,
+    ):
+        self.probe = probe
+
+    def read(self, iprot):
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.I32:
+                    self.probe = iprot.readI32()
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin("IsHealthyRequest")
+        if self.probe is not None:
+            oprot.writeFieldBegin("probe", TType.I32, 1)
+            oprot.writeI32(self.probe)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        return
+
+    def __repr__(self):
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
+
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return False
+        for attr in self.__slots__:
+            my_val = getattr(self, attr)
+            other_val = getattr(other, attr)
+            if my_val != other_val:
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
 class Loid(object):
     """
     The components of the Reddit LoID cookie that we want to propagate between
@@ -134,9 +239,14 @@ class Loid(object):
 
     """
 
-    __slots__ = ("id", "created_ms")
+    __slots__ = (
+        "id",
+        "created_ms",
+    )
 
-    def __init__(self, id=None, created_ms=None):
+    def __init__(
+        self, id=None, created_ms=None,
+    ):
         self.id = id
         self.created_ms = created_ms
 
@@ -227,7 +337,9 @@ class Session(object):
 
     __slots__ = ("id",)
 
-    def __init__(self, id=None):
+    def __init__(
+        self, id=None,
+    ):
         self.id = id
 
     def read(self, iprot):
@@ -308,7 +420,9 @@ class Device(object):
 
     __slots__ = ("id",)
 
-    def __init__(self, id=None):
+    def __init__(
+        self, id=None,
+    ):
         self.id = id
 
     def read(self, iprot):
@@ -390,7 +504,9 @@ class OriginService(object):
 
     __slots__ = ("name",)
 
-    def __init__(self, name=None):
+    def __init__(
+        self, name=None,
+    ):
         self.name = name
 
     def read(self, iprot):
@@ -470,7 +586,9 @@ class Geolocation(object):
 
     __slots__ = ("country_code",)
 
-    def __init__(self, country_code=None):
+    def __init__(
+        self, country_code=None,
+    ):
         self.country_code = country_code
 
     def read(self, iprot):
@@ -832,36 +950,53 @@ class Error(TException):
         return not (self == other)
 
 
+all_structs.append(IsHealthyRequest)
+IsHealthyRequest.thrift_spec = (
+    None,  # 0
+    (1, TType.I32, "probe", None, None,),  # 1
+)
 all_structs.append(Loid)
 Loid.thrift_spec = (
     None,  # 0
-    (1, TType.STRING, "id", "UTF8", None),  # 1
-    (2, TType.I64, "created_ms", None, None),  # 2
+    (1, TType.STRING, "id", "UTF8", None,),  # 1
+    (2, TType.I64, "created_ms", None, None,),  # 2
 )
 all_structs.append(Session)
-Session.thrift_spec = (None, (1, TType.STRING, "id", "UTF8", None))  # 0  # 1
+Session.thrift_spec = (
+    None,  # 0
+    (1, TType.STRING, "id", "UTF8", None,),  # 1
+)
 all_structs.append(Device)
-Device.thrift_spec = (None, (1, TType.STRING, "id", "UTF8", None))  # 0  # 1
+Device.thrift_spec = (
+    None,  # 0
+    (1, TType.STRING, "id", "UTF8", None,),  # 1
+)
 all_structs.append(OriginService)
-OriginService.thrift_spec = (None, (1, TType.STRING, "name", "UTF8", None))  # 0  # 1
+OriginService.thrift_spec = (
+    None,  # 0
+    (1, TType.STRING, "name", "UTF8", None,),  # 1
+)
 all_structs.append(Geolocation)
-Geolocation.thrift_spec = (None, (1, TType.STRING, "country_code", "UTF8", None))  # 0  # 1
+Geolocation.thrift_spec = (
+    None,  # 0
+    (1, TType.STRING, "country_code", "UTF8", None,),  # 1
+)
 all_structs.append(Request)
 Request.thrift_spec = (
     None,  # 0
-    (1, TType.STRUCT, "loid", [Loid, None], None),  # 1
-    (2, TType.STRUCT, "session", [Session, None], None),  # 2
-    (3, TType.STRING, "authentication_token", "UTF8", None),  # 3
-    (4, TType.STRUCT, "device", [Device, None], None),  # 4
-    (5, TType.STRUCT, "origin_service", [OriginService, None], None),  # 5
-    (6, TType.STRUCT, "geolocation", [Geolocation, None], None),  # 6
+    (1, TType.STRUCT, "loid", [Loid, None], None,),  # 1
+    (2, TType.STRUCT, "session", [Session, None], None,),  # 2
+    (3, TType.STRING, "authentication_token", "UTF8", None,),  # 3
+    (4, TType.STRUCT, "device", [Device, None], None,),  # 4
+    (5, TType.STRUCT, "origin_service", [OriginService, None], None,),  # 5
+    (6, TType.STRUCT, "geolocation", [Geolocation, None], None,),  # 6
 )
 all_structs.append(Error)
 Error.thrift_spec = (
     None,  # 0
-    (1, TType.I32, "code", None, None),  # 1
-    (2, TType.STRING, "message", "UTF8", None),  # 2
-    (3, TType.MAP, "details", (TType.STRING, "UTF8", TType.STRING, "UTF8", False), None),  # 3
+    (1, TType.I32, "code", None, None,),  # 1
+    (2, TType.STRING, "message", "UTF8", None,),  # 2
+    (3, TType.MAP, "details", (TType.STRING, "UTF8", TType.STRING, "UTF8", False), None,),  # 3
 )
 fix_spec(all_structs)
 del all_structs

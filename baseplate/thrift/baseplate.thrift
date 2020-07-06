@@ -12,6 +12,36 @@ typedef string AuthenticationToken
 */
 typedef string CountryCode
 
+/** An integer measuring the number of milliseconds of UTC time since epoch.
+
+*/
+typedef i64 TimestampMilliseconds
+
+/** The different types of probes supported by is_healthy endpoint.
+
+Please refer to Kubernetes' documentation for the differences between them:
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+
+Your service should use Readiness probe as the fallback for unsupported probes.
+
+Note that the HTTP health check could use the string names of the probes,
+so changing the names, even without changing the numeric values,
+is considered as breaking change and should be avoided.
+
+*/
+enum IsHealthyProbe {
+    READINESS = 1,
+    LIVENESS = 2,
+    STARTUP = 3,
+}
+
+/** The arg struct for is_healthy endpoint.
+
+*/
+struct IsHealthyRequest {
+    1: optional IsHealthyProbe probe;
+}
+
 /** The base for any baseplate-based service.
 
 Your service should inherit from this one so that common tools can interact
@@ -28,7 +58,9 @@ service BaseplateService {
     unhealthy, it can return False or raise an exception.
 
     */
-    bool is_healthy(),
+    bool is_healthy(
+        1: IsHealthyRequest request,
+    ),
 }
 
 
