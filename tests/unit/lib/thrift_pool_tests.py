@@ -147,6 +147,26 @@ class ThriftConnectionPoolTests(unittest.TestCase):
 
     @mock.patch("baseplate.lib.thrift_pool._make_transport")
     @mock.patch("time.time")
+    def test_pool_replaces_closed_connection(self, mock_time, mock_make_transport):
+        stale_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
+        stale_prot.trans = mock.Mock(spec=TSocket.TSocket)
+        stale_prot.trans.isOpen.return_value = False
+        stale_prot.baseplate_birthdate = 199
+        self.mock_queue.get.return_value = stale_prot
+        mock_time.return_value = 200
+
+        fresh_trans = mock.Mock(spec=TSocket.TSocket)
+        fresh_trans.protocol_id = THeaderTransport.THeaderSubprotocolID.BINARY
+        mock_make_transport.return_value = fresh_trans
+
+        with self.pool.connection() as prot:
+            pass
+
+        self.assertTrue(stale_prot.trans.close.called)
+        self.assertEqual(prot.trans._transport, fresh_trans)
+
+    @mock.patch("baseplate.lib.thrift_pool._make_transport")
+    @mock.patch("time.time")
     def test_retry_on_failed_connect(self, mock_time, mock_make_transport):
         self.mock_queue.get.return_value = None
         mock_time.return_value = 200
