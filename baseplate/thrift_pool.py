@@ -145,7 +145,7 @@ class ThriftConnectionPool(object):
 
         for _ in self.retry_policy:
             if prot:
-                if time.time() - prot.baseplate_birthdate < self.max_age:
+                if prot.trans.isOpen() and time.time() - prot.baseplate_birthdate < self.max_age:
                     return prot
                 prot.trans.close()
                 prot = None

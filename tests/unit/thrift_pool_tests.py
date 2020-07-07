@@ -72,6 +72,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
     def test_pool_has_valid_connection(self, mock_time):
         mock_time.return_value = 123
         mock_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
+        mock_prot.trans = mock.Mock(spec=TSocket.TSocket)
         mock_prot.baseplate_birthdate = 122
         self.mock_queue.get.return_value = mock_prot
 
@@ -94,6 +95,26 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         mock_make_transport.return_value = fresh_trans
 
         prot = self.pool._acquire()
+
+        self.assertTrue(stale_prot.trans.close.called)
+        self.assertEqual(prot.trans._transport, fresh_trans)
+
+    @mock.patch("baseplate.thrift_pool._make_transport")
+    @mock.patch("time.time")
+    def test_pool_replaces_closed_connection(self, mock_time, mock_make_transport):
+        stale_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
+        stale_prot.trans = mock.Mock(spec=TSocket.TSocket)
+        stale_prot.trans.isOpen.return_value = False
+        stale_prot.baseplate_birthdate = 199
+        self.mock_queue.get.return_value = stale_prot
+        mock_time.return_value = 200
+
+        fresh_trans = mock.Mock(spec=TSocket.TSocket)
+        fresh_trans.protocol_id = THeaderTransport.THeaderSubprotocolID.BINARY
+        mock_make_transport.return_value = fresh_trans
+
+        with self.pool.connection() as prot:
+            pass
 
         self.assertTrue(stale_prot.trans.close.called)
         self.assertEqual(prot.trans._transport, fresh_trans)
