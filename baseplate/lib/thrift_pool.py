@@ -205,7 +205,7 @@ class ThriftConnectionPool:
         )
 
     def _is_stale(self, prot: TProtocolBase) -> bool:
-        if time.time() - prot.baseplate_birthdate > self.max_age:
+        if not prot.trans.isOpen() or time.time() - prot.baseplate_birthdate > self.max_age:
             prot.trans.close()
             return True
         return False
