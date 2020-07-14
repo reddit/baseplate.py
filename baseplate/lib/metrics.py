@@ -242,7 +242,7 @@ class Batch(BaseClient):
             )
             logger.warning(
                 "Metrics batch of %d bytes is too large to send, flush more often or reduce "
-                "amount done in this request. Top counters: %s",
+                "amount done in this request. See https://git.io/JJscR. Top counters: %s",
                 exc.message_size,
                 ", ".join(f"{c.name.decode()}={c.total:.0f}" for c in counters_by_total[:10]),
             )

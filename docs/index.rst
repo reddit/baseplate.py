@@ -42,6 +42,7 @@ Table of Contents
    :titlesonly:
 
    tutorial/index
+   guide/index
    api/index
    cli/index
    lint/index
