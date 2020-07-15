@@ -1,0 +1,6 @@
+User Guide
+==========
+
+.. toctree::
+
+   faq
