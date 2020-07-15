@@ -86,9 +86,7 @@ then configure it in your application's configuration file:
 and finally use the attached client in request::
 
    def my_method(request):
-       request.foo.is_healthy(
-           request=IsHealthyRequest(probe=IsHealthyProbe.READINESS),
-       )
+       request.foo.is_healthy()
 
 Classes
 -------

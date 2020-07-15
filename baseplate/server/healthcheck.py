@@ -13,29 +13,25 @@ from baseplate.lib.config import EndpointConfiguration
 from baseplate.lib.config import InternetAddress
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.thrift import BaseplateService
-from baseplate.thrift.ttypes import IsHealthyProbe
-from baseplate.thrift.ttypes import IsHealthyRequest
 
 
 TIMEOUT = 30  # seconds
 
 
-def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
+def check_thrift_service(endpoint: EndpointConfiguration) -> None:
     pool = ThriftConnectionPool(endpoint, size=1, timeout=TIMEOUT)
     with pool.connection() as protocol:
         client = BaseplateService.Client(protocol)
-        assert client.is_healthy(
-            request=IsHealthyRequest(probe=probe),
-        ), "service indicated unhealthiness in probe {probe}"
+        assert client.is_healthy(), "service indicated unhealthiness"
 
 
-def check_http_service(endpoint: EndpointConfiguration, probe: int) -> None:
+def check_http_service(endpoint: EndpointConfiguration) -> None:
     if endpoint.family == socket.AF_INET:
         address: InternetAddress = typing.cast(InternetAddress, endpoint.address)
-        url = f"http://{address.host}:{address.port}/health?type={probe}"
+        url = f"http://{address.host}:{address.port}/health"
     elif endpoint.family == socket.AF_UNIX:
         quoted_path = urllib.parse.quote(typing.cast(str, endpoint.address), safe="")
-        url = f"http+unix://{quoted_path}/health?type={probe}"
+        url = f"http+unix://{quoted_path}/health"
     else:
         raise ValueError(f"unrecognized socket family {endpoint.family!r}")
 
@@ -64,12 +60,6 @@ def parse_args() -> argparse.Namespace:
         default=Endpoint("localhost:9090"),
         help="The endpoint to find the service on.",
     )
-    parser.add_argument(
-        "--probe",
-        choices=[probe.lower() for probe in IsHealthyProbe._NAMES_TO_VALUES],
-        default="readiness",
-        help="The probe to check.",
-    )
 
     return parser.parse_args()
 
@@ -78,7 +68,7 @@ def run_healthchecks() -> None:
     args = parse_args()
 
     checker = CHECKERS[args.type]
-    checker(args.endpoint, IsHealthyProbe._NAMES_TO_VALUES[args.probe.upper()])
+    checker(args.endpoint)
     print("OK!")
 
 
