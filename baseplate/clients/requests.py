@@ -183,12 +183,17 @@ class BaseplateSession:
         prepared = self.prepare_request(request)
         return self.send(prepared)
 
+    def _add_span_context(self, span: Span, request: PreparedRequest) -> None:
+        pass
+
     def send(self, request: PreparedRequest) -> Response:
         """Send a :py:class:`~requests.PreparedRequest`."""
 
         with self.span.make_child(f"{self.name}.request") as span:
             span.set_tag("http.method", request.method)
             span.set_tag("http.url", request.url)
+
+            self._add_span_context(span, request)
 
             # we cannot re-use the same session every time because sessions re-use the same
             # CookieJar and so we'd muddle cookies cross-request. if the application wants
@@ -205,22 +210,21 @@ class BaseplateSession:
 
 
 class InternalBaseplateSession(BaseplateSession):
-    def send(self, request: PreparedRequest) -> Response:
-        request.headers["X-Trace"] = str(self.span.trace_id)
-        request.headers["X-Parent"] = str(self.span.parent_id)
-        request.headers["X-Span"] = str(self.span.id)
-        if self.span.sampled:
+    def _add_span_context(self, span: Span, request: PreparedRequest) -> None:
+        request.headers["X-Trace"] = str(span.trace_id)
+        request.headers["X-Parent"] = str(span.parent_id)
+        request.headers["X-Span"] = str(span.id)
+        if span.sampled:
             request.headers["X-Sampled"] = "1"
-        if self.span.flags is not None:
-            request.headers["X-Flags"] = str(self.span.flags)
+        if span.flags is not None:
+            request.headers["X-Flags"] = str(span.flags)
 
         try:
-            edge_context = self.span.context.raw_request_context
+            edge_context = span.context.raw_request_context
         except AttributeError:
             pass
         else:
-            request.headers["X-Edge-Context"] = base64.b64encode(edge_context).decode()
-        return super().send(request)
+            request.headers["X-Edge-Request"] = base64.b64encode(edge_context).decode()
 
 
 class RequestsContextFactory(ContextFactory):

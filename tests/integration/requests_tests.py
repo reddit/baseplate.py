@@ -4,14 +4,20 @@ import gevent
 import pytest
 import requests
 
+from pyramid.config import Configurator
+from pyramid.httpexceptions import HTTPNoContent
+
 from baseplate import Baseplate
 from baseplate.clients.requests import ExternalRequestsClient
 from baseplate.clients.requests import InternalRequestsClient
+from baseplate.frameworks.pyramid import BaseplateConfigurator
+from baseplate.frameworks.pyramid import StaticTrustHandler
 from baseplate.lib import config
 from baseplate.server import make_listener
 from baseplate.server.wsgi import make_server
 
 from . import TestBaseplateObserver
+from .. import SERIALIZED_EDGECONTEXT_WITH_NO_AUTH
 
 
 @pytest.fixture
@@ -31,21 +37,26 @@ def http_server(gevent_socket):
         def __init__(self, address):
             self.url = f"http://{address[0]}:{address[1]}/"
             self.requests = []
-            self.response_status = "204 No Content"
-            self.response_headers = []
-            self.response_body = []
 
-        def __call__(self, environ, start_response):
-            self.requests.append(environ)
-            start_response(self.response_status, self.response_headers)
-            return self.response_body
+        def handle_request(self, request):
+            self.requests.append(request)
+            return HTTPNoContent()
 
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
     listener = make_listener(server_bind_endpoint)
     server_address = listener.getsockname()
     http_server = HttpServer(server_address)
-    server = make_server({"stop_timeout": "1 millisecond"}, listener, http_server)
 
+    baseplate = Baseplate()
+    trust_handler = StaticTrustHandler(trust_headers=True)
+    baseplate_configurator = BaseplateConfigurator(baseplate, header_trust_handler=trust_handler)
+    configurator = Configurator()
+    configurator.include(baseplate_configurator.includeme)
+    configurator.add_route("test_view", "/")
+    configurator.add_view(http_server.handle_request, route_name="test_view", renderer="json")
+    wsgi_app = configurator.make_wsgi_app()
+
+    server = make_server({"stop_timeout": "1 millisecond"}, listener, wsgi_app)
     server_greenlet = gevent.spawn(server.serve_forever)
     try:
         yield http_server
@@ -116,17 +127,17 @@ def test_internal_client_sends_headers(http_server):
     baseplate.configure_context({"internal": InternalRequestsClient()})
 
     with baseplate.server_context("test") as context:
-        setattr(context, "raw_request_context", b"contextual")
+        setattr(context, "raw_request_context", SERIALIZED_EDGECONTEXT_WITH_NO_AUTH)
 
         response = context.internal.get(http_server.url)
 
         assert response.status_code == 204
         assert response.text == ""
-        assert http_server.requests[0]["REQUEST_METHOD"] == "GET"
-        assert http_server.requests[0]["HTTP_X_TRACE"] == str(context.trace.trace_id)
-        assert http_server.requests[0]["HTTP_X_PARENT"] == str(context.trace.parent_id)
-        assert http_server.requests[0]["HTTP_X_SPAN"] == str(context.trace.id)
-        assert http_server.requests[0]["HTTP_X_EDGE_CONTEXT"] == "Y29udGV4dHVhbA=="
+        assert http_server.requests[0].method == "GET"
+        assert http_server.requests[0].trace.trace_id == context.trace.trace_id
+        assert http_server.requests[0].trace.parent_id == context.trace.id
+        assert http_server.requests[0].trace.id != context.trace.id
+        assert http_server.requests[0].raw_request_context == SERIALIZED_EDGECONTEXT_WITH_NO_AUTH
 
 
 def test_external_client_doesnt_send_headers(http_server):
@@ -136,14 +147,14 @@ def test_external_client_doesnt_send_headers(http_server):
     baseplate.configure_context({"external": ExternalRequestsClient()})
 
     with baseplate.server_context("test") as context:
-        setattr(context, "raw_request_context", b"contextual")
+        setattr(context, "raw_request_context", SERIALIZED_EDGECONTEXT_WITH_NO_AUTH)
 
         response = context.external.get(http_server.url)
 
         assert response.status_code == 204
         assert response.text == ""
-        assert http_server.requests[0]["REQUEST_METHOD"] == "GET"
-        assert "HTTP_X_TRACE" not in http_server.requests[0]
-        assert "HTTP_X_PARENT" not in http_server.requests[0]
-        assert "HTTP_X_SPAN" not in http_server.requests[0]
-        assert "HTTP_X_EDGE_CONTEXT" not in http_server.requests[0]
+        assert http_server.requests[0].method == "GET"
+        assert "X-Trace" not in http_server.requests[0].headers
+        assert "X-Parent" not in http_server.requests[0].headers
+        assert "X-Span" not in http_server.requests[0].headers
+        assert "X-Edge" not in http_server.requests[0].headers
