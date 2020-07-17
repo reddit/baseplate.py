@@ -75,7 +75,7 @@ class BaseplateTests(unittest.TestCase):
 
     def test_configure_context_supports_complex_specs(self):
         from baseplate.clients.thrift import ThriftClient
-        from baseplate.thrift import BaseplateService
+        from baseplate.thrift import BaseplateServiceV2
 
         app_config = {
             "enable_some_fancy_feature": "true",
@@ -89,8 +89,8 @@ class BaseplateTests(unittest.TestCase):
             {
                 "enable_some_fancy_feature": config.Boolean,
                 "thrift": {
-                    "foo": ThriftClient(BaseplateService.Client),
-                    "bar": ThriftClient(BaseplateService.Client),
+                    "foo": ThriftClient(BaseplateServiceV2.Client),
+                    "bar": ThriftClient(BaseplateServiceV2.Client),
                 },
             },
         )
