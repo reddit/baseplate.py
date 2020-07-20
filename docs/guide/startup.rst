@@ -20,29 +20,9 @@ The Python Interpreter
 Because this is a Python application, before any code in Baseplate or your
 application can run, the Python interpreter itself must set itself up.
 
-When running applications outside of Docker, we use virtual environments
-("virtualenvs") as a way of isolating Python applications (and all their
-dependencies) from eachother. Virtualenvs work by making a copy of the Python
-interpreter and its standard libraries into a folder of your choosing.  When
-you run this Python interpreter instead of the one installed at the global
-level, it will use libraries from its folder rather than the global folders.
-This includes libraries that you ``pip install`` "into" your virtualenv.
-
-.. note:: You can "activate" the virtualenv in your shell by running ``source
-   my-virtualenv/bin/activate``. This just puts ``my-virtualenv/bin/`` (which,
-   among other things, has the virtualenv's ``python`` binary) at the front of
-   your shell's ``PATH`` making the virtualenv installation be the default when
-   you run ``python``, ``pip``, etc. This is a very handy convenience but is
-   not strictly necessary to use a virtualenv as long as you call the right
-   Python binary.
-
-Inside of Docker containers, we just use the global install of Python as the
-application is already isolated from others by the container itself.
-
-Once the right Python interpeter has been launched, there are many many many
-steps involved in :pep:`Python's startup sequence <432>` but for our purposes
-the most important thing to highlight are a number of `environment variables`_
-that can configure the interpreter.
+There are many many many steps involved in :pep:`Python's startup sequence
+<432>` but for our purposes the most important thing to highlight are a number
+of `environment variables`_ that can configure the interpreter.
 
 Now that the interpeter is up, it runs the actual program we wanted it to
 (``baseplate-serve``) and the Baseplate.py startup sequence begins.
