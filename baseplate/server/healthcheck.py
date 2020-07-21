@@ -12,7 +12,7 @@ from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
 from baseplate.lib.config import InternetAddress
 from baseplate.lib.thrift_pool import ThriftConnectionPool
-from baseplate.thrift import BaseplateService
+from baseplate.thrift import BaseplateServiceV2
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
 
@@ -23,7 +23,7 @@ TIMEOUT = 30  # seconds
 def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
     pool = ThriftConnectionPool(endpoint, size=1, timeout=TIMEOUT)
     with pool.connection() as protocol:
-        client = BaseplateService.Client(protocol)
+        client = BaseplateServiceV2.Client(protocol)
         assert client.is_healthy(
             request=IsHealthyRequest(probe=probe),
         ), "service indicated unhealthiness in probe {probe}"
