@@ -14,12 +14,19 @@ upstream services are yet taken into account.
    taking a long time because it is doing compute-heavy actions and not
    yielding to the event loop it might go on longer than the allotted timeout.
 
+.. versionadded:: 1.2
+
+.. versionchanged:: 1.3.3
+
+   The default timeout was changed from 10 seconds to no timeout.  Having a
+   default timeout was confusing and broke jobs like crons.
+
 Configuration
 -------------
 
 Make sure your service calls
 :py:meth:`~baseplate.Baseplate.configure_observers` during application startup.
-By default, requests will time out after 10 seconds. The following
+By default, requests will not time out unless you configure them. The following
 configuration settings allow you to customize this.
 
 .. code-block:: ini
