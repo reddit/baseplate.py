@@ -36,6 +36,7 @@ intersphinx_mapping = {
     "kombu": ("https://kombu.readthedocs.io/en/latest/", None),
     "redis": ("https://redis-py.readthedocs.io/en/latest/", None),
     "sqlalchemy": ("https://docs.sqlalchemy.org/en/13/", None),
+    "requests": ("https://requests.readthedocs.io/en/stable/", None),
 }
 
 # The suffix of source filenames.
