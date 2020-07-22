@@ -1,7 +1,7 @@
 import unittest
 
 from baseplate.clients import thrift
-from baseplate.thrift import BaseplateService
+from baseplate.thrift import BaseplateServiceV2
 
 
 class EnumerateServiceMethodsTests(unittest.TestCase):
@@ -33,7 +33,7 @@ class EnumerateServiceMethodsTests(unittest.TestCase):
             def local_method(self):
                 pass
 
-        class ExampleClient(BaseplateService.Client, Iface):
+        class ExampleClient(BaseplateServiceV2.Client, Iface):
             pass
 
         methods = list(thrift._enumerate_service_methods(ExampleClient))

@@ -19,6 +19,7 @@ $(THRIFT_BUILDDIR)/baseplate/thrift/baseplate.thrift_buildstamp: baseplate/thrif
 	$(THRIFT) $(THRIFT_OPTS) -out $(THRIFT_BUILDDIR)/$< $<
 	cp -r $(THRIFT_BUILDDIR)/$</baseplate/thrift baseplate/
 	rm -f baseplate/thrift/BaseplateService-remote
+	rm -f baseplate/thrift/BaseplateServiceV2-remote
 	touch $@
 
 $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/test.thrift
