@@ -55,6 +55,18 @@ class RedisIntegrationTests(unittest.TestCase):
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNotNone(span_observer.on_finish_exc_info)
 
+    def test_lock(self):
+        with self.server_span:
+            with self.context.redis.lock("foo"):
+                pass
+
+        server_span_observer = self.baseplate_observer.get_only_child()
+
+        self.assertGreater(len(server_span_observer.children), 0)
+        for span_observer in server_span_observer.children:
+            self.assertTrue(span_observer.on_start_called)
+            self.assertTrue(span_observer.on_finish_called)
+
     def test_pipeline(self):
         with self.server_span:
             with self.context.redis.pipeline("foo") as pipeline:
