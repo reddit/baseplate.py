@@ -153,6 +153,14 @@ class BaseplateSession:
         """
         return self.request("PATCH", url, **kwargs)
 
+    def post(self, url: str, **kwargs: Any) -> Response:
+        """Send a POST request.
+
+        See :py:func:`requests.request` for valid keyword arguments.
+
+        """
+        return self.request("POST", url, **kwargs)
+
     def put(self, url: str, **kwargs: Any) -> Response:
         """Send a PUT request.
 
