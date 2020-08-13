@@ -155,10 +155,6 @@ class MonitoredRedisConnection(redis.StrictRedis):
         """Not currently implemented."""
         raise NotImplementedError
 
-    def lock(self, *args: Any, **kwargs: Any) -> Any:
-        """Not currently implemented."""
-        raise NotImplementedError
-
     def pubsub(self, *args: Any, **kwargs: Any) -> Any:
         """Not currently implemented."""
         raise NotImplementedError
