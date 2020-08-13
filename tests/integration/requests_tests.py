@@ -65,7 +65,7 @@ def http_server(gevent_socket):
 
 
 @pytest.mark.parametrize("client_cls", [InternalRequestsClient, ExternalRequestsClient])
-@pytest.mark.parametrize("method", ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "PUT"])
+@pytest.mark.parametrize("method", ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "PUT", "POST"])
 def test_client_makes_client_span(client_cls, method, http_server):
     baseplate = Baseplate(
         {"myclient.filter.ip_allowlist": "127.0.0.0/8", "myclient.filter.port_denylist": "0"}
