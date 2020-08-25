@@ -3,6 +3,7 @@
 # this is used inside CI and tox, so we don't need anything useful outside the
 # direct test environment like tox itself.
 -f https://reddit-wheels.s3.amazonaws.com/index.html
+-r requirements.txt
 advocate==1.0.0
 amqp==2.3.2
 asn1crypto==0.24.0
