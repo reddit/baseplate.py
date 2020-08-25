@@ -199,13 +199,14 @@ class KombuBatchQueueConsumer(QueueConsumer):
     there are no new messages and started when there is at least one message in
     the batch.
     """
+
     def __init__(
         self,
         work_queue: queue.Queue,
         message_handler: MessageHandler,
         batch_size: int = 1,
         batch_timeout: float = 1.0,
-        scheduler_interval: float = 1.0
+        scheduler_interval: float = 1.0,
     ):
         super(KombuBatchQueueConsumer, self).__init__(work_queue, message_handler)
 
@@ -297,7 +298,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         serializer: Optional[KombuSerializer] = None,
         batch_size: Optional[int] = None,
         batch_timeout: float = 1.0,
-        scheduler_interval: float = 1.0
+        scheduler_interval: float = 1.0,
     ):
         """`KombuQueueConsumerFactory` constructor.
 
@@ -400,7 +401,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
                 message_handler,
                 batch_size=self.batch_size,
                 batch_timeout=self.batch_timeout,
-                scheduler_interval=self.scheduler_interval
+                scheduler_interval=self.scheduler_interval,
             )
         else:
             return super().build_queue_consumer(work_queue, message_handler)

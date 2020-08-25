@@ -134,10 +134,7 @@ class QueueConsumerFactory(abc.ABC):
 
     def build_queue_consumer(self, work_queue, message_handler) -> QueueConsumer:
         """Build a queue consumer"""
-        return QueueConsumer(
-            work_queue=work_queue,
-            message_handler=message_handler,
-        )
+        return QueueConsumer(work_queue=work_queue, message_handler=message_handler)
 
 
 class QueueConsumer:
@@ -175,7 +172,7 @@ class QueueConsumer:
         logger.debug("Consumer <%s> stopping.", self.id)
 
     def _get_and_handle_message(self):
-        """Get and process a message from the queue if it is not empty""" 
+        """Get and process a message from the queue if it is not empty"""
         try:
             # We set a timeout so we can periodically check if we should
             # stop, this way we will actually return if we have recieved a
@@ -191,7 +188,7 @@ class QueueConsumer:
             # error, that bubbles up and is not treated as though `self.work_queue`
             # is empty
             self._handle_message(message)
-    
+
     def _handle_message(self, message):
         """Handle a single message"""
         return self.message_handler.handle(message)
