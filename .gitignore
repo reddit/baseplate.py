@@ -8,3 +8,5 @@ __pycache__
 baseplate.egg-info
 build/
 dist/
+
+.mypy_cache
