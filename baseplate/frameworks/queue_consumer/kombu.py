@@ -17,10 +17,12 @@ from kombu.transport.virtual import Channel
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate.clients.kombu import KombuSerializer
+from baseplate.lib.timer import Timer
 from baseplate.server.queue_consumer import HealthcheckCallback
 from baseplate.server.queue_consumer import make_simple_healthchecker
 from baseplate.server.queue_consumer import MessageHandler
 from baseplate.server.queue_consumer import PumpWorker
+from baseplate.server.queue_consumer import QueueConsumer
 from baseplate.server.queue_consumer import QueueConsumerFactory
 
 
@@ -34,6 +36,9 @@ logger = logging.getLogger(__name__)
 
 Handler = Callable[[RequestContext, Any, kombu.Message], None]
 ErrorHandler = Callable[[RequestContext, Any, kombu.Message, Exception], None]
+
+BatchHandler = Callable[[RequestContext, Sequence[kombu.Message]], None]
+BatchErrorHandler = Callable[[RequestContext, Sequence[kombu.Message], Exception], None]
 
 
 class FatalMessageHandlerError(Exception):
@@ -127,6 +132,149 @@ class KombuMessageHandler(MessageHandler):
             message.ack()
 
 
+class KombuBatchMessageHandler(MessageHandler):
+    def __init__(
+        self,
+        baseplate: Baseplate,
+        name: str,
+        handler_fn: BatchHandler,
+        error_handler_fn: Optional[BatchErrorHandler] = None,
+    ):
+        self.baseplate = baseplate
+        self.name = name
+        self.handler_fn = handler_fn
+        self.error_handler_fn = error_handler_fn
+
+    def handle(self, messages: Sequence[kombu.Message]) -> None:  # pylint: disable=arguments-differ
+        logger.info("Processing batch with %i messages", len(messages))
+
+        context = self.baseplate.make_context_object()
+        try:
+            # We place the call to ``baseplate.make_server_span`` inside the
+            # try/except block because we still want Baseplate to see and
+            # handle the error (publish it to error reporting)
+            with self.baseplate.make_server_span(context, self.name) as span:
+                span.set_tag("kind", "batch_consumer")
+
+                for message in messages:
+                    message: kombu.Message
+                    delivery_info = message.delivery_info
+                    span.set_tag("amqp.routing_key", delivery_info.get("routing_key", ""))
+                    span.set_tag("amqp.consumer_tag", delivery_info.get("consumer_tag", ""))
+                    span.set_tag("amqp.delivery_tag", delivery_info.get("delivery_tag", ""))
+                    span.set_tag("amqp.exchange", delivery_info.get("exchange", ""))
+
+                self.handler_fn(context, list(messages))
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.exception(
+                "Unhandled error while trying to process a message.  The message "
+                "has been returned to the queue broker."
+            )
+            if self.error_handler_fn:
+                self.error_handler_fn(context, messages, exc)
+            else:
+                for message in messages:
+                    message: kombu.Message
+                    if not message.acknowledged:
+                        message.requeue()
+
+            if isinstance(exc, FatalMessageHandlerError):
+                logger.info("Recieved a fatal error, terminating the server.")
+                raise
+        else:
+            for message in messages:
+                message: kombu.Message
+                if not message.acknowledged:
+                    message.ack()
+            logger.info("Successfully processed batch with %i messages", len(messages))
+
+
+class KombuBatchQueueConsumer(QueueConsumer):
+    """
+    Wrapper around a MessageHandler object that interfaces with the work_queue and starts/stops the handle loop.
+
+    The batched queue consumer consumes messages until the batch_size is reached
+    or a the batch_timeout has occurred. Then, if the batch is not empty, the
+    messages are consumed. The timer is stopped after a batch is processed if
+    there are no new messages and started when there is at least one message in
+    the batch.
+    """
+    def __init__(
+        self,
+        work_queue: queue.Queue,
+        message_handler: MessageHandler,
+        batch_size: int = 1,
+        batch_timeout: float = 1.0,
+        scheduler_interval: float = 1.0
+    ):
+        super(KombuBatchQueueConsumer, self).__init__(work_queue, message_handler)
+
+        self.batch_size = batch_size
+        self.batch_timeout = batch_timeout
+        self.scheduler_interval = scheduler_interval
+
+        self._batch: Sequence[Message] = []
+        self._timer = Timer(
+            function=self._handle_batch,
+            interval=self.batch_timeout,
+            is_repeating=False,
+            scheduler_interval=self.scheduler_interval,
+        )
+
+    def stop(self) -> None:
+        """Signal the QueueConsumer to stop processing."""
+        super().stop()
+
+        if self._timer:
+            self._timer.stop()
+
+        messages = self._read_and_empty_batch()
+        self._batch = []
+        logger.info("Stopping and requeueing %i messages", len(messages))
+
+        message: kombu.Message
+        for message in messages:
+            if not message.acknowledged:
+                message.requeue()
+
+    def _handle_message(self, message: kombu.Message):
+        if self._batch_is_full():
+            logger.warning("Received a message, but the batch is full. Requeueing message.")
+            message.requeue()
+        else:
+            self._batch.append(message)
+            if not self._timer.is_running():
+                self._timer.start()
+        if self._batch_is_full():
+            self._handle_batch()
+
+    def _handle_batch(self):
+        if self._timer.is_running():
+            self._timer.stop()
+        messages = self._read_and_empty_batch()
+        if len(messages) > 0:
+            self.message_handler.handle(messages)
+        if self._batch_is_full():
+            self._handle_batch()
+        elif not self._batch_is_empty():
+            self._timer.start()
+
+    def _read_and_empty_batch(self) -> Sequence[Message]:
+        messages = list(self._batch)
+        self._batch = []
+        return messages
+
+    def _batch_is_full(self):
+        return len(self._batch) == self.batch_size
+
+    def _batch_is_empty(self):
+        return len(self._batch) == 0
+
+    def __del__(self):
+        if not self.stopped:
+            self.stop()
+
+
 class KombuQueueConsumerFactory(QueueConsumerFactory):
     """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kombu.
 
@@ -147,6 +295,9 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
+        batch_size: Optional[int] = None,
+        batch_timeout: float = 1.0,
+        scheduler_interval: float = 1.0
     ):
         """`KombuQueueConsumerFactory` constructor.
 
@@ -175,6 +326,9 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         self.error_handler_fn = error_handler_fn
         self.health_check_fn = health_check_fn
         self.serializer = serializer
+        self.batch_size = batch_size
+        self.batch_timeout = batch_timeout
+        self.scheduler_interval = scheduler_interval
 
     @classmethod
     def new(
@@ -239,5 +393,20 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             self.baseplate, self.name, self.handler_fn, self.error_handler_fn
         )
 
+    def build_queue_consumer(self, work_queue, message_handler):
+        if self.is_batch_processing():
+            return KombuBatchQueueConsumer(
+                work_queue,
+                message_handler,
+                batch_size=self.batch_size,
+                batch_timeout=self.batch_timeout,
+                scheduler_interval=self.scheduler_interval
+            )
+        else:
+            return super().build_queue_consumer(work_queue, message_handler)
+
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
         return make_simple_healthchecker(listener, callback=self.health_check_fn)
+
+    def is_batch_processing(self):
+        return self.batch_size is not None and self.batch_size > 0
