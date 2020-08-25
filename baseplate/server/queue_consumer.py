@@ -132,6 +132,13 @@ class QueueConsumerFactory(abc.ABC):
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
         """Build an HTTP server to service health checks."""
 
+    def build_queue_consumer(self, work_queue, message_handler) -> QueueConsumer:
+        """Build a queue consumer"""
+        return QueueConsumer(
+            work_queue=work_queue,
+            message_handler=message_handler,
+        )
+
 
 class QueueConsumer:
     """Wrapper around a MessageHandler object that interfaces with the work_queue and starts/stops the handle loop.
@@ -164,22 +171,30 @@ class QueueConsumer:
         logger.debug("Consumer <%s> starting.", self.id)
         self.started = True
         while not self.stopped:
-            try:
-                # We set a timeout so we can periodically check if we should
-                # stop, this way we will actually return if we have recieved a
-                # `stop()` call rather than hanging in a `get` waiting for a
-                # new message.  If we did not do this, we would not be able to
-                # wait for all of our workers to finish before stopping the
-                # server.
-                message = self.work_queue.get(timeout=self._queue_timeout)
-            except queue.Empty:
-                pass
-            else:
-                # Ensure that if self.message_handler.handle throws a `queue.Empty`
-                # error, that bubbles up and is not treated as though `self.work_queue`
-                # is empty
-                self.message_handler.handle(message)
+            self._get_and_handle_message()
         logger.debug("Consumer <%s> stopping.", self.id)
+
+    def _get_and_handle_message(self):
+        """Get and process a message from the queue if it is not empty""" 
+        try:
+            # We set a timeout so we can periodically check if we should
+            # stop, this way we will actually return if we have recieved a
+            # `stop()` call rather than hanging in a `get` waiting for a
+            # new message.  If we did not do this, we would not be able to
+            # wait for all of our workers to finish before stopping the
+            # server.
+            message = self.work_queue.get(timeout=self._queue_timeout)
+        except queue.Empty:
+            pass
+        else:
+            # Ensure that if self.message_handler.handle throws a `queue.Empty`
+            # error, that bubbles up and is not treated as though `self.work_queue`
+            # is empty
+            self._handle_message(message)
+    
+    def _handle_message(self, message):
+        """Handle a single message"""
+        return self.message_handler.handle(message)
 
 
 class QueueConsumerServer:
@@ -233,7 +248,7 @@ class QueueConsumerServer:
         maxsize = max_concurrency + max_concurrency // 2
         work_queue: queue.Queue = queue.Queue(maxsize=maxsize)
         handlers = [
-            QueueConsumer(
+            consumer_factory.build_queue_consumer(
                 work_queue=work_queue, message_handler=consumer_factory.build_message_handler()
             )
             for _ in range(max_concurrency)
