@@ -1,6 +1,7 @@
+import time
+
 from threading import Event
 from threading import Thread
-import time
 from typing import Optional
 
 from schedule import Scheduler
