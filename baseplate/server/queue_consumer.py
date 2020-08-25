@@ -189,7 +189,9 @@ class QueueConsumerFactory(abc.ABC):
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
         """Build an HTTP server to service health checks."""
 
-    def build_queue_consumer(self, work_queue: queue.Queue, message_handler: MessageHandler) -> QueueConsumer:
+    def build_queue_consumer(
+        self, work_queue: queue.Queue, message_handler: MessageHandler
+    ) -> QueueConsumer:
         """Build a queue consumer."""
         return QueueConsumer(work_queue=work_queue, message_handler=message_handler)
 
