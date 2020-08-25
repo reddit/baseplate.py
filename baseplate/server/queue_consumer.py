@@ -108,35 +108,6 @@ class MessageHandler(abc.ABC):
         """
 
 
-class QueueConsumerFactory(abc.ABC):
-    """Factory for building all of the objects needed to run a QueueConsumerServer.
-
-    This is the type of object that you build in your `service.make_queue_consumer`
-    function to be passed to `make_server`.
-    """
-
-    @abc.abstractmethod
-    def build_pump_worker(self, work_queue: queue.Queue) -> PumpWorker:
-        """Build an object implementing the PumpWorker interface.
-
-        `work_queue` is the Queue that will be shared between the PumpWorker and
-        and the QueueConsumer to pass messages to the MessageHandler, be sure
-        that your PumpWorker uses `work_queue`.
-        """
-
-    @abc.abstractmethod
-    def build_message_handler(self) -> MessageHandler:
-        """Build an object implementing the MessageHandler interface."""
-
-    @abc.abstractmethod
-    def build_health_checker(self, listener: socket.socket) -> StreamServer:
-        """Build an HTTP server to service health checks."""
-
-    def build_queue_consumer(self, work_queue, message_handler) -> QueueConsumer:
-        """Build a queue consumer"""
-        return QueueConsumer(work_queue=work_queue, message_handler=message_handler)
-
-
 class QueueConsumer:
     """Wrapper around a MessageHandler object that interfaces with the work_queue and starts/stops the handle loop.
 
@@ -171,8 +142,8 @@ class QueueConsumer:
             self._get_and_handle_message()
         logger.debug("Consumer <%s> stopping.", self.id)
 
-    def _get_and_handle_message(self):
-        """Get and process a message from the queue if it is not empty"""
+    def _get_and_handle_message(self) -> None:
+        """Get and process a message from the queue if it is not empty."""
         try:
             # We set a timeout so we can periodically check if we should
             # stop, this way we will actually return if we have recieved a
@@ -189,9 +160,38 @@ class QueueConsumer:
             # is empty
             self._handle_message(message)
 
-    def _handle_message(self, message):
-        """Handle a single message"""
+    def _handle_message(self, message: Any) -> None:
+        """Handle a single message."""
         return self.message_handler.handle(message)
+
+
+class QueueConsumerFactory(abc.ABC):
+    """Factory for building all of the objects needed to run a QueueConsumerServer.
+
+    This is the type of object that you build in your `service.make_queue_consumer`
+    function to be passed to `make_server`.
+    """
+
+    @abc.abstractmethod
+    def build_pump_worker(self, work_queue: queue.Queue) -> PumpWorker:
+        """Build an object implementing the PumpWorker interface.
+
+        `work_queue` is the Queue that will be shared between the PumpWorker and
+        and the QueueConsumer to pass messages to the MessageHandler, be sure
+        that your PumpWorker uses `work_queue`.
+        """
+
+    @abc.abstractmethod
+    def build_message_handler(self) -> MessageHandler:
+        """Build an object implementing the MessageHandler interface."""
+
+    @abc.abstractmethod
+    def build_health_checker(self, listener: socket.socket) -> StreamServer:
+        """Build an HTTP server to service health checks."""
+
+    def build_queue_consumer(self, work_queue: queue.Queue, message_handler: MessageHandler) -> QueueConsumer:
+        """Build a queue consumer."""
+        return QueueConsumer(work_queue=work_queue, message_handler=message_handler)
 
 
 class QueueConsumerServer:

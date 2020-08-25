@@ -4,6 +4,7 @@ import socket
 
 from typing import Any
 from typing import Callable
+from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
@@ -156,8 +157,8 @@ class KombuBatchMessageHandler(MessageHandler):
             with self.baseplate.make_server_span(context, self.name) as span:
                 span.set_tag("kind", "batch_consumer")
 
+                message: kombu.Message
                 for message in messages:
-                    message: kombu.Message
                     delivery_info = message.delivery_info
                     span.set_tag("amqp.routing_key", delivery_info.get("routing_key", ""))
                     span.set_tag("amqp.consumer_tag", delivery_info.get("consumer_tag", ""))
@@ -174,7 +175,6 @@ class KombuBatchMessageHandler(MessageHandler):
                 self.error_handler_fn(context, messages, exc)
             else:
                 for message in messages:
-                    message: kombu.Message
                     if not message.acknowledged:
                         message.requeue()
 
@@ -183,7 +183,6 @@ class KombuBatchMessageHandler(MessageHandler):
                 raise
         else:
             for message in messages:
-                message: kombu.Message
                 if not message.acknowledged:
                     message.ack()
             logger.info("Successfully processed batch with %i messages", len(messages))
@@ -214,7 +213,7 @@ class KombuBatchQueueConsumer(QueueConsumer):
         self.batch_timeout = batch_timeout
         self.scheduler_interval = scheduler_interval
 
-        self._batch: Sequence[Message] = []
+        self._batch: List[kombu.Message] = []
         self._timer = Timer(
             function=self._handle_batch,
             interval=self.batch_timeout,
@@ -238,7 +237,7 @@ class KombuBatchQueueConsumer(QueueConsumer):
             if not message.acknowledged:
                 message.requeue()
 
-    def _handle_message(self, message: kombu.Message):
+    def _handle_message(self, message: kombu.Message) -> None:
         if self._batch_is_full():
             logger.warning("Received a message, but the batch is full. Requeueing message.")
             message.requeue()
@@ -249,7 +248,7 @@ class KombuBatchQueueConsumer(QueueConsumer):
         if self._batch_is_full():
             self._handle_batch()
 
-    def _handle_batch(self):
+    def _handle_batch(self) -> None:
         if self._timer.is_running():
             self._timer.stop()
         messages = self._read_and_empty_batch()
@@ -260,18 +259,18 @@ class KombuBatchQueueConsumer(QueueConsumer):
         elif not self._batch_is_empty():
             self._timer.start()
 
-    def _read_and_empty_batch(self) -> Sequence[Message]:
+    def _read_and_empty_batch(self) -> Sequence[kombu.Message]:
         messages = list(self._batch)
         self._batch = []
         return messages
 
-    def _batch_is_full(self):
+    def _batch_is_full(self) -> bool:
         return len(self._batch) == self.batch_size
 
-    def _batch_is_empty(self):
+    def _batch_is_empty(self) -> bool:
         return len(self._batch) == 0
 
-    def __del__(self):
+    def __del__(self) -> None:
         if not self.stopped:
             self.stop()
 
@@ -394,20 +393,17 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             self.baseplate, self.name, self.handler_fn, self.error_handler_fn
         )
 
-    def build_queue_consumer(self, work_queue, message_handler):
-        if self.is_batch_processing():
+    def build_queue_consumer(self, work_queue: Any, message_handler: Any) -> QueueConsumer:
+        if self.batch_size is None:
+            return super().build_queue_consumer(work_queue, message_handler)
+        else:
             return KombuBatchQueueConsumer(
                 work_queue,
                 message_handler,
-                batch_size=self.batch_size,
+                batch_size=max(self.batch_size, 1),
                 batch_timeout=self.batch_timeout,
                 scheduler_interval=self.scheduler_interval,
             )
-        else:
-            return super().build_queue_consumer(work_queue, message_handler)
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
         return make_simple_healthchecker(listener, callback=self.health_check_fn)
-
-    def is_batch_processing(self):
-        return self.batch_size is not None and self.batch_size > 0
