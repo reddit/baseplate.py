@@ -2,12 +2,16 @@ import logging
 import queue
 import socket
 
+from datetime import timedelta
 from typing import Any
 from typing import Callable
+from typing import cast
 from typing import List
 from typing import Optional
+from typing import overload
 from typing import Sequence
 from typing import TYPE_CHECKING
+from typing import Union
 
 import kombu
 
@@ -23,14 +27,15 @@ from baseplate.server.queue_consumer import HealthcheckCallback
 from baseplate.server.queue_consumer import make_simple_healthchecker
 from baseplate.server.queue_consumer import MessageHandler
 from baseplate.server.queue_consumer import PumpWorker
-from baseplate.server.queue_consumer import QueueConsumer
 from baseplate.server.queue_consumer import QueueConsumerFactory
 
 
 if TYPE_CHECKING:
     WorkQueue = queue.Queue[kombu.Message]  # pylint: disable=unsubscriptable-object
+    BatchWorkQueue = queue.Queue[Sequence[kombu.Message]]
 else:
     WorkQueue = queue.Queue
+    BatchWorkQueue = queue.Queue
 
 logger = logging.getLogger(__name__)
 
@@ -63,20 +68,53 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
     PumpWorker because the ConsumerMixin class already defines it.
     """
 
+    @overload
     def __init__(
         self,
         connection: kombu.Connection,
         queues: Sequence[kombu.Queue],
         work_queue: WorkQueue,
         serializer: Optional[KombuSerializer] = None,
+        batch_size: None = None,
+        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
+    ) -> None:
+        ...
+
+    @overload
+    def __init__(
+        self,
+        connection: kombu.Connection,
+        queues: Sequence[kombu.Queue],
+        work_queue: BatchWorkQueue,
+        serializer: Optional[KombuSerializer] = None,
+        batch_size: int = 1,
+        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
+    ) -> None:
+        ...
+
+    def __init__(
+        self,
+        connection: kombu.Connection,
+        queues: Sequence[kombu.Queue],
+        work_queue: Union[WorkQueue, BatchWorkQueue],
+        serializer: Optional[KombuSerializer] = None,
+        batch_size: Optional[int] = None,
+        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
     ):
         self.connection = connection
         self.queues = queues
         self.work_queue = work_queue
         self.serializer = serializer
+        self.batch_size = batch_size
+        self.batch_timeout = batch_timeout
+
+        self._batch: List[kombu.Message] = []
+        self._timer = Timer(
+            function=self._handle_batch, interval=self.batch_timeout, is_repeating=False,
+        )
 
     def get_consumers(self, Consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
-        args = dict(queues=self.queues, on_message=self.work_queue.put)
+        args = dict(queues=self.queues, on_message=self._handle_message)
         if self.serializer:
             args["accept"] = [self.serializer.name]
         return [Consumer(**args)]
@@ -85,6 +123,58 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
         logger.debug("Closing KombuConsumerWorker.")
         # `should_stop` is an attribute of `ConsumerMixin`
         self.should_stop = True
+
+        if self._timer:
+            self._timer.stop()
+
+        messages = self._read_and_empty_batch()
+        self._batch = []
+        logger.info("Stopping and requeueing %i messages", len(messages))
+
+        message: kombu.Message
+        for message in messages:
+            if not message.acknowledged:
+                message.requeue()
+
+    def _handle_message(self, message: kombu.Message) -> None:
+        if self.batch_size is not None:
+            self.work_queue.put(message)
+        else:
+            if self._batch_is_full():
+                logger.warning("Received a message, but the batch is full. Requeueing message.")
+                message.requeue()
+            else:
+                self._batch.append(message)
+                if not self._timer.is_running():
+                    self._timer.start()
+            if self._batch_is_full():
+                self._handle_batch()
+
+    def _handle_batch(self) -> None:
+        if self._timer.is_running():
+            self._timer.stop()
+        messages = self._read_and_empty_batch()
+        if len(messages) > 0:
+            self.work_queue.put(messages)
+        if self._batch_is_full():
+            self._handle_batch()
+        elif not self._batch_is_empty():
+            self._timer.start()
+
+    def _read_and_empty_batch(self) -> Sequence[kombu.Message]:
+        messages = list(self._batch)
+        self._batch = []
+        return messages
+
+    def _batch_is_full(self) -> bool:
+        return len(self._batch) == self.batch_size
+
+    def _batch_is_empty(self) -> bool:
+        return len(self._batch) == 0
+
+    def __del__(self) -> None:
+        if not self.stopped:
+            self.stop()
 
 
 class KombuMessageHandler(MessageHandler):
@@ -188,93 +278,6 @@ class KombuBatchMessageHandler(MessageHandler):
             logger.info("Successfully processed batch with %i messages", len(messages))
 
 
-class KombuBatchQueueConsumer(QueueConsumer):
-    """
-    Wrapper around a MessageHandler object that interfaces with the work_queue and starts/stops the handle loop.
-
-    The batched queue consumer consumes messages until the batch_size is reached
-    or a the batch_timeout has occurred. Then, if the batch is not empty, the
-    messages are consumed. The timer is stopped after a batch is processed if
-    there are no new messages and started when there is at least one message in
-    the batch.
-    """
-
-    def __init__(
-        self,
-        work_queue: queue.Queue,
-        message_handler: MessageHandler,
-        batch_size: int = 1,
-        batch_timeout: float = 1.0,
-        scheduler_interval: float = 1.0,
-    ):
-        super(KombuBatchQueueConsumer, self).__init__(work_queue, message_handler)
-
-        self.batch_size = batch_size
-        self.batch_timeout = batch_timeout
-        self.scheduler_interval = scheduler_interval
-
-        self._batch: List[kombu.Message] = []
-        self._timer = Timer(
-            function=self._handle_batch,
-            interval=self.batch_timeout,
-            is_repeating=False,
-            scheduler_interval=self.scheduler_interval,
-        )
-
-    def stop(self) -> None:
-        """Signal the QueueConsumer to stop processing."""
-        super().stop()
-
-        if self._timer:
-            self._timer.stop()
-
-        messages = self._read_and_empty_batch()
-        self._batch = []
-        logger.info("Stopping and requeueing %i messages", len(messages))
-
-        message: kombu.Message
-        for message in messages:
-            if not message.acknowledged:
-                message.requeue()
-
-    def _handle_message(self, message: kombu.Message) -> None:
-        if self._batch_is_full():
-            logger.warning("Received a message, but the batch is full. Requeueing message.")
-            message.requeue()
-        else:
-            self._batch.append(message)
-            if not self._timer.is_running():
-                self._timer.start()
-        if self._batch_is_full():
-            self._handle_batch()
-
-    def _handle_batch(self) -> None:
-        if self._timer.is_running():
-            self._timer.stop()
-        messages = self._read_and_empty_batch()
-        if len(messages) > 0:
-            self.message_handler.handle(messages)
-        if self._batch_is_full():
-            self._handle_batch()
-        elif not self._batch_is_empty():
-            self._timer.start()
-
-    def _read_and_empty_batch(self) -> Sequence[kombu.Message]:
-        messages = list(self._batch)
-        self._batch = []
-        return messages
-
-    def _batch_is_full(self) -> bool:
-        return len(self._batch) == self.batch_size
-
-    def _batch_is_empty(self) -> bool:
-        return len(self._batch) == 0
-
-    def __del__(self) -> None:
-        if not self.stopped:
-            self.stop()
-
-
 class KombuQueueConsumerFactory(QueueConsumerFactory):
     """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kombu.
 
@@ -285,6 +288,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
     use the constructor directly.
     """
 
+    @overload
     def __init__(
         self,
         baseplate: Baseplate,
@@ -296,8 +300,38 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
         batch_size: Optional[int] = None,
-        batch_timeout: float = 1.0,
-        scheduler_interval: float = 1.0,
+        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
+    ) -> None:
+        ...
+
+    @overload
+    def __init__(
+        self,
+        baseplate: Baseplate,
+        name: str,
+        connection: kombu.Connection,
+        queues: Sequence[kombu.Queue],
+        handler_fn: BatchHandler,
+        error_handler_fn: Optional[BatchErrorHandler] = None,
+        health_check_fn: Optional[HealthcheckCallback] = None,
+        serializer: Optional[KombuSerializer] = None,
+        batch_size: int = 1,
+        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
+    ) -> None:
+        ...
+
+    def __init__(
+        self,
+        baseplate: Baseplate,
+        name: str,
+        connection: kombu.Connection,
+        queues: Sequence[kombu.Queue],
+        handler_fn: Union[Handler, BatchHandler],
+        error_handler_fn: Union[Optional[ErrorHandler], Optional[BatchErrorHandler]] = None,
+        health_check_fn: Optional[HealthcheckCallback] = None,
+        serializer: Optional[KombuSerializer] = None,
+        batch_size: Optional[int] = None,
+        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
     ):
         """`KombuQueueConsumerFactory` constructor.
 
@@ -328,7 +362,42 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         self.serializer = serializer
         self.batch_size = batch_size
         self.batch_timeout = batch_timeout
-        self.scheduler_interval = scheduler_interval
+
+    @overload
+    @classmethod
+    def new(
+        cls,
+        baseplate: Baseplate,
+        exchange: kombu.Exchange,
+        connection: kombu.Connection,
+        queue_name: str,
+        routing_keys: Sequence[str],
+        handler_fn: Handler,
+        error_handler_fn: Optional[ErrorHandler],
+        health_check_fn: Optional[HealthcheckCallback],
+        serializer: Optional[KombuSerializer],
+        batch_size: None = None,
+        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
+    ) -> "KombuQueueConsumerFactory":
+        ...
+
+    @overload
+    @classmethod
+    def new(
+        cls,
+        baseplate: Baseplate,
+        exchange: kombu.Exchange,
+        connection: kombu.Connection,
+        queue_name: str,
+        routing_keys: Sequence[str],
+        handler_fn: Handler,
+        error_handler_fn: Optional[ErrorHandler] = None,
+        health_check_fn: Optional[HealthcheckCallback] = None,
+        serializer: Optional[KombuSerializer] = None,
+        batch_size: int = 1,
+        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
+    ) -> "KombuQueueConsumerFactory":
+        ...
 
     @classmethod
     def new(
@@ -342,6 +411,8 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
+        batch_size: Optional[int] = None,
+        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
     ) -> "KombuQueueConsumerFactory":
         """Return a new `KombuQueueConsumerFactory`.
 
@@ -378,6 +449,8 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             error_handler_fn=error_handler_fn,
             health_check_fn=health_check_fn,
             serializer=serializer,
+            batch_size=batch_size,
+            batch_timeout=batch_timeout,
         )
 
     def build_pump_worker(self, work_queue: WorkQueue) -> KombuConsumerWorker:
@@ -386,23 +459,24 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             queues=self.queues,
             work_queue=work_queue,
             serializer=self.serializer,
+            batch_size=None if self.batch_size is None else max(self.batch_size, 1),
+            batch_timeout=self.batch_timeout,
         )
 
-    def build_message_handler(self) -> KombuMessageHandler:
-        return KombuMessageHandler(
-            self.baseplate, self.name, self.handler_fn, self.error_handler_fn
-        )
-
-    def build_queue_consumer(self, work_queue: Any, message_handler: Any) -> QueueConsumer:
+    def build_message_handler(self) -> Union[KombuMessageHandler, KombuBatchMessageHandler]:
         if self.batch_size is None:
-            return super().build_queue_consumer(work_queue, message_handler)
+            return KombuMessageHandler(
+                self.baseplate,
+                self.name,
+                cast(Handler, self.handler_fn),
+                cast(ErrorHandler, self.error_handler_fn),
+            )
         else:
-            return KombuBatchQueueConsumer(
-                work_queue,
-                message_handler,
-                batch_size=max(self.batch_size, 1),
-                batch_timeout=self.batch_timeout,
-                scheduler_interval=self.scheduler_interval,
+            return KombuBatchMessageHandler(
+                self.baseplate,
+                self.name,
+                cast(BatchHandler, self.handler_fn),
+                cast(BatchErrorHandler, self.error_handler_fn),
             )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:

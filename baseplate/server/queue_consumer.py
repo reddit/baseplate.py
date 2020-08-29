@@ -189,12 +189,6 @@ class QueueConsumerFactory(abc.ABC):
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
         """Build an HTTP server to service health checks."""
 
-    def build_queue_consumer(
-        self, work_queue: queue.Queue, message_handler: MessageHandler
-    ) -> QueueConsumer:
-        """Build a queue consumer."""
-        return QueueConsumer(work_queue=work_queue, message_handler=message_handler)
-
 
 class QueueConsumerServer:
     """Server for running long-lived queue consumers."""
@@ -247,7 +241,7 @@ class QueueConsumerServer:
         maxsize = max_concurrency + max_concurrency // 2
         work_queue: queue.Queue = queue.Queue(maxsize=maxsize)
         handlers = [
-            consumer_factory.build_queue_consumer(
+            QueueConsumer(
                 work_queue=work_queue, message_handler=consumer_factory.build_message_handler()
             )
             for _ in range(max_concurrency)

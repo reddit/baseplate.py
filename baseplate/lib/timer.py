@@ -1,3 +1,4 @@
+from datetime import timedelta
 from enum import Enum
 from enum import unique
 from typing import Callable
@@ -16,15 +17,10 @@ class TimerState(Enum):
 
 class Timer:
     def __init__(
-        self,
-        function: Callable[[], None],
-        interval: float,
-        scheduler_interval: Optional[float] = None,
-        is_repeating: bool = False,
+        self, function: Callable[[], None], interval: timedelta, is_repeating: bool = False,
     ) -> None:
         self.function = function
         self.interval = interval
-        self.scheduler_interval = scheduler_interval if scheduler_interval is not None else interval
         self.is_repeating = is_repeating
         self.state = TimerState.Stopped
         self.scheduler = ThreadedScheduler()
@@ -34,14 +30,14 @@ class Timer:
             return
         self.state = TimerState.Running
         self.scheduler.every(self.interval).seconds.do(self._invoke)
-        self.scheduler.run_continuously(self.scheduler_interval)
+        self.scheduler.run(self.interval)
 
     def stop(self) -> None:
         self.scheduler.cancel_job(self._invoke)
         self.state = TimerState.Stopped
-        self.scheduler.cease_continuous_run()
+        self.scheduler.stop()
 
-    def _invoke(self):
+    def _invoke(self) -> Optional[CancelJob]:
         self.function()
         if self.is_repeating:
             return None
@@ -49,8 +45,8 @@ class Timer:
             self.stop()
             return CancelJob
 
-    def is_running(self):
+    def is_running(self) -> bool:
         return self.state == TimerState.Running
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.stop()

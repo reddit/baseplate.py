@@ -1,5 +1,6 @@
 import time
 
+from datetime import timedelta
 from threading import Event
 from threading import Thread
 from typing import Optional
@@ -17,7 +18,7 @@ class ThreadedScheduler(Scheduler):
     def is_running(self) -> bool:
         return self._stop_event is not None
 
-    def run(self, interval: int = 1) -> None:
+    def run(self, interval: timedelta) -> None:
         """Spawns a new thread and runs pending jobs at a regular interval."""
         if self.is_running():
             self.stop()
@@ -29,7 +30,7 @@ class ThreadedScheduler(Scheduler):
             def run(cls) -> None:
                 while not stop_event.is_set():
                     self.run_pending()
-                    time.sleep(interval)
+                    time.sleep(interval.total_seconds())
 
         thread = ScheduleThread()
         thread.start()
