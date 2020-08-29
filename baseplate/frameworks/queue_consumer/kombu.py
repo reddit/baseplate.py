@@ -128,13 +128,13 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
             self._timer.stop()
 
         messages = self._read_and_empty_batch()
-        self._batch = []
-        logger.info("Stopping and requeueing %i messages", len(messages))
 
-        message: kombu.Message
-        for message in messages:
-            if not message.acknowledged:
-                message.requeue()
+        if messages:
+            logger.debug("Requeueing %i messages", len(messages))
+            message: kombu.Message
+            for message in messages:
+                if not message.acknowledged:
+                    message.requeue()
 
     def _handle_message(self, message: kombu.Message) -> None:
         if self.batch_size is not None:
@@ -173,7 +173,7 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
         return len(self._batch) == 0
 
     def __del__(self) -> None:
-        if not self.stopped:
+        if not self.should_stop:
             self.stop()
 
 
