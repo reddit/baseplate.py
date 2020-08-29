@@ -164,30 +164,22 @@ class QueueConsumer:
         logger.debug("Consumer <%s> starting.", self.id)
         self.started = True
         while not self.stopped:
-            self._get_and_handle_message()
+            try:
+                # We set a timeout so we can periodically check if we should
+                # stop, this way we will actually return if we have recieved a
+                # `stop()` call rather than hanging in a `get` waiting for a
+                # new message.  If we did not do this, we would not be able to
+                # wait for all of our workers to finish before stopping the
+                # server.
+                message = self.work_queue.get(timeout=self._queue_timeout)
+            except queue.Empty:
+                pass
+            else:
+                # Ensure that if self.message_handler.handle throws a `queue.Empty`
+                # error, that bubbles up and is not treated as though `self.work_queue`
+                # is empty
+                self.message_handler.handle(message)
         logger.debug("Consumer <%s> stopping.", self.id)
-
-    def _get_and_handle_message(self) -> None:
-        """Get and process a message from the queue if it is not empty."""
-        try:
-            # We set a timeout so we can periodically check if we should
-            # stop, this way we will actually return if we have recieved a
-            # `stop()` call rather than hanging in a `get` waiting for a
-            # new message.  If we did not do this, we would not be able to
-            # wait for all of our workers to finish before stopping the
-            # server.
-            message = self.work_queue.get(timeout=self._queue_timeout)
-        except queue.Empty:
-            pass
-        else:
-            # Ensure that if self.message_handler.handle throws a `queue.Empty`
-            # error, that bubbles up and is not treated as though `self.work_queue`
-            # is empty
-            self._handle_message(message)
-
-    def _handle_message(self, message: Any) -> None:
-        """Handle a single message."""
-        return self.message_handler.handle(message)
 
 
 class QueueConsumerServer:
