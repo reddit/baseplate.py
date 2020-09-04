@@ -290,9 +290,9 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         queue_name: str,
         routing_keys: Sequence[str],
         handler_fn: Handler,
-        error_handler_fn: Optional[ErrorHandler],
-        health_check_fn: Optional[HealthcheckCallback],
-        serializer: Optional[KombuSerializer],
+        error_handler_fn: Optional[ErrorHandler] = None,
+        health_check_fn: Optional[HealthcheckCallback] = None,
+        serializer: Optional[KombuSerializer] = None,
     ) -> "KombuQueueConsumerFactory":
         """Return a new `KombuQueueConsumerFactory`.
 
