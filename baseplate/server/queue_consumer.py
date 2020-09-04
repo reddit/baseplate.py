@@ -116,7 +116,7 @@ class QueueConsumerFactory(abc.ABC):
     """
 
     @abc.abstractmethod
-    def build_pump_worker(self, work_queue: queue.Queue) -> PumpWorker:
+    def build_pump_worker(self, work_queue: Any) -> PumpWorker:
         """Build an object implementing the PumpWorker interface.
 
         `work_queue` is the Queue that will be shared between the PumpWorker and

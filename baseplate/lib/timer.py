@@ -1,52 +1,40 @@
+import time
+
 from datetime import timedelta
-from enum import Enum
-from enum import unique
+from threading import Thread
 from typing import Callable
 from typing import Optional
 
-from schedule import CancelJob
-
-from baseplate.lib.threaded_scheduler import ThreadedScheduler
-
-
-@unique
-class TimerState(Enum):
-    Running = "Running"
-    Stopped = "Stopped"
-
 
 class Timer:
+    """A restartable timer that execute an action after a timeout or at an interval."""
+
     def __init__(
-        self, function: Callable[[], None], interval: timedelta, is_repeating: bool = False,
+        self, action: Callable[[], None], interval: timedelta, is_repeating: bool = False,
     ) -> None:
-        self.function = function
+        self.action = action
         self.interval = interval
         self.is_repeating = is_repeating
-        self.state = TimerState.Stopped
-        self.scheduler = ThreadedScheduler()
+        self._thread: Optional[Thread] = None
 
     def start(self) -> None:
-        if self.state == TimerState.Running:
+        if self.is_running():
             return
-        self.state = TimerState.Running
-        self.scheduler.every(self.interval).seconds.do(self._invoke)
-        self.scheduler.run(self.interval)
+        self._thread = Thread(target=self._run)
 
     def stop(self) -> None:
-        self.scheduler.cancel_job(self._invoke)
-        self.state = TimerState.Stopped
-        self.scheduler.stop()
+        self._thread = None
 
-    def _invoke(self) -> Optional[CancelJob]:
-        self.function()
-        if self.is_repeating:
-            return None
-        else:
-            self.stop()
-            return CancelJob
+    def _run(self) -> None:
+        thread = self._thread
+        while self.is_running() and self._thread == thread:
+            time.sleep(self.interval.total_seconds())
+            self.action()
+            if not self.is_repeating:
+                self.stop()
 
     def is_running(self) -> bool:
-        return self.state == TimerState.Running
+        return self._thread is not None
 
     def __del__(self) -> None:
         self.stop()
