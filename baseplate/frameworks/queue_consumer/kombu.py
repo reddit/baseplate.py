@@ -8,7 +8,6 @@ from typing import Callable
 from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
-from typing import Union
 
 import kombu
 
@@ -339,7 +338,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             serializer=self.serializer,
         )
 
-    def build_message_handler(self) -> Union[KombuMessageHandler, KombuBatchMessageHandler]:
+    def build_message_handler(self) -> KombuMessageHandler:
         return KombuMessageHandler(
             self.baseplate,
             self.name,
