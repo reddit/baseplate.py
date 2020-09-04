@@ -98,7 +98,7 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
         connection: kombu.Connection,
         queues: Sequence[kombu.Queue],
         work_queue: BatchedQueue,
-        serializer: Optional[KombuSerializer] = None
+        serializer: Optional[KombuSerializer] = None,
     ) -> None:
         self.connection = connection
         self.queues = queues
@@ -340,10 +340,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
 
     def build_message_handler(self) -> KombuMessageHandler:
         return KombuMessageHandler(
-            self.baseplate,
-            self.name,
-            self.handler_fn,
-            self.error_handler_fn
+            self.baseplate, self.name, self.handler_fn, self.error_handler_fn
         )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
@@ -467,10 +464,7 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
 
     def build_message_handler(self) -> KombuBatchMessageHandler:
         return KombuBatchMessageHandler(
-            self.baseplate,
-            self.name,
-            self.handler_fn,
-            self.error_handler_fn,
+            self.baseplate, self.name, self.handler_fn, self.error_handler_fn,
         )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:

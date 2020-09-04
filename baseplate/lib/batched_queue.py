@@ -3,12 +3,12 @@ from queue import Queue
 from typing import Generic
 from typing import List
 from typing import Sequence
-from typing import TypeVar
 from typing import TYPE_CHECKING
+from typing import TypeVar
 
 from baseplate.lib.timer import Timer
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 if TYPE_CHECKING:
     WorkQueue = Queue[Sequence[T]]  # pylint: disable=unsubscriptable-object

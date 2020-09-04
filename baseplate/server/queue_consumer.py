@@ -13,6 +13,7 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
+
 try:
     from typing import Protocol
 except ImportError:
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from wsgiref.types import StartResponse  # pylint: disable=import-error,no-name-in-module
+
     if Protocol is None:
         Protocol = Any
 else:
