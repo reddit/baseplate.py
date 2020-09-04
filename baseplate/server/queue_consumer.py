@@ -13,6 +13,7 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
+from typing import Protocol
 from typing import Sequence
 from typing import TYPE_CHECKING
 
@@ -108,6 +109,11 @@ class MessageHandler(abc.ABC):
         """
 
 
+class WriteableQueueLike(Protocol):
+    def put(self, item: Any) -> None:
+        ...
+
+
 class QueueConsumerFactory(abc.ABC):
     """Factory for building all of the objects needed to run a QueueConsumerServer.
 
@@ -116,7 +122,7 @@ class QueueConsumerFactory(abc.ABC):
     """
 
     @abc.abstractmethod
-    def build_pump_worker(self, work_queue: Any) -> PumpWorker:
+    def build_pump_worker(self, work_queue: WriteableQueueLike) -> PumpWorker:
         """Build an object implementing the PumpWorker interface.
 
         `work_queue` is the Queue that will be shared between the PumpWorker and
