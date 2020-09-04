@@ -13,7 +13,10 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
-from typing import Protocol
+try:
+    from typing import Protocol
+except ImportError:
+    Protocol = None  # type: ignore
 from typing import Sequence
 from typing import TYPE_CHECKING
 
@@ -30,6 +33,11 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from wsgiref.types import StartResponse  # pylint: disable=import-error,no-name-in-module
+    if Protocol is None:
+        Protocol = Any
+else:
+    if Protocol is None:
+        Protocol = object
 
 WSGIEnvironment = Dict[str, Any]
 HealthcheckCallback = Callable[[WSGIEnvironment], bool]
