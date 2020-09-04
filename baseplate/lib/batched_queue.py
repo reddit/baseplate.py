@@ -4,16 +4,22 @@ from typing import Generic
 from typing import List
 from typing import Sequence
 from typing import TypeVar
+from typing import TYPE_CHECKING
 
 from baseplate.lib.timer import Timer
 
-T = TypeVar('T')      # Declare type variable
+T = TypeVar('T')
+
+if TYPE_CHECKING:
+    WorkQueue = Queue[Sequence[T]]  # pylint: disable=unsubscriptable-object
+else:
+    WorkQueue = Queue
 
 
 class BatchedQueue(Generic[T]):
     """A queue which collects and placed items in batches."""
 
-    def __init__(self, work_queue: Queue[Sequence[T]], batch_size: int, flush_interval: timedelta) -> None:
+    def __init__(self, work_queue: WorkQueue, batch_size: int, flush_interval: timedelta) -> None:
         assert batch_size >= 1
         assert work_queue is not None
         self._work_queue = work_queue
