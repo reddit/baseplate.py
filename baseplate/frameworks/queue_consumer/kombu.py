@@ -205,12 +205,14 @@ class KombuBatchMessageHandler(MessageHandler):
                 message: kombu.Message
                 for message in messages:
                     delivery_info = message.delivery_info
-                    tags.add(_SpanTag(
-                        routing_key=delivery_info.get("routing_key", ""),
-                        consumer_tag=delivery_info.get("consumer_tag", ""),
-                        delivery_tag=delivery_info.get("delivery_tag", ""),
-                        exchange=delivery_info.get("exchange", ""),
-                    ))
+                    tags.add(
+                        _SpanTag(
+                            routing_key=delivery_info.get("routing_key", ""),
+                            consumer_tag=delivery_info.get("consumer_tag", ""),
+                            delivery_tag=delivery_info.get("delivery_tag", ""),
+                            exchange=delivery_info.get("exchange", ""),
+                        )
+                    )
 
                 for i, tag in enumerate(tags):
                     span.set_tag(f"amqp.routing_key{i}", tag.routing_key)
@@ -468,7 +470,9 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
         )
 
     def build_pump_worker(self, work_queue: queue.Queue) -> KombuBatchConsumerWorker:
-        batched_queue: BatchedQueue[kombu.Message] = BatchedQueue(work_queue, self.batch_size, self.batch_timeout)
+        batched_queue: BatchedQueue[kombu.Message] = BatchedQueue(
+            work_queue, self.batch_size, self.batch_timeout
+        )
         return KombuBatchConsumerWorker(
             connection=self.connection,
             queues=self.queues,
