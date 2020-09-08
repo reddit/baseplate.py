@@ -124,9 +124,10 @@ class StaticTrustHandler(HeaderTrustHandler):
 
 # pylint: disable=too-many-ancestors
 class BaseplateRequest(RequestContext, pyramid.request.Request):
-    def __init__(self, context_config: Dict[str, Any], environ: Dict[str, str]):
-        RequestContext.__init__(self, context_config)
-        pyramid.request.Request.__init__(self, environ)
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        context_config = kwargs.pop("context_config", None)
+        RequestContext.__init__(self, context_config=context_config)
+        pyramid.request.Request.__init__(self, *args, **kwargs)
 
 
 class RequestFactory:
@@ -134,11 +135,11 @@ class RequestFactory:
         self.baseplate = baseplate
 
     def __call__(self, environ: Dict[str, str]) -> BaseplateRequest:
-        return BaseplateRequest(self.baseplate._context_config, environ)
+        return BaseplateRequest(environ, context_config=self.baseplate._context_config)
 
     def blank(self, path: str) -> BaseplateRequest:
         environ = webob.request.environ_from_url(path)
-        return BaseplateRequest(self.baseplate._context_config, environ)
+        return BaseplateRequest(environ, context_config=self.baseplate._context_config)
 
 
 class BaseplateConfigurator:
