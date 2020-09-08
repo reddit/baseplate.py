@@ -13,11 +13,6 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Optional
-
-try:
-    from typing import Protocol
-except ImportError:
-    Protocol = None  # type: ignore
 from typing import Sequence
 from typing import TYPE_CHECKING
 
@@ -34,12 +29,6 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from wsgiref.types import StartResponse  # pylint: disable=import-error,no-name-in-module
-
-    if Protocol is None:
-        Protocol = Any
-else:
-    if Protocol is None:
-        Protocol = object
 
 WSGIEnvironment = Dict[str, Any]
 HealthcheckCallback = Callable[[WSGIEnvironment], bool]
@@ -119,11 +108,6 @@ class MessageHandler(abc.ABC):
         """
 
 
-class WriteableQueueLike(Protocol):
-    def put(self, item: Any) -> None:
-        ...
-
-
 class QueueConsumerFactory(abc.ABC):
     """Factory for building all of the objects needed to run a QueueConsumerServer.
 
@@ -132,7 +116,7 @@ class QueueConsumerFactory(abc.ABC):
     """
 
     @abc.abstractmethod
-    def build_pump_worker(self, work_queue: WriteableQueueLike) -> PumpWorker:
+    def build_pump_worker(self, work_queue: queue.Queue) -> PumpWorker:
         """Build an object implementing the PumpWorker interface.
 
         `work_queue` is the Queue that will be shared between the PumpWorker and

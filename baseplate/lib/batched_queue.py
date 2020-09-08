@@ -35,12 +35,10 @@ class BatchedQueue(Generic[T]):
             self._flusher.start()
 
     def _flush(self) -> None:
-        self._flusher.stop()
-        batch = list(self._batch)
-        self._batch = []
+        batch = self.drain()
         self._work_queue.put(batch)
 
-    def flush_and_return_batch(self) -> List[T]:
+    def drain(self) -> List[T]:
         self._flusher.stop()
         batch = list(self._batch)
         self._batch = []

@@ -5,8 +5,10 @@ import socket
 from datetime import timedelta
 from typing import Any
 from typing import Callable
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
+from typing import Set
 from typing import TYPE_CHECKING
 
 import kombu
@@ -87,10 +89,6 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
         # `should_stop` is an attribute of `ConsumerMixin`
         self.should_stop = True
 
-    def __del__(self) -> None:
-        if not self.should_stop:
-            self.stop()
-
 
 class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
     def __init__(
@@ -116,7 +114,7 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
         # `should_stop` is an attribute of `ConsumerMixin`
         self.should_stop = True
 
-        messages = self.work_queue.flush_and_return_batch()
+        messages = self.work_queue.drain()
 
         if messages:
             logger.debug("Requeueing %i messages", len(messages))
@@ -124,10 +122,6 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
             for message in messages:
                 if not message.acknowledged:
                     message.requeue()
-
-    def __del__(self) -> None:
-        if not self.should_stop:
-            self.stop()
 
 
 class KombuMessageHandler(MessageHandler):
@@ -199,14 +193,30 @@ class KombuBatchMessageHandler(MessageHandler):
             # handle the error (publish it to error reporting)
             with self.baseplate.make_server_span(context, self.name) as span:
                 span.set_tag("kind", "batch_consumer")
+                span.set_tag("size", len(messages))
 
+                class _SpanTag(NamedTuple):
+                    routing_key: str
+                    consumer_tag: str
+                    delivery_tag: str
+                    exchange: str
+
+                tags: Set[_SpanTag] = set()
                 message: kombu.Message
                 for message in messages:
                     delivery_info = message.delivery_info
-                    span.set_tag("amqp.routing_key", delivery_info.get("routing_key", ""))
-                    span.set_tag("amqp.consumer_tag", delivery_info.get("consumer_tag", ""))
-                    span.set_tag("amqp.delivery_tag", delivery_info.get("delivery_tag", ""))
-                    span.set_tag("amqp.exchange", delivery_info.get("exchange", ""))
+                    tags.add(_SpanTag(
+                        routing_key=delivery_info.get("routing_key", ""),
+                        consumer_tag=delivery_info.get("consumer_tag", ""),
+                        delivery_tag=delivery_info.get("delivery_tag", ""),
+                        exchange=delivery_info.get("exchange", ""),
+                    ))
+
+                for i, tag in enumerate(tags):
+                    span.set_tag(f"amqp.routing_key{i}", tag.routing_key)
+                    span.set_tag(f"amqp.consumer_tag{i}", tag.consumer_tag)
+                    span.set_tag(f"amqp.delivery_tag{i}", tag.delivery_tag)
+                    span.set_tag(f"amqp.exchange{i}", tag.exchange)
 
                 self.handler_fn(context, list(messages))
         except Exception as exc:  # pylint: disable=broad-except
@@ -368,7 +378,7 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
         batch_size: int = 1,
-        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
+        batch_timeout: timedelta = timedelta(seconds=1),
     ) -> None:
         """`KombuQueueConsumerFactory` constructor.
 
@@ -388,6 +398,10 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
             be used to decode the messages you are consuming.
+        :param batch_size: The size of a message batch
+        :param batch_timeout: The timeout after which a message will latest be processed even if
+            the batch is not full
+        """
         """
         self.baseplate = baseplate
         self.connection = connection
@@ -413,7 +427,7 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
         batch_size: int = 1,
-        batch_timeout: timedelta = timedelta(0, 1, 0, 0, 0, 0, 0),
+        batch_timeout: timedelta = timedelta(seconds=1),
     ) -> "KombuBatchQueueConsumerFactory":
         """Return a new `KombuBatchQueueConsumerFactory`.
 
@@ -454,11 +468,12 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
             batch_timeout=batch_timeout,
         )
 
-    def build_pump_worker(self, work_queue: BatchWorkQueue) -> KombuBatchConsumerWorker:
+    def build_pump_worker(self, work_queue: queue.Queue) -> KombuBatchConsumerWorker:
+        batched_queue: BatchedQueue[kombu.Message] = BatchedQueue(work_queue, self.batch_size, self.batch_timeout)
         return KombuBatchConsumerWorker(
             connection=self.connection,
             queues=self.queues,
-            work_queue=work_queue,
+            work_queue=batched_queue,
             serializer=self.serializer,
         )
 

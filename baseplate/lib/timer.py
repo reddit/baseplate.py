@@ -27,8 +27,10 @@ class Timer:
 
     def _run(self) -> None:
         thread = self._thread
-        while self.is_running() and self._thread == thread:
+        while self._is_active_thread(thread):
             time.sleep(self.interval.total_seconds())
+            if not self._is_active_thread(thread):
+                return
             self.action()
             if not self.is_repeating:
                 self.stop()
@@ -38,3 +40,6 @@ class Timer:
 
     def __del__(self) -> None:
         self.stop()
+
+    def _is_active_thread(self, thread: Optional[Thread]) -> bool:
+        return self.is_running() and self._thread is thread
