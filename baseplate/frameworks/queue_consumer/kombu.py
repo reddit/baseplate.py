@@ -402,7 +402,6 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
         :param batch_timeout: The timeout after which a message will latest be processed even if
             the batch is not full
         """
-        """
         self.baseplate = baseplate
         self.connection = connection
         self.queues = queues
