@@ -20,7 +20,7 @@ def queue() -> WorkQueue:
 
 class TestBatchedQueue:
     def test_drain(self, queue: WorkQueue) -> None:
-        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=5, flush_interval=timedelta(1))
+        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=5, flush_interval=timedelta(seconds=1))
         batched_queue.put(0)
         batched_queue.put(1)
         batched_queue.put(2)
@@ -28,12 +28,12 @@ class TestBatchedQueue:
         assert len(items) == 3 and items[0] == 0 and items[1] == 1 and items[2] == 2
 
     def test_time_expiration(self, queue: WorkQueue) -> None:
-        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=5, flush_interval=timedelta(0.1))
+        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=5, flush_interval=timedelta(seconds=0.1))
         batched_queue.put(0)
         batched_queue.put(1)
         batched_queue.put(2)
 
-        sleep(0.2)
+        sleep(0.11)
 
         assert queue.qsize() == 1
         batch = queue.get()
@@ -43,12 +43,14 @@ class TestBatchedQueue:
         assert len(items) == 0
 
     def test_queue_limit(self, queue: WorkQueue) -> None:
-        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=2, flush_interval=timedelta(1))
+        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=2, flush_interval=timedelta(seconds=0.1))
         batched_queue.put(0)
         batched_queue.put(1)
         batched_queue.put(2)
         batched_queue.put(3)
         batched_queue.put(4)
+
+        sleep(0.21)
 
         assert queue.qsize() == 2
         batch_1 = queue.get()
@@ -60,12 +62,14 @@ class TestBatchedQueue:
         assert len(items) == 1 and items[0] == 4
 
     def test_queue_limit_and_expiration(self, queue: WorkQueue) -> None:
-        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=3, flush_interval=timedelta(1))
+        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=3, flush_interval=timedelta(seconds=0.1))
         batched_queue.put(0)
         batched_queue.put(1)
         batched_queue.put(2)
         batched_queue.put(3)
         batched_queue.put(4)
+
+        sleep(0.21)
 
         assert queue.qsize() == 2
         batch_1 = queue.get()
