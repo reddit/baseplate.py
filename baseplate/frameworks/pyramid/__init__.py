@@ -5,6 +5,8 @@ import sys
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterable
+from typing import Iterator
 from typing import Mapping
 from typing import Optional
 
@@ -20,6 +22,7 @@ from pyramid.response import Response
 
 from baseplate import Baseplate
 from baseplate import RequestContext
+from baseplate import Span
 from baseplate import TraceInfo
 from baseplate.lib import warn_deprecated
 from baseplate.lib.edge_context import EdgeRequestContextFactory
@@ -28,6 +31,43 @@ from baseplate.thrift.ttypes import IsHealthyProbe
 
 
 logger = logging.getLogger(__name__)
+
+
+class SpanFinishingAppIterWrapper:
+    """Wrapper for Response.app_iter that finishes the span when the iterator is done.
+
+    The WSGI spec expects applications to return an iterable object. In the
+    common case, the iterable is a single-item list containing a byte string of
+    the full response. However, if the application wants to stream a response
+    back to the client (e.g. it's sending a lot of data, or it wants to get
+    some bytes on the wire really quickly before some database calls finish)
+    the iterable can take a while to finish iterating.
+
+    This wrapper allows us to keep the server span open until the iterable is
+    finished even though our view callable returned long ago.
+
+    """
+
+    def __init__(self, span: Span, app_iter: Iterable[bytes]) -> None:
+        self.span = span
+        self.app_iter = iter(app_iter)
+
+    def __iter__(self) -> Iterator[bytes]:
+        return self
+
+    def __next__(self) -> bytes:
+        try:
+            return next(self.app_iter)
+        except StopIteration:
+            self.span.finish()
+            raise
+        except:  # noqa: E722
+            self.span.finish(exc_info=sys.exc_info())
+            raise
+
+    def close(self) -> None:
+        if hasattr(self.app_iter, "close"):
+            self.app_iter.close()  # type: ignore
 
 
 def _make_baseplate_tween(
@@ -43,7 +83,7 @@ def _make_baseplate_tween(
         else:
             if request.trace:
                 request.trace.set_tag("http.status_code", response.status_code)
-                request.trace.finish()
+                response.app_iter = SpanFinishingAppIterWrapper(request.trace, response.app_iter)
         finally:
             # avoid a reference cycle
             request.start_server_span = None
