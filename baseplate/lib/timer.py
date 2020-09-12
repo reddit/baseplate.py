@@ -21,6 +21,7 @@ class Timer:
         if self.is_running():
             return
         self._thread = Thread(target=self._run)
+        self._thread.start()
 
     def stop(self) -> None:
         self._thread = None

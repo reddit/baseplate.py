@@ -1,87 +1,82 @@
 from datetime import timedelta
+import gc
 import pytest
 from time import sleep
-
+from unittest.mock import call
+from unittest.mock import Mock
+from unittest.mock import patch
 from baseplate.lib.timer import Timer
 
 
-class Counter:
-    def __init__(self) -> None:
-        self._value = 0
-
-    def inc(self) -> None:
-        self._value = self._value + 1
-
-    def value(self) -> int:
-        return self._value
-
-    def set_value(self, value: int) -> None:
-        self._value = value
-
-
 @pytest.fixture
-def counter() -> Counter:
-    return Counter()
+def mock() -> Mock:
+    return Mock()
 
 
 class TestTimer:
-    def test_no_repeat_will_execute_once(self, counter: Counter) -> None:
-        timer = Timer(action=counter.inc, interval=timedelta(seconds=0.1), is_repeating=False)
-        timer.start()
-        sleep(0.5)
-        assert counter.value() == 1
-
-    def test_repeat_will_execute_more_than_once(self, counter: Counter) -> None:
-        timer = Timer(action=counter.inc, interval=timedelta(seconds=0.1), is_repeating=True)
-        timer.start()
-        sleep(0.51)
-        assert counter.value() == 5
-
-    def test_no_repeat_will_not_execute_after_stop(self, counter: Counter) -> None:
-        timer = Timer(action=counter.inc, interval=timedelta(seconds=0.2), is_repeating=False)
-        timer.start()
-        sleep(0.1)
-        timer.stop()
-        value_after_stop = counter.value()
-        assert value_after_stop == 0
-        sleep(0.3)
-        assert counter.value() == value_after_stop
-
-    def test_repeat_will_not_execute_after_stop(self, counter: Counter) -> None:
-        timer = Timer(action=counter.inc, interval=timedelta(seconds=0.1), is_repeating=True)
-        timer.start()
-        sleep(0.21)
-        timer.stop()
-        value_after_stop = counter.value()
-        assert value_after_stop == 2
-        sleep(0.31)
-        assert counter.value() == value_after_stop
-
-    def test_timer_is_running(self, counter: Counter) -> None:
-        timer = Timer(action=counter.inc, interval=timedelta(seconds=0.1), is_repeating=True)
-        timer.start()
-        assert timer.is_running()
-
-    def test_timer_will_stop_when_going_out_of_scope(self, counter: Counter) -> None:
-        def action() -> None:
-            timer = Timer(action=counter.inc, interval=timedelta(seconds=0.1), is_repeating=True)
+    def test_no_repeat_will_execute_once(self, mock: Mock) -> None:
+        timer = Timer(action=mock, interval=timedelta(milliseconds=100), is_repeating=False)
+        try:
             timer.start()
-        action()
-        sleep(1)
-        assert counter.value() == 0
+            sleep(0.5)
+            mock.assert_called_once()
+        finally:
+            timer.stop()
 
-    def test_timer_will_not_execute_old_action_after_restart(self, counter: Counter) -> None:
-        def action_1():
-            counter.set_value(1000)
-        
-        def action_2():
-            counter.inc()
-        
+    def test_repeat_will_execute_more_than_once(self, mock: Mock) -> None:
+        timer = Timer(action=mock, interval=timedelta(milliseconds=100), is_repeating=True)
+        try:
+            timer.start()
+            sleep(0.51)
+            mock.assert_has_calls([call(), call(), call(), call(), call()])
+        finally:
+            timer.stop()
+
+    def test_no_repeat_will_not_execute_after_stop(self, mock: Mock) -> None:
+        timer = Timer(action=mock, interval=timedelta(seconds=0.2), is_repeating=False)
+        try:
+            timer.start()
+            sleep(0.1)
+            timer.stop()
+            mock.assert_not_called()
+            sleep(0.3)
+            mock.assert_not_called()
+        finally:
+            timer.stop()
+
+    def test_repeat_will_not_execute_after_stop(self, mock: Mock) -> None:
+        timer = Timer(action=mock, interval=timedelta(seconds=0.1), is_repeating=True)
+        try:
+            timer.start()
+            sleep(0.21)
+            timer.stop()
+            mock.assert_has_calls([call(), call()])
+            sleep(0.31)
+            mock.assert_has_calls([call(), call()])
+        finally:
+            timer.stop()
+
+    def test_timer_is_running(self, mock: Mock) -> None:
+        timer = Timer(action=mock, interval=timedelta(seconds=0.1), is_repeating=True)
+        try:
+            timer.start()
+            assert timer.is_running()
+        finally:
+            timer.stop()
+
+    def test_timer_will_not_execute_old_action_after_restart(self) -> None:
+        action_1 = Mock()
+        action_2 = Mock()
+
         timer = Timer(action=action_1, interval=timedelta(seconds=0.2), is_repeating=False)
-        timer.start()
-        sleep(0.1)
-        timer.stop()
-        timer.action = action_2
-        timer.start()
-        sleep(0.5)
-        assert counter.value() < 1000
+        try:
+            timer.start()
+            sleep(0.1)
+            timer.stop()
+            timer.action = action_2
+            timer.start()
+            sleep(0.5)
+            action_1.assert_not_called()
+            action_2.assert_called()
+        finally:
+            timer.stop()
