@@ -1,6 +1,5 @@
 from datetime import timedelta
 from queue import Queue
-
 from typing import Generic
 from typing import List
 from typing import Sequence

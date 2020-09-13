@@ -1,9 +1,11 @@
 from datetime import timedelta
-import pytest
+
 from queue import Queue
 from time import sleep
 from typing import Sequence
 from typing import TYPE_CHECKING
+
+import pytest
 
 from baseplate.lib.batched_queue import BatchedQueue
 
