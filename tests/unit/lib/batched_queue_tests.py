@@ -1,5 +1,4 @@
 from datetime import timedelta
-
 from queue import Queue
 from time import sleep
 from typing import Sequence
@@ -22,7 +21,9 @@ def queue() -> WorkQueue:
 
 class TestBatchedQueue:
     def test_drain(self, queue: WorkQueue) -> None:
-        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=5, flush_interval=timedelta(seconds=1))
+        batched_queue: BatchedQueue[int] = BatchedQueue(
+            queue, batch_size=5, flush_interval=timedelta(seconds=1)
+        )
         batched_queue.put(0)
         batched_queue.put(1)
         batched_queue.put(2)
@@ -30,7 +31,9 @@ class TestBatchedQueue:
         assert len(items) == 3 and items[0] == 0 and items[1] == 1 and items[2] == 2
 
     def test_time_expiration(self, queue: WorkQueue) -> None:
-        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=5, flush_interval=timedelta(seconds=0.1))
+        batched_queue: BatchedQueue[int] = BatchedQueue(
+            queue, batch_size=5, flush_interval=timedelta(seconds=0.1)
+        )
         batched_queue.put(0)
         batched_queue.put(1)
         batched_queue.put(2)
@@ -45,7 +48,9 @@ class TestBatchedQueue:
         assert len(items) == 0
 
     def test_queue_limit(self, queue: WorkQueue) -> None:
-        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=2, flush_interval=timedelta(seconds=0.5))
+        batched_queue: BatchedQueue[int] = BatchedQueue(
+            queue, batch_size=2, flush_interval=timedelta(seconds=0.5)
+        )
         batched_queue.put(0)
         batched_queue.put(1)
         batched_queue.put(2)
@@ -64,7 +69,9 @@ class TestBatchedQueue:
         assert len(items) == 1 and items[0] == 4
 
     def test_queue_limit_and_expiration(self, queue: WorkQueue) -> None:
-        batched_queue: BatchedQueue[int] = BatchedQueue(queue, batch_size=3, flush_interval=timedelta(seconds=0.1))
+        batched_queue: BatchedQueue[int] = BatchedQueue(
+            queue, batch_size=3, flush_interval=timedelta(seconds=0.1)
+        )
         batched_queue.put(0)
         batched_queue.put(1)
         batched_queue.put(2)

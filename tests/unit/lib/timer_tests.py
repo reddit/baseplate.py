@@ -1,5 +1,4 @@
 from datetime import timedelta
-
 from time import sleep
 from unittest.mock import call
 from unittest.mock import Mock

@@ -13,12 +13,12 @@ from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import ServerSpan
 from baseplate.frameworks.queue_consumer.kombu import FatalMessageHandlerError
-from baseplate.frameworks.queue_consumer.kombu import KombuConsumerWorker
-from baseplate.frameworks.queue_consumer.kombu import KombuMessageHandler
-from baseplate.frameworks.queue_consumer.kombu import KombuQueueConsumerFactory
 from baseplate.frameworks.queue_consumer.kombu import KombuBatchConsumerWorker
 from baseplate.frameworks.queue_consumer.kombu import KombuBatchMessageHandler
 from baseplate.frameworks.queue_consumer.kombu import KombuBatchQueueConsumerFactory
+from baseplate.frameworks.queue_consumer.kombu import KombuConsumerWorker
+from baseplate.frameworks.queue_consumer.kombu import KombuMessageHandler
+from baseplate.frameworks.queue_consumer.kombu import KombuQueueConsumerFactory
 from baseplate.lib.batched_queue import BatchedQueue
 
 from .... import does_not_raise
@@ -312,7 +312,7 @@ class TestKombuBatchQueueConsumerFactory:
                 error_handler_fn=lambda ctx, body, msg: True,
                 health_check_fn=health_check_fn,
                 batch_size=1,
-                batch_timeout=timedelta(seconds=1)
+                batch_timeout=timedelta(seconds=1),
             )
 
         return _make_queue_consumer_factory
@@ -331,7 +331,7 @@ class TestKombuBatchQueueConsumerFactory:
             error_handler_fn=error_handler_fn,
             health_check_fn=health_check_fn,
             batch_size=1,
-            batch_timeout=timedelta(seconds=1)
+            batch_timeout=timedelta(seconds=1),
         )
         assert factory.baseplate == baseplate
         assert factory.connection == connection
@@ -397,12 +397,14 @@ class TestKombuConsumerWorker:
 class TestKombuBatchConsumerWorker:
     @pytest.fixture
     def consumer_worker(self, connection, queues):
-        return KombuBatchConsumerWorker(connection, queues, BatchedQueue(Queue(maxsize=10), 1, timedelta(seconds=1)))
+        return KombuBatchConsumerWorker(
+            connection, queues, BatchedQueue(Queue(maxsize=10), 1, timedelta(seconds=1))
+        )
 
     def test_initial_state(self, consumer_worker):
         assert getattr(consumer_worker, "should_stop", None) is not True
 
-    @ mock.patch("baseplate.frameworks.queue_consumer.kombu.ConsumerMixin.run")
+    @mock.patch("baseplate.frameworks.queue_consumer.kombu.ConsumerMixin.run")
     def test_run(self, run, consumer_worker):
         consumer_worker.run()
         run.assert_called_once()
