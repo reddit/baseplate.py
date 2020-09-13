@@ -1,7 +1,7 @@
 from datetime import timedelta
 import pytest
 from queue import Queue
-from gevent import sleep
+from time import sleep
 from typing import Sequence
 from typing import TYPE_CHECKING
 

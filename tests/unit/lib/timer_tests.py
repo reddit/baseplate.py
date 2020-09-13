@@ -1,10 +1,8 @@
 from datetime import timedelta
-import gc
 import pytest
 from time import sleep
 from unittest.mock import call
 from unittest.mock import Mock
-from unittest.mock import patch
 from baseplate.lib.timer import Timer
 
 
