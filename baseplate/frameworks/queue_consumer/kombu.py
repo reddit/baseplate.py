@@ -5,10 +5,8 @@ import socket
 from datetime import timedelta
 from typing import Any
 from typing import Callable
-from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
-from typing import Set
 from typing import TYPE_CHECKING
 
 import kombu
@@ -195,30 +193,13 @@ class KombuBatchMessageHandler(MessageHandler):
                 span.set_tag("kind", "batch_consumer")
                 span.set_tag("size", len(messages))
 
-                class _SpanTag(NamedTuple):
-                    routing_key: str
-                    consumer_tag: str
-                    delivery_tag: str
-                    exchange: str
-
-                tags: Set[_SpanTag] = set()
                 message: kombu.Message
-                for message in messages:
+                for i, message in enumerate(messages):
                     delivery_info = message.delivery_info
-                    tags.add(
-                        _SpanTag(
-                            routing_key=delivery_info.get("routing_key", ""),
-                            consumer_tag=delivery_info.get("consumer_tag", ""),
-                            delivery_tag=delivery_info.get("delivery_tag", ""),
-                            exchange=delivery_info.get("exchange", ""),
-                        )
-                    )
-
-                for i, tag in enumerate(tags):
-                    span.set_tag(f"amqp.routing_key{i}", tag.routing_key)
-                    span.set_tag(f"amqp.consumer_tag{i}", tag.consumer_tag)
-                    span.set_tag(f"amqp.delivery_tag{i}", tag.delivery_tag)
-                    span.set_tag(f"amqp.exchange{i}", tag.exchange)
+                    span.set_tag(f"amqp.routing_key_{i}", delivery_info.get("routing_key", ""))
+                    span.set_tag(f"amqp.consumer_tag_{i}", delivery_info.get("consumer_tag", ""))
+                    span.set_tag(f"amqp.delivery_tag_{i}", delivery_info.get("delivery_tag", ""))
+                    span.set_tag(f"amqp.exchange_{i}", delivery_info.get("exchange", ""))
 
                 self.handler_fn(context, list(messages))
         except Exception as exc:  # pylint: disable=broad-except
