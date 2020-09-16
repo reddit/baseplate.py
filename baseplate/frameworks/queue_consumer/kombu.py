@@ -120,7 +120,8 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
             for message in messages:
                 if not message.acknowledged:
                     message.requeue()
-
+                else:
+                    logger.warning("Message in unprocessed batch had already been acknowledged") 
 
 class KombuMessageHandler(MessageHandler):
     def __init__(
