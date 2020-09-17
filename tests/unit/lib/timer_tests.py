@@ -3,18 +3,12 @@ from time import sleep
 from unittest.mock import call
 from unittest.mock import Mock
 
-import pytest
-
 from baseplate.lib.timer import Timer
 
 
-@pytest.fixture
-def mock() -> Mock:
-    return Mock()
-
-
 class TestTimer:
-    def test_no_repeat_will_execute_once(self, mock: Mock) -> None:
+    def test_no_repeat_will_execute_once(self) -> None:
+        mock = Mock()
         timer = Timer(action=mock, interval=timedelta(milliseconds=100), is_repeating=False)
         try:
             timer.start()
@@ -23,7 +17,8 @@ class TestTimer:
         finally:
             timer.stop()
 
-    def test_repeat_will_execute_more_than_once(self, mock: Mock) -> None:
+    def test_repeat_will_execute_more_than_once(self) -> None:
+        mock = Mock()
         timer = Timer(action=mock, interval=timedelta(milliseconds=100), is_repeating=True)
         try:
             timer.start()
@@ -32,7 +27,8 @@ class TestTimer:
         finally:
             timer.stop()
 
-    def test_no_repeat_will_not_execute_after_stop(self, mock: Mock) -> None:
+    def test_no_repeat_will_not_execute_after_stop(self) -> None:
+        mock = Mock()
         timer = Timer(action=mock, interval=timedelta(seconds=0.2), is_repeating=False)
         try:
             timer.start()
@@ -44,7 +40,8 @@ class TestTimer:
         finally:
             timer.stop()
 
-    def test_repeat_will_not_execute_after_stop(self, mock: Mock) -> None:
+    def test_repeat_will_not_execute_after_stop(self) -> None:
+        mock = Mock()
         timer = Timer(action=mock, interval=timedelta(seconds=0.1), is_repeating=True)
         try:
             timer.start()
@@ -56,7 +53,8 @@ class TestTimer:
         finally:
             timer.stop()
 
-    def test_timer_is_running(self, mock: Mock) -> None:
+    def test_timer_is_running(self) -> None:
+        mock = Mock()
         timer = Timer(action=mock, interval=timedelta(seconds=0.1), is_repeating=True)
         try:
             timer.start()

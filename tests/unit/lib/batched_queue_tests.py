@@ -2,25 +2,13 @@ from datetime import timedelta
 from queue import Queue
 from time import sleep
 from typing import Sequence
-from typing import TYPE_CHECKING
-
-import pytest
 
 from baseplate.lib.batched_queue import BatchedQueue
 
-if TYPE_CHECKING:
-    WorkQueue = Queue[Sequence[int]]
-else:
-    WorkQueue = Queue
-
-
-@pytest.fixture
-def queue() -> WorkQueue:
-    return Queue()
-
 
 class TestBatchedQueue:
-    def test_drain(self, queue: WorkQueue) -> None:
+    def test_drain(self) -> None:
+        queue = Queue[Sequence[int]]()
         batched_queue: BatchedQueue[int] = BatchedQueue(
             queue, batch_size=5, flush_interval=timedelta(seconds=1)
         )
@@ -30,7 +18,8 @@ class TestBatchedQueue:
         items = batched_queue.drain()
         assert len(items) == 3 and items[0] == 0 and items[1] == 1 and items[2] == 2
 
-    def test_time_expiration(self, queue: WorkQueue) -> None:
+    def test_time_expiration(self) -> None:
+        queue = Queue[Sequence[int]]()
         batched_queue: BatchedQueue[int] = BatchedQueue(
             queue, batch_size=5, flush_interval=timedelta(seconds=0.1)
         )
@@ -47,7 +36,8 @@ class TestBatchedQueue:
         items = batched_queue.drain()
         assert len(items) == 0
 
-    def test_queue_limit(self, queue: WorkQueue) -> None:
+    def test_queue_limit(self) -> None:
+        queue = Queue[Sequence[int]]()
         batched_queue: BatchedQueue[int] = BatchedQueue(
             queue, batch_size=2, flush_interval=timedelta(seconds=0.5)
         )
@@ -68,7 +58,8 @@ class TestBatchedQueue:
         items = batched_queue.drain()
         assert len(items) == 1 and items[0] == 4
 
-    def test_queue_limit_and_expiration(self, queue: WorkQueue) -> None:
+    def test_queue_limit_and_expiration(self) -> None:
+        queue = Queue[Sequence[int]]()
         batched_queue: BatchedQueue[int] = BatchedQueue(
             queue, batch_size=3, flush_interval=timedelta(seconds=0.1)
         )

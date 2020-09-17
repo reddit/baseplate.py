@@ -121,7 +121,8 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
                 if not message.acknowledged:
                     message.requeue()
                 else:
-                    logger.warning("A message in the unprocessed batch has already been acknowledged.") 
+                    logger.warning("A message in the unprocessed batch has already been acknowledged.")
+
 
 class KombuMessageHandler(MessageHandler):
     def __init__(
@@ -183,7 +184,7 @@ class KombuBatchMessageHandler(MessageHandler):
         self.error_handler_fn = error_handler_fn
 
     def handle(self, messages: Sequence[kombu.Message]) -> None:  # pylint: disable=arguments-differ
-        logger.info("Processing batch with %i messages", len(messages))
+        logger.debug("Processing batch with %i messages", len(messages))
 
         context = self.baseplate.make_context_object()
         try:
@@ -222,7 +223,7 @@ class KombuBatchMessageHandler(MessageHandler):
             for message in messages:
                 if not message.acknowledged:
                     message.ack()
-            logger.info("Successfully processed batch with %i messages", len(messages))
+            logger.debug("Successfully processed batch with %i messages", len(messages))
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):
@@ -434,6 +435,9 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
             be used to decode the messages you are consuming.
+        :param batch_size: The size of a message batch
+        :param batch_timeout: The timeout after which a message will latest be processed even if
+            the batch is not full
         """
         queues = []
         for routing_key in routing_keys:
