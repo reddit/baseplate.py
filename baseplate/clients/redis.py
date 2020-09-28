@@ -109,8 +109,6 @@ class MonitoredRedisConnection(redis.StrictRedis):
     :py:meth:`~baseplate.clients.redis.MonitoredRedisConnection.pipeline`
     method.
 
-    .. note:: Locks and PubSub are currently unsupported.
-
     """
 
     def __init__(self, context_name: str, server_span: Span, connection_pool: redis.ConnectionPool):
@@ -152,10 +150,6 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     # these commands are not yet implemented, but probably not unimplementable
     def transaction(self, *args: Any, **kwargs: Any) -> Any:
-        """Not currently implemented."""
-        raise NotImplementedError
-
-    def pubsub(self, *args: Any, **kwargs: Any) -> Any:
         """Not currently implemented."""
         raise NotImplementedError
 
