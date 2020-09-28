@@ -15,6 +15,7 @@ from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
+from baseplate.lib import metrics
 
 
 def pool_from_config(
@@ -93,6 +94,16 @@ class RedisContextFactory(ContextFactory):
 
     def __init__(self, connection_pool: redis.ConnectionPool):
         self.connection_pool = connection_pool
+
+    def report_runtime_metrics(self, batch: metrics.Client) -> None:
+        if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
+            return
+
+        size = self.connection_pool.max_connections
+        in_use = len(self.connection_pool._connections)  # type: ignore
+
+        batch.gauge("pool.size").replace(size)
+        batch.gauge("pool.in_use").replace(in_use)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
         return MonitoredRedisConnection(name, span, self.connection_pool)
