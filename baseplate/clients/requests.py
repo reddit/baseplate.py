@@ -187,14 +187,18 @@ class BaseplateSession:
         See :py:func:`requests.request` for valid keyword arguments.
 
         """
+        send_kwargs = {
+            "timeout": kwargs.pop("timeout", None),
+            "allow_redirects": kwargs.pop("allow_redirects", None),
+        }
         request = Request(method=method.upper(), url=url, **kwargs)
         prepared = self.prepare_request(request)
-        return self.send(prepared)
+        return self.send(prepared, **send_kwargs)
 
     def _add_span_context(self, span: Span, request: PreparedRequest) -> None:
         pass
 
-    def send(self, request: PreparedRequest) -> Response:
+    def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
         """Send a :py:class:`~requests.PreparedRequest`."""
 
         with self.span.make_child(f"{self.name}.request") as span:
@@ -211,7 +215,7 @@ class BaseplateSession:
             session = Session()
             session.mount("http://", self.adapter)
             session.mount("https://", self.adapter)
-            response = session.send(request)
+            response = session.send(request, **kwargs)
 
             span.set_tag("http.status_code", response.status_code)
         return response
