@@ -142,7 +142,7 @@ class KafkaMessageHandler(MessageHandler):
                     ingest_timestamp_ms = data["endpoint_timestamp"]
                     now_ms = int(time.time() * 1000)
                     message_latency = (now_ms - ingest_timestamp_ms) / 1000
-                except KeyError:
+                except (KeyError, TypeError):
                     # we can't guarantee that all publishers populate this field
                     # v2 events publishers (event collectors) do, but future
                     # kafka publishers may not
