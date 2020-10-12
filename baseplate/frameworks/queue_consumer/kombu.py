@@ -4,6 +4,7 @@ import socket
 
 from typing import Any
 from typing import Callable
+from typing import Dict
 from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
@@ -63,14 +64,17 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
         queues: Sequence[kombu.Queue],
         work_queue: WorkQueue,
         serializer: Optional[KombuSerializer] = None,
+        **kwargs: Any,
     ):
         self.connection = connection
         self.queues = queues
         self.work_queue = work_queue
         self.serializer = serializer
+        self.kwargs = kwargs
 
     def get_consumers(self, Consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
         args = dict(queues=self.queues, on_message=self.work_queue.put)
+        args.update(self.kwargs)
         if self.serializer:
             args["accept"] = [self.serializer.name]
         return [Consumer(**args)]
@@ -147,6 +151,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
+        worker_kwargs: Optional[Dict[str, Any]] = None,
     ):
         """`KombuQueueConsumerFactory` constructor.
 
@@ -166,6 +171,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
             be used to decode the messages you are consuming.
+        :param worker_kwargs: A dictionary of keyword arguments used to create queue consumers.
         """
         self.baseplate = baseplate
         self.connection = connection
@@ -175,6 +181,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         self.error_handler_fn = error_handler_fn
         self.health_check_fn = health_check_fn
         self.serializer = serializer
+        self.worker_kwargs = worker_kwargs
 
     @classmethod
     def new(
@@ -188,6 +195,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
+        worker_kwargs: Optional[Dict[str, Any]] = None,
     ) -> "KombuQueueConsumerFactory":
         """Return a new `KombuQueueConsumerFactory`.
 
@@ -211,6 +219,8 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
             be used to decode the messages you are consuming.
+        :param worker_kwargs: A dictionary of keyword arguments used to configure a
+            queue consumer.
         """
         queues = []
         for routing_key in routing_keys:
@@ -224,14 +234,17 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             error_handler_fn=error_handler_fn,
             health_check_fn=health_check_fn,
             serializer=serializer,
+            worker_kwargs=worker_kwargs,
         )
 
     def build_pump_worker(self, work_queue: WorkQueue) -> KombuConsumerWorker:
+        kwargs = self.worker_kwargs or {}
         return KombuConsumerWorker(
             connection=self.connection,
             queues=self.queues,
             work_queue=work_queue,
             serializer=self.serializer,
+            **kwargs,
         )
 
     def build_message_handler(self) -> KombuMessageHandler:
