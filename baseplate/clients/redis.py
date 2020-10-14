@@ -100,13 +100,13 @@ class RedisContextFactory(ContextFactory):
             return
 
         size = self.connection_pool.max_connections
-        open = len(self.connection_pool._connections)  # type: ignore
+        open_connections = len(self.connection_pool._connections)  # type: ignore
         available = self.connection_pool.pool.qsize()
         in_use = size - available
 
         batch.gauge("pool.size").replace(size)
         batch.gauge("pool.in_use").replace(in_use)
-        batch.gauge("pool.open_and_available").replace(open - in_use)
+        batch.gauge("pool.open_and_available").replace(open_connections - in_use)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
         return MonitoredRedisConnection(name, span, self.connection_pool)
