@@ -252,7 +252,7 @@ def create_targeting_tree(input_node: Dict[str, Any]) -> Targeting:
             return subnode
         except (TypeError, ValueError) as e:
             raise TargetingNodeError(
-                "Error while constructing targeting " "tree: {}".format(getattr(e, "message", None))
+                "Error while constructing targeting tree: {}".format(getattr(e, "message", None))
             )
     else:
         raise UnknownTargetingOperatorError(
