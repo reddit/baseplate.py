@@ -19,6 +19,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
 .. testsetup:: overview
 
+    import os
     import configparser
     from baseplate import config
     from tempfile import NamedTemporaryFile
@@ -29,6 +30,9 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     tempfile.write(b"cool")
     tempfile.flush()
     config_parser.set("app:main", "some_file", tempfile.name)
+
+    env_var_name = "BASEPLATE_DEFAULT_VALUE"
+    os.environ[env_var_name] = "default"
 
 .. doctest:: overview
 
@@ -49,6 +53,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     ...     "optional": config.Optional(config.Integer, default=9001),
     ...     "sample_rate": config.Percent,
     ...     "interval": config.Fallback(config.Timespan, config.Integer),
+    ...     "default_from_env": config.DefaultFromEnv(config.String, env_var_name),
     ... })
 
     >>> print(cfg.simple)
@@ -62,6 +67,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
     >>> cfg.some_file.read()
     'cool'
+
     >>> cfg.some_file.close()
 
     >>> cfg.sample_rate
@@ -69,6 +75,9 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
     >>> print(cfg.interval)
     0:00:30
+
+    >>> print(cfg.default_from_env)
+    example
 
 .. testcleanup:: overview
 
@@ -79,6 +88,7 @@ import base64
 import datetime
 import functools
 import grp
+import os
 import pwd
 import re
 import socket
@@ -377,6 +387,30 @@ def TupleOf(item_parser: Callable[[str], T]) -> Callable[[str], Sequence[T]]:  #
         return [item_parser(item) for item in stripped if item]
 
     return tuple_of
+
+
+def DefaultFromEnv(
+    item_parser: Callable[[str], T], default_src: str
+) -> Callable[[str], OptionalType[T]]:  # noqa: D401
+    """An option of type T or a default.
+
+    The default is sourced from an environment variable with the name ``default_src``.
+    Either the option or the default must be provided
+    """
+    default = None
+    env = os.getenv(default_src)
+    if env:
+        default = Optional(item_parser)(env)
+
+    def default_from_env(text: str) -> OptionalType[T]:
+        if text:
+            return Optional(item_parser)(text)
+        if default:
+            return default
+
+        raise ValueError("No value provided.")
+
+    return default_from_env
 
 
 def Optional(

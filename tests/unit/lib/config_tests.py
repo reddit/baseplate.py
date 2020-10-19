@@ -1,3 +1,4 @@
+import os
 import socket
 import tempfile
 import unittest
@@ -237,6 +238,41 @@ class TupleTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             parser("a, b")
+
+
+class DefaultFromEnvTests(unittest.TestCase):
+    def __init__(self, name):
+        self.env_var_name = "DASEPLATE_DEFAULT_VALUE"
+        self.env_var_value = "default"
+        return super().__init__(name)
+
+    def setUp(self):
+        cur_value = os.getenv(self.env_var_name)
+        self.set_env(self.env_var_name, self.env_var_value)
+        self.addCleanup(self.set_env, self.env_var_value, cur_value)
+
+    def set_env(self, key, value):
+        if key:
+            if value:
+                os.environ[key] = value
+            else:
+                os.environ[key] = ""
+
+    def test_use_default_from_env(self):
+        parser = config.DefaultFromEnv(config.String, self.env_var_name)
+        self.assertEqual(parser(""), self.env_var_value)
+
+    def test_empty_default(self):
+        parser = config.DefaultFromEnv(config.String, "NOT_DEFINED")
+        self.assertEqual(parser("foo"), "foo")
+
+    def test_use_provided(self):
+        parser = config.DefaultFromEnv(config.String, self.env_var_name)
+        self.assertEqual(parser("foo"), "foo")
+
+    def test_provide_none(self):
+        parser = config.DefaultFromEnv(config.String, "NOT_DEFINED")
+        self.assertRaises(ValueError, parser, "")
 
 
 class OptionalTests(unittest.TestCase):
