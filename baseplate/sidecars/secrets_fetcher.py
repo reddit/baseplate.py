@@ -377,7 +377,6 @@ def main() -> None:
     parser.read_file(args.config_file)
     fetcher_config = dict(parser.items("secret-fetcher"))
 
-    default_mount_point = os.getenv("BASEPLATE_DEFAULT_VAULT_MOUNT_POINT") or "aws-ec2"
     cfg = config.parse_config(
         fetcher_config,
         {
@@ -388,7 +387,9 @@ def main() -> None:
                     config.OneOf(**VaultClientFactory.auth_types()),
                     default=VaultClientFactory.auth_types()["aws"],
                 ),
-                "mount_point": config.Optional(config.String, default=default_mount_point),
+                "mount_point": config.DefaultFromEnv(
+                    config.String, "BASEPLATE_VAULT_MOUNT_POINT", "aws-ec2"
+                ),
             },
             "output": {
                 "path": config.Optional(config.String, default="/var/local/secrets.json"),

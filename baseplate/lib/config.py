@@ -390,23 +390,21 @@ def TupleOf(item_parser: Callable[[str], T]) -> Callable[[str], Sequence[T]]:  #
 
 
 def DefaultFromEnv(
-    item_parser: Callable[[str], T], default_src: str
+    item_parser: Callable[[str], T], default_src: str, fallback: OptionalType[T] = None
 ) -> Callable[[str], OptionalType[T]]:  # noqa: D401
     """An option of type T or a default.
 
     The default is sourced from an environment variable with the name specified in ``default_src``.
-    Either the option or the default must be provided
+    If the environment variable is not set, then the fallback will be used.
+    One of the following values must be provided: fallback, default_src, or the provided configuration
     """
-    default = None
-    env = os.getenv(default_src)
-    if env:
-        default = Optional(item_parser)(env)
+    env = os.getenv(default_src) or ""
+    default = Optional(item_parser, fallback)(env)
 
     def default_from_env(text: str) -> OptionalType[T]:
-        if text:
-            return Optional(item_parser)(text)
-        if default:
-            return default
+        val = Optional(item_parser, default)(text)
+        if val:
+            return val
 
         raise ValueError("No value provided.")
 

@@ -242,7 +242,8 @@ class TupleTests(unittest.TestCase):
 
 class DefaultFromEnvTests(unittest.TestCase):
     def __init__(self, name):
-        self.env_var_name = "DASEPLATE_DEFAULT_VALUE"
+        self.unset_env_var_name = "NOT_PROVIDED"
+        self.env_var_name = "BASEPLATE_DEFAULT_VALUE"
         self.env_var_value = "default"
         return super().__init__(name)
 
@@ -250,6 +251,10 @@ class DefaultFromEnvTests(unittest.TestCase):
         cur_value = os.getenv(self.env_var_name)
         self.set_env(self.env_var_name, self.env_var_value)
         self.addCleanup(self.set_env, self.env_var_value, cur_value)
+
+        cur_value = os.getenv(self.unset_env_var_name)
+        self.set_env(self.unset_env_var_name, "")
+        self.addCleanup(self.set_env, self.unset_env_var_name, cur_value)
 
     def set_env(self, key, value):
         if key:
@@ -263,7 +268,7 @@ class DefaultFromEnvTests(unittest.TestCase):
         self.assertEqual(parser(""), self.env_var_value)
 
     def test_empty_default(self):
-        parser = config.DefaultFromEnv(config.String, "NOT_DEFINED")
+        parser = config.DefaultFromEnv(config.String, self.unset_env_var_name)
         self.assertEqual(parser("foo"), "foo")
 
     def test_use_provided(self):
@@ -271,8 +276,13 @@ class DefaultFromEnvTests(unittest.TestCase):
         self.assertEqual(parser("foo"), "foo")
 
     def test_provide_none(self):
-        parser = config.DefaultFromEnv(config.String, "NOT_DEFINED")
+        parser = config.DefaultFromEnv(config.String, self.unset_env_var_name)
         self.assertRaises(ValueError, parser, "")
+
+    def test_fallback(self):
+        fallback_value = 5
+        parser = config.DefaultFromEnv(config.Integer, self.unset_env_var_name, fallback_value)
+        self.assertEqual(parser(""), fallback_value)
 
 
 class OptionalTests(unittest.TestCase):
