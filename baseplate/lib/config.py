@@ -406,7 +406,7 @@ def DefaultFromEnv(
         if val:
             return val
 
-        raise ValueError("No value provided.")
+        raise ValueError("no value provided")
 
     return default_from_env
 
