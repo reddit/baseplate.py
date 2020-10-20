@@ -394,7 +394,7 @@ def DefaultFromEnv(
 ) -> Callable[[str], OptionalType[T]]:  # noqa: D401
     """An option of type T or a default.
 
-    The default is sourced from an environment variable with the name ``default_src``.
+    The default is sourced from an environment variable with the name specified in ``default_src``.
     Either the option or the default must be provided
     """
     default = None
