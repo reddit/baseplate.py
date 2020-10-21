@@ -1,4 +1,3 @@
-import os
 import socket
 import tempfile
 import unittest
