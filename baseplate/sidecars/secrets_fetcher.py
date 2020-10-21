@@ -388,7 +388,7 @@ def main() -> None:
                     default=VaultClientFactory.auth_types()["aws"],
                 ),
                 "mount_point": config.DefaultFromEnv(
-                    config.String, "BASEPLATE_VAULT_MOUNT_POINT", "aws-ec2"
+                    config.String, "BASEPLATE_VAULT_MOUNT_POINT", fallback="aws-ec2"
                 ),
             },
             "output": {
