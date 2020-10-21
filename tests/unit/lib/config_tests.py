@@ -3,6 +3,8 @@ import socket
 import tempfile
 import unittest
 
+from unittest.mock import patch
+
 from baseplate.lib import config
 
 
@@ -240,48 +242,27 @@ class TupleTests(unittest.TestCase):
             parser("a, b")
 
 
+@patch.dict("os.environ", {"BASEPLATE_DEFAULT_VALUE": "default", "NOT_PROVIDED": ""})
 class DefaultFromEnvTests(unittest.TestCase):
-    def __init__(self, name):
-        self.unset_env_var_name = "NOT_PROVIDED"
-        self.env_var_name = "BASEPLATE_DEFAULT_VALUE"
-        self.env_var_value = "default"
-        return super().__init__(name)
-
-    def setUp(self):
-        cur_value = os.getenv(self.env_var_name)
-        self.set_env(self.env_var_name, self.env_var_value)
-        self.addCleanup(self.set_env, self.env_var_value, cur_value)
-
-        cur_value = os.getenv(self.unset_env_var_name)
-        self.set_env(self.unset_env_var_name, "")
-        self.addCleanup(self.set_env, self.unset_env_var_name, cur_value)
-
-    def set_env(self, key, value):
-        if key:
-            if value:
-                os.environ[key] = value
-            else:
-                os.environ[key] = ""
-
     def test_use_default_from_env(self):
-        parser = config.DefaultFromEnv(config.String, self.env_var_name)
-        self.assertEqual(parser(""), self.env_var_value)
+        parser = config.DefaultFromEnv(config.String, "BASEPLATE_DEFAULT_VALUE")
+        self.assertEqual(parser(""), "default")
 
     def test_empty_default(self):
-        parser = config.DefaultFromEnv(config.String, self.unset_env_var_name)
+        parser = config.DefaultFromEnv(config.String, "NOT_PROVIDED")
         self.assertEqual(parser("foo"), "foo")
 
     def test_use_provided(self):
-        parser = config.DefaultFromEnv(config.String, self.env_var_name)
+        parser = config.DefaultFromEnv(config.String, "BASEPALTE_DEFAULT_VALUE")
         self.assertEqual(parser("foo"), "foo")
 
     def test_provide_none(self):
-        parser = config.DefaultFromEnv(config.String, self.unset_env_var_name)
+        parser = config.DefaultFromEnv(config.String, "NOT_PROVIDED")
         self.assertRaises(ValueError, parser, "")
 
     def test_fallback(self):
         fallback_value = 5
-        parser = config.DefaultFromEnv(config.Integer, self.unset_env_var_name, fallback_value)
+        parser = config.DefaultFromEnv(config.Integer, "NOT_PROVIDED", fallback_value)
         self.assertEqual(parser(""), fallback_value)
 
 
