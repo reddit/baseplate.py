@@ -11,6 +11,7 @@ from baseplate import ServerSpanObserver
 from baseplate import Span
 from baseplate import SpanObserver
 from baseplate import TraceInfo
+from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.lib.edge_context import NoAuthenticationError
@@ -110,6 +111,35 @@ class BaseplateTests(unittest.TestCase):
         with baseplate.server_context("example") as context:
             observer.on_server_span_created.assert_called_once()
             self.assertIsInstance(context, RequestContext)
+
+    def test_add_to_context(self):
+        baseplate = Baseplate()
+        forty_two_factory = mock.Mock(spec=ContextFactory)
+        forty_two_factory.make_object_for_context = mock.Mock(return_value=42)
+        baseplate.add_to_context("forty_two", forty_two_factory)
+        baseplate.add_to_context("true", True)
+
+        context = baseplate.make_context_object()
+
+        self.assertEqual(42, context.forty_two)
+        self.assertTrue(context.true)
+
+    def test_add_to_context_supports_complex_specs(self):
+        baseplate = Baseplate()
+        forty_two_factory = mock.Mock(spec=ContextFactory)
+        forty_two_factory.make_object_for_context = mock.Mock(return_value=42)
+        context_spec = {
+            "forty_two": forty_two_factory,
+            "true": True,
+            "nested": {"foo": "bar"},
+        }
+        baseplate.add_to_context("complex", context_spec)
+
+        context = baseplate.make_context_object()
+
+        self.assertEqual(42, context.complex.forty_two)
+        self.assertTrue(context.complex.true)
+        self.assertEqual("bar", context.complex.nested.foo)
 
 
 class SpanTests(unittest.TestCase):
