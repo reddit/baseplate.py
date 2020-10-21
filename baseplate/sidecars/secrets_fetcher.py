@@ -381,13 +381,15 @@ def main() -> None:
         fetcher_config,
         {
             "vault": {
-                "url": config.String,
+                "url": config.DefaultFromEnv(config.String, "BASEPLATE_DEFAULT_VAULT_URL"),
                 "role": config.String,
                 "auth_type": config.Optional(
                     config.OneOf(**VaultClientFactory.auth_types()),
                     default=VaultClientFactory.auth_types()["aws"],
                 ),
-                "mount_point": config.Optional(config.String, default="aws-ec2"),
+                "mount_point": config.DefaultFromEnv(
+                    config.String, "BASEPLATE_VAULT_MOUNT_POINT", fallback="aws-ec2"
+                ),
             },
             "output": {
                 "path": config.Optional(config.String, default="/var/local/secrets.json"),
