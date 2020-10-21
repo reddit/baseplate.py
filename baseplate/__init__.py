@@ -539,21 +539,30 @@ class Baseplate:
         cfg = config.parse_config(app_config, context_spec)
         self._context_config.update(cfg)
 
-    def add_to_context(
-        self, name: str, context_factory: "baseplate.clients.ContextFactory"
-    ) -> None:
-        """Add an attribute to each request's context object.
+    def add_to_context(self, name: str, attribute_config: Any) -> None:
+        """Add an attribute or a structure of attributes to each request's context object.
 
-        On each request, the factory will be asked to create an appropriate
-        object to attach to the :py:class:`~baseplate.RequestContext`.
+        The given attribute config object can be one of the following:
+
+        * An arbitrary object to be added to the
+        :py:class:`~baseplate.RequestContext`.
+
+        * A factory with a method named ``make_object_for_context``.  On each
+        request, the factory will be asked to create an appropriate object to
+        attach to the :py:class:`~baseplate.RequestContext`.
+
+        * A dict containing arbitrary objects, factories, or other dicts.  In
+        this case, a nested object will be added to the context. Each item of
+        the dict will be processed using the same rules to become an attribute
+        of the nested object.
 
         :param name: The attribute on the context object to attach the
             created object to. This may also be used for metric/tracing
             purposes so it should be descriptive.
-        :param context_factory: A factory.
+        :param attribute_config: A configuration object.
 
         """
-        self._context_config[name] = context_factory
+        self._context_config[name] = attribute_config
 
     def make_context_object(self) -> RequestContext:
         """Make a context object for the request."""
