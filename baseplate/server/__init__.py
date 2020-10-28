@@ -374,11 +374,10 @@ def load_and_run_shell() -> None:
 
     try:
         # try to use IPython if possible
-        from IPython.terminal.embed import InteractiveShellEmbed
-        from IPython.core.interactiveshell import DummyMod
+        from IPython import start_ipython
 
-        shell = InteractiveShellEmbed(banner2=banner)
-        shell(local_ns=env, module=DummyMod())
+        start_ipython(argv=[], user_ns=env)
+        raise SystemExit
     except ImportError:
         import code
 
