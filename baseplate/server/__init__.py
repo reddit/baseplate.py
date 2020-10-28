@@ -376,7 +376,16 @@ def load_and_run_shell() -> None:
         # try to use IPython if possible
         from IPython import start_ipython
 
-        start_ipython(argv=[], user_ns=env)
+        try:
+            # IPython 5.x+
+            from traitlets.config.loader import Config
+        except ImportError:
+            # IPython 4 and below
+            from IPython import Config
+
+        ipython_config = Config()
+        ipython_config.TerminalInteractiveShell.banner2 = banner
+        start_ipython(argv=[], user_ns=env, config=ipython_config)
         raise SystemExit
     except ImportError:
         import code
