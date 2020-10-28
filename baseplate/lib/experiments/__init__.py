@@ -4,6 +4,7 @@ import logging
 from enum import Enum
 from typing import Dict
 from typing import Optional
+from typing import overload
 from typing import Sequence
 from typing import Set
 
@@ -136,6 +137,24 @@ class Experiments:
         """
         return self._get_experiment(name) is not None
 
+    @overload
+    def variant(
+        self,
+        name: str,
+        user: Optional[User] = None,
+        bucketing_event_override: Optional[bool] = None,
+    ) -> Optional[str]:
+        ...
+
+    @overload
+    def variant(
+        self,
+        experiment_name: str,
+        user: Optional[User] = None,
+        bucketing_event_override: Optional[bool] = None,
+    ) -> Optional[str]:
+        ...
+
     def variant(
         self,
         experiment_name: Optional[str] = None,
@@ -185,6 +204,9 @@ class Experiments:
             be passed to the logger.
 
         :return: Variant name if a variant is active, None otherwise.
+
+        .. versionchanged:: 1.5
+            ``name`` was renamed to ``experiment_name``
         """
         experiment_name = experiment_name or name
         assert experiment_name
