@@ -144,6 +144,7 @@ class Experiments:
         name: str,
         user: Optional[User] = None,
         bucketing_event_override: Optional[bool] = None,
+        **kwargs: str,
     ) -> Optional[str]:
         ...
 
@@ -154,6 +155,7 @@ class Experiments:
         experiment_name: str,
         user: Optional[User] = None,
         bucketing_event_override: Optional[bool] = None,
+        **kwargs: str,
     ) -> Optional[str]:
         ...
 
