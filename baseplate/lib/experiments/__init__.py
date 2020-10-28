@@ -140,6 +140,7 @@ class Experiments:
     @overload
     def variant(
         self,
+        *,
         name: str,
         user: Optional[User] = None,
         bucketing_event_override: Optional[bool] = None,
@@ -149,6 +150,7 @@ class Experiments:
     @overload
     def variant(
         self,
+        *,
         experiment_name: str,
         user: Optional[User] = None,
         bucketing_event_override: Optional[bool] = None,
