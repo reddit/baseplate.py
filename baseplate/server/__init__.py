@@ -374,11 +374,19 @@ def load_and_run_shell() -> None:
 
     try:
         # try to use IPython if possible
-        from IPython.terminal.embed import InteractiveShellEmbed
-        from IPython.core.interactiveshell import DummyMod
+        from IPython import start_ipython
 
-        shell = InteractiveShellEmbed(banner2=banner)
-        shell(local_ns=env, module=DummyMod())
+        try:
+            # IPython 5.x+
+            from traitlets.config.loader import Config
+        except ImportError:
+            # IPython 4 and below
+            from IPython import Config
+
+        ipython_config = Config()
+        ipython_config.TerminalInteractiveShell.banner2 = banner
+        start_ipython(argv=[], user_ns=env, config=ipython_config)
+        raise SystemExit
     except ImportError:
         import code
 
