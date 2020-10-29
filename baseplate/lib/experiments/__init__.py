@@ -4,12 +4,14 @@ import logging
 from enum import Enum
 from typing import Dict
 from typing import Optional
+from typing import overload
 from typing import Sequence
 from typing import Set
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib import warn_deprecated
 from baseplate.lib.edge_context import User
 from baseplate.lib.events import DebugLogger
 from baseplate.lib.events import EventLogger
@@ -135,11 +137,34 @@ class Experiments:
         """
         return self._get_experiment(name) is not None
 
+    @overload
     def variant(
         self,
+        *,
         name: str,
         user: Optional[User] = None,
         bucketing_event_override: Optional[bool] = None,
+        **kwargs: str,
+    ) -> Optional[str]:
+        ...
+
+    @overload
+    def variant(
+        self,
+        *,
+        experiment_name: str,
+        user: Optional[User] = None,
+        bucketing_event_override: Optional[bool] = None,
+        **kwargs: str,
+    ) -> Optional[str]:
+        ...
+
+    def variant(
+        self,
+        experiment_name: Optional[str] = None,
+        user: Optional[User] = None,
+        bucketing_event_override: Optional[bool] = None,
+        name: Optional[str] = None,  # DEPRECATED
         **kwargs: str,
     ) -> Optional[str]:
         r"""Return which variant, if any, is active.
@@ -161,7 +186,8 @@ class Experiments:
         will be exposed to the user, you can use `bucketing_event_override` to
         disabled bucketing events for that check.
 
-        :param name: Name of the experiment you want to run.
+        :param experiment_name: Name of the experiment you want to run.
+        :param name: DEPRECATED - use experiment_name instead
         :param user: User object for the user you want to check the experiment
             variant for.  If you set user, the experiment parameters for that user
             ("user_id", "logged_in", and "user_roles") will be extracted and added
@@ -182,8 +208,17 @@ class Experiments:
             be passed to the logger.
 
         :return: Variant name if a variant is active, None otherwise.
+
+        .. versionchanged:: 1.5
+            ``name`` was renamed to ``experiment_name``
         """
-        experiment = self._get_experiment(name)
+        experiment_name = experiment_name or name
+        assert experiment_name
+        if name:
+            warn_deprecated(
+                f"The 'name' parameter on 'variant' method is deprecated, use 'experiment_name' instead. (name={name})"
+            )
+        experiment = self._get_experiment(experiment_name)
 
         if experiment is None:
             return None
