@@ -399,9 +399,9 @@ class HistogramTests(unittest.TestCase):
 
 class MakeClientTests(unittest.TestCase):
     def test_no_endpoint(self):
-        client = metrics.make_client("namespace", None, False)
+        client = metrics.make_client("namespace", None, log_if_unconfigured=False)
         self.assertIsInstance(client.transport, metrics.NullTransport)
 
     def test_valid_endpoint(self):
-        client = metrics.make_client("namespace", EXAMPLE_ENDPOINT, False)
+        client = metrics.make_client("namespace", EXAMPLE_ENDPOINT, log_if_unconfigured=False)
         self.assertIsInstance(client.transport, metrics.RawTransport)
