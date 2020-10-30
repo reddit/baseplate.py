@@ -47,7 +47,7 @@ class FormatTagsTest(unittest.TestCase):
 class NullTransportTests(unittest.TestCase):
     @mock.patch("socket.socket")
     def test_nothing_sent(self, mock_make_socket):
-        transport = metrics.NullTransport()
+        transport = metrics.NullTransport(log_if_unconfigured=False)
         transport.send(b"metric")
         self.assertEqual(mock_make_socket.call_count, 0)
 
@@ -399,9 +399,9 @@ class HistogramTests(unittest.TestCase):
 
 class MakeClientTests(unittest.TestCase):
     def test_no_endpoint(self):
-        client = metrics.make_client("namespace", None)
+        client = metrics.make_client("namespace", None, False)
         self.assertIsInstance(client.transport, metrics.NullTransport)
 
     def test_valid_endpoint(self):
-        client = metrics.make_client("namespace", EXAMPLE_ENDPOINT)
+        client = metrics.make_client("namespace", EXAMPLE_ENDPOINT, False)
         self.assertIsInstance(client.transport, metrics.RawTransport)
