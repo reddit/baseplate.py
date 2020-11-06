@@ -66,8 +66,7 @@ class ExperimentsContextFactory(ContextFactory):
 
             if mtime > self.cfg_mtime:
                 self.cfg_mtime = mtime
-                if self._global_cache:
-                    self._global_cache = {}
+                self._global_cache = {}
         except WatchedFileNotAvailableError as exc:
             logger.warning("Experiment config unavailable: %s", str(exc))
         except TypeError as exc:
