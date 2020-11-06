@@ -10,10 +10,9 @@ from unittest import mock
 from baseplate import ServerSpan
 from baseplate.lib.events import EventLogger
 from baseplate.lib.experiments import ExperimentsContextFactory
-from baseplate.lib.experiments import ExperimentsGlobalCache
 from baseplate.lib.experiments.providers import parse_experiment
 from baseplate.lib.experiments.providers.r2 import R2Experiment
-from baseplate.lib.file_watcher import FileWatcherWithUpdatedFlag
+from baseplate.lib.file_watcher import FileWatcher
 
 THIRTY_DAYS = timedelta(days=30).total_seconds()
 
@@ -370,9 +369,10 @@ class TestSimulatedR2Experiments(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.event_logger = mock.Mock(spec=EventLogger)
-        self.mock_filewatcher = mock.Mock(spec=FileWatcherWithUpdatedFlag)
+        self.mock_filewatcher = mock.Mock(spec=FileWatcher)
         self.factory = ExperimentsContextFactory("path", self.event_logger)
-        self.factory._experiments_global_cache = ExperimentsGlobalCache(self.mock_filewatcher)
+        self.factory._filewatcher = self.mock_filewatcher
+        self.now = time.time()
 
     def get_experiment_client(self, name):
         span = mock.MagicMock(spec=ServerSpan)
@@ -383,7 +383,7 @@ class TestSimulatedR2Experiments(unittest.TestCase):
     def _simulate_experiment(self, config, static_vars, target_var, targets):
         num_experiments = len(targets)
         counter = collections.Counter()
-        self.mock_filewatcher.get_data.return_value = {config["name"]: config}, True
+        self.mock_filewatcher.get_data_and_mtime.return_value = {config["name"]: config}, self.now
         for target in targets:
             experiment_vars = {target_var: target}
             experiment_vars.update(static_vars)
@@ -428,7 +428,7 @@ class TestSimulatedR2Experiments(unittest.TestCase):
 
     def assert_no_user_experiment(self, users, config, content=None):
         content = content or dict(id=None, type=None)
-        self.mock_filewatcher.get_data.return_value = {config["name"]: config}, True
+        self.mock_filewatcher.get_data_and_mtime.return_value = {config["name"]: config}, self.now
         for user in users:
             experiments = self.get_experiment_client("test")
             self.assertIs(
@@ -444,7 +444,7 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             )
 
     def assert_no_page_experiment(self, user, pages, config):
-        self.mock_filewatcher.get_data.return_value = {config["name"]: config}, True
+        self.mock_filewatcher.get_data_and_mtime.return_value = {config["name"]: config}, self.now
         for page in pages:
             experiments = self.get_experiment_client("test")
             self.assertIs(
@@ -460,7 +460,7 @@ class TestSimulatedR2Experiments(unittest.TestCase):
             )
 
     def assert_same_variant(self, users, config, expected, content=None, **kwargs):
-        self.mock_filewatcher.get_data.return_value = {config["name"]: config}, True
+        self.mock_filewatcher.get_data_and_mtime.return_value = {config["name"]: config}, self.now
         content = content or dict(id=None, type=None)
         for user in users:
             experiments = self.get_experiment_client("test")

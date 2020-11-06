@@ -7,7 +7,6 @@ from typing import Optional
 from typing import overload
 from typing import Sequence
 from typing import Set
-from typing import Tuple
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -18,7 +17,7 @@ from baseplate.lib.events import DebugLogger
 from baseplate.lib.events import EventLogger
 from baseplate.lib.experiments.providers import parse_experiment
 from baseplate.lib.experiments.providers.base import Experiment
-from baseplate.lib.file_watcher import FileWatcherWithUpdatedFlag
+from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 
 
@@ -28,42 +27,6 @@ logger = logging.getLogger(__name__)
 class EventType(Enum):
     EXPOSE = "expose"
     BUCKET = "choose"
-
-
-class ExperimentsGlobalCache:
-    """Experiment global cache store the parsed experiment.
-
-    Every time gets the global cache, it reads the data from FileWatcher,
-    if file has been updated, it assign its cache to new empty dictionary.
-    Global_cache will be passed to each request's experiment object,
-    parsed experiment will be lazily added when each request parse its experiment
-    if it does not exist in the global_cache.
-    """
-
-    def __init__(self, filewatcher: FileWatcherWithUpdatedFlag):
-        self._filewatcher = filewatcher
-        self._global_cache: Dict[str, Optional[Experiment]] = {}
-
-    def _get_config(self) -> Optional[Dict[str, Dict[str, str]]]:
-        try:
-            config_data: Dict[str, Dict[str, str]]
-            config_data, updated = self._filewatcher.get_data()
-
-            if updated and self._global_cache:
-                self._global_cache = {}
-            return config_data
-        except WatchedFileNotAvailableError as exc:
-            logger.warning("Experiment config unavailable: %s", str(exc))
-            return None
-        except TypeError as exc:
-            logger.warning("Could not load experiment config: %s", str(exc))
-            return None
-
-    def get_cfg_and_global_cache(
-        self,
-    ) -> Tuple[Optional[Dict[str, Dict[str, str]]], Dict[str, Optional[Experiment]]]:
-        cfg = self._get_config()
-        return cfg, self._global_cache
 
 
 class ExperimentsContextFactory(ContextFactory):
@@ -91,18 +54,30 @@ class ExperimentsContextFactory(ContextFactory):
         timeout: Optional[float] = None,
         backoff: Optional[float] = None,
     ):
-        self._experiments_global_cache: ExperimentsGlobalCache = ExperimentsGlobalCache(
-            FileWatcherWithUpdatedFlag(path, json.load, timeout=timeout, backoff=backoff)
-        )
+        self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
+        self._global_cache: Dict[str, Optional[Experiment]] = {}
         self._event_logger = event_logger
+        self.cfg_mtime = 0.0
 
     def make_object_for_context(self, name: str, span: Span) -> "Experiments":
-        cfg_data, global_cache = self._experiments_global_cache.get_cfg_and_global_cache()
+        config_data: Dict[str, Dict[str, str]] = {}
+        try:
+            config_data, mtime = self._filewatcher.get_data_and_mtime()
+
+            if mtime > self.cfg_mtime:
+                self.cfg_mtime = mtime
+                if self._global_cache:
+                    self._global_cache = {}
+        except WatchedFileNotAvailableError as exc:
+            logger.warning("Experiment config unavailable: %s", str(exc))
+        except TypeError as exc:
+            logger.warning("Could not load experiment config: %s", str(exc))
+
         return Experiments(
             server_span=span,
             context_name=name,
-            cfg_data=cfg_data,
-            global_cache=global_cache,
+            cfg_data=config_data,
+            global_cache=self._global_cache,
             event_logger=self._event_logger,
         )
 
@@ -121,7 +96,7 @@ class Experiments:
         self,
         server_span: Span,
         context_name: str,
-        cfg_data: Optional[Dict[str, Dict[str, str]]],
+        cfg_data: Dict[str, Dict[str, str]],
         global_cache: Dict[str, Optional[Experiment]],
         event_logger: Optional[EventLogger] = None,
     ):
@@ -136,10 +111,6 @@ class Experiments:
             self._event_logger = DebugLogger()
 
     def _get_experiment(self, name: str) -> Optional[Experiment]:
-
-        if not self._cfg_data:
-            return None
-
         if name in self._global_cache:
             return self._global_cache[name]
 
@@ -160,8 +131,6 @@ class Experiments:
 
         :return: List of all valid experiment names.
         """
-        if not self._cfg_data:
-            return []
         experiment_names = list(self._cfg_data.keys())
         return experiment_names
 

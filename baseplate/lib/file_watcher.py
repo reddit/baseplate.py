@@ -156,62 +156,40 @@ class FileWatcher(Generic[T]):
         the freshest data.
 
         """
-        try:
-            current_mtime = os.path.getmtime(self._path)
-        except OSError as exc:
-            if self._data is _NOT_LOADED:
-                raise WatchedFileNotAvailableError(self._path, exc)
-            return typing.cast(T, self._data)
+        return self.get_data_and_mtime()[0]
 
-        if self._mtime < current_mtime:
-            logger.debug("Loading %s.", self._path)
-            try:
-                with open(self._path, **self._open_options._asdict()) as f:
-                    self._data = self._parser(f)
-            except Exception as exc:
-                if self._data is _NOT_LOADED:
-                    raise WatchedFileNotAvailableError(self._path, exc)
-                logger.warning("%s: failed to load, using cached data: %s", self._path, exc)
-            self._mtime = current_mtime
-
-        return typing.cast(T, self._data)
-
-
-class FileWatcherWithUpdatedFlag(FileWatcher):
-    def get_data(self) -> Tuple[T, bool]:
-        """Return tuple of the current contents of the file and updated flag.
+    def get_data_and_mtime(self) -> Tuple[T, float]:
+        """Return tuple of the current contents of the file and file mtime.
 
         The watcher ensures that the file is re-loaded and parsed whenever its
         contents change. Parsing only occurs when necessary, not on each call
         to this method. This method returns whatever the most recent call to
         the parser returned.
 
-        When file content was changed, it returns the flag 'updated' to True,
-        notify the caller the content was different from previous cached.
+        When file content was changed, it returns the recent mtime,
+        notify the caller the content is different from previous cached.
 
         Make sure to call this method each time you need data from the file
         rather than saving its results elsewhere. This ensures you always have
         the freshest data.
 
         """
-        updated = False
         try:
             current_mtime = os.path.getmtime(self._path)
         except OSError as exc:
             if self._data is _NOT_LOADED:
                 raise WatchedFileNotAvailableError(self._path, exc)
-            return typing.cast(T, self._data), updated
+            return typing.cast(T, self._data), self._mtime
 
         if self._mtime < current_mtime:
             logger.debug("Loading %s.", self._path)
             try:
                 with open(self._path, **self._open_options._asdict()) as f:
                     self._data = self._parser(f)
-                    updated = True
             except Exception as exc:
                 if self._data is _NOT_LOADED:
                     raise WatchedFileNotAvailableError(self._path, exc)
                 logger.warning("%s: failed to load, using cached data: %s", self._path, exc)
             self._mtime = current_mtime
 
-        return typing.cast(T, self._data), updated
+        return typing.cast(T, self._data), self._mtime
