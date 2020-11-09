@@ -11,3 +11,8 @@ Exceptions
 ----------
 
 .. autoexception:: WatchedFileNotAvailableError
+
+Testing
+-------
+
+.. autoclass:: baseplate.testing.lib.file_watcher.FakeFileWatcher

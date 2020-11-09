@@ -1,31 +1,26 @@
 import unittest
 
-from unittest import mock
-
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 from baseplate.lib.secrets import CorruptSecretError
 from baseplate.lib.secrets import CredentialSecret
 from baseplate.lib.secrets import SecretNotFoundError
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.lib.secrets import SecretsNotAvailableError
 from baseplate.lib.secrets import SecretsStore
+from baseplate.testing.lib.file_watcher import FakeFileWatcher
 
 
 class StoreTests(unittest.TestCase):
     def setUp(self):
-        self.mock_filewatcher = mock.Mock(spec=FileWatcher)
+        self.fake_filewatcher = FakeFileWatcher()
         self.store = SecretsStore("/whatever")
-        self.store._filewatcher = self.mock_filewatcher
+        self.store._filewatcher = self.fake_filewatcher
 
     def test_file_not_found(self):
-        self.mock_filewatcher.get_data.side_effect = WatchedFileNotAvailableError("path", None)
-
         with self.assertRaises(SecretsNotAvailableError):
             self.store.get_raw("test")
 
     def test_vault_info(self):
-        self.mock_filewatcher.get_data.return_value = {
+        self.fake_filewatcher.data = {
             "secrets": {},
             "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
@@ -34,7 +29,7 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(self.store.get_vault_url(), "http://vault.example.com:8200/")
 
     def test_raw_secrets(self):
-        self.mock_filewatcher.get_data.return_value = {
+        self.fake_filewatcher.data = {
             "secrets": {"test": {"something": "exists"}},
             "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
         }
@@ -45,7 +40,7 @@ class StoreTests(unittest.TestCase):
             self.store.get_raw("test_missing")
 
     def test_simple_secrets(self):
-        self.mock_filewatcher.get_data.return_value = {
+        self.fake_filewatcher.data = {
             "secrets": {
                 "test": {"type": "simple", "value": "easy"},
                 "test_base64": {"type": "simple", "value": "aHVudGVyMg==", "encoding": "base64"},
@@ -77,7 +72,7 @@ class StoreTests(unittest.TestCase):
             self.store.get_simple("test_bad_base64")
 
     def test_versioned_secrets(self):
-        self.mock_filewatcher.get_data.return_value = {
+        self.fake_filewatcher.data = {
             "secrets": {
                 "test": {"type": "versioned", "current": "easy"},
                 "test_base64": {
@@ -122,7 +117,7 @@ class StoreTests(unittest.TestCase):
             self.store.get_versioned("test_bad_base64")
 
     def test_credential_secrets(self):
-        self.mock_filewatcher.get_data.return_value = {
+        self.fake_filewatcher.data = {
             "secrets": {
                 "test": {"type": "credential", "username": "user", "password": "password"},
                 "test_identity": {

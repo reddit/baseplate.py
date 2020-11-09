@@ -46,3 +46,8 @@ Exceptions
 .. autoexception:: SecretNotFoundError
 
 .. autoexception:: SecretsNotAvailableError
+
+Testing
+-------
+
+.. autoclass:: baseplate.testing.lib.secrets.FakeSecretsStore
