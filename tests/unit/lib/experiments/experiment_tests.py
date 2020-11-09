@@ -24,6 +24,7 @@ class TestExperiments(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.event_logger = mock.Mock(spec=DebugLogger)
+        self.mock_filewatcher = mock.Mock(spec=FileWatcher)
         self.mock_span = mock.MagicMock(spec=ServerSpan)
         self.mock_span.context = None
         self.mock_span.trace_id = "123456"
@@ -38,6 +39,51 @@ class TestExperiments(unittest.TestCase):
         )
 
     def test_bucketing_event_fields(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "owner": "test_owner",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "id": 1,
+                    "name": "test",
+                    "variants": {"active": 10, "control_1": 10, "control_2": 10},
+                },
+            }
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            server_span=self.mock_span,
+            context_name="test",
+            event_logger=self.event_logger,
+        )
+
+        with mock.patch(
+            "baseplate.lib.experiments.providers.r2.R2Experiment.variant", return_value="active"
+        ):
+            self.assertEqual(self.event_logger.log.call_count, 0)
+            experiments.variant("test", user=self.user, app_name="r2")
+            self.assertEqual(self.event_logger.log.call_count, 1)
+        event_fields = self.event_logger.log.call_args[1]
+
+        self.assertEqual(event_fields["variant"], "active")
+        self.assertEqual(event_fields["user_id"], "t2_1")
+        self.assertEqual(event_fields["logged_in"], True)
+        self.assertEqual(event_fields["app_name"], "r2")
+        self.assertEqual(event_fields["cookie_created_timestamp"], 10000)
+        self.assertEqual(event_fields["event_type"], EventType.BUCKET)
+        self.assertNotEqual(event_fields["span"], None)
+
+        self.assertEqual(getattr(event_fields["experiment"], "id"), 1)
+        self.assertEqual(getattr(event_fields["experiment"], "name"), "test")
+        self.assertEqual(getattr(event_fields["experiment"], "owner"), "test_owner")
+        self.assertEqual(getattr(event_fields["experiment"], "version"), "1")
+
+    def test_bucketing_event_fields_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -55,6 +101,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -83,7 +130,7 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(getattr(event_fields["experiment"], "owner"), "test_owner")
         self.assertEqual(getattr(event_fields["experiment"], "version"), "1")
 
-    def test_bucketing_event_fields_without_baseplate_user(self):
+    def test_bucketing_event_fields_without_baseplate_user_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -101,6 +148,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -128,7 +176,7 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(getattr(event_fields["experiment"], "owner"), "test_owner")
         self.assertEqual(getattr(event_fields["experiment"], "version"), "1")
 
-    def test_that_we_only_send_bucketing_event_once(self):
+    def test_that_we_only_send_bucketing_event_once_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -146,6 +194,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -162,7 +211,7 @@ class TestExperiments(unittest.TestCase):
             experiments.variant("test", user=self.user)
             self.assertEqual(self.event_logger.log.call_count, 1)
 
-    def test_exposure_event_fields(self):
+    def test_exposure_event_fields_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -180,6 +229,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -206,7 +256,7 @@ class TestExperiments(unittest.TestCase):
         self.assertEqual(getattr(event_fields["experiment"], "owner"), "test_owner")
         self.assertEqual(getattr(event_fields["experiment"], "version"), "1")
 
-    def test_that_override_true_has_no_effect(self):
+    def test_that_override_true_has_no_effect_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -220,6 +270,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -236,6 +287,33 @@ class TestExperiments(unittest.TestCase):
             self.assertEqual(self.event_logger.log.call_count, 1)
 
     def test_is_valid_experiment(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
+            }
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            server_span=self.mock_span,
+            context_name="test",
+            event_logger=self.event_logger,
+        )
+        with mock.patch("baseplate.lib.experiments.providers.r2.R2Experiment.variant") as p:
+            p.return_value = "active"
+            is_valid = experiments.is_valid_experiment("test")
+            self.assertEqual(is_valid, True)
+
+            is_valid = experiments.is_valid_experiment("test2")
+            self.assertEqual(is_valid, False)
+
+    def test_is_valid_experiment_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -249,6 +327,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -265,6 +344,42 @@ class TestExperiments(unittest.TestCase):
             self.assertEqual(is_valid, False)
 
     def test_get_all_experiment_names(self):
+        self.mock_filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
+            },
+            "test2": {
+                "id": 1,
+                "name": "test",
+                "owner": "test",
+                "type": "r2",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {"variants": {"active": 10, "control_1": 10, "control_2": 10}},
+            },
+        }
+        experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
+            server_span=self.mock_span,
+            context_name="test",
+            event_logger=self.event_logger,
+        )
+        with mock.patch("baseplate.lib.experiments.providers.r2.R2Experiment.variant") as p:
+            p.return_value = "active"
+            experiment_names = experiments.get_all_experiment_names()
+            self.assertEqual(len(experiment_names), 2)
+            self.assertEqual("test" in experiment_names, True)
+            self.assertEqual("test2" in experiment_names, True)
+
+    def test_get_all_experiment_names_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -288,6 +403,7 @@ class TestExperiments(unittest.TestCase):
             },
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -302,7 +418,7 @@ class TestExperiments(unittest.TestCase):
             self.assertEqual("test" in experiment_names, True)
             self.assertEqual("test2" in experiment_names, True)
 
-    def test_that_bucketing_events_are_not_sent_with_override_false(self):
+    def test_that_bucketing_events_are_not_sent_with_override_false_with_cfg_data(self):
         """Don't send events when override is False."""
         cfg_data = {
             "test": {
@@ -317,6 +433,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -335,7 +452,7 @@ class TestExperiments(unittest.TestCase):
             experiments.variant("test", user=self.user, bucketing_event_override=False)
             self.assertEqual(self.event_logger.log.call_count, 0)
 
-    def test_that_bucketing_events_not_sent_if_no_variant(self):
+    def test_that_bucketing_events_not_sent_if_no_variant_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -349,6 +466,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -365,7 +483,7 @@ class TestExperiments(unittest.TestCase):
             experiments.variant("test", user=self.user)
             self.assertEqual(self.event_logger.log.call_count, 0)
 
-    def test_that_bucketing_events_not_sent_if_experiment_disables(self):
+    def test_that_bucketing_events_not_sent_if_experiment_disables_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -379,6 +497,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -400,8 +519,9 @@ class TestExperiments(unittest.TestCase):
             experiments.variant("test", user=self.user, bucketing_event_override=True)
             self.assertEqual(self.event_logger.log.call_count, 0)
 
-    def test_that_bucketing_events_not_sent_if_config_is_empty(self):
+    def test_that_bucketing_events_not_sent_if_config_is_empty_with_cfg_data(self):
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data={},
@@ -414,7 +534,7 @@ class TestExperiments(unittest.TestCase):
         experiments.variant("test", user=self.user)
         self.assertEqual(self.event_logger.log.call_count, 0)
 
-    def test_that_bucketing_events_not_sent_if_cant_find_experiment(self):
+    def test_that_bucketing_events_not_sent_if_cant_find_experiment_with_cfg_data(self):
         cfg_data = {
             "other_test": {
                 "id": 1,
@@ -428,6 +548,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -440,7 +561,7 @@ class TestExperiments(unittest.TestCase):
         experiments.variant("test", user=self.user)
         self.assertEqual(self.event_logger.log.call_count, 0)
 
-    def test_none_returned_on_variant_call_with_bad_id(self):
+    def test_none_returned_on_variant_call_with_bad_id_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": "1",
@@ -458,6 +579,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -468,7 +590,7 @@ class TestExperiments(unittest.TestCase):
         variant = experiments.variant("test", user=self.user)
         self.assertEqual(variant, None)
 
-    def test_none_returned_on_variant_call_with_no_times(self):
+    def test_none_returned_on_variant_call_with_no_times_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -484,6 +606,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,
@@ -494,7 +617,7 @@ class TestExperiments(unittest.TestCase):
         variant = experiments.variant("test", user=self.user)
         self.assertEqual(variant, None)
 
-    def test_none_returned_on_variant_call_with_no_experiment(self):
+    def test_none_returned_on_variant_call_with_no_experiment_with_cfg_data(self):
         cfg_data = {
             "test": {
                 "id": 1,
@@ -507,6 +630,7 @@ class TestExperiments(unittest.TestCase):
             }
         }
         experiments = Experiments(
+            config_watcher=self.mock_filewatcher,
             server_span=self.mock_span,
             context_name="test",
             cfg_data=cfg_data,

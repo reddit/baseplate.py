@@ -10,6 +10,7 @@ from baseplate import ServerSpan
 from baseplate.lib.events import EventQueue
 from baseplate.lib.experiments import Experiments
 from baseplate.lib.experiments.providers import parse_experiment
+from baseplate.lib.file_watcher import FileWatcher
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,32 @@ class TestFeatureFlag(unittest.TestCase):
 
     def test_does_not_log_bucketing_event(self):
         event_queue = mock.Mock(spec=EventQueue)
+        filewatcher = mock.Mock(spec=FileWatcher)
+        span = mock.MagicMock(spec=ServerSpan)
+        filewatcher.get_data.return_value = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "type": "feature_flag",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "targeting": {"logged_in": [True, False]},
+                    "variants": {"active": 100},
+                },
+            }
+        }
+        experiments = Experiments(config_watcher=filewatcher, server_span=span, context_name="test")
+        self.assertEqual(event_queue.put.call_count, 0)
+        variant = experiments.variant("test", user_id=self.user_id, logged_in=True)
+        self.assertEqual(variant, "active")
+        self.assertEqual(event_queue.put.call_count, 0)
+        experiments.variant("test", user_id=self.user_id, logged_in=True)
+        self.assertEqual(event_queue.put.call_count, 0)
+
+    def test_does_not_log_bucketing_event_with_cfg_data(self):
+        event_queue = mock.Mock(spec=EventQueue)
         span = mock.MagicMock(spec=ServerSpan)
         cfg_data = {
             "test": {
@@ -49,7 +76,11 @@ class TestFeatureFlag(unittest.TestCase):
             }
         }
         experiments = Experiments(
-            server_span=span, context_name="test", cfg_data=cfg_data, global_cache={}
+            config_watcher=mock.Mock(spec=FileWatcher),
+            server_span=span,
+            context_name="test",
+            cfg_data=cfg_data,
+            global_cache={},
         )
         self.assertEqual(event_queue.put.call_count, 0)
         variant = experiments.variant("test", user_id=self.user_id, logged_in=True)
