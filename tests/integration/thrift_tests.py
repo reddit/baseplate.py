@@ -18,11 +18,10 @@ from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.edge_context import EdgeRequestContextFactory
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
+from baseplate.testing.lib.secrets import FakeSecretsStore
 from baseplate.thrift import BaseplateService
 from baseplate.thrift import BaseplateServiceV2
 from baseplate.thrift.ttypes import IsHealthyProbe
@@ -49,18 +48,16 @@ except ImportError:
 
 
 def make_edge_context_factory():
-    mock_filewatcher = mock.Mock(spec=FileWatcher)
-    mock_filewatcher.get_data.return_value = {
-        "secrets": {
-            "secret/authentication/public-key": {
-                "type": "versioned",
-                "current": AUTH_TOKEN_PUBLIC_KEY,
-            }
-        },
-        "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-    }
-    secrets = SecretsStore("/secrets")
-    secrets._filewatcher = mock_filewatcher
+    secrets = FakeSecretsStore(
+        {
+            "secrets": {
+                "secret/authentication/public-key": {
+                    "type": "versioned",
+                    "current": AUTH_TOKEN_PUBLIC_KEY,
+                }
+            },
+        }
+    )
     return EdgeRequestContextFactory(secrets)
 
 

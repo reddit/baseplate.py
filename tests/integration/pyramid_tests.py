@@ -12,8 +12,7 @@ from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
 from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.lib.edge_context import NoAuthenticationError
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
+from baseplate.testing.lib.secrets import FakeSecretsStore
 
 try:
     import webtest
@@ -97,18 +96,16 @@ class ConfiguratorTests(unittest.TestCase):
             render_bad_exception_view, context=ControlFlowException2, renderer="json"
         )
 
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/authentication/public-key": {
-                    "type": "versioned",
-                    "current": AUTH_TOKEN_PUBLIC_KEY,
-                }
-            },
-            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-        }
-        secrets = SecretsStore("/secrets")
-        secrets._filewatcher = mock_filewatcher
+        secrets = FakeSecretsStore(
+            {
+                "secrets": {
+                    "secret/authentication/public-key": {
+                        "type": "versioned",
+                        "current": AUTH_TOKEN_PUBLIC_KEY,
+                    }
+                },
+            }
+        )
 
         self.observer = mock.Mock(spec=BaseplateObserver)
         self.server_observer = mock.Mock(spec=ServerSpanObserver)
