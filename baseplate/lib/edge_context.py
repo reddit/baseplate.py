@@ -1,3 +1,4 @@
+import functools
 import logging
 import re
 
@@ -50,8 +51,9 @@ class AuthenticationTokenValidator:
             return InvalidAuthenticationToken()
 
         secret = self.secrets.get_versioned("secret/authentication/public-key")
-        for public_key in secret.all_versions:
+        for public_key_data in secret.all_versions:
             try:
+                public_key = self._prepare_key(public_key_data)
                 decoded = jwt.decode(token, public_key, algorithms="RS256")
                 return ValidatedAuthenticationToken(decoded)
             except jwt.ExpiredSignatureError:
@@ -60,6 +62,10 @@ class AuthenticationTokenValidator:
                 pass
 
         return InvalidAuthenticationToken()
+
+    @functools.lru_cache()
+    def _prepare_key(self, key_data: bytes) -> "jwt.algorithms.RSAPublicKey":
+        return jwt.algorithms.RSAAlgorithm(jwt.algorithms.RSAAlgorithm.SHA256).prepare_key(key_data)
 
 
 class AuthenticationToken:
