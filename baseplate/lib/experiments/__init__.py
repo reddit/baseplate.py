@@ -113,7 +113,7 @@ class Experiments:
             self._event_logger = DebugLogger()
 
     def _get_config(self) -> Dict[str, Dict[str, str]]:
-        """Warn: Deprecate in Baseplate 2.0."""
+        # Warn: Deprecate in Baseplate 2.0.
         try:
             return self._config_watcher.get_data()
         except WatchedFileNotAvailableError as exc:
