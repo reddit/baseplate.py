@@ -55,13 +55,29 @@ class ExperimentsContextFactory(ContextFactory):
         backoff: Optional[float] = None,
     ):
         self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
+        self._global_cache: Dict[str, Optional[Experiment]] = {}
         self._event_logger = event_logger
+        self.cfg_mtime = 0.0
 
     def make_object_for_context(self, name: str, span: Span) -> "Experiments":
+        config_data: Dict[str, Dict[str, str]] = {}
+        try:
+            config_data, mtime = self._filewatcher.get_data_and_mtime()
+
+            if mtime > self.cfg_mtime:
+                self.cfg_mtime = mtime
+                self._global_cache = {}
+        except WatchedFileNotAvailableError as exc:
+            logger.warning("Experiment config unavailable: %s", str(exc))
+        except TypeError as exc:
+            logger.warning("Could not load experiment config: %s", str(exc))
+
         return Experiments(
             config_watcher=self._filewatcher,
             server_span=span,
             context_name=name,
+            cfg_data=config_data,
+            global_cache=self._global_cache,
             event_logger=self._event_logger,
         )
 
@@ -81,51 +97,59 @@ class Experiments:
         config_watcher: FileWatcher,
         server_span: Span,
         context_name: str,
+        cfg_data: Optional[Dict[str, Dict[str, str]]] = None,
+        global_cache: Optional[Dict[str, Optional[Experiment]]] = None,
         event_logger: Optional[EventLogger] = None,
     ):
         self._config_watcher = config_watcher
         self._span = server_span
         self._context_name = context_name
         self._already_bucketed: Set[str] = set()
-        self._experiment_cache: Dict[str, Optional[Experiment]] = {}
+        self._cfg_data = cfg_data
+        self._global_cache = global_cache if global_cache is not None else {}
         if event_logger:
             self._event_logger = event_logger
         else:
             self._event_logger = DebugLogger()
 
-    def _get_config(self, name: str) -> Optional[Dict[str, str]]:
+    def _get_config(self) -> Dict[str, Dict[str, str]]:
+        # Warn: Deprecate in Baseplate 2.0.
         try:
-            config_data = self._config_watcher.get_data()
-            return config_data[name]
+            return self._config_watcher.get_data()
         except WatchedFileNotAvailableError as exc:
             logger.warning("Experiment config unavailable: %s", str(exc))
-        except KeyError:
-            logger.info("Experiment <%r> not found in experiment config", name)
         except TypeError as exc:
             logger.warning("Could not load experiment config: %s", str(exc))
-        return None
+        return {}
 
     def _get_experiment(self, name: str) -> Optional[Experiment]:
-        if name not in self._experiment_cache:
-            experiment_config = self._get_config(name)
-            if not experiment_config:
-                experiment = None
-            else:
-                try:
-                    experiment = parse_experiment(experiment_config)
-                except Exception as err:
-                    logger.error("Invalid configuration for experiment %s: %s", name, err)
-                    return None
-            self._experiment_cache[name] = experiment
-        return self._experiment_cache[name]
+        if name in self._global_cache:
+            return self._global_cache[name]
+
+        if self._cfg_data is None:
+            warn_deprecated("config_watcher will be removed in Baseplate 2.0.")
+            self._cfg_data = self._get_config()
+
+        if name not in self._cfg_data:
+            logger.info("Experiment <%r> not found in experiment config", name)
+            return None
+
+        try:
+            experiment = parse_experiment(self._cfg_data[name])
+            self._global_cache[name] = experiment
+            return experiment
+        except Exception as err:
+            logger.error("Invalid configuration for experiment %s: %s", name, err)
+            return None
 
     def get_all_experiment_names(self) -> Sequence[str]:
         """Return a list of all valid experiment names from the configuration file.
 
         :return: List of all valid experiment names.
         """
-        cfg = self._config_watcher.get_data()
-        experiment_names = list(cfg.keys())
+        if self._cfg_data is None:
+            self._cfg_data = self._config_watcher.get_data()
+        experiment_names = list(self._cfg_data.keys())
         return experiment_names
 
     def is_valid_experiment(self, name: str) -> bool:

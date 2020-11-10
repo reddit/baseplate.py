@@ -58,6 +58,37 @@ class TestFeatureFlag(unittest.TestCase):
         experiments.variant("test", user_id=self.user_id, logged_in=True)
         self.assertEqual(event_queue.put.call_count, 0)
 
+    def test_does_not_log_bucketing_event_with_cfg_data(self):
+        event_queue = mock.Mock(spec=EventQueue)
+        span = mock.MagicMock(spec=ServerSpan)
+        cfg_data = {
+            "test": {
+                "id": 1,
+                "name": "test",
+                "type": "feature_flag",
+                "version": "1",
+                "start_ts": time.time() - THIRTY_DAYS,
+                "stop_ts": time.time() + THIRTY_DAYS,
+                "experiment": {
+                    "targeting": {"logged_in": [True, False]},
+                    "variants": {"active": 100},
+                },
+            }
+        }
+        experiments = Experiments(
+            config_watcher=mock.Mock(spec=FileWatcher),
+            server_span=span,
+            context_name="test",
+            cfg_data=cfg_data,
+            global_cache={},
+        )
+        self.assertEqual(event_queue.put.call_count, 0)
+        variant = experiments.variant("test", user_id=self.user_id, logged_in=True)
+        self.assertEqual(variant, "active")
+        self.assertEqual(event_queue.put.call_count, 0)
+        experiments.variant("test", user_id=self.user_id, logged_in=True)
+        self.assertEqual(event_queue.put.call_count, 0)
+
     def test_admin_enabled(self):
         cfg = {
             "id": 1,
