@@ -23,6 +23,7 @@ from gevent.server import StreamServer
 import baseplate.lib.config
 
 from baseplate.lib.retry import RetryPolicy
+from baseplate.observers.timeout import ServerTimeout
 
 logger = logging.getLogger(__name__)
 
@@ -207,7 +208,7 @@ class QueueConsumerServer:
             def _run_and_terminate(*a: Any, **kw: Any) -> Any:
                 try:
                     return fn(*a, **kw)
-                except Exception:
+                except (Exception, ServerTimeout):
                     logger.exception("Unhandled error in pump or handler thread, terminating.")
                     self._terminate()
 
