@@ -15,8 +15,7 @@ from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.lib.edge_context import NoAuthenticationError
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
+from baseplate.testing.lib.secrets import FakeSecretsStore
 
 from .. import AUTH_TOKEN_PUBLIC_KEY
 from .. import AUTH_TOKEN_VALID
@@ -331,18 +330,16 @@ class EdgeRequestContextTests(unittest.TestCase):
     COUNTRY_CODE = "OK"
 
     def setUp(self):
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/authentication/public-key": {
-                    "type": "versioned",
-                    "current": AUTH_TOKEN_PUBLIC_KEY,
-                }
-            },
-            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-        }
-        self.store = SecretsStore("/secrets")
-        self.store._filewatcher = mock_filewatcher
+        self.store = FakeSecretsStore(
+            {
+                "secrets": {
+                    "secret/authentication/public-key": {
+                        "type": "versioned",
+                        "current": AUTH_TOKEN_PUBLIC_KEY,
+                    }
+                },
+            }
+        )
         self.factory = EdgeRequestContextFactory(self.store)
 
     def test_create(self):

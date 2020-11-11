@@ -1,12 +1,9 @@
-from unittest import mock
-
 import pytest
 
 from baseplate.clients.kombu import connection_from_config
 from baseplate.clients.kombu import KombuThriftSerializer
 from baseplate.lib.config import ConfigurationError
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
+from baseplate.testing.lib.secrets import FakeSecretsStore
 from baseplate.thrift.ttypes import Loid
 from baseplate.thrift.ttypes import Request
 from baseplate.thrift.ttypes import Session
@@ -15,20 +12,17 @@ from ... import does_not_raise
 
 
 def secrets():
-    mock_filewatcher = mock.Mock(spec=FileWatcher)
-    mock_filewatcher.get_data.return_value = {
-        "secrets": {
-            "secret/rabbitmq/account": {
-                "type": "credential",
-                "username": "spez",
-                "password": "hunter2",
-            }
-        },
-        "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-    }
-    secrets = SecretsStore("/secrets")
-    secrets._filewatcher = mock_filewatcher
-    return secrets
+    return FakeSecretsStore(
+        {
+            "secrets": {
+                "secret/rabbitmq/account": {
+                    "type": "credential",
+                    "username": "spez",
+                    "password": "hunter2",
+                }
+            },
+        }
+    )
 
 
 @pytest.mark.parametrize(

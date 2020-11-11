@@ -3,12 +3,14 @@ import re
 
 from typing import Any
 from typing import Dict
+from typing import List
 from typing import NamedTuple
 from typing import Optional
 from typing import Set
 
 import jwt
 
+from jwt.algorithms import get_default_algorithms
 from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 
@@ -39,6 +41,11 @@ class AuthenticationTokenValidator:
     def __init__(self, secrets: SecretsStore):
         self.secrets = secrets
 
+        self._algorithm_name = "RS256"
+        self._algorithm = get_default_algorithms()[self._algorithm_name]
+        self._cache_mtime = 0.0
+        self._public_keys: List[Any] = []
+
     def validate(self, token: bytes) -> "AuthenticationToken":
         """Validate a raw authentication token and return an object.
 
@@ -49,10 +56,14 @@ class AuthenticationTokenValidator:
         if not token:
             return InvalidAuthenticationToken()
 
-        secret = self.secrets.get_versioned("secret/authentication/public-key")
-        for public_key in secret.all_versions:
+        secret, mtime = self.secrets.get_versioned_and_mtime("secret/authentication/public-key")
+        if mtime > self._cache_mtime:
+            self._public_keys = [self._algorithm.prepare_key(key) for key in secret.all_versions]
+            self._cache_mtime = mtime
+
+        for public_key in self._public_keys:
             try:
-                decoded = jwt.decode(token, public_key, algorithms="RS256")
+                decoded = jwt.decode(token, public_key, algorithms=self._algorithm_name)
                 return ValidatedAuthenticationToken(decoded)
             except jwt.ExpiredSignatureError:
                 return InvalidAuthenticationToken()
