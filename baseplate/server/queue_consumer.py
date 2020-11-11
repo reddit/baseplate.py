@@ -24,6 +24,8 @@ import baseplate.lib.config
 
 from baseplate.lib.retry import RetryPolicy
 from baseplate.observers.timeout import ServerTimeout
+from baseplate.server import runtime_monitor
+
 
 logger = logging.getLogger(__name__)
 
@@ -325,6 +327,9 @@ def make_server(
             ),
         },
     )
+
+    runtime_monitor.start(server_config, app, pool=None)
+
     return QueueConsumerServer.new(
         consumer_factory=app,
         max_concurrency=cfg.max_concurrency,
