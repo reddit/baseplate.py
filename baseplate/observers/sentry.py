@@ -10,6 +10,11 @@ from typing import TYPE_CHECKING
 
 import raven
 
+from pymemcache.exceptions import MemcacheError
+from requests import HTTPError
+from requests import Timeout
+from thrift.Thrift import TException
+
 from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
 from baseplate import RequestContext
@@ -18,9 +23,17 @@ from baseplate import Span
 from baseplate.lib import config
 from baseplate.observers.timeout import ServerTimeout
 
-
 if TYPE_CHECKING:
     from gevent.hub import Hub
+
+
+ALWAYS_IGNORE_EXCEPTIONS = (
+    ConnectionError,
+    HTTPError,
+    Timeout,
+    TException,
+    MemcacheError,
+)
 
 
 def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -> raven.Client:
@@ -67,7 +80,12 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
                 "environment": config.Optional(config.String, default=None),
                 "include_paths": config.Optional(config.String, default=None),
                 "exclude_paths": config.Optional(config.String, default=None),
-                "ignore_exceptions": config.Optional(config.TupleOf(config.String), default=[]),
+                "ignore_exceptions": config.Optional(
+                    config.TupleOf(config.String), default=[]
+                ),  # Depricated in favor of `additional_ignore_exception
+                "additional_ignore_exceptions": config.Optional(
+                    config.TupleOf(config.String), default=[]
+                ),
                 "sample_rate": config.Optional(config.Percent, default=1),
                 "processors": config.Optional(
                     config.TupleOf(config.String),
@@ -89,6 +107,19 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
         else:
             break
 
+    cfg_ignore_exceptions = cfg.sentry.ignore_exceptions
+    cfg_additional_ignore_exceptions = cfg.sentry.additional_ignore_exceptions
+
+    if cfg_additional_ignore_exceptions and cfg_ignore_exceptions:
+        raise config.ConfigurationError(
+            "sentry.ignore_exceptions",
+            "Can not define 'sentry.ignore_exceptions' and 'sentry.additional_ignore_exceptions'",
+        )
+
+    all_ignore_exceptions = cfg_ignore_exceptions or list(ALWAYS_IGNORE_EXCEPTIONS)
+    if cfg_additional_ignore_exceptions:
+        all_ignore_exceptions.extend(cfg_additional_ignore_exceptions)
+
     # pylint: disable=maybe-no-member
     client = raven.Client(
         dsn=cfg.sentry.dsn,
@@ -97,7 +128,7 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
         environment=cfg.sentry.environment,
         include_paths=cfg.sentry.include_paths,
         exclude_paths=cfg.sentry.exclude_paths,
-        ignore_exceptions=cfg.sentry.ignore_exceptions,
+        ignore_exceptions=all_ignore_exceptions,
         sample_rate=cfg.sentry.sample_rate,
         processors=cfg.sentry.processors,
     )
