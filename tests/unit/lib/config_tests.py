@@ -2,6 +2,8 @@ import socket
 import tempfile
 import unittest
 
+from unittest.mock import patch
+
 from baseplate.lib import config
 
 
@@ -237,6 +239,30 @@ class TupleTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             parser("a, b")
+
+
+@patch.dict("os.environ", {"BASEPLATE_DEFAULT_VALUE": "default", "NOT_PROVIDED": ""})
+class DefaultFromEnvTests(unittest.TestCase):
+    def test_use_default_from_env(self):
+        parser = config.DefaultFromEnv(config.String, "BASEPLATE_DEFAULT_VALUE")
+        self.assertEqual(parser(""), "default")
+
+    def test_empty_default(self):
+        parser = config.DefaultFromEnv(config.String, "NOT_PROVIDED")
+        self.assertEqual(parser("foo"), "foo")
+
+    def test_use_provided(self):
+        parser = config.DefaultFromEnv(config.String, "BASEPALTE_DEFAULT_VALUE")
+        self.assertEqual(parser("foo"), "foo")
+
+    def test_provide_none(self):
+        parser = config.DefaultFromEnv(config.String, "NOT_PROVIDED")
+        self.assertRaises(ValueError, parser, "")
+
+    def test_fallback(self):
+        fallback_value = 5
+        parser = config.DefaultFromEnv(config.Integer, "NOT_PROVIDED", fallback_value)
+        self.assertEqual(parser(""), fallback_value)
 
 
 class OptionalTests(unittest.TestCase):

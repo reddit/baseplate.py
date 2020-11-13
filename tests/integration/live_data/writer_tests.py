@@ -1,4 +1,5 @@
 import unittest
+import uuid
 
 from io import BytesIO
 from unittest import mock
@@ -21,7 +22,8 @@ from .. import get_endpoint_or_skip_container
 zookeeper_endpoint = get_endpoint_or_skip_container("zookeeper", 2181)
 
 
-TEST_NODE_PATH = "/writer-test"
+# randomize the node path so simultaneously running test suites don't clobber one another
+TEST_NODE_PATH = f"/writer-test-{uuid.uuid4()}"
 
 
 class LiveDataWriterTests(unittest.TestCase):

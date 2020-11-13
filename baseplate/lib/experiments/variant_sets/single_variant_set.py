@@ -44,9 +44,7 @@ class SingleVariantSet(VariantSet):
             raise ValueError("No variants provided")
 
         if len(self.variants) != 2:
-            raise ValueError(
-                "Single Variant experiments expect only one " "variant and one control."
-            )
+            raise ValueError("Single Variant experiments expect only one variant and one control.")
 
         if self.variants[0].get("size") is None or self.variants[1].get("size") is None:
             raise ValueError(f"Variant size not provided: {self.variants}")

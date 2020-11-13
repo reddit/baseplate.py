@@ -5,13 +5,14 @@ from unittest import mock
 
 import jwt
 
+from pyramid.response import Response
+
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
 from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.lib.edge_context import NoAuthenticationError
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
+from baseplate.testing.lib.secrets import FakeSecretsStore
 
 try:
     import webtest
@@ -52,6 +53,14 @@ def example_application(request):
     if "exception_view_exception" in request.params:
         raise ControlFlowException2()
 
+    if "stream" in request.params:
+
+        def make_iter():
+            yield b"foo"
+            yield b"bar"
+
+        return Response(status_code=200, app_iter=make_iter())
+
     return {"test": "success"}
 
 
@@ -87,18 +96,16 @@ class ConfiguratorTests(unittest.TestCase):
             render_bad_exception_view, context=ControlFlowException2, renderer="json"
         )
 
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/authentication/public-key": {
-                    "type": "versioned",
-                    "current": AUTH_TOKEN_PUBLIC_KEY,
-                }
-            },
-            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-        }
-        secrets = SecretsStore("/secrets")
-        secrets._filewatcher = mock_filewatcher
+        secrets = FakeSecretsStore(
+            {
+                "secrets": {
+                    "secret/authentication/public-key": {
+                        "type": "versioned",
+                        "current": AUTH_TOKEN_PUBLIC_KEY,
+                    }
+                },
+            }
+        )
 
         self.observer = mock.Mock(spec=BaseplateObserver)
         self.server_observer = mock.Mock(spec=ServerSpanObserver)
@@ -261,3 +268,38 @@ class ConfiguratorTests(unittest.TestCase):
         child_span = self.server_observer.on_child_span_created.call_args[0][0]
         context, server_span = self.observer.on_server_span_created.call_args[0]
         self.assertNotEqual(child_span.context, context)
+
+    def test_streaming_response(self):
+        class StreamingTestResponse(webtest.TestResponse):
+            def decode_content(self):
+                # keep your grubby hands off the app_iter, webtest!!!!
+                pass
+
+            @property
+            def body(self):
+                # seriously
+                pass
+
+        class StreamingTestRequest(webtest.TestRequest):
+            ResponseClass = StreamingTestResponse
+
+        self.test_app.RequestClass = StreamingTestRequest
+
+        response = self.test_app.get("/example?stream")
+
+        # ok, we've returned from the wsgi app but the iterator's not done
+        # so... we should have started the span but not finished it yet
+        self.assertTrue(self.server_observer.on_start.called)
+        self.assertFalse(self.server_observer.on_finish.called)
+
+        self.assertEqual(b"foo", next(response.app_iter))
+        self.assertFalse(self.server_observer.on_finish.called)
+
+        self.assertEqual(b"bar", next(response.app_iter))
+        self.assertFalse(self.server_observer.on_finish.called)
+
+        with self.assertRaises(StopIteration):
+            next(response.app_iter)
+        self.assertTrue(self.server_observer.on_finish.called)
+
+        response.app_iter.close()

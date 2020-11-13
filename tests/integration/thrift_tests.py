@@ -18,11 +18,14 @@ from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.edge_context import EdgeRequestContextFactory
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
+from baseplate.testing.lib.secrets import FakeSecretsStore
+from baseplate.thrift import BaseplateService
+from baseplate.thrift import BaseplateServiceV2
+from baseplate.thrift.ttypes import IsHealthyProbe
+from baseplate.thrift.ttypes import IsHealthyRequest
 
 from .. import AUTH_TOKEN_PUBLIC_KEY
 from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
@@ -45,23 +48,21 @@ except ImportError:
 
 
 def make_edge_context_factory():
-    mock_filewatcher = mock.Mock(spec=FileWatcher)
-    mock_filewatcher.get_data.return_value = {
-        "secrets": {
-            "secret/authentication/public-key": {
-                "type": "versioned",
-                "current": AUTH_TOKEN_PUBLIC_KEY,
-            }
-        },
-        "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-    }
-    secrets = SecretsStore("/secrets")
-    secrets._filewatcher = mock_filewatcher
+    secrets = FakeSecretsStore(
+        {
+            "secrets": {
+                "secret/authentication/public-key": {
+                    "type": "versioned",
+                    "current": AUTH_TOKEN_PUBLIC_KEY,
+                }
+            },
+        }
+    )
     return EdgeRequestContextFactory(secrets)
 
 
 @contextlib.contextmanager
-def serve_thrift(handler, server_span_observer=None):
+def serve_thrift(handler, server_spec, server_span_observer=None):
     # create baseplate root
     baseplate = Baseplate()
     if server_span_observer:
@@ -75,7 +76,7 @@ def serve_thrift(handler, server_span_observer=None):
     # set up the server's processor
     logger = mock.Mock(spec=logging.Logger)
     edge_context_factory = make_edge_context_factory()
-    processor = TestService.Processor(handler)
+    processor = server_spec.Processor(handler)
     processor = baseplateify_processor(processor, logger, baseplate, edge_context_factory)
 
     # bind a server socket on an available port
@@ -98,14 +99,14 @@ def serve_thrift(handler, server_span_observer=None):
 
 
 @contextlib.contextmanager
-def raw_thrift_client(endpoint):
+def raw_thrift_client(endpoint, client_spec):
     pool = ThriftConnectionPool(endpoint)
     with pool.connection() as client_protocol:
-        yield TestService.Client(client_protocol)
+        yield client_spec.Client(client_protocol)
 
 
 @contextlib.contextmanager
-def baseplate_thrift_client(endpoint, client_span_observer=None):
+def baseplate_thrift_client(endpoint, client_spec, client_span_observer=None):
     baseplate = Baseplate(
         app_config={
             "baseplate.service_name": "fancy test client",
@@ -132,7 +133,7 @@ def baseplate_thrift_client(endpoint, client_span_observer=None):
         trace_id=1234, parent_id=2345, span_id=3456, flags=4567, sampled=True
     )
 
-    baseplate.configure_context({"example_service": ThriftClient(TestService.Client)})
+    baseplate.configure_context({"example_service": ThriftClient(client_spec.Client)})
 
     baseplate.make_server_span(context, "example_service.example", trace_info)
 
@@ -164,8 +165,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         handler = Handler()
 
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
-        with serve_thrift(handler, server_span_observer) as server:
-            with baseplate_thrift_client(server.endpoint) as context:
+        with serve_thrift(handler, TestService, server_span_observer) as server:
+            with baseplate_thrift_client(server.endpoint, TestService) as context:
                 context.example_service.example()
 
         server_span_observer.on_set_tag.assert_called_once_with("peer.service", "fancy test client")
@@ -183,8 +184,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
         handler = Handler()
 
-        with serve_thrift(handler) as server:
-            with raw_thrift_client(server.endpoint) as client:
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
                 client_result = client.example()
 
         self.assertIsNotNone(handler.server_span)
@@ -210,8 +211,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
         handler = Handler()
 
-        with serve_thrift(handler) as server:
-            with raw_thrift_client(server.endpoint) as client:
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
                 transport.set_header(b"Trace", str(trace_id).encode())
                 transport.set_header(b"Parent", str(parent_id).encode())
@@ -245,8 +246,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
         handler = Handler()
 
-        with serve_thrift(handler) as server:
-            with raw_thrift_client(server.endpoint) as client:
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
                 transport.set_header(b"Trace", str(trace_id).encode())
                 transport.set_header(b"Parent", str(parent_id).encode())
@@ -277,8 +278,8 @@ class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
 
         handler = Handler()
 
-        with serve_thrift(handler) as server:
-            with raw_thrift_client(server.endpoint) as client:
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
                 transport.set_header(b"Edge-Request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
                 client_result = client.example()
@@ -308,8 +309,8 @@ class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
 
         handler = Handler()
 
-        with serve_thrift(handler) as server:
-            with raw_thrift_client(server.endpoint) as client:
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
                 transport.set_header(b"edge-request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
                 client_result = client.example()
@@ -337,8 +338,8 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
         handler = Handler()
 
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
-        with serve_thrift(handler, server_span_observer) as server:
-            with raw_thrift_client(server.endpoint) as client:
+        with serve_thrift(handler, TestService, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
                 client.example()
 
         server_span_observer.on_start.assert_called_once_with()
@@ -354,8 +355,8 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
         handler = Handler()
 
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
-        with serve_thrift(handler, server_span_observer) as server:
-            with raw_thrift_client(server.endpoint) as client:
+        with serve_thrift(handler, TestService, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
                 with self.assertRaises(TestService.ExpectedException):
                     client.example()
 
@@ -375,8 +376,8 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
         handler = Handler()
 
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
-        with serve_thrift(handler, server_span_observer) as server:
-            with raw_thrift_client(server.endpoint) as client:
+        with serve_thrift(handler, TestService, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
                 with self.assertRaises(TApplicationException):
                     client.example()
 
@@ -397,8 +398,10 @@ class ThriftClientSpanTests(GeventPatchedTestCase):
         handler = Handler()
 
         client_span_observer = mock.Mock(spec=SpanObserver)
-        with serve_thrift(handler) as server:
-            with baseplate_thrift_client(server.endpoint, client_span_observer) as context:
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, client_span_observer
+            ) as context:
                 context.example_service.example()
 
         client_span_observer.on_start.assert_called_once_with()
@@ -414,8 +417,10 @@ class ThriftClientSpanTests(GeventPatchedTestCase):
         handler = Handler()
 
         client_span_observer = mock.Mock(spec=SpanObserver)
-        with serve_thrift(handler) as server:
-            with baseplate_thrift_client(server.endpoint, client_span_observer) as context:
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, client_span_observer
+            ) as context:
                 with self.assertRaises(TestService.ExpectedException):
                     context.example_service.example()
 
@@ -435,8 +440,10 @@ class ThriftClientSpanTests(GeventPatchedTestCase):
         handler = Handler()
 
         client_span_observer = mock.Mock(spec=SpanObserver)
-        with serve_thrift(handler) as server:
-            with baseplate_thrift_client(server.endpoint, client_span_observer) as context:
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, client_span_observer
+            ) as context:
                 with self.assertRaises(TApplicationException):
                     context.example_service.example()
 
@@ -459,8 +466,8 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
         handler = Handler()
 
         span_observer = mock.Mock(spec=SpanObserver)
-        with serve_thrift(handler) as server:
-            with baseplate_thrift_client(server.endpoint, span_observer) as context:
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(server.endpoint, TestService, span_observer) as context:
                 context.example_service.example()
 
         try:
@@ -474,3 +481,44 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
             self.assertEqual(handler.request_context.session.id, "beefdead")
         except jwt.exceptions.InvalidAlgorithmError:
             raise unittest.SkipTest("cryptography is not installed")
+
+
+class ThriftHealthcheck(GeventPatchedTestCase):
+    def test_v2_client_v1_server(self):
+        class Handler(BaseplateService.Iface):
+            def is_healthy(self, context):
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, BaseplateService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, BaseplateServiceV2, span_observer
+            ) as context:
+                healthy = context.example_service.is_healthy(
+                    request=IsHealthyRequest(probe=IsHealthyProbe.READINESS),
+                )
+                self.assertTrue(healthy)
+
+    def test_v2_client_v2_server(self):
+        class Handler(BaseplateServiceV2.Iface):
+            def __init__(self):
+                self.probe = None
+
+            def is_healthy(self, context, req=None):
+                self.probe = req.probe
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, BaseplateServiceV2) as server:
+            with baseplate_thrift_client(
+                server.endpoint, BaseplateServiceV2, span_observer
+            ) as context:
+                healthy = context.example_service.is_healthy(
+                    request=IsHealthyRequest(probe=IsHealthyProbe.LIVENESS),
+                )
+                self.assertTrue(healthy)
+                self.assertEqual(handler.probe, IsHealthyProbe.LIVENESS)

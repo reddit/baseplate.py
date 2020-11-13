@@ -11,11 +11,11 @@ from baseplate import ServerSpanObserver
 from baseplate import Span
 from baseplate import SpanObserver
 from baseplate import TraceInfo
+from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.lib.edge_context import NoAuthenticationError
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
+from baseplate.testing.lib.secrets import FakeSecretsStore
 
 from .. import AUTH_TOKEN_PUBLIC_KEY
 from .. import AUTH_TOKEN_VALID
@@ -75,7 +75,7 @@ class BaseplateTests(unittest.TestCase):
 
     def test_configure_context_supports_complex_specs(self):
         from baseplate.clients.thrift import ThriftClient
-        from baseplate.thrift import BaseplateService
+        from baseplate.thrift import BaseplateServiceV2
 
         app_config = {
             "enable_some_fancy_feature": "true",
@@ -89,8 +89,8 @@ class BaseplateTests(unittest.TestCase):
             {
                 "enable_some_fancy_feature": config.Boolean,
                 "thrift": {
-                    "foo": ThriftClient(BaseplateService.Client),
-                    "bar": ThriftClient(BaseplateService.Client),
+                    "foo": ThriftClient(BaseplateServiceV2.Client),
+                    "bar": ThriftClient(BaseplateServiceV2.Client),
                 },
             },
         )
@@ -110,6 +110,35 @@ class BaseplateTests(unittest.TestCase):
         with baseplate.server_context("example") as context:
             observer.on_server_span_created.assert_called_once()
             self.assertIsInstance(context, RequestContext)
+
+    def test_add_to_context(self):
+        baseplate = Baseplate()
+        forty_two_factory = mock.Mock(spec=ContextFactory)
+        forty_two_factory.make_object_for_context = mock.Mock(return_value=42)
+        baseplate.add_to_context("forty_two", forty_two_factory)
+        baseplate.add_to_context("true", True)
+
+        context = baseplate.make_context_object()
+
+        self.assertEqual(42, context.forty_two)
+        self.assertTrue(context.true)
+
+    def test_add_to_context_supports_complex_specs(self):
+        baseplate = Baseplate()
+        forty_two_factory = mock.Mock(spec=ContextFactory)
+        forty_two_factory.make_object_for_context = mock.Mock(return_value=42)
+        context_spec = {
+            "forty_two": forty_two_factory,
+            "true": True,
+            "nested": {"foo": "bar"},
+        }
+        baseplate.add_to_context("complex", context_spec)
+
+        context = baseplate.make_context_object()
+
+        self.assertEqual(42, context.complex.forty_two)
+        self.assertTrue(context.complex.true)
+        self.assertEqual("bar", context.complex.nested.foo)
 
 
 class SpanTests(unittest.TestCase):
@@ -301,18 +330,16 @@ class EdgeRequestContextTests(unittest.TestCase):
     COUNTRY_CODE = "OK"
 
     def setUp(self):
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/authentication/public-key": {
-                    "type": "versioned",
-                    "current": AUTH_TOKEN_PUBLIC_KEY,
-                }
-            },
-            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-        }
-        self.store = SecretsStore("/secrets")
-        self.store._filewatcher = mock_filewatcher
+        self.store = FakeSecretsStore(
+            {
+                "secrets": {
+                    "secret/authentication/public-key": {
+                        "type": "versioned",
+                        "current": AUTH_TOKEN_PUBLIC_KEY,
+                    }
+                },
+            }
+        )
         self.factory = EdgeRequestContextFactory(self.store)
 
     def test_create(self):

@@ -23,14 +23,15 @@ class IsHealthyProbe(object):
     """
     The different types of probes supported by is_healthy endpoint.
 
-    Please refer to Kubernetes' documentation for tge differences between them:
+    Please refer to Kubernetes' documentation for the differences between them:
     https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 
     Your service should use Readiness probe as the fallback for unsupported probes.
 
-    Note that the HTTP health check use the string names of the probes,
+    Note that the HTTP health check could use the string names of the probes,
     so changing the names, even without changing the numeric values,
     is considered as breaking change and should be avoided.
+
 
     """
 

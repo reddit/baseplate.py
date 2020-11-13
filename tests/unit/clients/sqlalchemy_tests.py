@@ -8,25 +8,22 @@ except ImportError:
     raise unittest.SkipTest("sqlalchemy is not installed")
 
 from baseplate.clients.sqlalchemy import engine_from_config
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
+from baseplate.testing.lib.secrets import FakeSecretsStore
 
 
 class EngineFromConfigTests(unittest.TestCase):
     def setUp(self):
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/sql/account": {
-                    "type": "credential",
-                    "username": "reddit",
-                    "password": "password",
+        secrets = FakeSecretsStore(
+            {
+                "secrets": {
+                    "secret/sql/account": {
+                        "type": "credential",
+                        "username": "reddit",
+                        "password": "password",
+                    }
                 }
-            },
-            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-        }
-        secrets = SecretsStore("/secrets")
-        secrets._filewatcher = mock_filewatcher
+            }
+        )
         self.secrets = secrets
 
     def test_url(self):

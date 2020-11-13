@@ -41,7 +41,7 @@ class MultiVariantSet(VariantSet):
             raise ValueError("No variants provided")
 
         if len(self.variants) < 3:
-            raise ValueError("MultiVariant experiments expect three or " "more variants.")
+            raise ValueError("MultiVariant experiments expect three or more variants.")
 
         total_size = 0
         for variant in self.variants:

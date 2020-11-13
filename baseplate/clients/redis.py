@@ -15,6 +15,7 @@ from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
+from baseplate.lib import metrics
 
 
 def pool_from_config(
@@ -94,6 +95,19 @@ class RedisContextFactory(ContextFactory):
     def __init__(self, connection_pool: redis.ConnectionPool):
         self.connection_pool = connection_pool
 
+    def report_runtime_metrics(self, batch: metrics.Client) -> None:
+        if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
+            return
+
+        size = self.connection_pool.max_connections
+        open_connections = len(self.connection_pool._connections)  # type: ignore
+        available = self.connection_pool.pool.qsize()
+        in_use = size - available
+
+        batch.gauge("pool.size").replace(size)
+        batch.gauge("pool.in_use").replace(in_use)
+        batch.gauge("pool.open_and_available").replace(open_connections - in_use)
+
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
         return MonitoredRedisConnection(name, span, self.connection_pool)
 
@@ -108,8 +122,6 @@ class MonitoredRedisConnection(redis.StrictRedis):
     The interface is the same as that class except for the
     :py:meth:`~baseplate.clients.redis.MonitoredRedisConnection.pipeline`
     method.
-
-    .. note:: Locks and PubSub are currently unsupported.
 
     """
 
@@ -152,14 +164,6 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     # these commands are not yet implemented, but probably not unimplementable
     def transaction(self, *args: Any, **kwargs: Any) -> Any:
-        """Not currently implemented."""
-        raise NotImplementedError
-
-    def lock(self, *args: Any, **kwargs: Any) -> Any:
-        """Not currently implemented."""
-        raise NotImplementedError
-
-    def pubsub(self, *args: Any, **kwargs: Any) -> Any:
         """Not currently implemented."""
         raise NotImplementedError
 

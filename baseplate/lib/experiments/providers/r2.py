@@ -164,7 +164,7 @@ class R2Experiment(Experiment):
             return None
         if lower_kwargs[self.bucket_val] is None:
             logger.info(
-                "Cannot choose a variant for bucket value %s = %s " "for experiment %s.",
+                "Cannot choose a variant for bucket value %s = %s for experiment %s.",
                 self.bucket_val,
                 lower_kwargs[self.bucket_val],
                 self.name,
