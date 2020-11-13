@@ -154,7 +154,9 @@ class VaultClientFactory:
         self.auth_type = auth_type
         self.mount_point = mount_point
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": f"baseplate-{self.__class__.__name__}/{baseplate_version}"})
+        self.session.headers.update(
+            {"User-Agent": f"baseplate-{self.__class__.__name__}/{baseplate_version}"}
+        )
         self.client: Optional["VaultClient"] = None
 
     def _make_client(self) -> "VaultClient":
