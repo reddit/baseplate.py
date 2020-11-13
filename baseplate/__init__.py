@@ -1,8 +1,6 @@
 import logging
 import random
 
-from pkg_resources import get_distribution, DistributionNotFound
-
 from contextlib import contextmanager
 from types import TracebackType
 from typing import Any
@@ -18,6 +16,9 @@ from typing import Type
 from typing import TYPE_CHECKING
 
 import gevent.monkey
+
+from pkg_resources import DistributionNotFound
+from pkg_resources import get_distribution
 
 from baseplate.lib import config
 from baseplate.lib import get_calling_module_name
