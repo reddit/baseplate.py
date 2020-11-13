@@ -1,6 +1,8 @@
 import logging
 import random
 
+from pkg_resources import get_distribution, DistributionNotFound
+
 from contextlib import contextmanager
 from types import TracebackType
 from typing import Any
@@ -28,6 +30,13 @@ if TYPE_CHECKING:
     import baseplate.clients
     import baseplate.observers.tracing
     import raven
+
+
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    __version__ = 'unknown'
 
 
 logger = logging.getLogger(__name__)

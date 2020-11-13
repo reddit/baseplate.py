@@ -7,6 +7,7 @@ from typing import Optional
 
 import requests
 
+from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.message_queue import MessageQueue
@@ -60,6 +61,7 @@ class ZipkinPublisher:
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         parsed_url = urllib.parse.urlparse(zipkin_api_url)
         self.session = requests.Session()
+        self.session.headers.update({"User-Agent": f"baseplate-{self.__class__.__name__}/{baseplate_version}"})
         self.session.mount(f"{parsed_url.scheme}://", adapter)
         self.endpoint = f"{zipkin_api_url}/spans"
         self.metrics = metrics_client
