@@ -17,6 +17,9 @@ from typing import TYPE_CHECKING
 
 import gevent.monkey
 
+from pkg_resources import DistributionNotFound
+from pkg_resources import get_distribution
+
 from baseplate.lib import config
 from baseplate.lib import get_calling_module_name
 from baseplate.lib import metrics
@@ -28,6 +31,13 @@ if TYPE_CHECKING:
     import baseplate.clients
     import baseplate.observers.tracing
     import raven
+
+
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    __version__ = "unknown"
 
 
 logger = logging.getLogger(__name__)

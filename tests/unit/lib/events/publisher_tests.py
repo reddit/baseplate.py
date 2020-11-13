@@ -68,6 +68,7 @@ class PublisherTests(unittest.TestCase):
         self.config.key.secret = b"hunter2"
 
         self.session = Session.return_value
+        self.session.headers = {}
 
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
 

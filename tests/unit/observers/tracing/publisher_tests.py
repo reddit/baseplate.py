@@ -13,6 +13,7 @@ class ZipkinPublisherTest(unittest.TestCase):
     @mock.patch("requests.Session", autospec=True)
     def setUp(self, mock_Session):
         self.session = mock_Session.return_value
+        self.session.headers = {}
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
         self.zipkin_api_url = "http://test.local/api/v2"
         self.publisher = trace_publisher.ZipkinPublisher(self.zipkin_api_url, self.metrics_client)

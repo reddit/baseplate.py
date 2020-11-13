@@ -12,6 +12,7 @@ from typing import Optional
 
 import requests
 
+from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
@@ -92,6 +93,9 @@ class BatchPublisher:
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
         self.session = requests.Session()
+        self.session.headers[
+            "User-Agent"
+        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
 
     def _sign_payload(self, payload: bytes) -> str:
         digest = hmac.new(self.key_secret, payload, hashlib.sha256).hexdigest()

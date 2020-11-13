@@ -80,6 +80,7 @@ from typing import Tuple
 
 import requests
 
+from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 
 
@@ -153,6 +154,9 @@ class VaultClientFactory:
         self.auth_type = auth_type
         self.mount_point = mount_point
         self.session = requests.Session()
+        self.session.headers[
+            "User-Agent"
+        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
         self.client: Optional["VaultClient"] = None
 
     def _make_client(self) -> "VaultClient":
