@@ -10,11 +10,6 @@ from typing import TYPE_CHECKING
 
 import raven
 
-from pymemcache.exceptions import MemcacheError
-from requests import HTTPError
-from requests import Timeout
-from thrift.Thrift import TException
-
 from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
 from baseplate import RequestContext
@@ -28,18 +23,21 @@ if TYPE_CHECKING:
 
 
 ALWAYS_IGNORE_EXCEPTIONS = (
-    ConnectionError,
-    HTTPError,
-    Timeout,
-    TException,
-    MemcacheError,
+    "ConnectionError",
+    "ConnectionRefusedError",
+    "ConnectionResetError",
+    "HTTPError",
+    "TApplicationException",
+    "TProtocolException",
+    "TTransportException",
+    "MemcacheServerError",
 )
 
 
 def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -> raven.Client:
     """Configure and return a error reporter.
 
-    This expects one configuration option and can take many optional ones:
+    This expects one uration option and can take many optional ones:
 
     ``sentry.dsn``
         The DSN provided by Sentry. If blank, the reporter will discard events.

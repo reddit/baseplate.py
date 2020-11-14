@@ -4,6 +4,12 @@ from unittest import mock
 
 import raven
 
+from pymemcache.exceptions import MemcacheServerError
+from requests.exceptions import HTTPError
+from thrift.Thrift import TApplicationException
+from thrift.transport.TTransport import TTransportException
+from thrift.protocol.TProtocol import TProtocolException
+
 from baseplate import config
 from baseplate.observers import sentry
 
@@ -34,8 +40,18 @@ class SentryIgnoreExceptionsTest(unittest.TestCase):
 
         return _raise_exception
 
-    def observe_all(self, cli, excs):
-        for exc in excs:
+    def observe_always_ignore(self, cli):
+        ignore = [
+            ConnectionError,
+            ConnectionRefusedError,
+            ConnectionResetError,
+            HTTPError,
+            TApplicationException,
+            TProtocolException,
+            TTransportException,
+            MemcacheServerError,
+        ]
+        for exc in ignore:
             fn = self.observe_and_raise(cli, exc)
             try:
                 fn()
@@ -44,7 +60,7 @@ class SentryIgnoreExceptionsTest(unittest.TestCase):
 
     def test_default_ignore_exceptions(self):
         cli = sentry.error_reporter_from_config(dict(), __name__)
-        self.observe_all(cli, sentry.ALWAYS_IGNORE_EXCEPTIONS)
+        self.observe_always_ignore(cli)
         self.assertEqual(cli.stub_events_sent, 0)
 
     def test_report_exception(self):
@@ -60,8 +76,8 @@ class SentryIgnoreExceptionsTest(unittest.TestCase):
         self.assertEqual(cli.stub_events_sent, 0)
 
         # If 'ignore_exceptions' is defined default filters aren't included.
-        self.observe_all(cli, sentry.ALWAYS_IGNORE_EXCEPTIONS)
-        self.assertEqual(cli.stub_events_sent, len(sentry.ALWAYS_IGNORE_EXCEPTIONS))
+        self.observe_always_ignore(cli)
+        self.assertEqual(cli.stub_events_sent, 8)
 
     def test_additional_ignored_exceptions(self):
         cli = sentry.error_reporter_from_config(
@@ -70,7 +86,7 @@ class SentryIgnoreExceptionsTest(unittest.TestCase):
         self.assertRaises(TestException, self.observe_and_raise(cli, TestException))
         self.assertEqual(cli.stub_events_sent, 0)
 
-        self.observe_all(cli, sentry.ALWAYS_IGNORE_EXCEPTIONS)
+        self.observe_always_ignore(cli)
         self.assertEqual(cli.stub_events_sent, 0)
 
     def test_both_ignored_exceptions(self):
