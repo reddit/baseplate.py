@@ -112,7 +112,7 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
     if cfg_ignore_exceptions:
         warn_deprecated(
             "'ignore_exceptions' configuration varible is depricated."
-            + "Please use 'additional_ignore_exceptions' instead.",
+            "Please use 'sentry.additional_ignore_exceptions' instead.",
         )
 
     if cfg_additional_ignore_exceptions and cfg_ignore_exceptions:
