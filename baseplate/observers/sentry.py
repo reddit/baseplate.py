@@ -16,6 +16,7 @@ from baseplate import RequestContext
 from baseplate import ServerSpanObserver
 from baseplate import Span
 from baseplate.lib import config
+from baseplate.lib import warn_deprecated
 from baseplate.observers.timeout import ServerTimeout
 
 if TYPE_CHECKING:
@@ -80,7 +81,7 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
                 "exclude_paths": config.Optional(config.String, default=None),
                 "ignore_exceptions": config.Optional(
                     config.TupleOf(config.String), default=[]
-                ),  # Depricated in favor of `additional_ignore_exception
+                ),  # Deprecated in favor of `additional_ignore_exception
                 "additional_ignore_exceptions": config.Optional(
                     config.TupleOf(config.String), default=[]
                 ),
@@ -107,6 +108,12 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
 
     cfg_ignore_exceptions = cfg.sentry.ignore_exceptions
     cfg_additional_ignore_exceptions = cfg.sentry.additional_ignore_exceptions
+
+    if cfg_ignore_exceptions != None:
+        warn_deprecated(
+            "'ignore_exceptions' configuration varible is depricated."
+            + "Please use 'additional_ignore_exceptions' instead.",
+        )
 
     if cfg_additional_ignore_exceptions and cfg_ignore_exceptions:
         raise config.ConfigurationError(
