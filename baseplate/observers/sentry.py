@@ -38,7 +38,7 @@ ALWAYS_IGNORE_EXCEPTIONS = (
 def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -> raven.Client:
     """Configure and return a error reporter.
 
-    This expects one uration option and can take many optional ones:
+    This expects one configuration option and can take many optional ones:
 
     ``sentry.dsn``
         The DSN provided by Sentry. If blank, the reporter will discard events.
