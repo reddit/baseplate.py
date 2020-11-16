@@ -246,11 +246,12 @@ def load_app_and_run_server() -> None:
     # clean up leftovers from initialization before we get into requests
     gc.collect()
 
-    logger.info("Listening on %s", listener.getsockname())
+    logger.info("Listening on %s, PID: %s", listener.getsockname(), os.getpid())
     server.start()
     try:
         shutdown_event.wait()
     finally:
+        logger.info("Finally stopping server, PID: %s", os.getpid())
         server.stop()
 
 
