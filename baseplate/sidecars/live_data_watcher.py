@@ -9,12 +9,11 @@ import time
 from typing import Any
 from typing import NoReturn
 
-from kazoo.client import KazooClient
-from kazoo.protocol.states import ZnodeStat
-
 from baseplate.lib import config
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
+from kazoo.client import KazooClient
+from kazoo.protocol.states import ZnodeStat
 
 
 logger = logging.getLogger(__name__)
