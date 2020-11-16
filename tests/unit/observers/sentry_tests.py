@@ -6,9 +6,9 @@ import raven
 
 from pymemcache.exceptions import MemcacheServerError
 from requests.exceptions import HTTPError
+from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
 from thrift.transport.TTransport import TTransportException
-from thrift.protocol.TProtocol import TProtocolException
 
 from baseplate import config
 from baseplate.observers import sentry
