@@ -3,6 +3,7 @@ import argparse
 import configparser
 import logging
 import os
+import pathlib
 import sys
 import time
 
@@ -25,6 +26,8 @@ HEARTBEAT_INTERVAL = 300
 
 class NodeWatcher:
     def __init__(self, dest: str, owner: int, group: int, mode: int):
+        pathlib.Path(dest).parent.mkdir(parents=True, exist_ok=True)
+
         self.dest = dest
         self.owner = owner
         self.group = group
