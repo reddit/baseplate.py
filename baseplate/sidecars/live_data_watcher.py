@@ -6,6 +6,7 @@ import os
 import sys
 import time
 
+from pathlib import Path
 from typing import Any
 from typing import NoReturn
 
@@ -43,6 +44,7 @@ class NodeWatcher:
         # swap out the file atomically so clients watching the file never catch
         # us mid-write.
         logger.info("Updating %r", self.dest)
+        Path(self.dest).parent.mkdir(parents=True, exist_ok=True)
         with open(self.dest + ".tmp", "wb") as tmpfile:
             if self.owner and self.group:
                 os.fchown(tmpfile.fileno(), self.owner, self.group)
