@@ -150,7 +150,7 @@ def publish_traces() -> None:
     publisher_cfg = config.parse_config(
         publisher_raw_cfg,
         {
-            "zipkin_api_url": config.Endpoint,
+            "zipkin_api_url": config.DefaultFromEnv(config.Endpoint, "BASEPLATE_ZIPKIN_API_URL"),
             "post_timeout": config.Optional(config.Integer, POST_TIMEOUT_DEFAULT),
             "max_batch_size": config.Optional(config.Integer, MAX_BATCH_SIZE_DEFAULT),
             "retry_limit": config.Optional(config.Integer, RETRY_LIMIT_DEFAULT),
