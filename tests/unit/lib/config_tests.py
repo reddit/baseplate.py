@@ -265,6 +265,26 @@ class DefaultFromEnvTests(unittest.TestCase):
         self.assertEqual(parser(""), fallback_value)
 
 
+@patch.dict("os.environ", {"BASEPLATE_DEFAULT_VALUE": "default", "NOT_PROVIDED": ""})
+class OptionalDefaultFromEnvTests(unittest.TestCase):
+    def test_use_optional_default_from_env(self):
+        parser = config.OptionalDefaultFromEnv(config.String, "BASEPLATE_DEFAULT_VALUE")
+        self.assertEqual(parser(""), "default")
+
+    def test_empty_default(self):
+        parser = config.DefaultFromEnv(config.String, "NOT_PROVIDED")
+        self.assertEqual(parser("foo"), "foo")
+
+    def test_use_provided(self):
+        parser = config.DefaultFromEnv(config.String, "BASEPALTE_DEFAULT_VALUE")
+        self.assertEqual(parser("foo"), "foo")
+
+    def test_fallback(self):
+        fallback_value = 5
+        parser = config.DefaultFromEnv(config.Integer, "NOT_PROVIDED", fallback_value)
+        self.assertEqual(parser(""), fallback_value)
+
+
 class OptionalTests(unittest.TestCase):
     def test_optional_exists(self):
         parser = config.Optional(config.Integer)
