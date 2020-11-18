@@ -26,8 +26,6 @@ HEARTBEAT_INTERVAL = 300
 
 class NodeWatcher:
     def __init__(self, dest: str, owner: int, group: int, mode: int):
-        pathlib.Path(dest).parent.mkdir(parents=True, exist_ok=True)
-
         self.dest = dest
         self.owner = owner
         self.group = group
@@ -46,6 +44,7 @@ class NodeWatcher:
         # swap out the file atomically so clients watching the file never catch
         # us mid-write.
         logger.info("Updating %r", self.dest)
+        pathlib.Path(self.dest).parent.mkdir(parents=True, exist_ok=True)
         with open(self.dest + ".tmp", "wb") as tmpfile:
             if self.owner and self.group:
                 os.fchown(tmpfile.fileno(), self.owner, self.group)
