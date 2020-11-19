@@ -563,9 +563,7 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
         raw_config,
         {
             "metrics": {
-                "namespace": config.OptionalDefaultFromEnv(
-                    config.String, "BASEPLATE_METRICS_NAMESPACE",
-                ),
+                "namespace(config.Optional(config.String, default""),
                 "endpoint": config.OptionalDefaultFromEnv(
                     config.Endpoint, "BASEPLATE_METRICS_ENDPOINT",
                 ),
