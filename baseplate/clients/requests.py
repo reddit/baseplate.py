@@ -190,6 +190,7 @@ class BaseplateSession:
         send_kwargs = {
             "timeout": kwargs.pop("timeout", None),
             "allow_redirects": kwargs.pop("allow_redirects", None),
+            "verify": kwargs.pop("verify", True),
         }
         request = Request(method=method.upper(), url=url, **kwargs)
         prepared = self.prepare_request(request)
