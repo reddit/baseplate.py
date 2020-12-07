@@ -37,6 +37,8 @@ class EngineFromConfigTests(unittest.TestCase):
                 "database.url": "postgresql://fizz:buzz@localhost:9000/db",
                 "database.credentials_secret": "secret/sql/account",
                 "database.pool_recycle": "60",
+                "database.pool_size": "10",
+                "database.max_overflow": "5",
             },
             self.secrets,
         )
@@ -50,6 +52,8 @@ class EngineFromConfigTests(unittest.TestCase):
                 database="db",
             ),
             pool_recycle=60,
+            pool_size=10,
+            max_overflow=5,
         )
 
     @mock.patch("baseplate.clients.sqlalchemy.create_engine")
