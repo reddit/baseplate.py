@@ -204,12 +204,7 @@ class SecretsStore(ContextFactory):
         return self.get_versioned_and_mtime(path)[0]
 
     def get_vault_url(self) -> str:
-        """Return the URL for accessing Vault directly.
-
-        .. seealso:: The :py:mod:`baseplate.clients.hvac` module provides
-            integration with HVAC, a Vault client.
-
-        """
+        """Return the URL for accessing Vault directly."""
         data, _ = self._get_data()
         return data["vault"]["url"]
 
@@ -218,9 +213,6 @@ class SecretsStore(ContextFactory):
 
         The token will have policies attached based on the current EC2 server's
         Vault role. This is only necessary if talking directly to Vault.
-
-        .. seealso:: The :py:mod:`baseplate.clients.hvac` module provides
-            integration with HVAC, a Vault client.
 
         """
         data, _ = self._get_data()

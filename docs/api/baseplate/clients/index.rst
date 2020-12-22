@@ -10,7 +10,6 @@ Instrumented Client Libraries
    :titlesonly:
 
    baseplate.clients.cassandra: Cassandra CQL Client <cassandra>
-   baseplate.clients.hvac: Client for using Vault's advanced features <hvac>
    baseplate.clients.kombu: Client for publishing to queues <kombu>
    baseplate.clients.memcache: Memcached Client <memcache>
    baseplate.clients.redis: Redis Client <redis>
