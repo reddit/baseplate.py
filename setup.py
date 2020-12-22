@@ -11,7 +11,7 @@ setup(
     url="https://baseplate.readthedocs.io/en/stable/",
     use_scm_version=True,
     packages=find_packages(exclude=["tests", "tests.*"]),
-    python_requires=">=3.6.2",
+    python_requires=">=3.7",
     setup_requires=["setuptools_scm"],
     install_requires=[
         "posix_ipc>=1.0.0",
@@ -54,7 +54,6 @@ setup(
         "License :: OSI Approved :: BSD License",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Topic :: Software Development :: Libraries",

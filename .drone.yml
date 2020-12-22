@@ -17,21 +17,6 @@ kind: pipeline
 name: Test
 
 steps:
-    - name: "Python 3.6"
-      image: python:3.6
-      environment:
-          BASEPLATE_CASSANDRA_ADDR: "cassandra:9042"
-          BASEPLATE_MEMCACHED_ADDR: "memcached:11211"
-          BASEPLATE_REDIS_ADDR: "redis:6379"
-          BASEPLATE_VAULT_ADDR: "vault:8200"
-          BASEPLATE_ZOOKEEPER_ADDR: "zookeeper:2181"
-          PIP_OPTIONS:
-              from_secret: pip_options
-      commands:
-          - pip install $PIP_OPTIONS -r requirements-test.txt
-          - pytest
-      depends_on: [clone]
-
     - name: "Python 3.7"
       image: python:3.7
       environment:
