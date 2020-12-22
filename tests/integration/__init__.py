@@ -17,7 +17,6 @@ def get_endpoint_or_skip_container(name, default_port):
     override the default of localhost:{default_port}.
 
     """
-
     address = os.environ.get("BASEPLATE_%s_ADDR" % name.upper(), "localhost:%d" % default_port)
     endpoint = Endpoint(address)
 

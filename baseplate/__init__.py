@@ -281,7 +281,6 @@ class Baseplate:
             ...
 
         """
-
         self.observers: List[BaseplateObserver] = []
         self._metrics_client: Optional[metrics.Client] = None
         self._context_config: Dict[str, Any] = {}

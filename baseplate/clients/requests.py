@@ -58,7 +58,6 @@ def http_adapter_from_config(
         comprehensively to).
 
     """
-
     assert prefix.endswith(".")
     parser = config.SpecParser(
         {
@@ -201,7 +200,6 @@ class BaseplateSession:
 
     def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
         """Send a :py:class:`~requests.PreparedRequest`."""
-
         with self.span.make_child(f"{self.name}.request") as span:
             span.set_tag("http.method", request.method)
             span.set_tag("http.url", request.url)

@@ -221,7 +221,6 @@ def register_signal_handlers() -> threading.Event:
 
 def load_app_and_run_server() -> None:
     """Parse arguments, read configuration, and start the server."""
-
     sys.path.append(os.getcwd())
 
     shutdown_event = register_signal_handlers()
@@ -257,7 +256,6 @@ def load_app_and_run_server() -> None:
 
 def load_and_run_script() -> None:
     """Launch a script with an entrypoint similar to a server."""
-
     sys.path.append(os.getcwd())
 
     args, extra_args = _parse_baseplate_script_args()
@@ -324,7 +322,6 @@ def _fn_accepts_additional_args(script_fn: Callable[..., Any], fn_args: Sequence
 
 def load_and_run_shell() -> None:
     """Launch a shell for a thrift service."""
-
     sys.path.append(os.getcwd())
 
     parser = argparse.ArgumentParser(

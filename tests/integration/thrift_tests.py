@@ -192,7 +192,6 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
     def test_header_propagation(self):
         """If the client sends headers, we should set the trace up accordingly."""
-
         trace_id = 1234
         parent_id = 2345
         span_id = 3456
@@ -229,7 +228,6 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
     def test_optional_headers_optional(self):
         """Test that we accept traces from clients that don't include all headers."""
-
         trace_id = 1234
         parent_id = 2345
         span_id = 3456
