@@ -30,7 +30,6 @@ setup(
         "redis": ["redis>=2.10.0,<=4.0.0"],
         "requests": ["advocate>=1.0.0"],
         "sql": ["sqlalchemy>=1.1.0"],
-        "vault": ["hvac>=0.2.17"],
         "zookeeper": ["kazoo>=2.5.0"],
     },
     scripts=[
