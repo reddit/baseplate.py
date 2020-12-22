@@ -469,7 +469,6 @@ class Histogram:
         This records a new value to the histogram; the bucket it goes in
         is determined by the backend service configurations.
         """
-
         formatted_tags = _format_tags(self.tags)
         if formatted_tags:
             serialized = self.name + formatted_tags + (f":{value:g}|h".encode())

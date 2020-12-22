@@ -48,7 +48,7 @@ pyOpenSSL==19.0.0
 pyramid==1.9.1
 pytest==4.6.3
 pytest-cov==2.6.1
-python-json-logger~=0.1
+python-json-logger==0.1.11
 pytz==2018.9
 raven==6.10.0
 redis==3.3.8

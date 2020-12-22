@@ -193,7 +193,6 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
 
         """
-
         self.name = name
         self.baseplate = baseplate
         self.consumer = consumer
@@ -240,7 +239,6 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
 
         """
-
         service_name, _, group_name = group_id.partition(".")
         assert service_name and group_name, "group_id must start with 'SERVICENAME.'"
         assert name == f"kafka_consumer.{group_name}"

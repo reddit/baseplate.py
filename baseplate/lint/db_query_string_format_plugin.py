@@ -30,7 +30,6 @@ class NoDbQueryStringFormatChecker(BaseChecker):
 
     def visit_assign(self, node: nodes) -> None:
         """Check variables with queries using string formatting."""
-
         variable_is_query = False
         if (
             isinstance(node.value, nodes.BinOp)
@@ -55,7 +54,6 @@ class NoDbQueryStringFormatChecker(BaseChecker):
 
     def visit_call(self, node: nodes) -> None:
         """Check whether execute calls have queries using string formatting."""
-
         if isinstance(node.func, nodes.Attribute) and node.func.attrname == "execute" and node.args:
             if (
                 isinstance(node.args[0], nodes.Name)

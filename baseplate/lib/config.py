@@ -77,7 +77,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     0:00:30
 
     >>> print(cfg.default_from_env)
-    example
+    blah
 
 .. testcleanup:: overview
 
