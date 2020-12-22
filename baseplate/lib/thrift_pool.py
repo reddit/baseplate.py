@@ -35,7 +35,6 @@ from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TTransportException
 
 from baseplate.lib import config
-from baseplate.lib import warn_deprecated
 from baseplate.lib.retry import RetryPolicy
 
 
@@ -112,7 +111,7 @@ def thrift_pool_from_config(
     if options.max_connection_attempts is not None:
         kwargs.setdefault("max_connection_attempts", options.max_connection_attempts)
     if options.max_retries is not None:
-        kwargs.setdefault("max_retries", options.max_retries)
+        raise Exception("max_retries was renamed to max_connection_attempts")
 
     return ThriftConnectionPool(endpoint=options.endpoint, **kwargs)
 
@@ -149,21 +148,9 @@ class ThriftConnectionPool:
         size: int = 10,
         max_age: int = 120,
         timeout: int = 1,
-        max_connection_attempts: Optional[int] = None,
-        max_retries: Optional[int] = None,
+        max_connection_attempts: int = 3,
         protocol_factory: TProtocolFactory = THeaderProtocol.THeaderProtocolFactory(),
     ):
-        if max_connection_attempts and max_retries:
-            raise Exception("do not mix max_retries and max_connection_attempts")
-
-        if max_retries:
-            warn_deprecated(
-                "ThriftConnectionPool's max_retries is now named max_connection_attempts"
-            )
-            max_connection_attempts = max_retries
-        elif not max_connection_attempts:
-            max_connection_attempts = 3
-
         self.endpoint = endpoint
         self.max_age = max_age
         self.retry_policy = RetryPolicy.new(attempts=max_connection_attempts)

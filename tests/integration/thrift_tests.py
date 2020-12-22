@@ -82,9 +82,7 @@ def serve_thrift(handler, server_spec, server_span_observer=None):
     # bind a server socket on an available port
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
     listener = make_listener(server_bind_endpoint)
-    server = make_server(
-        {"max_concurrency": "100", "stop_timeout": "1 millisecond"}, listener, processor
-    )
+    server = make_server({"stop_timeout": "1 millisecond"}, listener, processor)
 
     # figure out what port the server ended up on
     server_address = listener.getsockname()

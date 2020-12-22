@@ -10,7 +10,6 @@ from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
 from thrift.transport.TTransport import TTransportException
 
-from baseplate import config
 from baseplate.observers import sentry
 
 
@@ -68,17 +67,6 @@ class SentryIgnoreExceptionsTest(unittest.TestCase):
         self.assertRaises(TestException, self.observe_and_raise(cli, TestException))
         self.assertEqual(cli.stub_events_sent, 1)
 
-    def test_ignere_exception(self):
-        cli = sentry.error_reporter_from_config(
-            {"sentry.ignore_exceptions": TestException.__name__}, __name__,
-        )
-        self.assertRaises(TestException, self.observe_and_raise(cli, TestException))
-        self.assertEqual(cli.stub_events_sent, 0)
-
-        # If 'ignore_exceptions' is defined default filters aren't included.
-        self.observe_always_ignore(cli)
-        self.assertEqual(cli.stub_events_sent, 8)
-
     def test_additional_ignored_exceptions(self):
         cli = sentry.error_reporter_from_config(
             {"sentry.additional_ignore_exceptions": TestException.__name__}, __name__,
@@ -88,12 +76,3 @@ class SentryIgnoreExceptionsTest(unittest.TestCase):
 
         self.observe_always_ignore(cli)
         self.assertEqual(cli.stub_events_sent, 0)
-
-    def test_both_ignored_exceptions(self):
-        conf = {
-            "sentry.ignore_exceptions": TestException.__name__,
-            "sentry.additional_ignore_exceptions": TestException.__name__,
-        }
-        self.assertRaises(
-            config.ConfigurationError, sentry.error_reporter_from_config, conf, __name__
-        )

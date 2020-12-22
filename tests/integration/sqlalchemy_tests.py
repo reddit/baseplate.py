@@ -111,8 +111,8 @@ class SQLAlchemySessionTests(unittest.TestCase):
 
 class SQLAlchemySessionConfigTests(unittest.TestCase):
     def test_simple_config(self):
-        baseplate = Baseplate()
-        baseplate.configure_context({"db.url": "sqlite://"}, {"db": SQLAlchemySession()})
+        baseplate = Baseplate({"db.url": "sqlite://"})
+        baseplate.configure_context({"db": SQLAlchemySession()})
 
         context = baseplate.make_context_object()
         with baseplate.make_server_span(context, "test"):
