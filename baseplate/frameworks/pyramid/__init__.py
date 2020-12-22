@@ -24,7 +24,6 @@ from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import TraceInfo
-from baseplate.lib import warn_deprecated
 from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.server import make_app
 from baseplate.thrift.ttypes import IsHealthyProbe
@@ -196,23 +195,12 @@ class BaseplateConfigurator:
     def __init__(
         self,
         baseplate: Baseplate,
-        trust_trace_headers: Optional[bool] = None,
         edge_context_factory: Optional[EdgeRequestContextFactory] = None,
         header_trust_handler: Optional[HeaderTrustHandler] = None,
     ):
         self.baseplate = baseplate
-        self.trust_trace_headers = bool(trust_trace_headers)
-        if trust_trace_headers is not None:
-            warn_deprecated(
-                "setting trust_trace_headers is deprecated in favor of using"
-                " a header trust handler."
-            )
         self.edge_context_factory = edge_context_factory
-
-        if header_trust_handler:
-            self.header_trust_handler = header_trust_handler
-        else:
-            self.header_trust_handler = StaticTrustHandler(trust_headers=self.trust_trace_headers)
+        self.header_trust_handler = header_trust_handler or StaticTrustHandler(trust_headers=False)
 
     def _on_application_created(self, event: pyramid.events.ApplicationCreated) -> None:
         # attach the baseplate object to the application the server gets

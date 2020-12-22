@@ -83,9 +83,8 @@ class BaseplateTests(unittest.TestCase):
             "thrift.bar.endpoint": "localhost:9091",
         }
 
-        baseplate = Baseplate()
+        baseplate = Baseplate(app_config)
         baseplate.configure_context(
-            app_config,
             {
                 "enable_some_fancy_feature": config.Boolean,
                 "thrift": {

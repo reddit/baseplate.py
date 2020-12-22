@@ -26,17 +26,18 @@ class CassandraTests(unittest.TestCase):
 
         profiles = {"foo": ExecutionProfile(consistency_level=ConsistencyLevel.QUORUM)}
 
-        baseplate = Baseplate()
-        baseplate.register(self.baseplate_observer)
-        baseplate.configure_context(
+        baseplate = Baseplate(
             {
                 "cassandra.contact_points": cassandra_endpoint.address.host,
                 "cassandra_no_prof.contact_points": cassandra_endpoint.address.host,
-            },
+            }
+        )
+        baseplate.register(self.baseplate_observer)
+        baseplate.configure_context(
             {
                 "cassandra_no_prof": CassandraClient(keyspace="system"),
                 "cassandra": CassandraClient(keyspace="system", execution_profiles=profiles),
-            },
+            }
         )
 
         self.context = baseplate.make_context_object()
@@ -164,12 +165,9 @@ class CassandraConcurrentTests(unittest.TestCase):
     def setUp(self):
         self.baseplate_observer = TestBaseplateObserver()
 
-        baseplate = Baseplate()
+        baseplate = Baseplate({"cassandra.contact_points": cassandra_endpoint.address.host})
         baseplate.register(self.baseplate_observer)
-        baseplate.configure_context(
-            {"cassandra.contact_points": cassandra_endpoint.address.host},
-            {"cassandra": CassandraClient(keyspace="system")},
-        )
+        baseplate.configure_context({"cassandra": CassandraClient(keyspace="system")})
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")

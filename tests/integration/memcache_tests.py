@@ -20,11 +20,9 @@ class MemcacheIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.baseplate_observer = TestBaseplateObserver()
 
-        baseplate = Baseplate()
+        baseplate = Baseplate({"memcache.endpoint": str(memcached_endpoint)})
         baseplate.register(self.baseplate_observer)
-        baseplate.configure_context(
-            {"memcache.endpoint": str(memcached_endpoint)}, {"memcache": MemcacheClient()}
-        )
+        baseplate.configure_context({"memcache": MemcacheClient()})
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")

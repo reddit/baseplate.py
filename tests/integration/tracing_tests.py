@@ -15,6 +15,7 @@ try:
     from pyramid.config import Configurator
 
     from baseplate.frameworks.pyramid import BaseplateConfigurator
+    from baseplate.frameworks.pyramid import StaticTrustHandler
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
@@ -73,7 +74,7 @@ class TracingTests(unittest.TestCase):
         self.baseplate.register(self.observer)
 
         self.baseplate_configurator = BaseplateConfigurator(
-            self.baseplate, trust_trace_headers=True
+            self.baseplate, header_trust_handler=StaticTrustHandler(trust_headers=True),
         )
         configurator.include(self.baseplate_configurator.includeme)
         app = configurator.make_wsgi_app()

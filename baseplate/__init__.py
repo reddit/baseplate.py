@@ -10,7 +10,6 @@ from typing import Iterator
 from typing import List
 from typing import NamedTuple
 from typing import Optional
-from typing import overload
 from typing import Tuple
 from typing import Type
 from typing import TYPE_CHECKING
@@ -24,7 +23,6 @@ from baseplate.lib import config
 from baseplate.lib import get_calling_module_name
 from baseplate.lib import metrics
 from baseplate.lib import UnknownCallerError
-from baseplate.lib import warn_deprecated
 
 
 if TYPE_CHECKING:
@@ -402,9 +400,7 @@ class Baseplate:
 
         self.register(SentryBaseplateObserver(client))
 
-    def configure_observers(
-        self, app_config: Optional[config.RawConfig] = None, module_name: Optional[str] = None
-    ) -> None:
+    def configure_observers(self, module_name: Optional[str] = None) -> None:
         """Configure diagnostics observers based on application configuration.
 
         This installs all the currently supported observers that have settings
@@ -413,25 +409,11 @@ class Baseplate:
         See :py:mod:`baseplate.observers` for the configuration settings
         available for each observer.
 
-        :param app_config: The application configuration which should have
-            settings for the error reporter. If not specified, the config must be passed
-            to the Baseplate() constructor.
         :param module_name: Name of the root package of the application. If not specified,
             will be guessed from the package calling this function.
 
         """
         skipped = []
-
-        if app_config:
-            if self._app_config:
-                raise Exception("pass app_config to the constructor or this method but not both")
-
-            warn_deprecated(
-                "Passing configuration to configure_observers is deprecated in "
-                "favor of passing it to the Baseplate constructor"
-            )
-        else:
-            app_config = self._app_config
 
         self.configure_logging()
 
@@ -439,40 +421,41 @@ class Baseplate:
             # pylint: disable=cyclic-import
             from baseplate.observers.timeout import TimeoutBaseplateObserver
 
-            timeout_observer = TimeoutBaseplateObserver.from_config(app_config)
+            timeout_observer = TimeoutBaseplateObserver.from_config(self._app_config)
             self.register(timeout_observer)
         else:
             skipped.append("timeout")
-        if "metrics.tagging" in app_config:
-            if "metrics.namespace" in app_config:
+
+        if "metrics.tagging" in self._app_config:
+            if "metrics.namespace" in self._app_config:
                 raise ValueError("metrics.namespace not allowed with metrics.tagging")
             from baseplate.lib.metrics import metrics_client_from_config
 
-            metrics_client = metrics_client_from_config(app_config)
+            metrics_client = metrics_client_from_config(self._app_config)
             self.configure_tagged_metrics(metrics_client)
-        elif "metrics.namespace" in app_config:
+        elif "metrics.namespace" in self._app_config:
             from baseplate.lib.metrics import metrics_client_from_config
 
-            metrics_client = metrics_client_from_config(app_config)
+            metrics_client = metrics_client_from_config(self._app_config)
             self.configure_metrics(metrics_client)
         else:
             skipped.append("metrics")
 
-        if "tracing.service_name" in app_config:
+        if "tracing.service_name" in self._app_config:
             from baseplate.observers.tracing import tracing_client_from_config
 
-            tracing_client = tracing_client_from_config(app_config)
+            tracing_client = tracing_client_from_config(self._app_config)
             self.configure_tracing(tracing_client)
         else:
             skipped.append("tracing")
 
-        if "sentry.dsn" in app_config:
+        if "sentry.dsn" in self._app_config:
             from baseplate.observers.sentry import error_reporter_from_config
 
             if module_name is None:
                 module_name = get_calling_module_name()
 
-            error_reporter = error_reporter_from_config(app_config, module_name)
+            error_reporter = error_reporter_from_config(self._app_config, module_name)
             self.configure_error_reporting(error_reporter)
         else:
             skipped.append("error_reporter")
@@ -482,15 +465,7 @@ class Baseplate:
                 "The following observers are unconfigured and won't run: %s", ", ".join(skipped)
             )
 
-    @overload
     def configure_context(self, context_spec: Dict[str, Any]) -> None:
-        ...
-
-    @overload  # noqa: F811
-    def configure_context(self, app_config: config.RawConfig, context_spec: Dict[str, Any]) -> None:
-        ...
-
-    def configure_context(self, *args: Any, **kwargs: Any) -> None:  # noqa: F811
         """Add a number of objects to each request's context object.
 
         Configure and attach multiple clients to the
@@ -524,29 +499,7 @@ class Baseplate:
             look like.
 
         """
-
-        if len(args) == 1:
-            kwargs["context_spec"] = args[0]
-        elif len(args) == 2:
-            kwargs["app_config"] = args[0]
-            kwargs["context_spec"] = args[1]
-        else:
-            raise Exception("bad parameters to configure_context")
-
-        if "app_config" in kwargs:
-            if self._app_config:
-                raise Exception("pass app_config to the constructor or this method but not both")
-
-            warn_deprecated(
-                "Passing configuration to configure_context is deprecated in "
-                "favor of passing it to the Baseplate constructor"
-            )
-            app_config = kwargs["app_config"]
-        else:
-            app_config = self._app_config
-        context_spec = kwargs["context_spec"]
-
-        cfg = config.parse_config(app_config, context_spec)
+        cfg = config.parse_config(self._app_config, context_spec)
         self._context_config.update(cfg)
 
     def add_to_context(self, name: str, attribute_config: Any) -> None:

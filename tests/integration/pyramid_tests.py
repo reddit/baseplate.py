@@ -17,7 +17,9 @@ from baseplate.testing.lib.secrets import FakeSecretsStore
 try:
     import webtest
 
-    from baseplate.frameworks.pyramid import BaseplateConfigurator, ServerSpanInitialized
+    from baseplate.frameworks.pyramid import BaseplateConfigurator
+    from baseplate.frameworks.pyramid import ServerSpanInitialized
+    from baseplate.frameworks.pyramid import StaticTrustHandler
     from pyramid.config import Configurator
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
@@ -119,8 +121,8 @@ class ConfiguratorTests(unittest.TestCase):
         self.baseplate.register(self.observer)
         self.baseplate_configurator = BaseplateConfigurator(
             self.baseplate,
-            trust_trace_headers=True,
             edge_context_factory=EdgeRequestContextFactory(secrets),
+            header_trust_handler=StaticTrustHandler(trust_headers=True),
         )
         configurator.include(self.baseplate_configurator.includeme)
         self.context_init_event_subscriber = mock.Mock()
