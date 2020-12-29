@@ -25,7 +25,6 @@ from baseplate import RequestContext
 from baseplate import Span
 from baseplate import TraceInfo
 from baseplate.lib.edge_context import EdgeRequestContextFactory
-from baseplate.server import make_app
 from baseplate.thrift.ttypes import IsHealthyProbe
 
 
@@ -237,16 +236,14 @@ class BaseplateConfigurator:
                 # downstream even if we don't know how to handle it.
                 request.raw_request_context = edge_payload
 
-        request.start_server_span(request.matched_route.name, trace_info)
-        request.trace.set_tag("http.url", request.url)
-        request.trace.set_tag("http.method", request.method)
-        request.trace.set_tag("peer.ipv4", request.remote_addr)
-
-    def _start_server_span(
-        self, request: BaseplateRequest, name: str, trace_info: Optional[TraceInfo] = None
-    ) -> None:
-        span = self.baseplate.make_server_span(request, name=name, trace_info=trace_info)
+        span = self.baseplate.make_server_span(
+            request, name=request.matched_route.name, trace_info=trace_info,
+        )
+        span.set_tag("http.url", request.url)
+        span.set_tag("http.method", request.method)
+        span.set_tag("peer.ipv4", request.remote_addr)
         span.start()
+
         request.registry.notify(ServerSpanInitialized(request))
 
     def _get_trace_info(self, headers: Mapping[str, str]) -> TraceInfo:
@@ -278,56 +275,6 @@ class BaseplateConfigurator:
         config.add_tween(
             "baseplate.frameworks.pyramid._make_baseplate_tween", over=pyramid.tweens.EXCVIEW
         )
-
-        # the pyramid "scripting context" (e.g. pshell) sets up a
-        # psuedo-request environment but does not call NewRequest. it does,
-        # however, set up request methods. so, we attach this method to the
-        # request so we can access it in both pshell_setup and _on_new_request
-        # for the different context we can be running in.
-        # see: Pylons/pyramid#520
-        #
-        # pyramid gets all cute with descriptors and will pass the request
-        # object as the first ("self") param to bound methods. wrapping
-        # the bound method in a simple function prevents that behavior
-        def start_server_span(
-            request: BaseplateRequest, name: str, trace_info: Optional[TraceInfo] = None
-        ) -> None:
-            return self._start_server_span(request, name, trace_info)
-
-        config.add_request_method(start_server_span, "start_server_span")
-
-
-def paste_make_app(_: Dict[str, str], **local_config: str) -> Any:
-    """Make an application object, PasteDeploy style.
-
-    This is a compatibility shim to adapt the baseplate app entrypoint to
-    PasteDeploy-style so tools like Pyramid's pshell work.
-
-    To use it, add a single line to your app's section in its INI file:
-
-        [app:your_app]
-        use = egg:baseplate
-
-    """
-    return make_app(local_config)
-
-
-def pshell_setup(env: Dict[str, Any]) -> None:
-    r"""Start a server span when pshell starts up.
-
-    This simply starts a server span after the shell initializes, which gives
-    shell users access to all the :py:class:`~baseplate.RequestContext`
-    goodness.
-
-    To use it, add configuration to your app's INI file like so:
-
-        [pshell]
-        setup = baseplate.frameworks.pyramid:pshell_setup
-
-    See the :ref:`Pyramid documentation <extending_pshell>`.
-
-    """
-    env["request"].start_server_span("shell")
 
 
 def get_is_healthy_probe(request: Request) -> int:
