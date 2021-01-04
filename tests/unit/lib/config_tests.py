@@ -199,6 +199,10 @@ class UnixUserTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             config.UnixUser("fhqwhgads")
 
+    def test_uid_fallback(self):
+        result = config.UnixUser("1000")
+        self.assertEqual(result, 1000)
+
 
 class UnixGroupTests(unittest.TestCase):
     def test_valid_group(self):
@@ -208,6 +212,10 @@ class UnixGroupTests(unittest.TestCase):
     def test_invalid_group(self):
         with self.assertRaises(ValueError):
             config.UnixGroup("fhqwhgads")
+
+    def test_gid_fallback(self):
+        result = config.UnixGroup("1000")
+        self.assertEqual(result, 1000)
 
 
 class OneOfTests(unittest.TestCase):

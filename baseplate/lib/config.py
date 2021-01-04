@@ -316,7 +316,7 @@ def Percent(text: str) -> float:  # noqa: D401
 
 
 def UnixUser(text: str) -> int:  # noqa: D401
-    """A Unix user name.
+    """A Unix user name or decimal ID.
 
     The parsed value will be the integer user ID.
 
@@ -324,11 +324,14 @@ def UnixUser(text: str) -> int:  # noqa: D401
     try:
         return pwd.getpwnam(text).pw_uid
     except KeyError as exc:
-        raise ValueError(exc)
+        try:
+            return int(text)
+        except ValueError:
+            raise ValueError(exc) from None
 
 
 def UnixGroup(text: str) -> int:  # noqa: D401
-    """A Unix group name.
+    """A Unix group name or decimal ID.
 
     The parsed value will be the integer group ID.
 
@@ -336,7 +339,10 @@ def UnixGroup(text: str) -> int:  # noqa: D401
     try:
         return grp.getgrnam(text).gr_gid
     except KeyError as exc:
-        raise ValueError(exc)
+        try:
+            return int(text)
+        except ValueError:
+            raise ValueError(exc) from None
 
 
 T = TypeVar("T")
