@@ -24,7 +24,7 @@ from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import TraceInfo
-from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate.lib.edgecontext import EdgeContextFactory
 from baseplate.thrift.ttypes import IsHealthyProbe
 
 
@@ -194,7 +194,7 @@ class BaseplateConfigurator:
     def __init__(
         self,
         baseplate: Baseplate,
-        edge_context_factory: Optional[EdgeRequestContextFactory] = None,
+        edge_context_factory: Optional[EdgeContextFactory] = None,
         header_trust_handler: Optional[HeaderTrustHandler] = None,
     ):
         self.baseplate = baseplate
@@ -228,13 +228,9 @@ class BaseplateConfigurator:
             except (KeyError, ValueError):
                 edge_payload = None
 
-            if self.edge_context_factory and edge_payload:
-                edge_context = self.edge_context_factory.from_upstream(edge_payload)
-                edge_context.attach_context(request)
-            else:
-                # just attach the raw context so it gets passed on
-                # downstream even if we don't know how to handle it.
-                request.raw_request_context = edge_payload
+            request.raw_edge_context = edge_payload
+            if self.edge_context_factory:
+                request.edge_context = self.edge_context_factory.from_upstream(edge_payload)
 
         span = self.baseplate.make_server_span(
             request, name=request.matched_route.name, trace_info=trace_info,

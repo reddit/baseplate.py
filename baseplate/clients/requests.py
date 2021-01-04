@@ -231,7 +231,7 @@ class InternalBaseplateSession(BaseplateSession):
             request.headers["X-Flags"] = str(span.flags)
 
         try:
-            edge_context = span.context.raw_request_context
+            edge_context = span.context.raw_edge_context
         except AttributeError:
             pass
         else:
@@ -272,7 +272,7 @@ class InternalRequestsClient(config.Parser):
     """Configure a Requests client for use with internal Baseplate HTTP services.
 
     Requests made with this client **will** include trace context and
-    :doc:`edge context </api/baseplate/lib/edge_context>`. This client should
+    :doc:`edge context </api/baseplate/lib/edgecontext>`. This client should
     only be used to speak to trusted internal services.  URLs that resolve to
     public addresses will be rejected.  It is not possible to override the
     Advocate address validator used by this client.
@@ -319,7 +319,7 @@ class ExternalRequestsClient(config.Parser):
     """Configure a Requests client for use with external HTTP services.
 
     Requests made with this client **will not** include trace context and
-    :doc:`edge context </api/baseplate/lib/edge_context>`. This client is
+    :doc:`edge context </api/baseplate/lib/edgecontext>`. This client is
     suitable for use with third party or untrusted services.
 
     This is meant to be used with
