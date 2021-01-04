@@ -15,7 +15,6 @@ setup(
     setup_requires=["setuptools_scm"],
     install_requires=[
         "posix_ipc>=1.0.0",
-        "pyjwt>=1.6.0",
         "python-json-logger~=0.1",
         "requests>=2.21.0",
         "thrift>=0.12.0",

@@ -11,7 +11,7 @@ separately from the rest of Baseplate.
    baseplate.lib.config: Configuration parsing <baseplate/lib/config>
    baseplate.lib.crypto: Cryptographic Primitives <baseplate/lib/crypto>
    baseplate.lib.datetime: Extensions to the standard library's datetime module <baseplate/lib/datetime>
-   baseplate.lib.edge_context: Information about the original request from the client <baseplate/lib/edge_context>
+   baseplate.lib.edgecontext: Information about the original request from the client <baseplate/lib/edgecontext>
    baseplate.lib.events: Events for the data pipeline <baseplate/lib/events>
    baseplate.lib.experiments: Experiments framework <baseplate/lib/experiments>
    baseplate.lib.file_watcher: Read files from disk as they change <baseplate/lib/file_watcher>

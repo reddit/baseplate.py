@@ -2,10 +2,10 @@ import contextlib
 import logging
 import unittest
 
+from importlib import reload
 from unittest import mock
 
 import gevent.monkey
-import jwt
 
 from thrift.Thrift import TApplicationException
 
@@ -17,48 +17,16 @@ from baseplate import TraceInfo
 from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
-from baseplate.lib.edge_context import EdgeRequestContextFactory
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
-from baseplate.testing.lib.secrets import FakeSecretsStore
 from baseplate.thrift import BaseplateService
 from baseplate.thrift import BaseplateServiceV2
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
 
-from .. import AUTH_TOKEN_PUBLIC_KEY
-from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
+from . import FakeEdgeContextFactory
 from .test_thrift import TestService
-
-
-cryptography_installed = True
-try:
-    import cryptography
-except ImportError:
-    cryptography_installed = False
-else:
-    del cryptography
-
-
-try:
-    from importlib import reload
-except ImportError:
-    pass
-
-
-def make_edge_context_factory():
-    secrets = FakeSecretsStore(
-        {
-            "secrets": {
-                "secret/authentication/public-key": {
-                    "type": "versioned",
-                    "current": AUTH_TOKEN_PUBLIC_KEY,
-                }
-            },
-        }
-    )
-    return EdgeRequestContextFactory(secrets)
 
 
 @contextlib.contextmanager
@@ -75,7 +43,7 @@ def serve_thrift(handler, server_spec, server_span_observer=None):
 
     # set up the server's processor
     logger = mock.Mock(spec=logging.Logger)
-    edge_context_factory = make_edge_context_factory()
+    edge_context_factory = FakeEdgeContextFactory()
     processor = server_spec.Processor(handler)
     processor = baseplateify_processor(processor, logger, baseplate, edge_context_factory)
 
@@ -135,9 +103,7 @@ def baseplate_thrift_client(endpoint, client_spec, client_span_observer=None):
 
     baseplate.make_server_span(context, "example_service.example", trace_info)
 
-    edge_context_factory = make_edge_context_factory()
-    edge_context = edge_context_factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-    edge_context.attach_context(context)
+    context.raw_edge_context = FakeEdgeContextFactory.RAW_BYTES
 
     yield context
 
@@ -260,67 +226,39 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
 
 class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
+    def _test(self, header_name=None):
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.edge_context = None
+
+            def example(self, context):
+                self.edge_context = context.edge_context
+                return True
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                if header_name:
+                    transport = client._oprot.trans
+                    transport.set_header(header_name, FakeEdgeContextFactory.RAW_BYTES)
+                client_result = client.example()
+
+        assert client_result is True
+        return handler.edge_context
+
     def test_edge_request_context(self):
         """If the client sends an edge-request header we should parse it."""
+        edge_context = self._test(b"Edge-Request")
+        assert edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
-        class Handler(TestService.Iface):
-            def __init__(self):
-                self.request_context = None
-
-            def example(self, context):
-                self.request_context = context.request_context
-                return True
-
-        handler = Handler()
-
-        with serve_thrift(handler, TestService) as server:
-            with raw_thrift_client(server.endpoint, TestService) as client:
-                transport = client._oprot.trans
-                transport.set_header(b"Edge-Request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-                client_result = client.example()
-
-        self.assertIsNotNone(handler.request_context)
-        self.assertEqual(handler.request_context.user.id, "t2_example")
-        self.assertEqual(handler.request_context.user.roles, set())
-        self.assertEqual(handler.request_context.user.is_logged_in, True)
-        self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
-        self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
-        self.assertEqual(handler.request_context.oauth_client.id, None)
-        self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
-        self.assertEqual(handler.request_context.session.id, "beefdead")
-        self.assertTrue(client_result)
-
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_edge_request_context_case_insensitive(self):
-        """We should be case-insensitive to edge-request headers."""
+        edge_context = self._test(b"edge-request")
+        assert edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
-        class Handler(TestService.Iface):
-            def __init__(self):
-                self.request_context = None
-
-            def example(self, context):
-                self.request_context = context.request_context
-                return True
-
-        handler = Handler()
-
-        with serve_thrift(handler, TestService) as server:
-            with raw_thrift_client(server.endpoint, TestService) as client:
-                transport = client._oprot.trans
-                transport.set_header(b"edge-request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-                client_result = client.example()
-
-        self.assertIsNotNone(handler.request_context)
-        self.assertEqual(handler.request_context.user.id, "t2_example")
-        self.assertEqual(handler.request_context.user.roles, set())
-        self.assertEqual(handler.request_context.user.is_logged_in, True)
-        self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
-        self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
-        self.assertEqual(handler.request_context.oauth_client.id, None)
-        self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
-        self.assertEqual(handler.request_context.session.id, "beefdead")
-        self.assertTrue(client_result)
+    def test_no_edge_context(self):
+        edge_context = self._test()
+        assert edge_context is None
 
 
 class ThriftServerSpanTests(GeventPatchedTestCase):
@@ -453,10 +391,10 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
     def test_end_to_end(self):
         class Handler(TestService.Iface):
             def __init__(self):
-                self.request_context = None
+                self.edge_context = None
 
             def example(self, context):
-                self.request_context = context.request_context
+                self.edge_context = context.edge_context
                 return True
 
         handler = Handler()
@@ -466,17 +404,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
             with baseplate_thrift_client(server.endpoint, TestService, span_observer) as context:
                 context.example_service.example()
 
-        try:
-            self.assertEqual(handler.request_context.user.id, "t2_example")
-            self.assertEqual(handler.request_context.user.roles, set())
-            self.assertEqual(handler.request_context.user.is_logged_in, True)
-            self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
-            self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
-            self.assertEqual(handler.request_context.oauth_client.id, None)
-            self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
-            self.assertEqual(handler.request_context.session.id, "beefdead")
-        except jwt.exceptions.InvalidAlgorithmError:
-            raise unittest.SkipTest("cryptography is not installed")
+        assert handler.edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
 
 class ThriftHealthcheck(GeventPatchedTestCase):

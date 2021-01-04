@@ -167,7 +167,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         prot.trans.set_header(b"Flags", str(span.flags).encode())
 
                     try:
-                        edge_context = span.context.raw_request_context
+                        edge_context = span.context.raw_edge_context
                     except AttributeError:
                         edge_context = None
 
