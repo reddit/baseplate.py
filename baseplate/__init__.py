@@ -12,7 +12,6 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 from typing import Type
-from typing import TYPE_CHECKING
 
 import gevent.monkey
 
@@ -23,12 +22,6 @@ from baseplate.lib import config
 from baseplate.lib import get_calling_module_name
 from baseplate.lib import metrics
 from baseplate.lib import UnknownCallerError
-
-
-if TYPE_CHECKING:
-    import baseplate.clients
-    import baseplate.observers.tracing
-    import raven
 
 
 try:
@@ -302,103 +295,7 @@ class Baseplate:
         """
         self.observers.append(observer)
 
-    def configure_logging(self) -> None:
-        """Add request context to the logging system.
-
-        .. deprecated:: 1.0
-
-            Use :py:meth:`configure_observers` instead.
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.logging import LoggingBaseplateObserver
-
-        self.register(LoggingBaseplateObserver())
-
-    def configure_tagged_metrics(self, metrics_client: metrics.Client) -> None:
-        """Register a Tagged Metrics Observer on the metrics client.
-
-        Only called if already determined that the user has configured tagging to be on.
-
-        :param metrics_client: Metrics client to send request metrics to.
-        :param app_config: The configuration file for the application to parse for metrics tags and flags
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.metrics_tagged import TaggedMetricsBaseplateObserver
-
-        self._metrics_client = metrics_client
-        self.register(
-            TaggedMetricsBaseplateObserver.from_config_and_client(self._app_config, metrics_client)
-        )
-
-    def configure_metrics(self, metrics_client: metrics.Client) -> None:
-        """Send timing metrics to the given client.
-
-        This also adds a :py:class:`baseplate.lib.metrics.Batch` object to the
-        ``metrics`` attribute on the :py:class:`~baseplate.RequestContext`
-        where you can add your own application-specific metrics. The batch is
-        automatically flushed at the end of the request.
-
-        .. deprecated:: 1.0
-
-            Use :py:meth:`configure_observers` instead.
-
-        :param metrics_client: Metrics client to send request metrics to.
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.metrics import MetricsBaseplateObserver
-
-        self._metrics_client = metrics_client
-        self.register(
-            MetricsBaseplateObserver.from_config_and_client(self._app_config, metrics_client)
-        )
-
-    def configure_tracing(
-        self, tracing_client: "baseplate.observers.tracing.TracingClient"
-    ) -> None:
-        """Collect and send span information for request tracing.
-
-        When configured, this will send tracing information automatically
-        collected by Baseplate to the configured distributed tracing service.
-
-        .. deprecated:: 1.0
-
-            Use :py:meth:`configure_observers` instead.
-
-        :param tracing_client: Tracing client to send request traces to.
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.tracing import TraceBaseplateObserver
-
-        self.register(TraceBaseplateObserver(tracing_client))
-
-    def configure_error_reporting(self, client: "raven.Client") -> None:
-        """Send reports for unexpected exceptions to the given client.
-
-        This also adds a :py:class:`raven.Client` object to the ``sentry``
-        attribute on the :py:class:`~baseplate.RequestContext` where you can
-        send your own application-specific events.
-
-        .. deprecated:: 1.0
-
-            Use :py:meth:`configure_observers` instead.
-
-        :param client: A configured raven client.
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.sentry import SentryBaseplateObserver, SentryUnhandledErrorReporter
-
-        from gevent import get_hub
-
-        hub = get_hub()
-        hub.print_exception = SentryUnhandledErrorReporter(hub, client)
-
-        self.register(SentryBaseplateObserver(client))
-
+    # pylint: disable=cyclic-import
     def configure_observers(self, module_name: Optional[str] = None) -> None:
         """Configure diagnostics observers based on application configuration.
 
@@ -414,10 +311,11 @@ class Baseplate:
         """
         skipped = []
 
-        self.configure_logging()
+        from baseplate.observers.logging import LoggingBaseplateObserver
+
+        self.register(LoggingBaseplateObserver())
 
         if gevent.monkey.is_module_patched("socket"):
-            # pylint: disable=cyclic-import
             from baseplate.observers.timeout import TimeoutBaseplateObserver
 
             timeout_observer = TimeoutBaseplateObserver.from_config(self._app_config)
@@ -429,33 +327,51 @@ class Baseplate:
             if "metrics.namespace" in self._app_config:
                 raise ValueError("metrics.namespace not allowed with metrics.tagging")
             from baseplate.lib.metrics import metrics_client_from_config
+            from baseplate.observers.metrics_tagged import TaggedMetricsBaseplateObserver
 
-            metrics_client = metrics_client_from_config(self._app_config)
-            self.configure_tagged_metrics(metrics_client)
+            self._metrics_client = metrics_client_from_config(self._app_config)
+            self.register(
+                TaggedMetricsBaseplateObserver.from_config_and_client(
+                    self._app_config, self._metrics_client
+                )
+            )
         elif "metrics.namespace" in self._app_config:
             from baseplate.lib.metrics import metrics_client_from_config
+            from baseplate.observers.metrics import MetricsBaseplateObserver
 
-            metrics_client = metrics_client_from_config(self._app_config)
-            self.configure_metrics(metrics_client)
+            self._metrics_client = metrics_client_from_config(self._app_config)
+            self.register(
+                MetricsBaseplateObserver.from_config_and_client(
+                    self._app_config, self._metrics_client
+                )
+            )
         else:
             skipped.append("metrics")
 
         if "tracing.service_name" in self._app_config:
             from baseplate.observers.tracing import tracing_client_from_config
+            from baseplate.observers.tracing import TraceBaseplateObserver
 
             tracing_client = tracing_client_from_config(self._app_config)
-            self.configure_tracing(tracing_client)
+            self.register(TraceBaseplateObserver(tracing_client))
         else:
             skipped.append("tracing")
 
         if "sentry.dsn" in self._app_config:
             from baseplate.observers.sentry import error_reporter_from_config
+            from baseplate.observers.sentry import SentryBaseplateObserver
+            from baseplate.observers.sentry import SentryUnhandledErrorReporter
+            from gevent import get_hub
 
             if module_name is None:
                 module_name = get_calling_module_name()
 
             error_reporter = error_reporter_from_config(self._app_config, module_name)
-            self.configure_error_reporting(error_reporter)
+
+            hub = get_hub()
+            hub.print_exception = SentryUnhandledErrorReporter(hub, error_reporter)
+
+            self.register(SentryBaseplateObserver(error_reporter))
         else:
             skipped.append("error_reporter")
 

@@ -148,7 +148,7 @@ Process-level metrics
 ---------------------
 
 If your application has registered a metrics client with
-:py:meth:`~baseplate.Baseplate.configure_metrics`, ``baseplate-serve``
+:py:meth:`~baseplate.Baseplate.configure_observers`, ``baseplate-serve``
 will automatically send process-level metrics every 10 seconds. Which metrics
 are sent depends on your server configuration, for example::
 

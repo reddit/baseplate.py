@@ -127,12 +127,3 @@ StatsD :py:meth:`~!baseplate.SpanObserver.on_finish`.
 
 .. autoclass:: SpanObserver
    :members:
-
-Legacy Methods
---------------
-
-.. automethod:: Baseplate.configure_logging
-.. automethod:: Baseplate.configure_metrics
-.. automethod:: Baseplate.configure_tracing
-.. automethod:: Baseplate.configure_error_reporting
-
