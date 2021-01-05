@@ -108,12 +108,3 @@ class TracingTests(unittest.TestCase):
             self.assertEqual(span["name"], "local-req")
             self.assertEqual(len(span["annotations"]), 0)
             self.assertEqual(span["parentId"], self.local_span_ids[-2])
-
-    def test_configure_tracing_with_defaults_new_style(self):
-        baseplate = Baseplate()
-        self.assertEqual(0, len(baseplate.observers))
-        client = make_client("test")
-        baseplate.configure_tracing(client)
-        self.assertEqual(1, len(baseplate.observers))
-        tracing_observer = baseplate.observers[0]
-        self.assertEqual("test", tracing_observer.service_name)
