@@ -66,7 +66,7 @@ FLAGS = {
 
 # Max size for a string representation of a span when recorded to a POSIX queue
 MAX_SPAN_SIZE = 102400
-# Max number of spans iallowed in POSIX queue at one time
+# Max number of spans allowed in POSIX queue at one time
 MAX_QUEUE_SIZE = 10000
 
 
@@ -538,10 +538,6 @@ class TraceQueueFullError(Exception):
     pass
 
 
-MAX_SIDECAR_QUEUE_SIZE = 102400
-MAX_SIDECAR_MESSAGE_SIZE = 10000
-
-
 class SidecarRecorder(Recorder):
     """Interface for recording spans to a POSIX message queue.
 
@@ -551,22 +547,20 @@ class SidecarRecorder(Recorder):
 
     def __init__(self, queue_name: str):
         self.queue = MessageQueue(
-            "/traces-" + queue_name,
-            max_messages=MAX_SIDECAR_QUEUE_SIZE,
-            max_message_size=MAX_SIDECAR_MESSAGE_SIZE,
+            "/traces-" + queue_name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_SPAN_SIZE,
         )
 
     def send(self, span: TraceSpanObserver) -> None:
         # Don't raise exceptions from here. This is called in the
         # request/response path and should finish cleanly.
         serialized_str = json.dumps(span._serialize()).encode("utf8")
-        if len(serialized_str) > MAX_SIDECAR_MESSAGE_SIZE:
+        if len(serialized_str) > MAX_SPAN_SIZE:
             logger.warning(
                 "Trace too big. Traces published to %s are not allowed to be larger "
                 "than %d bytes. Received trace is %d bytes. This can be caused by "
                 "an excess amount of tags or a large amount of child spans.",
                 self.queue.queue.name,
-                MAX_SIDECAR_MESSAGE_SIZE,
+                MAX_SPAN_SIZE,
                 len(serialized_str),
             )
         try:
