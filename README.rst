@@ -26,7 +26,6 @@ And can take advantage of:
 
 * Integration with commonly used clients like: Thrift, SQLAlchemy,
   cassandra-driver, pymemcache, redis-py, and Kombu
-* An experiments framework for doing A/B tests
 * Secrets securely pulled from Vault
 
 And many other things! Read the `full docs
