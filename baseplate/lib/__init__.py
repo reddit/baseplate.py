@@ -3,6 +3,7 @@ import functools
 import inspect
 import warnings
 
+from typing import Any
 from typing import Callable
 from typing import Generic
 from typing import Type
@@ -26,7 +27,7 @@ R = TypeVar("R")
 
 # cached_property is a renamed copy of pyramid.decorator.reify
 # see COPYRIGHT for full license information
-class cached_property(Generic[T, R]):
+class cached_property(Generic[R]):
     """Like @property but the function will only be called once per instance.
 
     When used as a method decorator, this will act like @property but instead
@@ -36,11 +37,11 @@ class cached_property(Generic[T, R]):
 
     """
 
-    def __init__(self, wrapped: Callable[[T], R]):
+    def __init__(self, wrapped: Callable[[Any], R]):
         self.wrapped = wrapped
         functools.update_wrapper(self, wrapped)  # type: ignore
 
-    def __get__(self, instance: T, owner: Type[T]) -> R:
+    def __get__(self, instance: T, owner: Type[Any]) -> R:
         if instance is None:
             return self
         ret = self.wrapped(instance)
