@@ -130,9 +130,6 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
 
-    sentry_logger = logging.getLogger("raven.base.Client")
-    sentry_logger.setLevel(logging.WARNING)
-
     if config.has_logging_options:
         logging.config.fileConfig(config.filename)
 

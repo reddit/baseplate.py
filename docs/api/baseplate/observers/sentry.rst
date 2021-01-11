@@ -1,10 +1,10 @@
 Sentry (Crash Reporting)
 ========================
 
-The Sentry observer integrates `Raven`_ with your application to record
+The Sentry observer integrates `sentry-sdk`_ with your application to record
 tracebacks for crashes to `Sentry`_.
 
-.. _Raven: https://docs.sentry.io/clients/python/
+.. _sentry-sdk: https://docs.sentry.io/platforms/python/
 .. _Sentry: https://sentry.io/welcome/
 
 Configuration
@@ -25,32 +25,16 @@ the Sentry observer.
    # the DSN provided by Sentry for your project
    sentry.dsn = https://decaf:face@sentry.local/123
 
-   # optional: string to identify this client installation
-   sentry.site = my site
-
    # optional: the environment this application is running in
    sentry.environment = staging
-
-   # optional: comma-delimited list of module prefixes to ignore when
-   # determining where an error came from
-   sentry.exclude_paths = foo, bar
-
-   # optional: comma-delimited list of module prefixes to include for
-   # consideration when drilling down into an exception
-   sentry.include_paths = foo, bar
-
-   # optional: comma-delimited list of fully qualified names of exception
-   # classes (potentially with * globs) to not report.
-   sentry.ignore_exceptions = my_service.UninterestingException
 
    # optional: percent chance that a given error will be reported
    # (defaults to 100%)
    sentry.sample_rate = 37%
 
-   # optional: comma-delimited list of fully qualified names of processor
-   # classes to apply to events before sending to Sentry. defaults to
-   # raven.processors.SanitizePasswordsProcessor
-   sentry.processors = my_service.SanitizeTokenProcessor
+   # optional: comma-delimited list of fully qualified names of exception
+   # classes to not report.
+   sentry.ignore_errors = my_service.UninterestingException
 
    ...
 
@@ -65,7 +49,7 @@ request will be included in the context reported to Sentry.
 Direct Use
 ----------
 
-When enabled, the error reporting observer also adds a :py:class:`raven.Client`
+When enabled, the error reporting observer also adds a :py:class:`sentry_sdk.Hub`
 object as an attribute named ``sentry`` to the
 :py:class:`~baseplate.RequestContext`::
 
@@ -73,4 +57,4 @@ object as an attribute named ``sentry`` to the
        try:
            ...
        except Exception:
-           request.sentry.captureException()
+           request.sentry.capture_exception()

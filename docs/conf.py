@@ -37,6 +37,7 @@ intersphinx_mapping = {
     "redis": ("https://redis-py.readthedocs.io/en/latest/", None),
     "sqlalchemy": ("https://docs.sqlalchemy.org/en/13/", None),
     "requests": ("https://requests.readthedocs.io/en/stable/", None),
+    "sentry_sdk": ("https://getsentry.github.io/sentry-python/", None),
 }
 
 # The suffix of source filenames.
