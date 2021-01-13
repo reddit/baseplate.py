@@ -134,7 +134,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     sentry_logger.setLevel(logging.WARNING)
 
     if config.has_logging_options:
-        logging.config.fileConfig(config.filename)
+        logging.config.fileConfig(config.filename, disable_existing_loggers=False)
 
 
 def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
