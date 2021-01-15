@@ -264,10 +264,12 @@ def load_and_run_script() -> None:
         config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
 
-    if _fn_accepts_additional_args(args.entrypoint, extra_args):
-        args.entrypoint(config.app, extra_args)
+    entrypoint = _load_factory(args.entrypoint)
+
+    if _fn_accepts_additional_args(entrypoint, extra_args):
+        entrypoint(config.app, extra_args)
     else:
-        args.entrypoint(config.app)
+        entrypoint(config.app)
 
 
 def _parse_baseplate_script_args() -> Tuple[argparse.Namespace, List[str]]:
@@ -288,9 +290,7 @@ def _parse_baseplate_script_args() -> Tuple[argparse.Namespace, List[str]]:
     parser.add_argument(
         "config_file", type=argparse.FileType("r"), help="path to a configuration file"
     )
-    parser.add_argument(
-        "entrypoint", type=_load_factory, help="function to call, e.g. module.path:fn_name"
-    )
+    parser.add_argument("entrypoint", type=str, help="function to call, e.g. module.path:fn_name")
     return parser.parse_known_args(sys.argv[1:])
 
 
