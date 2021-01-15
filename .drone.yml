@@ -17,28 +17,12 @@ kind: pipeline
 name: Test
 
 steps:
-    - name: "Python 3.6"
-      image: python:3.6
-      environment:
-          BASEPLATE_CASSANDRA_ADDR: "cassandra:9042"
-          BASEPLATE_MEMCACHED_ADDR: "memcached:11211"
-          BASEPLATE_REDIS_ADDR: "redis:6379"
-          BASEPLATE_VAULT_ADDR: "vault:8200"
-          BASEPLATE_ZOOKEEPER_ADDR: "zookeeper:2181"
-          PIP_OPTIONS:
-              from_secret: pip_options
-      commands:
-          - pip install $PIP_OPTIONS -r requirements-test.txt
-          - pytest
-      depends_on: [clone]
-
     - name: "Python 3.7"
       image: python:3.7
       environment:
           BASEPLATE_CASSANDRA_ADDR: "cassandra:9042"
           BASEPLATE_MEMCACHED_ADDR: "memcached:11211"
           BASEPLATE_REDIS_ADDR: "redis:6379"
-          BASEPLATE_VAULT_ADDR: "vault:8200"
           BASEPLATE_ZOOKEEPER_ADDR: "zookeeper:2181"
           PIP_OPTIONS:
               from_secret: pip_options
@@ -53,7 +37,6 @@ steps:
           BASEPLATE_CASSANDRA_ADDR: "cassandra:9042"
           BASEPLATE_MEMCACHED_ADDR: "memcached:11211"
           BASEPLATE_REDIS_ADDR: "redis:6379"
-          BASEPLATE_VAULT_ADDR: "vault:8200"
           BASEPLATE_ZOOKEEPER_ADDR: "zookeeper:2181"
           PIP_OPTIONS:
               from_secret: pip_options
@@ -77,9 +60,5 @@ services:
       image: memcached:1.5.6
     - name: redis
       image: redis:4.0.9
-    - name: vault
-      image: vault:1.0.0
-      environment:
-          VAULT_DEV_ROOT_TOKEN_ID: "b4c6f298-3f80-11e7-8b88-5254001e7ad3"
     - name: zookeeper
       image: zookeeper:3.4.10

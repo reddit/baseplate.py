@@ -1,87 +1,72 @@
 import datetime
-import unittest
 
 from unittest import mock
+
+import pytest
 
 from baseplate.lib import crypto
 from baseplate.lib.secrets import VersionedSecret
 
 
-class SignatureTests(unittest.TestCase):
-    def setUp(self):
-        self.message = "Hello, this is a message."
-        self.secret = b"abcdefg"
-        self.signer = crypto.MessageSigner(self.secret)
-
-    def test_roundtrip(self):
-        signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
-        self.signer.validate_signature(self.message, signature)
-
-    @mock.patch("time.time")
-    def test_signature_info(self, time):
-        time.return_value = 0
-        signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
-
-        info = self.signer.validate_signature(self.message, signature)
-
-        self.assertEqual(info.version, 1)
-        self.assertEqual(info.expiration, 30)
-
-    @mock.patch("time.time")
-    def test_expired(self, time):
-        time.return_value = 0
-        signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
-
-        time.return_value = 90
-        with self.assertRaises(crypto.ExpiredSignatureError):
-            self.signer.validate_signature(self.message, signature)
-
-    def test_unreadable(self):
-        signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
-
-        with self.assertRaises(crypto.UnreadableSignatureError):
-            self.signer.validate_signature(self.message, signature[2:])
-
-    def test_invalid(self):
-        bad_signature = self.signer.make_signature(
-            self.message + "bad", max_age=datetime.timedelta(seconds=30)
-        )
-
-        with self.assertRaises(crypto.IncorrectSignatureError):
-            self.signer.validate_signature(self.message, bad_signature)
-
-    def test_signature_urlsafe(self):
-        signature = self.signer.make_signature(self.message, max_age=datetime.timedelta(seconds=30))
-        self.assertTrue(b"=" not in signature)
+TEST_SECRET = VersionedSecret(previous=b"one", current=b"two", next=b"three")
+MESSAGE = "test message"
+VALID_TIL_1030 = b"AQAABgQAAOMD6M5zvQU0-GK_uKvPdKH7NOeRAq5Jdlkjwq67BzLt"
 
 
-class VersionedSecretTests(unittest.TestCase):
-    @mock.patch("time.time")
-    def test_versioned(self, time):
-        time.return_value = 1000
+@mock.patch("time.time")
+def test_make_signature(mock_time):
+    mock_time.return_value = 1000
 
-        message = "hello!"
-        max_age = datetime.timedelta(seconds=30)
+    signature = crypto.make_signature(TEST_SECRET, MESSAGE, max_age=datetime.timedelta(seconds=30))
 
-        versioned = VersionedSecret(previous=b"one", current=b"two", next=b"three")
+    assert signature == VALID_TIL_1030
 
-        previous = VersionedSecret.from_simple_secret(versioned.previous)
-        current = VersionedSecret.from_simple_secret(versioned.current)
-        next = VersionedSecret.from_simple_secret(versioned.next)
 
-        self.assertEqual(
-            crypto.make_signature(versioned, message, max_age),
-            crypto.make_signature(current, message, max_age),
-        )
+@pytest.mark.parametrize(
+    "signature",
+    [
+        b"totally bogus",
+        b"Ym9ndXM=",  # base64, but "bogus" content
+        b"AgAA0gQAAGFzZGZhc2Rm",  # v2 header
+        b"AQAABgQAAOMD6M5zvQU0",  # wrong length
+    ],
+)
+def test_bogus_signature(signature):
+    with pytest.raises(crypto.UnreadableSignatureError):
+        crypto.validate_signature(TEST_SECRET, MESSAGE, signature)
 
-        signature = crypto.make_signature(previous, message, max_age)
-        info = crypto.validate_signature(versioned, message, signature)
-        self.assertEqual(info.expiration, 1030)
 
-        signature = crypto.make_signature(current, message, max_age)
-        info = crypto.validate_signature(versioned, message, signature)
-        self.assertEqual(info.expiration, 1030)
+@mock.patch("time.time")
+def test_expired(mock_time):
+    mock_time.return_value = 2000
 
-        signature = crypto.make_signature(next, message, max_age)
-        info = crypto.validate_signature(versioned, message, signature)
-        self.assertEqual(info.expiration, 1030)
+    with pytest.raises(crypto.ExpiredSignatureError) as exc:
+        crypto.validate_signature(TEST_SECRET, MESSAGE, VALID_TIL_1030)
+
+    assert exc.value.expiration == 1030
+
+
+@mock.patch("time.time")
+@pytest.mark.parametrize(
+    "rotated_secret",
+    [
+        VersionedSecret(previous=TEST_SECRET.current, current=b"new", next=b"new"),
+        VersionedSecret(previous=b"old", current=TEST_SECRET.current, next=b"new"),
+        VersionedSecret(previous=b"old", current=b"old", next=TEST_SECRET.current),
+    ],
+)
+def test_secret_rotation(mock_time, rotated_secret):
+    mock_time.return_value = 1000
+
+    result = crypto.validate_signature(rotated_secret, MESSAGE, VALID_TIL_1030)
+
+    assert result.version == 1
+    assert result.expiration == 1030
+
+
+@mock.patch("time.time")
+def test_bad_signature(mock_time):
+    mock_time.return_value = 1000
+
+    with pytest.raises(crypto.IncorrectSignatureError):
+        crypto.validate_signature(TEST_SECRET, "SNEAKY DIFFERENT MESSAGE", VALID_TIL_1030)

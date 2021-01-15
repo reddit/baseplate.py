@@ -5,6 +5,8 @@ import sys
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import Iterable
+from typing import Iterator
 from typing import Mapping
 from typing import Optional
 
@@ -20,14 +22,50 @@ from pyramid.response import Response
 
 from baseplate import Baseplate
 from baseplate import RequestContext
+from baseplate import Span
 from baseplate import TraceInfo
-from baseplate.lib import warn_deprecated
-from baseplate.lib.edge_context import EdgeRequestContextFactory
-from baseplate.server import make_app
+from baseplate.lib.edgecontext import EdgeContextFactory
 from baseplate.thrift.ttypes import IsHealthyProbe
 
 
 logger = logging.getLogger(__name__)
+
+
+class SpanFinishingAppIterWrapper:
+    """Wrapper for Response.app_iter that finishes the span when the iterator is done.
+
+    The WSGI spec expects applications to return an iterable object. In the
+    common case, the iterable is a single-item list containing a byte string of
+    the full response. However, if the application wants to stream a response
+    back to the client (e.g. it's sending a lot of data, or it wants to get
+    some bytes on the wire really quickly before some database calls finish)
+    the iterable can take a while to finish iterating.
+
+    This wrapper allows us to keep the server span open until the iterable is
+    finished even though our view callable returned long ago.
+
+    """
+
+    def __init__(self, span: Span, app_iter: Iterable[bytes]) -> None:
+        self.span = span
+        self.app_iter = iter(app_iter)
+
+    def __iter__(self) -> Iterator[bytes]:
+        return self
+
+    def __next__(self) -> bytes:
+        try:
+            return next(self.app_iter)
+        except StopIteration:
+            self.span.finish()
+            raise
+        except:  # noqa: E722
+            self.span.finish(exc_info=sys.exc_info())
+            raise
+
+    def close(self) -> None:
+        if hasattr(self.app_iter, "close"):
+            self.app_iter.close()  # type: ignore
 
 
 def _make_baseplate_tween(
@@ -43,7 +81,7 @@ def _make_baseplate_tween(
         else:
             if request.trace:
                 request.trace.set_tag("http.status_code", response.status_code)
-                request.trace.finish()
+                response.app_iter = SpanFinishingAppIterWrapper(request.trace, response.app_iter)
         finally:
             # avoid a reference cycle
             request.start_server_span = None
@@ -124,9 +162,10 @@ class StaticTrustHandler(HeaderTrustHandler):
 
 # pylint: disable=too-many-ancestors
 class BaseplateRequest(RequestContext, pyramid.request.Request):
-    def __init__(self, context_config: Dict[str, Any], environ: Dict[str, str]):
-        RequestContext.__init__(self, context_config)
-        pyramid.request.Request.__init__(self, environ)
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        context_config = kwargs.pop("context_config", None)
+        RequestContext.__init__(self, context_config=context_config)
+        pyramid.request.Request.__init__(self, *args, **kwargs)
 
 
 class RequestFactory:
@@ -134,11 +173,11 @@ class RequestFactory:
         self.baseplate = baseplate
 
     def __call__(self, environ: Dict[str, str]) -> BaseplateRequest:
-        return BaseplateRequest(self.baseplate._context_config, environ)
+        return BaseplateRequest(environ, context_config=self.baseplate._context_config)
 
     def blank(self, path: str) -> BaseplateRequest:
         environ = webob.request.environ_from_url(path)
-        return BaseplateRequest(self.baseplate._context_config, environ)
+        return BaseplateRequest(environ, context_config=self.baseplate._context_config)
 
 
 class BaseplateConfigurator:
@@ -155,23 +194,12 @@ class BaseplateConfigurator:
     def __init__(
         self,
         baseplate: Baseplate,
-        trust_trace_headers: Optional[bool] = None,
-        edge_context_factory: Optional[EdgeRequestContextFactory] = None,
+        edge_context_factory: Optional[EdgeContextFactory] = None,
         header_trust_handler: Optional[HeaderTrustHandler] = None,
     ):
         self.baseplate = baseplate
-        self.trust_trace_headers = bool(trust_trace_headers)
-        if trust_trace_headers is not None:
-            warn_deprecated(
-                "setting trust_trace_headers is deprecated in favor of using"
-                " a header trust handler."
-            )
         self.edge_context_factory = edge_context_factory
-
-        if header_trust_handler:
-            self.header_trust_handler = header_trust_handler
-        else:
-            self.header_trust_handler = StaticTrustHandler(trust_headers=self.trust_trace_headers)
+        self.header_trust_handler = header_trust_handler or StaticTrustHandler(trust_headers=False)
 
     def _on_application_created(self, event: pyramid.events.ApplicationCreated) -> None:
         # attach the baseplate object to the application the server gets
@@ -200,24 +228,18 @@ class BaseplateConfigurator:
             except (KeyError, ValueError):
                 edge_payload = None
 
-            if self.edge_context_factory and edge_payload:
-                edge_context = self.edge_context_factory.from_upstream(edge_payload)
-                edge_context.attach_context(request)
-            else:
-                # just attach the raw context so it gets passed on
-                # downstream even if we don't know how to handle it.
-                request.raw_request_context = edge_payload
+            request.raw_edge_context = edge_payload
+            if self.edge_context_factory:
+                request.edge_context = self.edge_context_factory.from_upstream(edge_payload)
 
-        request.start_server_span(request.matched_route.name, trace_info)
-        request.trace.set_tag("http.url", request.url)
-        request.trace.set_tag("http.method", request.method)
-        request.trace.set_tag("peer.ipv4", request.remote_addr)
-
-    def _start_server_span(
-        self, request: BaseplateRequest, name: str, trace_info: Optional[TraceInfo] = None
-    ) -> None:
-        span = self.baseplate.make_server_span(request, name=name, trace_info=trace_info)
+        span = self.baseplate.make_server_span(
+            request, name=request.matched_route.name, trace_info=trace_info,
+        )
+        span.set_tag("http.url", request.url)
+        span.set_tag("http.method", request.method)
+        span.set_tag("peer.ipv4", request.remote_addr)
         span.start()
+
         request.registry.notify(ServerSpanInitialized(request))
 
     def _get_trace_info(self, headers: Mapping[str, str]) -> TraceInfo:
@@ -249,56 +271,6 @@ class BaseplateConfigurator:
         config.add_tween(
             "baseplate.frameworks.pyramid._make_baseplate_tween", over=pyramid.tweens.EXCVIEW
         )
-
-        # the pyramid "scripting context" (e.g. pshell) sets up a
-        # psuedo-request environment but does not call NewRequest. it does,
-        # however, set up request methods. so, we attach this method to the
-        # request so we can access it in both pshell_setup and _on_new_request
-        # for the different context we can be running in.
-        # see: Pylons/pyramid#520
-        #
-        # pyramid gets all cute with descriptors and will pass the request
-        # object as the first ("self") param to bound methods. wrapping
-        # the bound method in a simple function prevents that behavior
-        def start_server_span(
-            request: BaseplateRequest, name: str, trace_info: Optional[TraceInfo] = None
-        ) -> None:
-            return self._start_server_span(request, name, trace_info)
-
-        config.add_request_method(start_server_span, "start_server_span")
-
-
-def paste_make_app(_: Dict[str, str], **local_config: str) -> Any:
-    """Make an application object, PasteDeploy style.
-
-    This is a compatibility shim to adapt the baseplate app entrypoint to
-    PasteDeploy-style so tools like Pyramid's pshell work.
-
-    To use it, add a single line to your app's section in its INI file:
-
-        [app:your_app]
-        use = egg:baseplate
-
-    """
-    return make_app(local_config)
-
-
-def pshell_setup(env: Dict[str, Any]) -> None:
-    r"""Start a server span when pshell starts up.
-
-    This simply starts a server span after the shell initializes, which gives
-    shell users access to all the :py:class:`~baseplate.RequestContext`
-    goodness.
-
-    To use it, add configuration to your app's INI file like so:
-
-        [pshell]
-        setup = baseplate.frameworks.pyramid:pshell_setup
-
-    See the :ref:`Pyramid documentation <extending_pshell>`.
-
-    """
-    env["request"].start_server_span("shell")
 
 
 def get_is_healthy_probe(request: Request) -> int:

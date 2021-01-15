@@ -18,9 +18,20 @@ from baseplate import Span
 from baseplate.lib import config
 from baseplate.observers.timeout import ServerTimeout
 
-
 if TYPE_CHECKING:
     from gevent.hub import Hub
+
+
+ALWAYS_IGNORE_EXCEPTIONS = (
+    "ConnectionError",
+    "ConnectionRefusedError",
+    "ConnectionResetError",
+    "HTTPError",
+    "TApplicationException",
+    "TProtocolException",
+    "TTransportException",
+    "MemcacheServerError",
+)
 
 
 def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -> raven.Client:
@@ -67,7 +78,9 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
                 "environment": config.Optional(config.String, default=None),
                 "include_paths": config.Optional(config.String, default=None),
                 "exclude_paths": config.Optional(config.String, default=None),
-                "ignore_exceptions": config.Optional(config.TupleOf(config.String), default=[]),
+                "additional_ignore_exceptions": config.Optional(
+                    config.TupleOf(config.String), default=[]
+                ),
                 "sample_rate": config.Optional(config.Percent, default=1),
                 "processors": config.Optional(
                     config.TupleOf(config.String),
@@ -89,6 +102,10 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
         else:
             break
 
+    all_ignore_exceptions = list(ALWAYS_IGNORE_EXCEPTIONS)
+    if cfg.sentry.additional_ignore_exceptions:
+        all_ignore_exceptions.extend(cfg.sentry.additional_ignore_exceptions)
+
     # pylint: disable=maybe-no-member
     client = raven.Client(
         dsn=cfg.sentry.dsn,
@@ -97,7 +114,7 @@ def error_reporter_from_config(raw_config: config.RawConfig, module_name: str) -
         environment=cfg.sentry.environment,
         include_paths=cfg.sentry.include_paths,
         exclude_paths=cfg.sentry.exclude_paths,
-        ignore_exceptions=cfg.sentry.ignore_exceptions,
+        ignore_exceptions=all_ignore_exceptions,
         sample_rate=cfg.sentry.sample_rate,
         processors=cfg.sentry.processors,
     )

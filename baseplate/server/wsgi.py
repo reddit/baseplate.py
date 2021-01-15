@@ -33,11 +33,11 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
     )
 
     if cfg.max_concurrency is not None:
-        logger.warning(
-            "The max_concurrency setting is deprecated for WSGI servers. See https://git.io/Jeywc."
+        raise Exception(
+            "The max_concurrency setting is not allowed for WSGI servers. See https://git.io/Jeywc."
         )
 
-    pool = Pool(size=cfg.max_concurrency)
+    pool = Pool()
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
 
     kwargs: Dict[str, Any] = {}

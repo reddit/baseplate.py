@@ -17,7 +17,7 @@ from thrift.transport.TTransport import TTransportException
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import TraceInfo
-from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate.lib.edgecontext import EdgeContextFactory
 
 
 class _ContextAwareHandler:
@@ -61,7 +61,7 @@ def baseplateify_processor(
     processor: TProcessor,
     logger: Logger,
     baseplate: Baseplate,
-    edge_context_factory: Optional[EdgeRequestContextFactory] = None,
+    edge_context_factory: Optional[EdgeContextFactory] = None,
 ) -> TProcessor:
     """Wrap a Thrift Processor with Baseplate's span lifecycle.
 
@@ -99,13 +99,9 @@ def baseplateify_processor(
                 trace_info = None
 
             edge_payload = headers.get(b"Edge-Request", None)
+            context.raw_edge_context = edge_payload
             if edge_context_factory:
-                edge_context = edge_context_factory.from_upstream(edge_payload)
-                edge_context.attach_context(context)
-            else:
-                # just attach the raw context so it gets passed on
-                # downstream even if we don't know how to handle it.
-                context.raw_request_context = edge_payload
+                context.edge_context = edge_context_factory.from_upstream(edge_payload)
 
             span = baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
 

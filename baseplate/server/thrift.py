@@ -71,11 +71,11 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
     )
 
     if cfg.max_concurrency is not None:
-        logger.warning(
-            "The max_concurrency setting is deprecated for Thrift servers. See https://git.io/Jeywc."
+        raise Exception(
+            "The max_concurrency setting is not allowed for Thrift servers. See https://git.io/Jeywc."
         )
 
-    pool = Pool(size=cfg.max_concurrency)
+    pool = Pool()
     server = GeventServer(processor=app, listener=listener, spawn=pool)
     server.stop_timeout = cfg.stop_timeout.total_seconds()
 

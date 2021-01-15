@@ -1,6 +1,122 @@
 Frequently Asked Questions
 ==========================
 
+.. contents::
+   :backlinks: none
+
+Can I serve multiple protocols (Thrift, HTTP, etc.) in one service?
+-------------------------------------------------------------------
+
+Yes! While ``baseplate-serve`` doesn't support serving multiple protocols from
+the same *process* it's totally fine to run multiple instances of
+``baseplate-serve`` out of one code base. This allows you to present different
+interfaces to different clients and scale each interface independently.
+
+For example, our example HTTP service from :doc:`the tutorial
+<../tutorial/index>` has an entrypoint function (``make_wsgi_app()``) that sets
+up the application:
+
+.. literalinclude:: ../tutorial/chapter4/sql.py
+   :language: python
+   :start-at: make_wsgi_app
+
+using configuration for that application:
+
+.. literalinclude:: ../tutorial/chapter4/sql.ini
+   :language: ini
+   :start-at: app:main
+   :end-before: server:main
+
+and configuration that tells ``baseplate-serve`` how to serve the application:
+
+.. literalinclude:: ../tutorial/chapter4/sql.ini
+   :language: ini
+   :start-at: server:main
+
+Note the ``factory`` setting in each section refers to a module and name in
+that module. We can use these to point ``baseplate-serve`` at different pieces
+of code.
+
+To serve an additional protocol, we need another entrypoint function that
+returns a different kind of application. Let's add a basic Thrift service as
+well::
+
+   def make_processor(app_config):
+       baseplate = Baseplate(app_config)
+       baseplate.configure_observers()
+       baseplate.configure_context({"db": SQLAlchemySession()})
+
+       handler = MyHandler()
+       processor = MyService.Processor(handler)
+       return baseplateify_processor(processor, logger, baseplate)
+
+and add application configuration:
+
+.. code-block:: ini
+
+   [app:thrift]
+   factory = helloworld:make_processor
+
+   metrics.namespace = helloworld
+
+   db.url = sqlite:///
+
+and finally define server configuration:
+
+.. code-block:: ini
+
+   [server:thrift]
+   factory = baseplate.server.thrift
+
+We could now run our HTTP server with ``baseplate-serve myconfig.ini`` or our
+Thrift server with ``baseplate-serve --server-name=thrift --app-name=thrift
+myconfig.ini``. The ``--server-name`` and ``--app-name`` parameters tell
+``baseplate-serve`` which sections of the config file to use.
+
+There's something bad going on here though. Both server types are doing the
+exact same stuff with :py:class:`~baseplate.Baseplate` setup and the
+configuration for them is duplicated. A common pattern to clean this up is to
+factor out a ``make_baseplate`` function and use it in both our entrypoints::
+
+   def make_baseplate(app_config):
+       baseplate = Baseplate(app_config)
+       baseplate.configure_observers()
+       baseplate.configure_context({"db": SQLAlchemySession()})
+
+
+   def make_wsgi_app(app_config):
+       baseplate = make_baseplate(app_config)
+
+       ...
+
+
+   def make_processor(app_config):
+       baseplate = make_baseplate(app_config)
+
+       ...
+
+Similarly, you can factor out common configuration items into a ``[DEFAULT]``
+section in the config file which will be automatically inherited by all other
+sections:
+
+.. code-block:: ini
+
+   [DEFAULT]
+   metrics.namespace = helloworld
+   db.url = sqlite:///
+
+   [app:main]
+   factory = helloworld:make_wsgi_app
+
+   [app:thrift]
+   factory = baseplate.server.thrift
+
+   ...
+
+For more information on what's going on under the hood here, check out the
+:doc:`startup`.
+
+
 What do I do about "Metrics batch of N bytes is too large to send"?
 -------------------------------------------------------------------
 

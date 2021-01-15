@@ -10,10 +10,10 @@ Instrumented Client Libraries
    :titlesonly:
 
    baseplate.clients.cassandra: Cassandra CQL Client <cassandra>
-   baseplate.clients.hvac: Client for using Vault's advanced features <hvac>
    baseplate.clients.kombu: Client for publishing to queues <kombu>
    baseplate.clients.memcache: Memcached Client <memcache>
    baseplate.clients.redis: Redis Client <redis>
+   baseplate.clients.requests: Requests (HTTP) Client <requests>
    baseplate.clients.sqlalchemy: SQL Client for relational databases (e.g. PostgreSQL) <sqlalchemy>
    baseplate.clients.thrift: Thrift client for RPC to other backend services <thrift>
 

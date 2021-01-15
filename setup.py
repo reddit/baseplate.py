@@ -11,11 +11,10 @@ setup(
     url="https://baseplate.readthedocs.io/en/stable/",
     use_scm_version=True,
     packages=find_packages(exclude=["tests", "tests.*"]),
-    python_requires=">=3.6.2",
+    python_requires=">=3.7",
     setup_requires=["setuptools_scm"],
     install_requires=[
         "posix_ipc>=1.0.0",
-        "pyjwt>=1.6.0",
         "python-json-logger~=0.1",
         "requests>=2.21.0",
         "thrift>=0.12.0",
@@ -28,8 +27,8 @@ setup(
         "memcache": ["pymemcache>=1.3.0,<=2.0.0"],
         "pyramid": ["pyramid>=1.9.0"],
         "redis": ["redis>=2.10.0,<=4.0.0"],
+        "requests": ["advocate>=1.0.0"],
         "sql": ["sqlalchemy>=1.1.0"],
-        "vault": ["hvac>=0.2.17"],
         "zookeeper": ["kazoo>=2.5.0"],
     },
     scripts=[
@@ -47,14 +46,12 @@ setup(
         "distutils.commands": [
             "build_thrift = baseplate.frameworks.thrift.command:BuildThriftCommand"
         ],
-        "paste.app_factory": ["main = baseplate.frameworks.pyramid:paste_make_app"],
     },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "License :: OSI Approved :: BSD License",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Topic :: Software Development :: Libraries",

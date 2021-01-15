@@ -26,13 +26,17 @@ extensions = [
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.7", None),
-    "pyramid": ("https://docs.pylonsproject.org/projects/pyramid/en/1.9-branch", None,),
+    "pyramid": (
+        "https://docs.pylonsproject.org/projects/pyramid/en/1.9-branch",
+        None,
+    ),
     "cassandra": ("https://datastax.github.io/python-driver/", None),
     "pymemcache": ("https://pymemcache.readthedocs.io/en/latest/", None),
     "kazoo": ("https://kazoo.readthedocs.io/en/latest/", None),
     "kombu": ("https://kombu.readthedocs.io/en/latest/", None),
     "redis": ("https://redis-py.readthedocs.io/en/latest/", None),
     "sqlalchemy": ("https://docs.sqlalchemy.org/en/13/", None),
+    "requests": ("https://requests.readthedocs.io/en/stable/", None),
 }
 
 # The suffix of source filenames.
@@ -73,7 +77,9 @@ html_theme = "alabaster"
 
 # which templates to put in the sidebar.  we're just removing the relations
 # section from the defaults here, that's "next article" and "previous article"
-html_sidebars = {"**": ["about.html", "searchbox.html", "navigation.html"]}
+html_sidebars = {
+    "**": ["about.html", "searchbox.html", "navigation.html"]
+}
 
 html_theme_options = {
     "description": "Reddit's Python Service Framework",

@@ -80,6 +80,7 @@ from typing import Tuple
 
 import requests
 
+from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 
 
@@ -153,6 +154,9 @@ class VaultClientFactory:
         self.auth_type = auth_type
         self.mount_point = mount_point
         self.session = requests.Session()
+        self.session.headers[
+            "User-Agent"
+        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
         self.client: Optional["VaultClient"] = None
 
     def _make_client(self) -> "VaultClient":
@@ -381,13 +385,15 @@ def main() -> None:
         fetcher_config,
         {
             "vault": {
-                "url": config.String,
+                "url": config.DefaultFromEnv(config.String, "BASEPLATE_DEFAULT_VAULT_URL"),
                 "role": config.String,
                 "auth_type": config.Optional(
                     config.OneOf(**VaultClientFactory.auth_types()),
                     default=VaultClientFactory.auth_types()["aws"],
                 ),
-                "mount_point": config.Optional(config.String, default="aws-ec2"),
+                "mount_point": config.DefaultFromEnv(
+                    config.String, "BASEPLATE_VAULT_MOUNT_POINT", fallback="aws-ec2"
+                ),
             },
             "output": {
                 "path": config.Optional(config.String, default="/var/local/secrets.json"),

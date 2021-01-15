@@ -142,7 +142,7 @@ class KafkaMessageHandler(MessageHandler):
                     ingest_timestamp_ms = data["endpoint_timestamp"]
                     now_ms = int(time.time() * 1000)
                     message_latency = (now_ms - ingest_timestamp_ms) / 1000
-                except KeyError:
+                except (KeyError, TypeError):
                     # we can't guarantee that all publishers populate this field
                     # v2 events publishers (event collectors) do, but future
                     # kafka publishers may not
@@ -193,7 +193,6 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
 
         """
-
         self.name = name
         self.baseplate = baseplate
         self.consumer = consumer
@@ -240,7 +239,6 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
 
         """
-
         service_name, _, group_name = group_id.partition(".")
         assert service_name and group_name, "group_id must start with 'SERVICENAME.'"
         assert name == f"kafka_consumer.{group_name}"

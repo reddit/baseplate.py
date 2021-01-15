@@ -7,6 +7,7 @@ from typing import Optional
 
 import requests
 
+from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.message_queue import MessageQueue
@@ -60,6 +61,9 @@ class ZipkinPublisher:
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         parsed_url = urllib.parse.urlparse(zipkin_api_url)
         self.session = requests.Session()
+        self.session.headers[
+            "User-Agent"
+        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
         self.session.mount(f"{parsed_url.scheme}://", adapter)
         self.endpoint = f"{zipkin_api_url}/spans"
         self.metrics = metrics_client
@@ -146,7 +150,7 @@ def publish_traces() -> None:
     publisher_cfg = config.parse_config(
         publisher_raw_cfg,
         {
-            "zipkin_api_url": config.Endpoint,
+            "zipkin_api_url": config.DefaultFromEnv(config.Endpoint, "BASEPLATE_ZIPKIN_API_URL"),
             "post_timeout": config.Optional(config.Integer, POST_TIMEOUT_DEFAULT),
             "max_batch_size": config.Optional(config.Integer, MAX_BATCH_SIZE_DEFAULT),
             "retry_limit": config.Optional(config.Integer, RETRY_LIMIT_DEFAULT),

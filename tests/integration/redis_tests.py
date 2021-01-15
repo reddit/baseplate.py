@@ -22,11 +22,9 @@ class RedisIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.baseplate_observer = TestBaseplateObserver()
 
-        baseplate = Baseplate()
+        baseplate = Baseplate({"redis.url": f"redis://{redis_endpoint}/0"})
         baseplate.register(self.baseplate_observer)
-        baseplate.configure_context(
-            {"redis.url": f"redis://{redis_endpoint}/0"}, {"redis": RedisClient()}
-        )
+        baseplate.configure_context({"redis": RedisClient()})
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
@@ -54,6 +52,18 @@ class RedisIntegrationTests(unittest.TestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNotNone(span_observer.on_finish_exc_info)
+
+    def test_lock(self):
+        with self.server_span:
+            with self.context.redis.lock("foo"):
+                pass
+
+        server_span_observer = self.baseplate_observer.get_only_child()
+
+        self.assertGreater(len(server_span_observer.children), 0)
+        for span_observer in server_span_observer.children:
+            self.assertTrue(span_observer.on_start_called)
+            self.assertTrue(span_observer.on_finish_called)
 
     def test_pipeline(self):
         with self.server_span:

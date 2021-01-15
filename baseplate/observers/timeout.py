@@ -8,7 +8,6 @@ from baseplate import RequestContext
 from baseplate import ServerSpan
 from baseplate import SpanObserver
 from baseplate.lib import config
-from baseplate.lib import warn_deprecated
 
 
 # this deliberately inherits from BaseException rather than Exception, just
@@ -29,21 +28,12 @@ class TimeoutBaseplateObserver(BaseplateObserver):
             app_config,
             {
                 "server_timeout": {
-                    "default": config.Optional(config.TimespanOrInfinite, default=None),
+                    "default": config.TimespanOrInfinite,
                     "debug": config.Optional(config.Boolean, default=False),
                     "by_endpoint": config.DictOf(config.TimespanOrInfinite),
                 }
             },
         )
-
-        if cfg.server_timeout.default is None:
-            warn_deprecated(
-                "No server_timeout.default configured. Defaulting to no timeout. "
-                "Set the default timeout to 'infinite' or a timespan like '2 seconds'. "
-                "This will become mandatory in Baseplate.py 2.0."
-            )
-            cfg.server_timeout.default = config.InfiniteTimespan
-
         return cls(cfg.server_timeout)
 
     def __init__(self, timeout_config: config.ConfigNamespace):

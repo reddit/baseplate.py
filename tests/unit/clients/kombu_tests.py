@@ -1,34 +1,26 @@
-from unittest import mock
-
 import pytest
 
 from baseplate.clients.kombu import connection_from_config
 from baseplate.clients.kombu import KombuThriftSerializer
 from baseplate.lib.config import ConfigurationError
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
-from baseplate.thrift.ttypes import Loid
-from baseplate.thrift.ttypes import Request
-from baseplate.thrift.ttypes import Session
+from baseplate.testing.lib.secrets import FakeSecretsStore
 
 from ... import does_not_raise
+from ...integration.test_thrift.ttypes import ExampleStruct
 
 
 def secrets():
-    mock_filewatcher = mock.Mock(spec=FileWatcher)
-    mock_filewatcher.get_data.return_value = {
-        "secrets": {
-            "secret/rabbitmq/account": {
-                "type": "credential",
-                "username": "spez",
-                "password": "hunter2",
-            }
-        },
-        "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-    }
-    secrets = SecretsStore("/secrets")
-    secrets._filewatcher = mock_filewatcher
-    return secrets
+    return FakeSecretsStore(
+        {
+            "secrets": {
+                "secret/rabbitmq/account": {
+                    "type": "credential",
+                    "username": "spez",
+                    "password": "hunter2",
+                }
+            },
+        }
+    )
 
 
 @pytest.mark.parametrize(
@@ -95,22 +87,18 @@ def test_connection_from_config(app_config, kwargs, expectation, expected):
 class TestKombuThriftSerializer:
     @pytest.fixture
     def serializer(self):
-        return KombuThriftSerializer[Request](Request)
+        return KombuThriftSerializer[ExampleStruct](ExampleStruct)
 
     @pytest.fixture
     def req(self):
-        return Request(
-            loid=Loid(id="t2_1", created_ms=100000000),
-            session=Session(id="session-id"),
-            authentication_token="auth-token",
-        )
+        return ExampleStruct(string_field="foo", int_field=42)
 
     @pytest.fixture
     def req_bytes(self):
-        return b"\x0c\x00\x01\x0b\x00\x01\x00\x00\x00\x04t2_1\n\x00\x02\x00\x00\x00\x00\x05\xf5\xe1\x00\x00\x0c\x00\x02\x0b\x00\x01\x00\x00\x00\nsession-id\x00\x0b\x00\x03\x00\x00\x00\nauth-token\x00"  # noqa
+        return b"\x0b\x00\x01\x00\x00\x00\x03foo\n\x00\x02\x00\x00\x00\x00\x00\x00\x00*\x00"
 
     def test_name(self, serializer):
-        assert serializer.name == "thrift-Request"
+        assert serializer.name == "thrift-ExampleStruct"
 
     def test_serialize(self, serializer, req, req_bytes):
         serialized = serializer.serialize(req)
@@ -119,7 +107,7 @@ class TestKombuThriftSerializer:
 
     def test_deserialize(self, serializer, req, req_bytes):
         request = serializer.deserialize(req_bytes)
-        assert isinstance(request, Request)
+        assert isinstance(request, ExampleStruct)
         assert request == req
 
     def test_serialize_errors(self, serializer):

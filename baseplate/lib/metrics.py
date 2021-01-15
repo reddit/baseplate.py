@@ -97,9 +97,13 @@ class Transport:
 class NullTransport(Transport):
     """A transport which doesn't send messages at all."""
 
+    def __init__(self, log_if_unconfigured: bool):
+        self.log_if_unconfigured = log_if_unconfigured
+
     def send(self, serialized_metric: bytes) -> None:
-        for metric_line in serialized_metric.splitlines():
-            logger.debug("Would send metric %r", metric_line)
+        if self.log_if_unconfigured:
+            for metric_line in serialized_metric.splitlines():
+                logger.debug("Would send metric %r", metric_line)
 
     def flush(self) -> None:
         pass
@@ -465,7 +469,6 @@ class Histogram:
         This records a new value to the histogram; the bucket it goes in
         is determined by the backend service configurations.
         """
-
         formatted_tags = _format_tags(self.tags)
         if formatted_tags:
             serialized = self.name + formatted_tags + (f":{value:g}|h".encode())
@@ -514,7 +517,9 @@ class Gauge:
         self.transport.send(serialized)
 
 
-def make_client(namespace: str, endpoint: config.EndpointConfiguration) -> Client:
+def make_client(
+    namespace: str, endpoint: config.EndpointConfiguration, log_if_unconfigured: bool
+) -> Client:
     """Return a configured client.
 
     :param namespace: The root key to prefix all metrics with.
@@ -530,7 +535,7 @@ def make_client(namespace: str, endpoint: config.EndpointConfiguration) -> Clien
     if endpoint:
         transport = RawTransport(endpoint)
     else:
-        transport = NullTransport()
+        transport = NullTransport(log_if_unconfigured)
     return Client(transport, namespace)
 
 
@@ -544,6 +549,9 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
     ``metrics.endpoint``
         A ``host:port`` pair, e.g. ``localhost:2014``. If an empty string, a
         client that discards all metrics will be returned.
+    `metrics.log_if_unconfigured``
+        Whether to log metrics when there is no unconfigured endpoint.
+        Defaults to false.
 
     :param raw_config: The application configuration which should have
         settings for the metrics client.
@@ -556,9 +564,10 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
             "metrics": {
                 "namespace": config.Optional(config.String, default=""),
                 "endpoint": config.Optional(config.Endpoint),
+                "log_if_unconfigured": config.Optional(config.Boolean, default=False),
             }
         },
     )
 
     # pylint: disable=maybe-no-member
-    return make_client(cfg.metrics.namespace, cfg.metrics.endpoint)
+    return make_client(cfg.metrics.namespace, cfg.metrics.endpoint, cfg.metrics.log_if_unconfigured)

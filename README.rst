@@ -26,13 +26,12 @@ And can take advantage of:
 
 * Integration with commonly used clients like: Thrift, SQLAlchemy,
   cassandra-driver, pymemcache, redis-py, and Kombu
-* An experiments framework for doing A/B tests
 * Secrets securely pulled from Vault
 
 And many other things! Read the `full docs
 <https://baseplate.readthedocs.io/en/stable/>`__.
 
-Baseplate.py requires Python 3.6 or newer.
+Baseplate.py requires Python 3.7 or newer.
 
 .. |Build Status| image:: https://cloud.drone.io/api/badges/reddit/baseplate.py/status.svg
    :target: https://cloud.drone.io/reddit/baseplate.py
