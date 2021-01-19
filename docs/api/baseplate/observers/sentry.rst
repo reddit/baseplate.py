@@ -4,6 +4,11 @@ Sentry (Crash Reporting)
 The Sentry observer integrates `sentry-sdk`_ with your application to record
 tracebacks for crashes to `Sentry`_.
 
+.. versionchanged:: 2.0
+
+   The underlying library for communicating with sentry was changed from Raven
+   to sentry-sdk.
+
 .. _sentry-sdk: https://docs.sentry.io/platforms/python/
 .. _Sentry: https://sentry.io/welcome/
 
