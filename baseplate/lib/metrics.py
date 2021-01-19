@@ -148,6 +148,7 @@ class BufferedTransport(Transport):
 class BaseClient:
     def __init__(self, transport: Transport, namespace: str):
         self.transport = transport
+        self.base_tags: Dict[str, Any] = {}
         self.namespace = namespace.encode("ascii")
 
     def timer(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Timer":
@@ -157,7 +158,7 @@ class BaseClient:
 
         """
         timer_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Timer(self.transport, timer_name, tags)
+        return Timer(self.transport, timer_name, {**self.base_tags, **(tags or {})})
 
     def counter(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Counter":
         """Return a Counter with the given name.
@@ -168,7 +169,7 @@ class BaseClient:
 
         """
         counter_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Counter(self.transport, counter_name, tags)
+        return Counter(self.transport, counter_name, {**self.base_tags, **(tags or {})})
 
     def gauge(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Gauge":
         """Return a Gauge with the given name.
@@ -177,7 +178,7 @@ class BaseClient:
 
         """
         gauge_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Gauge(self.transport, gauge_name, tags)
+        return Gauge(self.transport, gauge_name, {**self.base_tags, **(tags or {})})
 
     def histogram(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Histogram":
         """Return a Histogram with the given name.
@@ -186,7 +187,7 @@ class BaseClient:
 
         """
         histogram_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Histogram(self.transport, histogram_name, tags)
+        return Histogram(self.transport, histogram_name, {**self.base_tags, **(tags or {})})
 
 
 class Client(BaseClient):
@@ -218,6 +219,7 @@ class Batch(BaseClient):
     def __init__(self, transport: Transport, namespace: bytes):
         self.transport = BufferedTransport(transport)
         self.namespace = namespace
+        self.base_tags = {}
         self.counters: Dict[bytes, BatchCounter] = {}
 
     def __enter__(self) -> "Batch":
