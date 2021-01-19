@@ -135,7 +135,7 @@ class KafkaMessageHandler(MessageHandler):
                     data = self.message_unpack_fn(blob)
                 except Exception:
                     logger.error("skipping invalid message")
-                    context.trace.incr_tag(f"{self.name}.{topic}.invalid_message")
+                    context.span.incr_tag(f"{self.name}.{topic}.invalid_message")
                     return
 
                 try:
@@ -391,7 +391,7 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
                 message.partition(),
                 message.offset(),
             )
-            with context.trace.make_child("kafka.commit"):
+            with context.span.make_child("kafka.commit"):
                 self.consumer.commit(message=message, asynchronous=False)
 
         return KafkaMessageHandler(

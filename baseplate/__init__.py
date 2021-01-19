@@ -199,7 +199,7 @@ class RequestContext:
         # reference. so we fake it here and say "trust us".
         #
         # this would be much cleaner with a different API but this is where we are.
-        self.trace: "Span" = span  # type: ignore
+        self.span: "Span" = span  # type: ignore
 
     def __getattr__(self, name: str) -> Any:
         try:
@@ -218,9 +218,9 @@ class RequestContext:
             full_name = name
 
         if isinstance(config_item, dict):
-            obj = RequestContext(context_config=config_item, prefix=full_name, span=self.trace)
+            obj = RequestContext(context_config=config_item, prefix=full_name, span=self.span)
         elif hasattr(config_item, "make_object_for_context"):
-            obj = config_item.make_object_for_context(full_name, self.trace)
+            obj = config_item.make_object_for_context(full_name, self.span)
         else:
             obj = config_item
 
@@ -236,7 +236,7 @@ class RequestContext:
         return RequestContext(
             context_config=self.__context_config,
             prefix=self.__prefix,
-            span=self.trace,
+            span=self.span,
             wrapped=self,
         )
 
@@ -479,7 +479,7 @@ class Baseplate:
             context,
             baseplate=self,
         )
-        context.trace = server_span
+        context.span = server_span
 
         for observer in self.observers:
             observer.on_server_span_created(context, server_span)
@@ -704,7 +704,7 @@ class LocalSpan(Span):
                 context_copy,
                 self.baseplate,
             )
-        context_copy.trace = span
+        context_copy.span = span
 
         for observer in self.observers:
             observer.on_child_span_created(span)
@@ -715,7 +715,7 @@ class ServerSpan(LocalSpan):
     """A server span represents a request this server is handling.
 
     The server span is available on the :py:class:`~baseplate.RequestContext`
-    during requests as the ``trace`` attribute.
+    during requests as the ``span`` attribute.
 
     """
 

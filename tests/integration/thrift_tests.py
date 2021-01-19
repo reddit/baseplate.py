@@ -143,7 +143,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
                 self.server_span = None
 
             def example(self, context):
-                self.server_span = context.trace
+                self.server_span = context.span
                 return True
 
         handler = Handler()
@@ -169,7 +169,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
                 self.server_span = None
 
             def example(self, context):
-                self.server_span = context.trace
+                self.server_span = context.span
                 return True
 
         handler = Handler()
@@ -203,7 +203,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
                 self.server_span = None
 
             def example(self, context):
-                self.server_span = context.trace
+                self.server_span = context.span
                 return True
 
         handler = Handler()

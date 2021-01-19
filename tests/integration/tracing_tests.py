@@ -33,7 +33,7 @@ def example_application(request):
 def local_parent_trace_within_context(request):
     # For testing embedded tracing contexts
     #  See `TracingTests.test_local_tracing_embedded`
-    with request.trace.make_child("local-req", local=True, component_name="in-context") as span:
+    with request.span.make_child("local-req", local=True, component_name="in-context") as span:
         with span.make_child("local-req", local=True, component_name="in-context"):
             pass
 

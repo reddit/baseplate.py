@@ -133,9 +133,9 @@ def test_internal_client_sends_headers(http_server):
         assert response.status_code == 204
         assert response.text == ""
         assert http_server.requests[0].method == "GET"
-        assert http_server.requests[0].trace.trace_id == context.trace.trace_id
-        assert http_server.requests[0].trace.parent_id == context.trace.id
-        assert http_server.requests[0].trace.id != context.trace.id
+        assert http_server.requests[0].span.trace_id == context.span.trace_id
+        assert http_server.requests[0].span.parent_id == context.span.id
+        assert http_server.requests[0].span.id != context.span.id
         assert http_server.requests[0].raw_edge_context == b"test payload"
 
 
