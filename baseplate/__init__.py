@@ -715,7 +715,7 @@ class ServerSpan(LocalSpan):
     """A server span represents a request this server is handling.
 
     The server span is available on the :py:class:`~baseplate.RequestContext`
-    during requests as the ``trace`` attribute.
+    during requests as the ``span`` attribute.
 
     """
 
