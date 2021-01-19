@@ -1,78 +1,137 @@
-import unittest
+from typing import Any
+from typing import Dict
 
-from unittest import mock
+import gevent
+import pytest
+import sentry_sdk
 
-import raven
-
-from pymemcache.exceptions import MemcacheServerError
-from requests.exceptions import HTTPError
-from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException
-from thrift.transport.TTransport import TTransportException
-
-from baseplate.observers import sentry
+from baseplate import Baseplate
+from baseplate.observers.sentry import _SentryUnhandledErrorReporter
+from baseplate.observers.sentry import init_sentry_client_from_config
+from baseplate.observers.sentry import SentryBaseplateObserver
 
 
-class StubRavenClient(raven.Client):
-    def __init__(self, **kwargs):
-        self.stub_events_sent = 0
-        return super().__init__(**kwargs)
+class FakeTransport:
+    def __init__(self):
+        self.events = []
 
-    def send(self, **kwargs):
-        self.stub_events_sent += 1
-        return None
-
-    def is_enabled(self):
-        return True
+    def __call__(self, event: Dict[str, Any]) -> None:
+        self.events.append(event)
 
 
-class TestException(Exception):
-    pass
+@pytest.fixture
+def sentry_transport():
+    return FakeTransport()
 
 
-@mock.patch("raven.Client", new=StubRavenClient)
-class SentryIgnoreExceptionsTest(unittest.TestCase):
-    def observe_and_raise(self, cli, exc):
-        @cli.capture_exceptions
-        def _raise_exception():
-            raise exc
+@pytest.fixture(autouse=True)
+def init_sentry_client(sentry_transport):
+    try:
+        init_sentry_client_from_config({"sentry.dsn": "foo"}, transport=sentry_transport)
+        yield
+    finally:
+        sentry_sdk.init()  # shut everything down
 
-        return _raise_exception
 
-    def observe_always_ignore(self, cli):
-        ignore = [
-            ConnectionError,
-            ConnectionRefusedError,
-            ConnectionResetError,
-            HTTPError,
-            TApplicationException,
-            TProtocolException,
-            TTransportException,
-            MemcacheServerError,
-        ]
-        for exc in ignore:
-            fn = self.observe_and_raise(cli, exc)
-            try:
-                fn()
-            except exc:
-                exc
+@pytest.fixture
+def baseplate_app():
+    baseplate = Baseplate()
+    baseplate.register(SentryBaseplateObserver())
+    return baseplate
 
-    def test_default_ignore_exceptions(self):
-        cli = sentry.error_reporter_from_config(dict(), __name__)
-        self.observe_always_ignore(cli)
-        self.assertEqual(cli.stub_events_sent, 0)
 
-    def test_report_exception(self):
-        cli = sentry.error_reporter_from_config(dict(), __name__)
-        self.assertRaises(TestException, self.observe_and_raise(cli, TestException))
-        self.assertEqual(cli.stub_events_sent, 1)
+def test_no_event_when_nothing_wrong(baseplate_app, sentry_transport):
+    with baseplate_app.server_context("test"):
+        pass
 
-    def test_additional_ignored_exceptions(self):
-        cli = sentry.error_reporter_from_config(
-            {"sentry.additional_ignore_exceptions": TestException.__name__}, __name__,
-        )
-        self.assertRaises(TestException, self.observe_and_raise(cli, TestException))
-        self.assertEqual(cli.stub_events_sent, 0)
+    assert not sentry_transport.events
 
-        self.observe_always_ignore(cli)
-        self.assertEqual(cli.stub_events_sent, 0)
+
+def test_event_when_exception(baseplate_app, sentry_transport):
+    with pytest.raises(ValueError):
+        with baseplate_app.server_context("test"):
+            raise ValueError("oops")
+
+    assert len(sentry_transport.events) == 1
+    event = sentry_transport.events[0]
+    assert event["exception"]["values"][0]["type"] == "ValueError"
+
+
+def test_tags(baseplate_app, sentry_transport):
+    with pytest.raises(ValueError):
+        with baseplate_app.server_context("test") as context:
+            context.span.set_tag("foo", "bar")
+            raise ValueError("oops")
+
+    assert len(sentry_transport.events) == 1
+    event = sentry_transport.events[0]
+    assert event["exception"]["values"][0]["type"] == "ValueError"
+    assert event["tags"]["foo"] == "bar"
+
+    with pytest.raises(ValueError):
+        with baseplate_app.server_context("test") as context:
+            context.span.set_tag("different-tag", "foo")
+            raise ValueError("oops")
+
+    assert len(sentry_transport.events) == 2
+    event = sentry_transport.events[1]
+    assert event["exception"]["values"][0]["type"] == "ValueError"
+    assert event["tags"]["different-tag"] == "foo"
+    assert "foo" not in event["tags"]
+
+
+def test_logs(baseplate_app, sentry_transport):
+    with pytest.raises(ValueError):
+        with baseplate_app.server_context("test") as context:
+            context.span.log("foo-category", "bar-log-entry")
+            raise ValueError("oops")
+
+    assert len(sentry_transport.events) == 1
+    event = sentry_transport.events[0]
+    assert event["exception"]["values"][0]["type"] == "ValueError"
+
+    last_breadcrumb = event["breadcrumbs"]["values"][-1]
+    assert last_breadcrumb["category"] == "foo-category"
+    assert last_breadcrumb["message"] == "bar-log-entry"
+
+
+def test_ignored_exception_ignored(baseplate_app, sentry_transport):
+    with pytest.raises(ConnectionError):
+        with baseplate_app.server_context("test"):
+            raise ConnectionError("oops")
+
+    assert not sentry_transport.events
+
+
+def test_unhandled_error_reporter(sentry_transport):
+    def raise_unhandled_error():
+        raise KeyError("foo")
+
+    try:
+        _SentryUnhandledErrorReporter.install()
+
+        greenlet = gevent.spawn(raise_unhandled_error)
+        greenlet.join()
+    finally:
+        _SentryUnhandledErrorReporter.uninstall()
+
+    assert len(sentry_transport.events) == 1
+    event = sentry_transport.events[0]
+    assert event["exception"]["values"][0]["type"] == "KeyError"
+
+
+def test_unhandled_error_reporter_server_timeout(sentry_transport):
+    def raise_unhandled_error():
+        from baseplate.observers.timeout import ServerTimeout
+
+        raise ServerTimeout("blah", 1.0, debug=False)
+
+    try:
+        _SentryUnhandledErrorReporter.install()
+
+        greenlet = gevent.spawn(raise_unhandled_error)
+        greenlet.join()
+    finally:
+        _SentryUnhandledErrorReporter.uninstall()
+
+    assert not sentry_transport.events

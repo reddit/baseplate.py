@@ -18,7 +18,7 @@ setup(
         "python-json-logger~=0.1",
         "requests>=2.21.0",
         "thrift>=0.12.0",
-        "gevent>=1.3",
+        "gevent>=20.5.0",
     ],
     extras_require={
         "amqp": ["kombu>=4.0.0"],

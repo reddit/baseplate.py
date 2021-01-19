@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 
 from contextlib import contextmanager
@@ -357,23 +358,16 @@ class Baseplate:
         else:
             skipped.append("tracing")
 
-        if "sentry.dsn" in self._app_config:
-            from baseplate.observers.sentry import error_reporter_from_config
+        if "sentry.dsn" in self._app_config or "SENTRY_DSN" in os.environ:
+            from baseplate.observers.sentry import init_sentry_client_from_config
             from baseplate.observers.sentry import SentryBaseplateObserver
-            from baseplate.observers.sentry import SentryUnhandledErrorReporter
-            from gevent import get_hub
+            from baseplate.observers.sentry import _SentryUnhandledErrorReporter
 
-            if module_name is None:
-                module_name = get_calling_module_name()
-
-            error_reporter = error_reporter_from_config(self._app_config, module_name)
-
-            hub = get_hub()
-            hub.print_exception = SentryUnhandledErrorReporter(hub, error_reporter)
-
-            self.register(SentryBaseplateObserver(error_reporter))
+            init_sentry_client_from_config(self._app_config)
+            _SentryUnhandledErrorReporter.install()
+            self.register(SentryBaseplateObserver())
         else:
-            skipped.append("error_reporter")
+            skipped.append("sentry")
 
         if skipped:
             logger.debug(
