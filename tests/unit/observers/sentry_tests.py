@@ -60,7 +60,7 @@ def test_event_when_exception(baseplate_app, sentry_transport):
 def test_tags(baseplate_app, sentry_transport):
     with pytest.raises(ValueError):
         with baseplate_app.server_context("test") as context:
-            context.trace.set_tag("foo", "bar")
+            context.span.set_tag("foo", "bar")
             raise ValueError("oops")
 
     assert len(sentry_transport.events) == 1
@@ -70,7 +70,7 @@ def test_tags(baseplate_app, sentry_transport):
 
     with pytest.raises(ValueError):
         with baseplate_app.server_context("test") as context:
-            context.trace.set_tag("different-tag", "foo")
+            context.span.set_tag("different-tag", "foo")
             raise ValueError("oops")
 
     assert len(sentry_transport.events) == 2
@@ -83,7 +83,7 @@ def test_tags(baseplate_app, sentry_transport):
 def test_logs(baseplate_app, sentry_transport):
     with pytest.raises(ValueError):
         with baseplate_app.server_context("test") as context:
-            context.trace.log("foo-category", "bar-log-entry")
+            context.span.log("foo-category", "bar-log-entry")
             raise ValueError("oops")
 
     assert len(sentry_transport.events) == 1
