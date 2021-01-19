@@ -75,13 +75,13 @@ def _make_baseplate_tween(
         try:
             response = handler(request)
         except:  # noqa: E722
-            if hasattr(request, "trace") and request.trace:
-                request.trace.finish(exc_info=sys.exc_info())
+            if hasattr(request, "span") and request.span:
+                request.span.finish(exc_info=sys.exc_info())
             raise
         else:
-            if request.trace:
-                request.trace.set_tag("http.status_code", response.status_code)
-                response.app_iter = SpanFinishingAppIterWrapper(request.trace, response.app_iter)
+            if request.span:
+                request.span.set_tag("http.status_code", response.status_code)
+                response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
         finally:
             # avoid a reference cycle
             request.start_server_span = None

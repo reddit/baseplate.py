@@ -171,7 +171,7 @@ class TestKafkaMessageHandler:
         message_unpack_fn = mock.Mock(side_effect=ValueError("something bad happened"))
         on_success_fn = mock.Mock()
 
-        context.trace = span
+        context.span = span
 
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
         handler.handle(message)

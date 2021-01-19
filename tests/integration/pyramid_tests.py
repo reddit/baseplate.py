@@ -69,7 +69,7 @@ def render_bad_exception_view(request):
 
 
 def local_tracing_within_context(request):
-    with request.trace.make_child("local-req", local=True, component_name="in-context"):
+    with request.span.make_child("local-req", local=True, component_name="in-context"):
         pass
     return {"trace": "success"}
 

@@ -32,7 +32,7 @@ class _ContextAwareHandler:
 
             handler_fn = getattr(self.handler, fn_name)
 
-            span = self.context.trace
+            span = self.context.span
             try:
                 span.start()
                 result = handler_fn(self.context, *args, **kwargs)
