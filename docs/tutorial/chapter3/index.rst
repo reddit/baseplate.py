@@ -118,9 +118,9 @@ metrics appear periodically:
 
 .. code-block:: console
 
-   1104:Server Monitoring:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.runtime.reddit.PID1104.active_requests:0|g'
-   1104:Server Monitoring:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.runtime.reddit.PID1104.gc.gen0.collections:154|g'
-   1104:Server Monitoring:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.runtime.reddit.PID1104.gc.gen0.collected:8244|g'
+   1104:Server Monitoring:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.runtime.active_requests,hostname=reddit,PID=1104:0|g'
+   1104:Server Monitoring:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.runtime.gc.collections,hostname=reddit,PID=1104,generation=0:154|g'
+   1104:Server Monitoring:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.runtime.gc.collected,hostname=reddit,PID=1104,generation=0:8244|g'
    ...
 
 These metrics come out of the server itself and track information that's not
