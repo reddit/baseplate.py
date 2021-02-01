@@ -3,12 +3,15 @@ from setuptools import setup
 
 setup(
     name="baseplate",
-    description="A library to build services on",
+    description="reddit's python service framework",
     long_description=open("README.rst").read(),
     long_description_content_type="text/x-rst",
     author="reddit",
     license="BSD",
-    url="https://baseplate.readthedocs.io/en/stable/",
+    url="https://github.com/reddit/baseplate.py",
+    project_urls={
+        "Documentation": "https://baseplate.readthedocs.io/en/stable/",
+    },
     use_scm_version=True,
     packages=find_packages(exclude=["tests", "tests.*"]),
     python_requires=">=3.7",
