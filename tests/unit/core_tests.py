@@ -5,7 +5,9 @@ from unittest import mock
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import LocalSpan
+from baseplate import ParentSpanAlreadyFinishedError
 from baseplate import RequestContext
+from baseplate import ReusedContextObjectError
 from baseplate import ServerSpan
 from baseplate import ServerSpanObserver
 from baseplate import Span
@@ -270,6 +272,26 @@ class LocalSpanTests(unittest.TestCase):
         self.assertEqual(child_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
         self.assertEqual(mock_observer.on_child_span_created.call_args, mock.call(child_span))
+
+    def test_context_object_reused(self):
+        baseplate = Baseplate()
+        context = baseplate.make_context_object()
+
+        with baseplate.make_server_span(context, "foo"):
+            pass
+
+        with self.assertRaises(ReusedContextObjectError):
+            with baseplate.make_server_span(context, "bar"):
+                pass
+
+    def test_parent_already_finished(self):
+        mock_context = mock.Mock()
+        local_span = LocalSpan("trace", "parent", "id", None, 0, "name", mock_context)
+        local_span.start()
+        local_span.finish()
+
+        with self.assertRaises(ParentSpanAlreadyFinishedError):
+            local_span.make_child("foo")
 
 
 class TraceInfoTests(unittest.TestCase):
