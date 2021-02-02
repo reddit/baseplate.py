@@ -242,6 +242,11 @@ class RequestContext:
         )
 
 
+class ReusedContextObjectError(Exception):
+    def __init__(self) -> None:
+        super().__init__("Context objects cannot be re-used. See https://git.io/JtEKq")
+
+
 class Baseplate:
     """The core of the Baseplate framework.
 
@@ -460,6 +465,9 @@ class Baseplate:
         """
         assert isinstance(context, RequestContext)
 
+        if context.span is not None:
+            raise ReusedContextObjectError
+
         if trace_info is None:
             trace_info = TraceInfo.new()
 
@@ -649,6 +657,13 @@ class Span:
         raise NotImplementedError
 
 
+class ParentSpanAlreadyFinishedError(Exception):
+    def __init__(self) -> None:
+        super().__init__(
+            "Cannot make child span of parent that already finished. See https://git.io/JTeqT"
+        )
+
+
 class LocalSpan(Span):
     def make_child(
         self, name: str, local: bool = False, component_name: Optional[str] = None
@@ -671,8 +686,10 @@ class LocalSpan(Span):
         :param component_name: Name to identify local component
             this span is recording in if it is a local span.
         """
-        span_id = random.getrandbits(64)
+        if not self.context:
+            raise ParentSpanAlreadyFinishedError
 
+        span_id = random.getrandbits(64)
         context_copy = self.context.clone()
         span: Span
         if local:

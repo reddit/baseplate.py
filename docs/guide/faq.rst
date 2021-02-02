@@ -150,3 +150,33 @@ Because this does not usually come up outside of legitimate performance issues
 in the application, there are currently no plans to automatically flush very
 large batches of metrics (which would silently mask performance issues like
 this).
+
+
+What do I do about "Context objects cannot be re-used"?
+-------------------------------------------------------
+
+This means that the application used the same context object, like one created
+with :py:meth:`~baseplate.Baseplate.make_context_object`, in multiple calls to
+:py:meth:`~baseplate.Baseplate.make_server_span`. Context objects are tied to a
+single server span and cannot be re-used between different spans. Make sure to
+create a new context object for each span. The
+:py:meth:`~baseplate.Baseplate.server_context` helper can simplify this
+lifecycle.
+
+What do I do about "Cannot make child span of parent that already finished"?
+----------------------------------------------------------------------------
+
+This means that :py:meth:`~baseplate.Span.make_child` was called on a span that
+has already finished. This usually happens when an application holds onto a
+reference to a span and tries to continue doing operations with it after the
+parent request finished.
+
+This can happen because of the application spawned a number of greenlets to do
+tasks concurrently but let the root greenlet finish up before the children did.
+The safest thing to do here is to ensure that the parent properly waits for its
+children before exiting.
+
+Sometimes this is done deliberately to give a quick response to the client.
+It's generally best to put background work like this into a separate dedicated
+work queue as service worker processes are ephemeral and can be killed at any
+time without warning.
