@@ -421,17 +421,16 @@ class Baseplate:
 
         The given attribute config object can be one of the following:
 
-        * An arbitrary object to be added to the
-        :py:class:`~baseplate.RequestContext`.
+        * An arbitrary object to be added to the :py:class:`~baseplate.RequestContext`.
 
         * A factory with a method named ``make_object_for_context``.  On each
-        request, the factory will be asked to create an appropriate object to
-        attach to the :py:class:`~baseplate.RequestContext`.
+          request, the factory will be asked to create an appropriate object to
+          attach to the :py:class:`~baseplate.RequestContext`.
 
         * A dict containing arbitrary objects, factories, or other dicts.  In
-        this case, a nested object will be added to the context. Each item of
-        the dict will be processed using the same rules to become an attribute
-        of the nested object.
+          this case, a nested object will be added to the context. Each item of
+          the dict will be processed using the same rules to become an attribute
+          of the nested object.
 
         :param name: The attribute on the context object to attach the
             created object to. This may also be used for metric/tracing
