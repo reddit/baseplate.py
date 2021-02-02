@@ -5,3 +5,4 @@ User Guide
 
    faq
    startup
+   Release Notes <https://github.com/reddit/baseplate.py/releases>
