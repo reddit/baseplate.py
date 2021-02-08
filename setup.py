@@ -26,7 +26,7 @@ setup(
     extras_require={
         "amqp": ["kombu>=4.0.0"],
         "cassandra": ["cassandra-driver>=3.13.0"],
-        "cqlmapper": ["cqlmapper>=0.1.0"],
+        "cqlmapper": ["reddit-cqlmapper>=0.3.0,<1.0"],
         "memcache": ["pymemcache>=1.3.0,<=2.0.0"],
         "pyramid": ["pyramid>=1.9.0"],
         "redis": ["redis>=2.10.0,<=4.0.0"],
