@@ -114,7 +114,7 @@ class _SentryServerSpanObserver(ServerSpanObserver):
         self.server_span = server_span
 
     def on_start(self) -> None:
-        self.scope.set_tag("trace_id", self.server_span.trace_id)
+        self.scope.set_tag("trace_id", str(self.server_span.trace_uuid))
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.scope.set_tag(key, value)

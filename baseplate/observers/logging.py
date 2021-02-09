@@ -15,4 +15,4 @@ class LoggingBaseplateObserver(BaseplateObserver):
     """
 
     def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
-        threading.current_thread().name = str(server_span.trace_id)
+        threading.current_thread().name = str(server_span.trace_uuid)

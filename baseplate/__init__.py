@@ -1,6 +1,7 @@
 import logging
 import os
 import random
+import uuid
 
 from contextlib import contextmanager
 from types import TracebackType
@@ -654,6 +655,10 @@ class Span:
     ) -> "Span":
         """Return a child Span whose parent is this Span."""
         raise NotImplementedError
+
+    @property
+    def trace_uuid(self) -> uuid.UUID:
+        return uuid.UUID(int=self.trace_id)
 
 
 class ParentSpanAlreadyFinishedError(Exception):
