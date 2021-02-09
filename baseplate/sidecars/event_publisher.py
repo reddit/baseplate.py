@@ -184,13 +184,16 @@ def publish_events() -> None:
                 "version": config.Optional(config.Integer, default=1),
             },
             "key": {"name": config.String, "secret": config.Base64},
+            "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
         },
     )
 
     metrics_client = metrics_client_from_config(raw_config)
 
     event_queue = MessageQueue(
-        "/events-" + args.queue_name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE
+        "/events-" + args.queue_name,
+        max_messages=cfg.max_queue_size,
+        max_message_size=MAX_EVENT_SIZE,
     )
 
     # pylint: disable=maybe-no-member
