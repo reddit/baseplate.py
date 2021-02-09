@@ -154,11 +154,14 @@ def publish_traces() -> None:
             "post_timeout": config.Optional(config.Integer, POST_TIMEOUT_DEFAULT),
             "max_batch_size": config.Optional(config.Integer, MAX_BATCH_SIZE_DEFAULT),
             "retry_limit": config.Optional(config.Integer, RETRY_LIMIT_DEFAULT),
+            "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
         },
     )
 
     trace_queue = MessageQueue(
-        "/traces-" + args.queue_name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_SPAN_SIZE
+        "/traces-" + args.queue_name,
+        max_messages=publisher_cfg.max_queue_size,
+        max_message_size=MAX_SPAN_SIZE,
     )
 
     # pylint: disable=maybe-no-member
