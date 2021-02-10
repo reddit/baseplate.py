@@ -1,10 +1,11 @@
 StatsD Tagged Metrics
 =====================
 
-The tagged metrics observer emits `StatsD`_-compatible time-series metrics about the
-performance of your application with tags in the InfluxStatsD format. The tags added to 
-the metrics are configurable: any tags that pass through the span.set_tag() 
-function are filtered through a user-supplied whitelist in the configuration file.
+The tagged metrics observer emits `StatsD`_-compatible time-series metrics
+about the performance of your application with tags in the InfluxStatsD format.
+The tags added to the metrics are configurable: any tags that pass through the
+:py:meth:`~baseplate.Span.set_tag` function are filtered through a
+user-supplied whitelist in the configuration file.
 
 .. _`StatsD`: https://github.com/statsd/statsd
 
@@ -15,9 +16,6 @@ Make sure your service calls
 :py:meth:`~baseplate.Baseplate.configure_observers` during application startup
 and then add the following to your configuration file to enable and configure
 the StatsD tagged metrics observer.
-
-Do not include a metrics.namespace parameter in the configuration file, as it incompatible with 
-the service.
 
 .. code-block:: ini
 
@@ -41,13 +39,17 @@ the service.
 
 Whitelist Options
 -----------------
-Wavefront supports a maximum of 20 tags per cluster and 1000 distinct time series per 
-metric. Baseplate integrations of frameworks come out of the box with some default tags set via span.set_tag(), 
-but to append them to the metrics they must be present in the configuration file via metrics.whitelist. 
 
-In order to find these tags to put in the whitelist, look through the code base for calls to span.set_tag()
-or check a zipkin trace in Wavefront to see all the tags on a span. 
-   
+Wavefront supports a maximum of 20 tags per cluster and 1000 distinct time
+series per metric. Baseplate integrations of frameworks come out of the box
+with some default tags set via :py:meth:`~baseplate.Span.set_tag()`, but to
+append them to the metrics they must be present in the configuration file via
+``metrics.whitelist``.
+
+In order to find these tags to put in the whitelist, look through the code base
+for calls to :py:meth:`~baseplate.Span.set_tag()` or check a zipkin trace in
+Wavefront to see all the tags on a span.
+
 Outputs
 -------
 
@@ -62,15 +64,14 @@ in Telegraf via the ``name_prefix`` input plugin configuration.
 
 For the :py:class:`~baseplate.ServerSpan` representing the request the server
 is handling, the timer has a name like
-``baseplate.server,endpoint={route_or_method_name}`` and the counter looks like
-``baseplate.server,success={true,false},endpoint={route_or_method_name}``. If the request
-:doc:`timed out <timeout>` an additional tag will be added to make it 
-``baseplate.server,success={true,false},endpoint={route_or_method_name},timed_out={true,false}``
-assuming that success, endpoint, and timed_out are all present in the whitelist.
+``baseplate.server.latency,endpoint={route_or_method_name}`` and the counter
+looks like
+``baseplate.server.rate,success={True,False},endpoint={route_or_method_name}``.
 
 For each span representing a call to a remote service or database, the timer
-has a name like ``baseplate.clients,endpoint={method}`` and the counter
-``baseplate.clients,endpoint={method},success={true,false}``.
+has a name like ``baseplate.clients.latency,client={name},endpoint={method}``
+and the counter
+``baseplate.clients.rate,client={name},endpoint={method},success={True,False}``.
 
 When using :program:`baseplate-serve`, various process-level runtime metrics
 will also be emitted. These are not tied to individual requests but instead

@@ -1,4 +1,3 @@
-from enum import Enum
 from random import random
 from typing import Any
 from typing import Dict
@@ -13,12 +12,6 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import config
 from baseplate.lib import metrics
-from baseplate.observers.timeout import ServerTimeout
-
-
-class Errors(Enum):
-    TIMED_OUT = "timed_out"
-    EXCEPTION = "internal_server_error"
 
 
 class TaggedMetricsBaseplateObserver(BaseplateObserver):
@@ -53,8 +46,7 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
             {
                 "metrics": {
                     "whitelist": config.Optional(
-                        config.TupleOf(config.String),
-                        default=["client", "endpoint", "success", "error"],
+                        config.TupleOf(config.String), default=["client", "endpoint"],
                     ),
                 },
                 "metrics_observer": {"sample_rate": config.Optional(config.Percent, default=1.0)},
@@ -105,7 +97,7 @@ class TaggedMetricsServerSpanObserver(SpanObserver):
         self.base_name = "baseplate.server"
         self.whitelist = whitelist
         self.tags: Dict[str, Any] = {}
-        self.timer = batch.timer(self.base_name)
+        self.timer = batch.timer(f"{self.base_name}.latency")
         self.counters: Dict[str, float] = {}
         self.sample_rate = sample_rate
 
@@ -117,13 +109,7 @@ class TaggedMetricsServerSpanObserver(SpanObserver):
         self.counters[key] = delta
 
     def on_set_tag(self, key: str, value: Any) -> None:
-        new_tags = {}
-        if key == "error":
-            if isinstance(value, Errors):
-                new_tags[key] = value.value
-        else:
-            new_tags[key] = value
-        self.tags.update(new_tags)
+        self.tags[key] = value
 
     def on_child_span_created(self, span: Span) -> None:
         observer: SpanObserver
@@ -138,18 +124,18 @@ class TaggedMetricsServerSpanObserver(SpanObserver):
         span.register(observer)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        if not exc_info:
-            self.tags["success"] = True
-        else:
-            self.tags["success"] = False
-            if exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):
-                self.tags["timed_out"] = True
         filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.whitelist}
-        self.tags = filtered_tags
+
         for key, delta in self.counters.items():
-            self.batch.counter(key, self.tags).increment(delta, sample_rate=self.sample_rate)
-        self.timer.update_tags(self.tags)
+            self.batch.counter(key, filtered_tags).increment(delta, sample_rate=self.sample_rate)
+
+        self.timer.update_tags(filtered_tags)
         self.timer.stop()
+
+        self.batch.counter(
+            f"{self.base_name}.rate", {**filtered_tags, "success": not exc_info}
+        ).increment(sample_rate=self.sample_rate)
+
         self.batch.flush()
 
 
@@ -160,7 +146,8 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
         self.batch = batch
         self.span = span
         self.tags: Dict[str, Any] = {}
-        self.timer = batch.timer("baseplate.local")
+        self.base_name = "baseplate.local"
+        self.timer = batch.timer(f"{self.base_name}.latency")
         self.whitelist = whitelist
         self.counters: Dict[str, float] = {}
         self.sample_rate = sample_rate
@@ -173,19 +160,21 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
         self.counters[key] = delta
 
     def on_set_tag(self, key: str, value: Any) -> None:
-        if key == "error":
-            if isinstance(value, Errors):
-                self.tags["error"] = value.value
-        else:
-            self.tags[key] = value
+        self.tags[key] = value
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.whitelist}
+
         for key, delta in self.counters.items():
-            self.batch.counter(key, self.tags).increment(delta, sample_rate=self.sample_rate)
-        self.tags = filtered_tags
-        self.timer.update_tags(self.tags)
+            self.batch.counter(key, filtered_tags).increment(delta, sample_rate=self.sample_rate)
+
+        self.timer.update_tags(filtered_tags)
         self.timer.stop()
+
+        self.batch.counter(
+            f"{self.base_name}.rate", {**filtered_tags, "success": not exc_info},
+        ).increment(sample_rate=self.sample_rate)
+
         self.batch.flush()
 
 
@@ -197,7 +186,7 @@ class TaggedMetricsClientSpanObserver(SpanObserver):
         self.span = span
         self.base_name = "baseplate.client"
         self.tags: Dict[str, Any] = {}
-        self.timer = batch.timer(self.base_name)
+        self.timer = batch.timer(f"{self.base_name}.latency")
         self.whitelist = whitelist
         self.counters: Dict[str, float] = {}
         self.sample_rate = sample_rate
@@ -211,22 +200,19 @@ class TaggedMetricsClientSpanObserver(SpanObserver):
         self.counters[key] = delta
 
     def on_set_tag(self, key: str, value: Any) -> None:
-        if key == "error":
-            if isinstance(value, Errors):
-                self.tags["error"] = value.value
-        else:
-            self.tags[key] = value
-
-    def on_log(self, name: str, payload: Any) -> None:
-        if name == "error.object":
-            self.tags["error"] = Errors.EXCEPTION.value
+        self.tags[key] = value
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.tags["success"] = not exc_info
         filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.whitelist}
-        self.tags = filtered_tags
+
         for key, delta in self.counters.items():
-            self.batch.counter(key, self.tags).increment(delta, sample_rate=self.sample_rate)
-        self.timer.update_tags(self.tags)
+            self.batch.counter(key, filtered_tags).increment(delta, sample_rate=self.sample_rate)
+
+        self.timer.update_tags(filtered_tags)
         self.timer.stop()
+
+        self.batch.counter(
+            f"{self.base_name}.rate", {**filtered_tags, "success": not exc_info},
+        ).increment(sample_rate=self.sample_rate)
+
         self.batch.flush()
