@@ -16,7 +16,7 @@ cffi==1.14.0
 chardet==3.0.4
 confluent-kafka==1.3
 coverage==4.5.2
-cryptography==3.2
+cryptography==3.3.2
 gevent==21.1.1
 graphviz==0.11.1
 greenlet==1.0.0
