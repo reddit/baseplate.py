@@ -5,7 +5,7 @@ The tagged metrics observer emits `StatsD`_-compatible time-series metrics
 about the performance of your application with tags in the InfluxStatsD format.
 The tags added to the metrics are configurable: any tags that pass through the
 :py:meth:`~baseplate.Span.set_tag` function are filtered through a
-user-supplied whitelist in the configuration file.
+user-supplied allowlist in the configuration file.
 
 .. _`StatsD`: https://github.com/statsd/statsd
 
@@ -26,27 +26,28 @@ the StatsD tagged metrics observer.
    # required to enable observer
    metrics.tagging = true
 
-   # optional: whitelist of tags to allow predefined tags from baseplate separated by commas
-   # defaults to [ endpoint, success, error ] if no value is provided
-   metrics.whitelist = endpoint, success, error
+   # optional: which span tags should be attached to metrics. see below.
+   #
+   # defaults to [ endpoint, success ] if no value is provided
+   metrics.allowlist = endpoint, success, error
 
-   # optional: the percent of statsd metrics to sample
+   # optional: the percent of statsd metrics to sample.
+   #
    # if not specified, it will default to 100% (all metrics sent)
-   # config must be passed to the `Baseplate` constructor to use this option
    metrics_observer.sample_rate = 100%
 
    ...
 
-Whitelist Options
------------------
+Tag Allowlist
+-------------
 
 Wavefront supports a maximum of 20 tags per cluster and 1000 distinct time
 series per metric. Baseplate integrations of frameworks come out of the box
 with some default tags set via :py:meth:`~baseplate.Span.set_tag()`, but to
 append them to the metrics they must be present in the configuration file via
-``metrics.whitelist``.
+``metrics.allowlist``.
 
-In order to find these tags to put in the whitelist, look through the code base
+In order to find these tags to put in the allowlist, look through the code base
 for calls to :py:meth:`~baseplate.Span.set_tag()` or check a zipkin trace in
 Wavefront to see all the tags on a span.
 

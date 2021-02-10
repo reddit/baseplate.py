@@ -22,19 +22,19 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
     * it tracks the time taken in serving each request.
     * it batches all metrics generated during a request into as few packets
       as possible.
-    * it adds tags to the metric if they are in the config tag whitelist
+    * it adds tags to the metric if they are in the config tag allowlist
 
     The batch is accessible to your application during requests as the
     ``metrics`` attribute on the :py:class:`~baseplate.RequestContext`.
 
     :param client: The client where metrics will be sent.
-    :param cfg: the parsed application config with the tag whitelist
+    :param cfg: the parsed application config with the tag allowlist
 
     """
 
-    def __init__(self, client: metrics.Client, whitelist: Set[str], sample_rate: float = 1.0):
+    def __init__(self, client: metrics.Client, allowlist: Set[str], sample_rate: float = 1.0):
         self.client = client
-        self.whitelist = whitelist
+        self.allowlist = allowlist
         self.sample_rate = sample_rate
 
     @classmethod
@@ -45,7 +45,7 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
             raw_config,
             {
                 "metrics": {
-                    "whitelist": config.Optional(
+                    "allowlist": config.Optional(
                         config.TupleOf(config.String), default=["client", "endpoint"],
                     ),
                 },
@@ -54,7 +54,7 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
         )
         return cls(
             client,
-            whitelist=set(cfg.metrics.whitelist),
+            allowlist=set(cfg.metrics.allowlist),
             sample_rate=cfg.metrics_observer.sample_rate,
         )
 
@@ -63,7 +63,7 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
         context.metrics = batch
         if self.sample_rate == 1.0 or random() < self.sample_rate:
             observer: SpanObserver = TaggedMetricsServerSpanObserver(
-                batch, server_span, self.whitelist, self.sample_rate
+                batch, server_span, self.allowlist, self.sample_rate
             )
         else:
             observer = TaggedMetricsServerSpanDummyObserver(batch)
@@ -90,12 +90,12 @@ class TaggedMetricsServerSpanDummyObserver(SpanObserver):
 
 class TaggedMetricsServerSpanObserver(SpanObserver):
     def __init__(
-        self, batch: metrics.Batch, server_span: Span, whitelist: Set[str], sample_rate: float = 1.0
+        self, batch: metrics.Batch, server_span: Span, allowlist: Set[str], sample_rate: float = 1.0
     ):
         self.batch = batch
         self.span = server_span
         self.base_name = "baseplate.server"
-        self.whitelist = whitelist
+        self.allowlist = allowlist
         self.tags: Dict[str, Any] = {}
         self.timer = batch.timer(f"{self.base_name}.latency")
         self.counters: Dict[str, float] = {}
@@ -115,16 +115,16 @@ class TaggedMetricsServerSpanObserver(SpanObserver):
         observer: SpanObserver
         if isinstance(span, LocalSpan):
             observer = TaggedMetricsLocalSpanObserver(
-                self.batch, span, self.whitelist, self.sample_rate
+                self.batch, span, self.allowlist, self.sample_rate
             )
         else:
             observer = TaggedMetricsClientSpanObserver(
-                self.batch, span, self.whitelist, self.sample_rate
+                self.batch, span, self.allowlist, self.sample_rate
             )
         span.register(observer)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.whitelist}
+        filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.allowlist}
 
         for key, delta in self.counters.items():
             self.batch.counter(key, filtered_tags).increment(delta, sample_rate=self.sample_rate)
@@ -141,14 +141,14 @@ class TaggedMetricsServerSpanObserver(SpanObserver):
 
 class TaggedMetricsLocalSpanObserver(SpanObserver):
     def __init__(
-        self, batch: metrics.Batch, span: Span, whitelist: Set[str], sample_rate: float = 1.0
+        self, batch: metrics.Batch, span: Span, allowlist: Set[str], sample_rate: float = 1.0
     ):
         self.batch = batch
         self.span = span
         self.tags: Dict[str, Any] = {}
         self.base_name = "baseplate.local"
         self.timer = batch.timer(f"{self.base_name}.latency")
-        self.whitelist = whitelist
+        self.allowlist = allowlist
         self.counters: Dict[str, float] = {}
         self.sample_rate = sample_rate
 
@@ -163,7 +163,7 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
         self.tags[key] = value
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.whitelist}
+        filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.allowlist}
 
         for key, delta in self.counters.items():
             self.batch.counter(key, filtered_tags).increment(delta, sample_rate=self.sample_rate)
@@ -180,14 +180,14 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
 
 class TaggedMetricsClientSpanObserver(SpanObserver):
     def __init__(
-        self, batch: metrics.Batch, span: Span, whitelist: Set[str], sample_rate: float = 1.0
+        self, batch: metrics.Batch, span: Span, allowlist: Set[str], sample_rate: float = 1.0
     ):
         self.batch = batch
         self.span = span
         self.base_name = "baseplate.client"
         self.tags: Dict[str, Any] = {}
         self.timer = batch.timer(f"{self.base_name}.latency")
-        self.whitelist = whitelist
+        self.allowlist = allowlist
         self.counters: Dict[str, float] = {}
         self.sample_rate = sample_rate
 
@@ -203,7 +203,7 @@ class TaggedMetricsClientSpanObserver(SpanObserver):
         self.tags[key] = value
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.whitelist}
+        filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.allowlist}
 
         for key, delta in self.counters.items():
             self.batch.counter(key, filtered_tags).increment(delta, sample_rate=self.sample_rate)
