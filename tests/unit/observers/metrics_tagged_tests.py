@@ -1,273 +1,158 @@
-import unittest
+from __future__ import annotations
 
-from unittest import mock
+import time
 
-from baseplate import LocalSpan
-from baseplate import ServerSpan
+from typing import Any
+from typing import Dict
+from typing import Optional
+
+import pytest
+
+from baseplate import RequestContext
 from baseplate import Span
-from baseplate.lib.metrics import Batch
-from baseplate.lib.metrics import Client
 from baseplate.lib.metrics import Counter
+from baseplate.lib.metrics import Gauge
+from baseplate.lib.metrics import Histogram
 from baseplate.lib.metrics import Timer
-from baseplate.observers.metrics_tagged import Errors
-from baseplate.observers.metrics_tagged import TaggedMetricsBaseplateObserver
 from baseplate.observers.metrics_tagged import TaggedMetricsClientSpanObserver
 from baseplate.observers.metrics_tagged import TaggedMetricsLocalSpanObserver
 from baseplate.observers.metrics_tagged import TaggedMetricsServerSpanObserver
-from baseplate.observers.timeout import ServerTimeout
 
 
 class TestException(Exception):
     pass
 
 
-class ObserverTests(unittest.TestCase):
-    def test_add_to_context(self):
-        mock_client = mock.Mock(spec=Client)
-        mock_batch = mock_client.batch.return_value
-        mock_context = mock.Mock()
-        mock_server_span = mock.Mock(spec=ServerSpan)
-        mock_server_span.name = "name"
-        mock_whitelist = ["endpoint", "success", "error", "client"]
-        mock_sample_rate = 1.0
+class FakeTimer:
+    def __init__(self, batch: FakeBatch, name: str, tags: Dict[str, Any]):
+        self.batch = batch
+        self.name = name
+        self.tags = tags
 
-        observer = TaggedMetricsBaseplateObserver(mock_client, mock_whitelist, mock_sample_rate)
-        observer.on_server_span_created(mock_context, mock_server_span)
+        self.start_time: Optional[float] = None
+        self.sample_rate: float = 1.0
 
-        self.assertEqual(mock_context.metrics, mock_batch)
-        self.assertEqual(mock_server_span.register.call_count, 1)
+    def start(self, sample_rate: float = 1.0) -> None:
+        self.start_time = time.time()
+        self.sample_rate = sample_rate
 
+    def stop(self) -> None:
+        self.send(time.time() - self.start_time, self.sample_rate)
 
-class ServerSpanObserverTests(unittest.TestCase):
-    def setUp(self):
-        super().setUp()
-        self.mock_batch = mock.Mock(spec=Batch)
-        self.mock_timer = mock.Mock(spec=Timer)
-        self.mock_counter = mock.Mock(spec=Counter)
-        self.mock_batch.timer.return_value = self.mock_timer
-        self.mock_batch.counter.return_value = self.mock_counter
-        mock_whitelist = ["endpoint", "success", "error", "incr"]
-        mock_whitelist_empty = []
+    def __enter__(self) -> None:
+        self.start()
 
-        mock_server_span = mock.Mock(spec=ServerSpan)
-        mock_server_span.name = "request_name"
+    def __exit__(self, *args) -> None:
+        self.stop()
+        return None
 
-        self.observer = TaggedMetricsServerSpanObserver(
-            self.mock_batch, mock_server_span, mock_whitelist
-        )
-        self.observer_empty_whitelist = TaggedMetricsServerSpanObserver(
-            self.mock_batch, mock_server_span, mock_whitelist_empty
+    def send(self, elapsed: float, sample_rate: float = 1.0) -> None:
+        self.batch.timers.append(
+            {"name": self.name, "elapsed": elapsed, "sample_rate": sample_rate, "tags": self.tags}
         )
 
-    def test_on_start(self):
-        self.observer.on_start()
-        self.assertEqual(self.mock_timer.start.call_count, 1)
-
-    def test_on_incr_tag(self):
-        self.observer.on_incr_tag("incr", delta=1)
-        self.observer_empty_whitelist.on_incr_tag("incr", delta=1)
-
-        self.assertEqual(self.mock_counter.increment.call_count, 0)
-
-        self.assertTrue("incr" in self.observer.counters)
-
-        self.observer.on_finish(exc_info=None)
-        self.observer_empty_whitelist.on_finish(exc_info=None)
-
-        self.assertEqual(self.mock_counter.increment.call_count, 2)
-
-    def test_on_set_tag(self):
-        self.observer.on_set_tag("test", "value")
-        self.observer_empty_whitelist.on_set_tag("error", Errors.EXCEPTION)
-
-        self.observer.on_set_tag("error", "error")
-        self.assertFalse("error" in self.observer.tags)
-
-        self.observer.on_set_tag("error", Errors.EXCEPTION)
-        self.assertTrue("error" in self.observer.tags)
-
-    def test_on_child_span_created(self):
-        mock_child_span = mock.Mock()
-        mock_child_span.name = "example"
-        self.observer.on_child_span_created(mock_child_span)
-        self.assertEqual(mock_child_span.register.call_count, 1)
-
-    def test_on_finish(self):
-        self.observer.on_start()
-        self.observer_empty_whitelist.on_start()
-
-        self.observer.on_set_tag("test", "value")
-        self.observer.on_set_tag("error", Errors.EXCEPTION)
-        self.observer_empty_whitelist.on_set_tag("test", "value")
-        self.observer_empty_whitelist.on_set_tag("error", Errors.EXCEPTION)
-
-        self.observer.on_finish(exc_info=None)
-        self.observer_empty_whitelist.on_finish(exc_info=None)
-        self.assertEqual(self.mock_timer.stop.call_count, 2)
-        self.assertEqual(self.mock_batch.flush.call_count, 2)
-
-        self.assertFalse("test" in self.observer.tags)
-        self.assertEqual(self.observer.tags["error"], "internal_server_error")
-
-        self.assertFalse("error" in self.observer_empty_whitelist.tags)
-        self.assertFalse("test" in self.observer_empty_whitelist.tags)
-
-        self.observer.on_finish(exc_info=(ServerTimeout, ServerTimeout("timeout", 3.0, False)))
-        self.assertFalse(self.observer.tags["success"])
-        self.assertFalse("timed_out" in self.observer.tags)
+    def update_tags(self, tags: Dict[str, Any]) -> None:
+        self.tags.update(tags)
 
 
-class LocalSpanObserverTests(unittest.TestCase):
-    def setUp(self):
-        super().setUp()
-        self.mock_batch = mock.Mock(spec=Batch)
-        self.mock_timer = mock.Mock(spec=Timer)
-        self.mock_counter = mock.Mock(spec=Counter)
-        self.mock_batch.timer.return_value = self.mock_timer
-        self.mock_batch.counter.return_value = self.mock_counter
-        mock_whitelist = ["endpoint", "success", "error", "incr"]
-        mock_whitelist_empty = []
+class FakeCounter:
+    def __init__(self, batch: FakeBatch, name: str, tags: Dict[str, Any]):
+        self.batch = batch
+        self.name = name
+        self.tags = tags
 
-        mock_server_span = mock.Mock(spec=ServerSpan)
-        mock_server_span.name = "request_name"
+    def increment(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
+        self.send(delta, sample_rate)
 
-        self.observer = TaggedMetricsServerSpanObserver(
-            self.mock_batch, mock_server_span, mock_whitelist
-        )
-        self.observer_empty_whitelist = TaggedMetricsServerSpanObserver(
-            self.mock_batch, mock_server_span, mock_whitelist_empty
-        )
-        self.mock_timer = mock.Mock(spec=Timer)
-        self.mock_counter = mock.Mock(spec=Counter)
-        self.mock_batch = mock.Mock(spec=Batch)
-        self.mock_batch.timer.return_value = self.mock_timer
-        self.mock_batch.counter.return_value = self.mock_counter
-        mock_whitelist = ["endpoint", "success", "error"]
-        mock_whitelist_empty = []
+    def decrement(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
+        self.increment(-delta, sample_rate)
 
-        mock_local_span = mock.Mock(spec=LocalSpan)
-        mock_local_span.name = "example"
-        mock_local_span.component_name = "some_component"
-
-        self.observer = TaggedMetricsLocalSpanObserver(
-            self.mock_batch, mock_local_span, mock_whitelist
-        )
-        self.observer_empty_whitelist = TaggedMetricsLocalSpanObserver(
-            self.mock_batch, mock_local_span, mock_whitelist_empty
+    def send(self, delta: float, sample_rate: float) -> None:
+        self.batch.counters.append(
+            {"name": self.name, "delta": delta, "sample_rate": sample_rate, "tags": self.tags}
         )
 
-    def test_on_start(self):
-        self.observer.on_start()
-        self.assertEqual(self.mock_timer.start.call_count, 1)
 
-    def test_on_incr_tag(self):
-        self.observer.on_incr_tag("test", delta=1)
-        self.assertEqual(self.mock_counter.increment.call_count, 0)
-        self.assertTrue("test" in self.observer.counters)
-        self.observer.on_finish(exc_info=None)
-        self.assertEqual(self.mock_counter.increment.call_count, 1)
+class FakeBatch:
+    def __init__(self):
+        self.timers = []
+        self.counters = []
+        self.flushed = False
 
-    def test_on_set_tag(self):
-        self.observer.on_set_tag("test", "value")
-        self.observer_empty_whitelist.on_set_tag("error", Errors.EXCEPTION)
+    def timer(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Timer:
+        return FakeTimer(self, name, tags or {})
 
-        self.observer.on_set_tag("error", "error")
-        self.assertFalse("error" in self.observer.tags)
+    def counter(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Counter:
+        return FakeCounter(self, name, tags or {})
 
-        self.observer.on_set_tag("error", Errors.EXCEPTION)
-        self.assertTrue("error" in self.observer.tags)
+    def gauge(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Gauge:
+        raise NotImplementedError
 
-    def test_on_finish(self):
-        self.observer.on_start()
-        self.observer_empty_whitelist.on_start()
+    def histogram(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Histogram:
+        raise NotImplementedError
 
-        self.observer.on_set_tag("test", "value")
-        self.observer.on_set_tag("error", Errors.EXCEPTION)
-        self.observer_empty_whitelist.on_set_tag("test", "value")
-        self.observer_empty_whitelist.on_set_tag("error", Errors.EXCEPTION)
-
-        self.observer.on_finish(exc_info=None)
-        self.observer_empty_whitelist.on_finish(exc_info=None)
-        self.assertEqual(self.mock_timer.stop.call_count, 2)
-        self.assertEqual(self.mock_batch.flush.call_count, 2)
-
-        self.assertFalse("test" in self.observer.tags)
-        self.assertEqual(self.observer.tags["error"], "internal_server_error")
-
-        self.assertFalse("error" in self.observer_empty_whitelist.tags)
-        self.assertFalse("test" in self.observer_empty_whitelist.tags)
+    def flush(self):
+        self.flushed = True
 
 
-class ClientSpanObserverTests(unittest.TestCase):
-    def setUp(self):
-        super().setUp()
-        self.mock_timer = mock.Mock(spec=Timer)
-        self.mock_counter = mock.Mock(spec=Counter)
-        self.mock_batch = mock.Mock(spec=Batch)
-        self.mock_batch.timer.return_value = self.mock_timer
-        self.mock_batch.counter.return_value = self.mock_counter
-        mock_whitelist = ["endpoint", "success", "error"]
-        mock_whitelist_empty = []
+@pytest.mark.parametrize(
+    "observer_cls,name",
+    (
+        (TaggedMetricsServerSpanObserver, "server"),
+        (TaggedMetricsClientSpanObserver, "client"),
+        (TaggedMetricsLocalSpanObserver, "local"),
+    ),
+)
+def test_observer(observer_cls, name):
+    batch = FakeBatch()
+    span = Span(
+        trace_id=1234,
+        parent_id=2345,
+        span_id=3456,
+        sampled=None,
+        flags=None,
+        name="fancy.span",
+        context=RequestContext({}),
+    )
+    allow_list = {"client", "endpoint", "tag2"}
+    sample_rate = 0.3
+    observer = observer_cls(batch, span, allow_list, sample_rate=0.3)
 
-        mock_client_span = mock.Mock(spec=Span)
-        mock_client_span.name = "client.endpoint"
+    observer.on_start()
+    observer.on_incr_tag("my.tag", 2)
+    observer.on_set_tag("tag1", "foo")
+    observer.on_set_tag("tag2", "bar")
+    observer.on_finish(None)
 
-        self.observer = TaggedMetricsClientSpanObserver(
-            self.mock_batch, mock_client_span, mock_whitelist
-        )
-        self.observer_empty_whitelist = TaggedMetricsClientSpanObserver(
-            self.mock_batch, mock_client_span, mock_whitelist_empty
-        )
+    assert batch.timers
+    timer = batch.timers.pop()
+    assert batch.timers == []
+    assert timer["sample_rate"] == sample_rate
+    assert timer["name"] == f"baseplate.{name}.latency"
 
-    def test_on_start(self):
-        self.observer.on_start()
-        self.assertEqual(self.mock_timer.start.call_count, 1)
-        self.assertEqual(self.observer.tags["client"], "client")
-        self.assertEqual(self.observer.tags["endpoint"], "endpoint")
+    if name in ("server", "local"):
+        assert timer["tags"].pop("endpoint") == "fancy.span"
+    else:
+        assert timer["tags"].pop("client") == "fancy"
+        assert timer["tags"].pop("endpoint") == "span"
+    assert timer["tags"].pop("tag2") == "bar"
+    assert timer["tags"] == {}
 
-    def test_incr_tag(self):
-        self.observer.on_incr_tag("test", delta=1)
-        self.mock_counter.increment.assert_not_called()
-        self.assertTrue("test" in self.observer.counters)
-        self.observer.on_finish(exc_info=None)
-        self.mock_counter.increment.assert_called()
+    for _ in range(2):
+        counter = batch.counters.pop()
+        assert counter["sample_rate"] == sample_rate
+        if counter["name"] == f"baseplate.{name}.rate":
+            assert counter["delta"] == 1
+            assert counter["tags"].pop("success") is True
+        elif counter["name"] == "my.tag":
+            assert counter["delta"] == 2
+        else:
+            raise Exception(f"unexpected counter: {counter}")
 
-    def test_on_set_tag(self):
-        self.observer.on_set_tag("test", "value")
-        self.observer_empty_whitelist.on_set_tag("error", Errors.EXCEPTION)
-
-        self.observer.on_set_tag("error", "error")
-        self.assertFalse("error" in self.observer.tags)
-
-        self.observer.on_set_tag("error", Errors.EXCEPTION)
-        self.assertTrue("error" in self.observer.tags)
-
-    def test_on_log(self):
-        self.observer.on_log("any", {})
-        self.assertFalse("error" in self.observer.tags)
-        self.observer.on_log("error.object", {})
-        self.assertEqual(self.observer.tags["error"], "internal_server_error")
-
-    def test_on_finish(self):
-        self.observer.on_start()
-        self.observer_empty_whitelist.on_start()
-
-        self.observer.on_set_tag("test", "value")
-        self.observer.on_set_tag("error", Errors.EXCEPTION)
-        self.observer_empty_whitelist.on_set_tag("test", "value")
-        self.observer_empty_whitelist.on_set_tag("error", Errors.EXCEPTION)
-
-        self.observer.on_finish(exc_info=None)
-        self.observer_empty_whitelist.on_finish(exc_info=None)
-        self.assertEqual(self.mock_timer.stop.call_count, 2)
-        self.assertEqual(self.mock_batch.flush.call_count, 2)
-
-        self.assertFalse("test" in self.observer.tags)
-        self.assertEqual(self.observer.tags["error"], "internal_server_error")
-
-        self.assertFalse("error" in self.observer_empty_whitelist.tags)
-        self.assertFalse("test" in self.observer_empty_whitelist.tags)
-
-        self.observer.on_finish(exc_info=(ServerTimeout, ServerTimeout("timeout", 3.0, False)))
-        self.assertFalse(self.observer.tags["success"])
-        self.assertFalse("timed_out" in self.observer.tags)
+        if name in ("server", "local"):
+            assert counter["tags"].pop("endpoint") == "fancy.span"
+        else:
+            assert counter["tags"].pop("client") == "fancy"
+            assert counter["tags"].pop("endpoint") == "span"
+        assert counter["tags"].pop("tag2") == "bar"
+        assert counter["tags"] == {}
