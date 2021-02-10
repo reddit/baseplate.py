@@ -246,9 +246,9 @@ class BaseplateConfigurator:
         sampled = bool(headers.get("X-Sampled") == "1")
         flags = headers.get("X-Flags", None)
         return TraceInfo.from_upstream(
-            int(headers["X-Trace"]),
-            int(headers["X-Parent"]),
-            int(headers["X-Span"]),
+            headers["X-Trace"],
+            headers["X-Parent"],
+            headers["X-Span"],
             sampled,
             int(flags) if flags is not None else None,
         )

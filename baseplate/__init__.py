@@ -102,13 +102,13 @@ class TraceInfo(NamedTuple):
     """
 
     #: The ID of the whole trace. This will be the same for all downstream requests.
-    trace_id: int
+    trace_id: str
 
     #: The ID of the parent span, or None if this is the root span.
-    parent_id: Optional[int]
+    parent_id: Optional[str]
 
     #: The ID of the current span. Should be unique within a trace.
-    span_id: int
+    span_id: str
 
     #: True if this trace was selected for sampling. Will be propagated to child spans.
     sampled: Optional[bool]
@@ -124,15 +124,15 @@ class TraceInfo(NamedTuple):
         with any upstream requests.
 
         """
-        trace_id = random.getrandbits(64)
+        trace_id = str(random.getrandbits(64))
         return cls(trace_id=trace_id, parent_id=None, span_id=trace_id, sampled=None, flags=None)
 
     @classmethod
     def from_upstream(
         cls,
-        trace_id: Optional[int],
-        parent_id: Optional[int],
-        span_id: Optional[int],
+        trace_id: Optional[str],
+        parent_id: Optional[str],
+        span_id: Optional[str],
         sampled: Optional[bool],
         flags: Optional[int],
     ) -> "TraceInfo":
@@ -147,13 +147,13 @@ class TraceInfo(NamedTuple):
         :raises: :py:exc:`ValueError` if any of the values are inappropriate.
 
         """
-        if trace_id is None or not 0 <= trace_id < 2 ** 64:
+        if trace_id is None:
             raise ValueError("invalid trace_id")
 
-        if span_id is None or not 0 <= span_id < 2 ** 64:
+        if span_id is None:
             raise ValueError("invalid span_id")
 
-        if parent_id is None or not 0 <= parent_id < 2 ** 64:
+        if parent_id is None:
             raise ValueError("invalid parent_id")
 
         if sampled is not None and not isinstance(sampled, bool):
@@ -535,9 +535,9 @@ class Span:
 
     def __init__(
         self,
-        trace_id: int,
-        parent_id: Optional[int],
-        span_id: int,
+        trace_id: str,
+        parent_id: Optional[str],
+        span_id: str,
         sampled: Optional[bool],
         flags: Optional[int],
         name: str,
@@ -688,7 +688,7 @@ class LocalSpan(Span):
         if not self.context:
             raise ParentSpanAlreadyFinishedError
 
-        span_id = random.getrandbits(64)
+        span_id = str(random.getrandbits(64))
         context_copy = self.context.clone()
         span: Span
         if local:
