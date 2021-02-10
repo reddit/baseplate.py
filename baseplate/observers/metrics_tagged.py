@@ -45,9 +45,7 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
             raw_config,
             {
                 "metrics": {
-                    "allowlist": config.Optional(
-                        config.TupleOf(config.String), default=[],
-                    ),
+                    "allowlist": config.Optional(config.TupleOf(config.String), default=[]),
                 },
                 "metrics_observer": {"sample_rate": config.Optional(config.Percent, default=1.0)},
             },
