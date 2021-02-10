@@ -28,8 +28,8 @@ the StatsD tagged metrics observer.
 
    # optional: which span tags should be attached to metrics. see below.
    #
-   # defaults to [ endpoint, success ] if no value is provided
-   metrics.allowlist = endpoint, success, error
+   # `endpoint` and `client` are always allowed
+   metrics.allowlist = foo, bar, baz
 
    # optional: the percent of statsd metrics to sample.
    #

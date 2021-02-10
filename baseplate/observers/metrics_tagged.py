@@ -46,7 +46,7 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
             {
                 "metrics": {
                     "allowlist": config.Optional(
-                        config.TupleOf(config.String), default=["client", "endpoint"],
+                        config.TupleOf(config.String), default=[],
                     ),
                 },
                 "metrics_observer": {"sample_rate": config.Optional(config.Percent, default=1.0)},
@@ -54,7 +54,7 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
         )
         return cls(
             client,
-            allowlist=set(cfg.metrics.allowlist),
+            allowlist=set(cfg.metrics.allowlist) | {"client", "endpoint"},
             sample_rate=cfg.metrics_observer.sample_rate,
         )
 
