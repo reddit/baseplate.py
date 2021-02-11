@@ -96,7 +96,7 @@ def baseplate_thrift_client(endpoint, client_spec, client_span_observer=None):
 
     context = baseplate.make_context_object()
     trace_info = TraceInfo.from_upstream(
-        trace_id=1234, parent_id=2345, span_id=3456, flags=4567, sampled=True
+        trace_id="1234", parent_id="2345", span_id="3456", flags=4567, sampled=True
     )
 
     baseplate.configure_context({"example_service": ThriftClient(client_spec.Client)})
@@ -153,14 +153,14 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
                 client_result = client.example()
 
         self.assertIsNotNone(handler.server_span)
-        self.assertGreaterEqual(handler.server_span.id, 0)
+        self.assertGreaterEqual(len(handler.server_span.id), 0)
         self.assertTrue(client_result)
 
     def test_header_propagation(self):
         """If the client sends headers, we should set the trace up accordingly."""
-        trace_id = 1234
-        parent_id = 2345
-        span_id = 3456
+        trace_id = "1234"
+        parent_id = "2345"
+        span_id = "3456"
         flags = 4567
         sampled = 1
 
@@ -177,9 +177,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         with serve_thrift(handler, TestService) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
-                transport.set_header(b"Trace", str(trace_id).encode())
-                transport.set_header(b"Parent", str(parent_id).encode())
-                transport.set_header(b"Span", str(span_id).encode())
+                transport.set_header(b"Trace", trace_id.encode())
+                transport.set_header(b"Parent", parent_id.encode())
+                transport.set_header(b"Span", span_id.encode())
                 transport.set_header(b"Flags", str(flags).encode())
                 transport.set_header(b"Sampled", str(sampled).encode())
                 client_result = client.example()
@@ -194,9 +194,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
     def test_optional_headers_optional(self):
         """Test that we accept traces from clients that don't include all headers."""
-        trace_id = 1234
-        parent_id = 2345
-        span_id = 3456
+        trace_id = "1234"
+        parent_id = "2345"
+        span_id = "3456"
 
         class Handler(TestService.Iface):
             def __init__(self):
@@ -211,9 +211,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         with serve_thrift(handler, TestService) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
-                transport.set_header(b"Trace", str(trace_id).encode())
-                transport.set_header(b"Parent", str(parent_id).encode())
-                transport.set_header(b"Span", str(span_id).encode())
+                transport.set_header(b"Trace", trace_id.encode())
+                transport.set_header(b"Parent", parent_id.encode())
+                transport.set_header(b"Span", span_id.encode())
                 client_result = client.example()
 
         self.assertIsNotNone(handler.server_span)

@@ -121,9 +121,9 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, 1234)
+        self.assertEqual(server_span.trace_id, "1234")
         self.assertEqual(server_span.parent_id, None)
-        self.assertEqual(server_span.id, 1234)
+        self.assertEqual(server_span.id, "1234")
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
@@ -145,9 +145,9 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, 1234)
-        self.assertEqual(server_span.parent_id, 2345)
-        self.assertEqual(server_span.id, 3456)
+        self.assertEqual(server_span.trace_id, "1234")
+        self.assertEqual(server_span.parent_id, "2345")
+        self.assertEqual(server_span.id, "3456")
         self.assertEqual(server_span.sampled, True)
         self.assertEqual(server_span.flags, 1)
 
@@ -222,7 +222,7 @@ class ConfiguratorTests(unittest.TestCase):
 
     @mock.patch("random.getrandbits")
     def test_distrust_headers(self, getrandbits):
-        getrandbits.return_value = 1234
+        getrandbits.return_value = 9999
         self.baseplate_configurator.header_trust_handler.trust_headers = False
 
         self.test_app.get(
@@ -230,9 +230,9 @@ class ConfiguratorTests(unittest.TestCase):
         )
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, getrandbits.return_value)
+        self.assertEqual(server_span.trace_id, str(getrandbits.return_value))
         self.assertEqual(server_span.parent_id, None)
-        self.assertEqual(server_span.id, getrandbits.return_value)
+        self.assertEqual(server_span.id, str(getrandbits.return_value))
 
     def test_local_trace_in_context(self):
         self.test_app.get("/trace_context")

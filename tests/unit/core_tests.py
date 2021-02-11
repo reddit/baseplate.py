@@ -184,7 +184,7 @@ class ServerSpanTests(unittest.TestCase):
         child_span = server_span.make_child("child_name")
 
         self.assertEqual(child_span.name, "child_name")
-        self.assertEqual(child_span.id, 0xCAFE)
+        self.assertEqual(child_span.id, "51966")
         self.assertEqual(child_span.trace_id, "trace")
         self.assertEqual(child_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
@@ -214,7 +214,7 @@ class ServerSpanTests(unittest.TestCase):
         local_span = server_span.make_child("test_op", local=True, component_name="test_component")
 
         self.assertEqual(local_span.name, "test_op")
-        self.assertEqual(local_span.id, 0xCAFE)
+        self.assertEqual(local_span.id, "51966")
         self.assertEqual(local_span.trace_id, "trace")
         self.assertEqual(local_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
@@ -267,7 +267,7 @@ class LocalSpanTests(unittest.TestCase):
         child_span = local_span.make_child("child_name")
 
         self.assertEqual(child_span.name, "child_name")
-        self.assertEqual(child_span.id, 0xCAFE)
+        self.assertEqual(child_span.id, "51966")
         self.assertEqual(child_span.trace_id, "trace")
         self.assertEqual(child_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)

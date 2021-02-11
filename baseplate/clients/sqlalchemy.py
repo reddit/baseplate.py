@@ -1,3 +1,5 @@
+import re
+
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -123,6 +125,9 @@ class SQLAlchemySession(config.Parser):
 Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
 
 
+SAFE_TRACE_ID = re.compile("^[A-Za-z0-9_-]+$")
+
+
 class SQLAlchemyEngineContextFactory(ContextFactory):
     """SQLAlchemy core engine context factory.
 
@@ -187,7 +192,11 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         # add a comment to the sql statement with the trace and span ids
         # this is useful for slow query logs and active query views
-        annotated_statement = f"{statement} -- trace:{span.trace_id:d},span:{span.id:d}"
+        if SAFE_TRACE_ID.match(span.trace_id) and SAFE_TRACE_ID.match(span.id):
+            annotated_statement = f"{statement} -- trace:{span.trace_id},span:{span.id}"
+        else:
+            annotated_statement = f"{statement} -- invalid trace id"
+
         return annotated_statement, parameters
 
     # pylint: disable=unused-argument, too-many-arguments
