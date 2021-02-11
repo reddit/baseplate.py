@@ -219,4 +219,11 @@ exception Error {
         }
     */
     3: optional map<string, string> details
+    /** Server could choose to set this field to true to explicitly indicate
+    that client shall retry this request, and false to explicitly indicate that
+    client shall not retry this request. Unset means that it's up to the client
+    to decide (using other information, for example the code) whether to retry
+    this request.
+    */
+    4: optional bool retryable
 }

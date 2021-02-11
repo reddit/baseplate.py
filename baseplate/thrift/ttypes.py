@@ -243,6 +243,11 @@ class Error(TException):
             "post.title": "This field is too long.",
             "post.kind": "This field is required."
         }
+     - retryable: Server could choose to set this field to true to explicitly indicate
+    that client shall retry this request, and false to explicitly indicate that
+    client shall not retry this request. Unset means that it's up to the client
+    to decide (using other information, for example the code) whether to retry
+    this request.
 
     """
 
@@ -250,14 +255,16 @@ class Error(TException):
         "code",
         "message",
         "details",
+        "retryable",
     )
 
     def __init__(
-        self, code=None, message=None, details=None,
+        self, code=None, message=None, details=None, retryable=None,
     ):
         self.code = code
         self.message = message
         self.details = details
+        self.retryable = retryable
 
     def read(self, iprot):
         if (
@@ -305,6 +312,11 @@ class Error(TException):
                     iprot.readMapEnd()
                 else:
                     iprot.skip(ftype)
+            elif fid == 4:
+                if ftype == TType.BOOL:
+                    self.retryable = iprot.readBool()
+                else:
+                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -332,6 +344,10 @@ class Error(TException):
                 oprot.writeString(kiter7.encode("utf-8") if sys.version_info[0] == 2 else kiter7)
                 oprot.writeString(viter8.encode("utf-8") if sys.version_info[0] == 2 else viter8)
             oprot.writeMapEnd()
+            oprot.writeFieldEnd()
+        if self.retryable is not None:
+            oprot.writeFieldBegin("retryable", TType.BOOL, 4)
+            oprot.writeBool(self.retryable)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -371,6 +387,7 @@ Error.thrift_spec = (
     (1, TType.I32, "code", None, None,),  # 1
     (2, TType.STRING, "message", "UTF8", None,),  # 2
     (3, TType.MAP, "details", (TType.STRING, "UTF8", TType.STRING, "UTF8", False), None,),  # 3
+    (4, TType.BOOL, "retryable", None, None,),  # 4
 )
 fix_spec(all_structs)
 del all_structs
