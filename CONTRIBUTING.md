@@ -28,6 +28,13 @@ Here are some of the Make targets available for use:
   `make fmt`.
 * `make clean`: Delete intermediate build files.
 
+You can also run arbitrary commands, e.g. to run a single portion of the test
+suite:
+
+```console
+$ docker-compose run baseplate pytest -v tests/integration/pyramid_tests.py
+```
+
 Don't forget to `docker-compose down` when you're done to free up resources.
 
 [Docker Compose]: https://docs.docker.com/compose/
