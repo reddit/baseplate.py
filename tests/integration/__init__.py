@@ -15,10 +15,10 @@ def get_endpoint_or_skip_container(name, default_port):
     servers.
 
     If an environment variable like BASEPLATE_MEMCACHED_ADDR is present, that will
-    override the default of localhost:{default_port}.
+    override the default of {name}:{default_port}.
 
     """
-    address = os.environ.get("BASEPLATE_%s_ADDR" % name.upper(), "localhost:%d" % default_port)
+    address = os.environ.get(f"BASEPLATE_{name.upper()}_ADDR", f"{name}:{default_port:d}")
     endpoint = Endpoint(address)
 
     try:

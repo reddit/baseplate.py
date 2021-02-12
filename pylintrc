@@ -63,6 +63,7 @@ disable= attribute-defined-outside-init,
          too-many-statements,
          ungrouped-imports,
          useless-return,
+         raise-missing-from,
 
 [REPORTS]
 

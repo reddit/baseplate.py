@@ -1,9 +1,7 @@
-baseplate.py
-============
+# baseplate.py
 
-|Build Status|
-
-Documentation: https://baseplate.readthedocs.io/en/stable/
+* [Documentation](https://baseplate.readthedocs.io/en/stable/)
+* [Contribution Guidelines](https://github.com/reddit/baseplate.py/blob/develop/CONTRIBUTING.md)
 
 It's much easier to manage a bunch of services when they all have the same
 shape: the way they're developed, the way they interact with the infrastructure
@@ -28,10 +26,4 @@ And can take advantage of:
   cassandra-driver, pymemcache, redis-py, and Kombu
 * Secrets securely pulled from Vault
 
-And many other things! Read the `full docs
-<https://baseplate.readthedocs.io/en/stable/>`__.
-
-Baseplate.py requires Python 3.7 or newer.
-
-.. |Build Status| image:: https://cloud.drone.io/api/badges/reddit/baseplate.py/status.svg
-   :target: https://cloud.drone.io/reddit/baseplate.py
+And many other things!

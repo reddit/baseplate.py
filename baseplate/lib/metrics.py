@@ -456,10 +456,7 @@ class Histogram:
     """
 
     def __init__(
-        self,
-        transport: Transport,
-        name: bytes,
-        tags: Optional[Dict[str, Any]] = None,  # pylint: disable=bad-whitespace
+        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.transport = transport
         self.name = name

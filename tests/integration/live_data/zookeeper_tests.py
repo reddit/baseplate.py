@@ -47,4 +47,4 @@ class ZooKeeperTests(unittest.TestCase):
         client.stop()
 
         secrets.get_simple.assert_called_with("secret/zk-user")
-        self.assertEqual(client.auth_data, [("digest", "myzkuser:hunter2")])
+        self.assertEqual(list(client.auth_data), [("digest", "myzkuser:hunter2")])
