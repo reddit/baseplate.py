@@ -39,7 +39,7 @@ class cached_property(Generic[R]):
 
     def __init__(self, wrapped: Callable[[Any], R]):
         self.wrapped = wrapped
-        functools.update_wrapper(self, wrapped)  # type: ignore
+        functools.update_wrapper(self, wrapped)
 
     def __get__(self, instance: T, owner: Type[Any]) -> R:
         if instance is None:

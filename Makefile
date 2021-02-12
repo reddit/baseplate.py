@@ -41,16 +41,9 @@ doctest:
 linkcheck:
 	sphinx-build -M linkcheck docs/ build/
 
-.PHONY: spelling
-spelling:
-	sphinx-build -M spelling docs/ build/
-
 .PHONY: test
-test: tox doctest
-
-.PHONY: tox
-tox:
-	tox
+test: doctest
+	pytest -v tests/
 
 .PHONY: fmt
 fmt:
@@ -68,7 +61,7 @@ lint:
 	mypy baseplate/
 
 .PHONY: checks
-checks: test lint spelling linkcheck
+checks: test lint linkcheck
 
 .PHONY: clean
 clean:

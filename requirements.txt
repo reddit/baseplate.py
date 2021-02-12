@@ -1,0 +1,17 @@
+-r requirements-transitive.txt
+astroid==2.4.2
+black==19.10b0
+flake8==3.8.4
+lxml==4.6.2
+mypy==0.800
+pydocstyle==5.1.1
+pylint==2.6.0
+pytest==6.2.2
+pytest-cov==2.11.1
+pytz==2021.1
+reorder-python-imports==2.4.0
+sphinx==3.4.3
+sphinx-autodoc-typehints==1.11.1
+sphinxcontrib-spelling==7.1.0
+webtest==2.0.35
+wheel==0.36.2

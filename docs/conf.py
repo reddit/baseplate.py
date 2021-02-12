@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.abspath(".."))
 # ones.
 extensions = [
     "alabaster",
-    "sphinxcontrib.spelling",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
@@ -117,7 +116,3 @@ html_show_copyright = False
 
 # -- Autodoc --
 autodoc_member_order = "bysource"
-
-# -- Spelling --
-spelling_word_list_filename = "words.txt"
-spelling_show_suggestions = True

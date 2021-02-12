@@ -1,11 +1,30 @@
+import itertools
+
 from setuptools import find_packages
 from setuptools import setup
+
+
+extras_require = {
+    "amqp": ["kombu>=4.0.0,<5.0"],
+    "cassandra": ["cassandra-driver>=3.13.0,<4.0"],
+    "cqlmapper": ["reddit-cqlmapper>=0.3.0,<1.0"],
+    "kafka": ["confluent-kafka>=1.3,<2.0"],
+    "memcache": ["pymemcache>=1.3.0,<1.4.4"],
+    "pyramid": ["pyramid>=1.9.0,<2.0"],
+    "redis": ["redis>=2.10.0,<4.0.0"],
+    "refcycle": ["objgraph>=3.0,<4.0"],
+    "requests": ["advocate>=1.0.0,<2.0"],
+    "sentry": ["sentry-sdk>=0.19,<1.0"],
+    "sql": ["sqlalchemy>=1.1.0,<2.0"],
+    "zookeeper": ["kazoo>=2.5.0,<3.0"],
+}
+extras_require["all"] = list(itertools.chain.from_iterable(extras_require.values()))
 
 setup(
     name="baseplate",
     description="reddit's python service framework",
-    long_description=open("README.rst").read(),
-    long_description_content_type="text/x-rst",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
     author="reddit",
     license="BSD",
     url="https://github.com/reddit/baseplate.py",
@@ -17,23 +36,13 @@ setup(
     python_requires=">=3.7",
     setup_requires=["setuptools_scm"],
     install_requires=[
-        "posix_ipc>=1.0.0",
+        "posix_ipc>=1.0.0,<2.0",
         "python-json-logger>=2.0,<3.0",
-        "requests>=2.21.0",
-        "thrift>=0.12.0",
+        "requests>=2.21.0,<3.0",
+        "thrift>=0.12.0,<1.0",
         "gevent>=20.5.0",
     ],
-    extras_require={
-        "amqp": ["kombu>=4.0.0"],
-        "cassandra": ["cassandra-driver>=3.13.0"],
-        "cqlmapper": ["reddit-cqlmapper>=0.3.0,<1.0"],
-        "memcache": ["pymemcache>=1.3.0,<=2.0.0"],
-        "pyramid": ["pyramid>=1.9.0"],
-        "redis": ["redis>=2.10.0,<=4.0.0"],
-        "requests": ["advocate>=1.0.0"],
-        "sql": ["sqlalchemy>=1.1.0"],
-        "zookeeper": ["kazoo>=2.5.0"],
-    },
+    extras_require=extras_require,
     scripts=[
         "bin/baseplate-script",
         "bin/baseplate-serve",

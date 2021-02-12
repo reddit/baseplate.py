@@ -302,7 +302,7 @@ class Baseplate:
         self.observers.append(observer)
 
     # pylint: disable=cyclic-import
-    def configure_observers(self, module_name: Optional[str] = None) -> None:
+    def configure_observers(self) -> None:
         """Configure diagnostics observers based on application configuration.
 
         This installs all the currently supported observers that have settings
@@ -310,9 +310,6 @@ class Baseplate:
 
         See :py:mod:`baseplate.observers` for the configuration settings
         available for each observer.
-
-        :param module_name: Name of the root package of the application. If not specified,
-            will be guessed from the package calling this function.
 
         """
         skipped = []
