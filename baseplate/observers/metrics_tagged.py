@@ -191,8 +191,7 @@ class TaggedMetricsClientSpanObserver(SpanObserver):
 
     def on_start(self) -> None:
         self.timer.start(self.sample_rate)
-        self.tags["client"] = self.span.name.split(".")[0]
-        self.tags["endpoint"] = self.span.name.split(".")[1]
+        self.tags["client"], _, self.tags["endpoint"] = self.span.name.rpartition(".")
 
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.counters[key] = delta
