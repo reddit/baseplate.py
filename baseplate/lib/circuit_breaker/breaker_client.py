@@ -5,7 +5,7 @@ import baseplate
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 
-from graphql_api.lib.circuit_breaker.breaker import Breaker
+from baseplate.lib.circuit_breaker.breaker import Breaker
 
 
 class CircuitBreakerFactory(ContextFactory):

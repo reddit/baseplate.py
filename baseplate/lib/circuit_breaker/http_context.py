@@ -9,7 +9,9 @@ from graphql_api.lib.circuit_breaker.observer import BreakerObserver
 
 @contextmanager
 def http_circuit_breaker(context, breaker):
-    breaker_observer = BreakerObserver(context, breaker)
+    breaker_observer = BreakerObserver(context, breaker, on_tripped_fn=None)
+
+    # why aren't we doing 
     breaker_observer.check_state()
 
     success: bool = True
@@ -28,3 +30,15 @@ def http_circuit_breaker(context, breaker):
         raise
     finally:
         breaker_observer.register_attempt(success)
+
+
+"""
+Do we want to generalize this with:
+* list of exceptions to catch and mark success=False (all other
+  exceptions will just raise with success=True)
+   * do we need something fancier (map of exceptions to fn returning
+     bool) to check whether this exception should mark success=False?
+* on_tripped_fn to run if check_state() raises. must this raise an
+  exception?
+
+"""

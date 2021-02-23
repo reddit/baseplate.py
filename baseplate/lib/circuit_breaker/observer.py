@@ -1,5 +1,5 @@
-from graphql_api.lib.circuit_breaker.breaker import BreakerState
-from graphql_api.lib.circuit_breaker.errors import BreakerTrippedError
+from baseplate.lib.circuit_breaker.breaker import BreakerState
+from baseplate.lib.circuit_breaker.errors import BreakerTrippedError
 
 METRICS_PREFIX = "breakers"
 

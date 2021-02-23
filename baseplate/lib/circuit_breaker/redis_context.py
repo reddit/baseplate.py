@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from redis.exceptions import ConnectionError
 from redis.exceptions import TimeoutError
 
-from graphql_api.lib.circuit_breaker.observer import BreakerObserver
+from baseplate.lib.circuit_breaker.observer import BreakerObserver
 
 
 @contextmanager
