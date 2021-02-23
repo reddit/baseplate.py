@@ -26,7 +26,8 @@ class Breaker:
         trip_for: timedelta = timedelta(minutes=1),
         fuzz_ratio: float = 0.1,
     ):
-        """
+        """Circuit breaker.
+
         * name: str - full name/path of the circuit breaker
         * samples: int - number of previous results used to calculate the trip failure ratio
         * trip_failure_percent: float - the minimum ratio of sampled failed results to trip the breaker

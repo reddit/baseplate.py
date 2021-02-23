@@ -1,7 +1,6 @@
 from typing import Any
 
-import baseplate
-
+from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.circuit_breaker.breaker import Breaker
@@ -11,7 +10,7 @@ class CircuitBreakerFactory(ContextFactory):
     def __init__(self, name, cfg):
         self.breaker_box = CircuitBreakerBox(name.replace("_breaker", ""), cfg)
 
-    def make_object_for_context(self, name: str, span: "baseplate.Span") -> Any:
+    def make_object_for_context(self, name: str, span: Span) -> Any:
         return self.breaker_box
 
     @staticmethod
