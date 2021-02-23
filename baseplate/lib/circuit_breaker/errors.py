@@ -1,4 +1,4 @@
 class BreakerTrippedError(Exception):
-    def __init__(self):
+    def __init__(self) -> None:
         default_message = "Breaker tripped!"
-        super(BreakerTrippedError, self).__init__(default_message)
+        super().__init__(default_message)
