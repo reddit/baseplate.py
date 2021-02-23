@@ -3,14 +3,18 @@ from datetime import timedelta
 
 import pytest
 
-from graphql_api.lib.circuit_breaker.breaker import Breaker
-from graphql_api.lib.circuit_breaker.breaker import BreakerState
+from baseplate.lib.circuit_breaker.breaker import Breaker
+from baseplate.lib.circuit_breaker.breaker import BreakerState
 
 
 @pytest.fixture
 def breaker():
     return Breaker(
-        name="test", samples=4, trip_failure_ratio=0.5, trip_for=timedelta(seconds=60), fuzz_ratio=0.1
+        name="test",
+        samples=4,
+        trip_failure_ratio=0.5,
+        trip_for=timedelta(seconds=60),
+        fuzz_ratio=0.1,
     )
 
 

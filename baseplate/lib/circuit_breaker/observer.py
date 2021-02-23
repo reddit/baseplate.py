@@ -15,7 +15,9 @@ class BreakerObserver:
         self.context.trace.incr_tag(f"{METRICS_PREFIX}.{self.name}.request.fail_fast")
 
     def on_state_change(self, prev, curr):
-        self.context.trace.incr_tag(f"{METRICS_PREFIX}.{self.name}.state_change.{prev.value}.{curr.value}")
+        self.context.trace.incr_tag(
+            f"{METRICS_PREFIX}.{self.name}.state_change.{prev.value}.{curr.value}"
+        )
 
     def register_attempt(self, success):
         prev_state = self.breaker.state

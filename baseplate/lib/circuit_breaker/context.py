@@ -16,6 +16,7 @@ should we have some more fine grained control? separate counters per
 endpoint (if desired) plus tracking of overall error rate?
 """
 
+
 @contextmanager
 def circuit_breaker(
     context: RequestContext,

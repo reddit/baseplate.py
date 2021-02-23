@@ -4,7 +4,6 @@ import baseplate
 
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
-
 from baseplate.lib.circuit_breaker.breaker import Breaker
 
 
