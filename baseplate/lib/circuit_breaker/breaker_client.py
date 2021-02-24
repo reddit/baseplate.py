@@ -1,4 +1,7 @@
+from datetime import timedelta
 from typing import Any
+from typing import Dict
+from typing import Optional
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -7,37 +10,30 @@ from baseplate.lib.circuit_breaker.breaker import Breaker
 
 
 class CircuitBreakerFactory(ContextFactory):
-    def __init__(self, name, cfg):
-        self.breaker_box = CircuitBreakerBox(name.replace("_breaker", ""), cfg)
+    def __init__(self, breaker_box: "CircuitBreakerBox"):
+        self.breaker_box = breaker_box
 
     def make_object_for_context(self, name: str, span: Span) -> Any:
         return self.breaker_box
 
-    @staticmethod
-    def get_breaker_cfg(app_config, default_prefix, cfg_prefix, cfg_spec):
-        cfg = config.parse_config(app_config, {cfg_prefix: cfg_spec})
-        breaker_cfg = getattr(cfg, cfg_prefix)
-        default_cfg = config.parse_config(app_config, {default_prefix: cfg_spec})
-        default_breaker_cfg = getattr(default_cfg, default_prefix)
-
-        for k in cfg_spec:
-            if getattr(breaker_cfg, k) is None:
-                setattr(breaker_cfg, k, getattr(default_breaker_cfg, k))
-        return breaker_cfg
-
-    @classmethod
-    def from_config(cls, name, app_config, default_prefix, cfg_prefix, cfg_spec):
-        breaker_cfg = cls.get_breaker_cfg(app_config, default_prefix, cfg_prefix, cfg_spec)
-        return cls(name, breaker_cfg)
-
 
 class CircuitBreakerBox:
-    def __init__(self, name, cfg):
+    def __init__(
+        self,
+        name: str,
+        samples: int,
+        trip_failure_ratio: float,
+        trip_for: timedelta,
+        fuzz_ratio: float,
+    ):
         self.name = name
-        self.cfg = cfg
-        self.breaker_box = {}
+        self.samples = samples
+        self.trip_failure_ratio = trip_failure_ratio
+        self.trip_for = trip_for
+        self.fuzz_ratio = fuzz_ratio
+        self.breaker_box: Dict[str, Breaker] = {}
 
-    def get_endpoint_breaker(self, endpoint=None):
+    def get_endpoint_breaker(self, endpoint: Optional[str] = None) -> Breaker:
         if not endpoint:
             # service breaker
             endpoint = "service"
@@ -46,11 +42,30 @@ class CircuitBreakerBox:
         if endpoint not in self.breaker_box:
             breaker = Breaker(
                 name=f"{self.name}.{endpoint}",
-                samples=self.cfg.samples,
-                trip_failure_ratio=self.cfg.trip_failure_ratio,
-                trip_for=self.cfg.trip_for,
-                fuzz_ratio=self.cfg.fuzz_ratio,
+                samples=self.samples,
+                trip_failure_ratio=self.trip_failure_ratio,
+                trip_for=self.trip_for,
+                fuzz_ratio=self.fuzz_ratio,
             )
-
             self.breaker_box[endpoint] = breaker
         return self.breaker_box[endpoint]
+
+
+def breaker_box_from_config(
+    app_config: config.RawConfig, name: str, prefix: str = "breaker.",
+) -> CircuitBreakerBox:
+    """Make a CircuitBreakerBox from a configuration dictionary.
+    """
+    assert prefix.endswith(".")
+    parser = config.SpecParser(
+        {
+            "samples": config.Optional(config.Integer),
+            "trip_failure_ratio": config.Optional(config.Float),
+            "trip_for": config.Optional(config.Timespan),
+            "fuzz_ratio": config.Optional(config.Float),
+        }
+    )
+    options = parser.parse(prefix[:-1], app_config)
+    return CircuitBreakerBox(
+        name, options.samples, options.trip_failure_ratio, options.trip_for, options.fuzz_ratio
+    )

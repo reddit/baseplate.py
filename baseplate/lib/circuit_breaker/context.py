@@ -1,9 +1,9 @@
 from contextlib import contextmanager
-from typing import Any
 from typing import Callable
-from typing import ContextManager
+from typing import Iterator
 from typing import Optional
 from typing import Tuple
+from typing import Type
 
 from baseplate import RequestContext
 from baseplate.lib.circuit_breaker.breaker import Breaker
@@ -15,9 +15,9 @@ from baseplate.lib.circuit_breaker.observer import BreakerObserver
 def circuit_breaker(
     context: RequestContext,
     breaker: Breaker,
-    breakable_exceptions: Tuple[Exception],
-    on_tripped_fn: Optional[Callable[[Any], None]] = None,
-) -> ContextManager:
+    breakable_exceptions: Tuple[Type[Exception]],
+    on_tripped_fn: Optional[Callable[[], None]] = None,
+) -> Iterator[None]:
     breaker_observer = BreakerObserver(context, breaker)
 
     try:

@@ -50,7 +50,7 @@ class Breaker:
 
         return self._state
 
-    def register_attempt(self, success: bool):
+    def register_attempt(self, success: bool) -> None:
         # This breaker has already tripped, so ignore the "late" registrations
         if self.state == BreakerState.TRIPPED:
             return
@@ -83,10 +83,10 @@ class Breaker:
         if self.failures >= self.trip_threshold:
             self.trip()
 
-    def set_state(self, state: BreakerState):
+    def set_state(self, state: BreakerState) -> None:
         self._state = state
 
-    def trip(self):
+    def trip(self) -> None:
         if self.fuzz_ratio > 0.0:
             fuzz_ratio = ((2 * random()) - 1.0) * self.fuzz_ratio
             fuzz_ratio = 1 + fuzz_ratio
@@ -96,9 +96,9 @@ class Breaker:
         self.tripped_until = datetime.utcnow() + (self.trip_for * fuzz_ratio)
         self.set_state(BreakerState.TRIPPED)
 
-    def reset(self):
+    def reset(self) -> None:
         self.results_bucket.clear()
         self.failures = 0
         self._is_bucket_full = False
-        self.tripped_until = None
+        self.tripped_until = datetime.utcnow()
         self.set_state(BreakerState.WORKING)
