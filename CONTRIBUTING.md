@@ -6,9 +6,15 @@ Our CI system will run a ton of checks on pull requests. You can run these
 checks locally before submitting changes as described below.
 
 A `Makefile` full of actions and a [Docker Compose] development environment are
-provided. [Install Docker Compose] if you don't already have it, then you can
-`docker-compose run` various commands to format, lint, test, and compile the
-library. For example:
+provided. [Install Docker Compose] if you don't already have it, then build the
+base image:
+
+```console
+$ docker-compose build
+```
+
+Now you can use `docker-compose run` various commands to format, lint, test,
+and compile the library. For example:
 
 ```console
 $ docker-compose run baseplate make test
