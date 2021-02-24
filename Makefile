@@ -47,6 +47,10 @@ test: doctest
 
 .PHONY: fmt
 fmt:
+	@if [ ! -f /baseplate-py-dev-docker-image ]; then \
+		echo "Please use the docker-compose environment for consistency. See https://git.io/Jtdzy."; \
+		exit 1; \
+	fi
 	$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
 	black baseplate/ tests/
 	$(REORDER_PYTHON_IMPORTS) --application-directories /tmp --exit-zero-even-if-changed $(PYTHON_EXAMPLES)
