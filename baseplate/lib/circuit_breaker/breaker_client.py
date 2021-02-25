@@ -18,6 +18,19 @@ class CircuitBreakerFactory(ContextFactory):
 
 
 class CircuitBreakerBox:
+    """Container for a client's `Breaker`s.
+
+    Will lazily create `Breaker`s for each endpoint as needed. There
+    is no global coordination across endpoints--each `Breaker` is
+    isolated and does not consider the state or errors of other
+    endpoints.
+
+    :param name: The base `Breaker` name. The full name is like "name.endpoint".
+    :param samples: See `Breaker`
+    :param trip_failure_ratio: See `Breaker`
+    :param trip_for: See `Breaker`
+    :param fuzz_ratio: See `Breaker`
+    """
     def __init__(
         self,
         name: str,
@@ -54,8 +67,7 @@ class CircuitBreakerBox:
 def breaker_box_from_config(
     app_config: config.RawConfig, name: str, prefix: str = "breaker.",
 ) -> CircuitBreakerBox:
-    """Make a CircuitBreakerBox from a configuration dictionary.
-    """
+    """Make a CircuitBreakerBox from a configuration dictionary."""
     assert prefix.endswith(".")
     parser = config.SpecParser(
         {
