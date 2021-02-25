@@ -6,12 +6,14 @@ import pytest
 from baseplate.lib.circuit_breaker.breaker import Breaker
 from baseplate.lib.circuit_breaker.breaker import BreakerState
 
+SAMPLES=4
+
 
 @pytest.fixture
 def breaker():
     return Breaker(
         name="test",
-        samples=4,
+        samples=SAMPLES,
         trip_failure_ratio=0.5,
         trip_for=timedelta(seconds=60),
         fuzz_ratio=0.1,
@@ -59,12 +61,16 @@ def testing_breaker(tripped_breaker):
         ([False, False, True, True], BreakerState.TRIPPED),
         ([True, False, True, False], BreakerState.TRIPPED),
         ([False, True, False, True], BreakerState.TRIPPED),
+        (2*SAMPLES*[True] + 2*SAMPLES*[False], BreakerState.TRIPPED),
     ],
 )
 def test_breaker_state(breaker, attempts, expected_state):
     for attempt in attempts:
         breaker.register_attempt(attempt)
     assert breaker.state == expected_state
+    # Check for leaks
+    assert len(breaker.results_bucket) <= SAMPLES
+    assert 0 <= breaker.failures <= SAMPLES
 
 
 def test_testing_state(testing_breaker):

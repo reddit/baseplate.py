@@ -15,6 +15,7 @@ class BreakerState(Enum):
 
 
 class Breaker:
+    failures: int
     _state: BreakerState = BreakerState.WORKING
     _is_bucket_full: bool = False
 
@@ -58,6 +59,8 @@ class Breaker:
         if not success:
             self.failures += 1
 
+        # When a deque is full, elements are dropped from the left. We need to record it's value before we do so as not
+        # to "leak" failures.
         if self._is_bucket_full and not self.results_bucket[0]:
             self.failures -= 1
 
