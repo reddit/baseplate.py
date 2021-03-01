@@ -28,7 +28,9 @@ class TimeoutBaseplateObserver(BaseplateObserver):
             app_config,
             {
                 "server_timeout": {
-                    "default": config.TimespanOrInfinite,
+                    "default": config.Optional(
+                        config.TimespanOrInfinite, default=config.InfiniteTimespan,
+                    ),
                     "debug": config.Optional(config.Boolean, default=False),
                     "by_endpoint": config.DictOf(config.TimespanOrInfinite),
                 }
