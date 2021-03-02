@@ -116,6 +116,11 @@ def thrift_pool_from_config(
     return ThriftConnectionPool(endpoint=options.endpoint, **kwargs)
 
 
+_DEFAULT_PROTOCOL_FACTORY = THeaderProtocol.THeaderProtocolFactory(
+    default_protocol=THeaderProtocol.THeaderSubprotocolID.COMPACT,
+)
+
+
 class ThriftConnectionPool:
     """A pool that maintains a queue of open Thrift connections.
 
@@ -149,7 +154,7 @@ class ThriftConnectionPool:
         max_age: int = 120,
         timeout: int = 1,
         max_connection_attempts: int = 3,
-        protocol_factory: TProtocolFactory = THeaderProtocol.THeaderProtocolFactory(),
+        protocol_factory: TProtocolFactory = _DEFAULT_PROTOCOL_FACTORY,
     ):
         self.endpoint = endpoint
         self.max_age = max_age
