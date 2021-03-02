@@ -16,20 +16,20 @@ For example, our example HTTP service from :doc:`the tutorial
 <../tutorial/index>` has an entrypoint function (``make_wsgi_app()``) that sets
 up the application:
 
-.. literalinclude:: ../tutorial/chapter4/sql.py
+.. literalinclude:: ../tutorial/chapter4/helloworld.py
    :language: python
    :start-at: make_wsgi_app
 
 using configuration for that application:
 
-.. literalinclude:: ../tutorial/chapter4/sql.ini
+.. literalinclude:: ../tutorial/chapter4/helloworld.ini
    :language: ini
    :start-at: app:main
    :end-before: server:main
 
 and configuration that tells ``baseplate-serve`` how to serve the application:
 
-.. literalinclude:: ../tutorial/chapter4/sql.ini
+.. literalinclude:: ../tutorial/chapter4/helloworld.ini
    :language: ini
    :start-at: server:main
 

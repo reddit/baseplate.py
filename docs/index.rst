@@ -14,7 +14,7 @@ well-behaving production service without having to reinvent the wheel.
 Here's a simple Baseplate.py HTTP service built using the `Pyramid web
 framework`_:
 
-.. literalinclude:: tutorial/chapter4/sql.py
+.. literalinclude:: tutorial/chapter4/helloworld.py
    :language: python
 
 .. _`Pyramid web framework`: https://trypyramid.com/

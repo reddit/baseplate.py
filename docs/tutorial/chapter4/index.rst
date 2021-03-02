@@ -22,13 +22,13 @@ database. Let's install that to get started:
 Now that's installed, we can use Baseplate.py's helpers to add SQLAlchemy to
 our service.
 
-.. literalinclude:: sql.py
+.. literalinclude:: helloworld.py
    :language: python
    :emphasize-lines: 2,10,17
 
 Pretty simple, but there's something subtle going on here. Let's dig into it.
 
-.. literalinclude:: sql.py
+.. literalinclude:: helloworld.py
    :language: python
    :start-at: configure_context
    :end-before: Configurator
@@ -49,7 +49,7 @@ request handler.
    to the context. See :py:meth:`~baseplate.Baseplate.configure_context` for
    more info.
 
-.. literalinclude:: sql.py
+.. literalinclude:: helloworld.py
    :language: python
    :start-at: request.db
    :end-at: request.db
@@ -78,9 +78,9 @@ and the location at which to find them will be different depending on if we're
 running in production, staging, or development. So it's time for the
 configuration file again.
 
-.. literalinclude:: sql.ini
+.. literalinclude:: helloworld.ini
    :language: ini
-   :emphasize-lines: 6
+   :emphasize-lines: 7
 
 To wire up the database, all we need is to add a SQLAlchemy
 :py:class:`~sqlalchemy.engine.url.URL` to the configuration file. Because we
@@ -98,20 +98,20 @@ data.
 .. code-block:: console
 
    $ curl localhost:9090
-   {"Hello": "World", "Now": "2019-08-09"}
+   {"Hello": "World", "Now": "2021-03-02"}
 
 Great! If you look at the server logs when you make a request, you'll notice
 there are new metrics:
 
 .. code-block:: console
-   :emphasize-lines: 3,5
+   :emphasize-lines: 3-4
 
    $ baseplate-serve --debug helloworld.ini
    ...
-   17905:7296338476964580186:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.clients.db.execute:0.0824928|ms'
-   17905:7296338476964580186:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.server.hello_world:4.16493|ms'
-   17905:7296338476964580186:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.clients.db.execute.success:1|c'
-   17905:7296338476964580186:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.server.hello_world.success:1|c'
+   {"message": "Would send metric b'baseplate.client.latency,client=db,endpoint=execute:0.287533|ms'", ...
+   {"message": "Would send metric b'baseplate.client.rate,client=db,endpoint=execute,success=True:1|c'", ...
+   {"message": "Would send metric b'baseplate.server.latency,endpoint=hello_world:9.87291|ms'", ...
+   {"message": "Would send metric b'baseplate.server.rate,endpoint=hello_world,success=True:1|c'", ...
    ...
 
 The Baseplate.py SQLAlchemy integration automatically tracked usage of our
