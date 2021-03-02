@@ -1,4 +1,4 @@
-FROM thrift:0.12 AS thrift
+FROM ghcr.io/reddit/thrift-compiler:0.14.1 AS thrift
 
 FROM python:3.8
 
