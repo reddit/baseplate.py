@@ -29,11 +29,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pip
@@ -43,6 +38,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python --version
           python -m pip install -r requirements.txt
 
       - name: Lint
