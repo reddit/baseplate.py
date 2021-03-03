@@ -12,8 +12,7 @@ start using its components.
 
 .. code-block:: console
 
-   $ pip install 'git+https://github.com/apache/thrift#egg=thrift&subdirectory=lib/py'
-   $ pip install git+https://github.com/reddit/baseplate.py
+   $ pip install baseplate
 
 In the previous chapter, we made our service run its own HTTP/WSGI server. Now
 we're going to use Baseplate.py's server instead which is run with
@@ -39,13 +38,13 @@ format as understood by :py:mod:`configparser`.
 
 Open a new ``helloworld.ini`` in the tutorial directory and copy this into it:
 
-.. literalinclude:: basic.ini
+.. literalinclude:: helloworld.ini
    :language: ini
 
 Breaking it down, there are two sections to this configuration file,
 ``[app:main]`` and ``[server:main]``.
 
-.. literalinclude:: basic.ini
+.. literalinclude:: helloworld.ini
    :language: ini
    :start-at: [app:main]
    :end-before: [server:main]
@@ -55,7 +54,7 @@ itself. The ``factory`` is a function that returns an application object. In
 this case, it lives in the Python module ``helloworld`` and the function is
 called ``make_wsgi_app``.
 
-.. literalinclude:: basic.ini
+.. literalinclude:: helloworld.ini
    :language: ini
    :start-at: [server:main]
 
@@ -97,7 +96,7 @@ configuration for that application. The function that we specify in ``factory``
 needs to take a dictionary of the raw configuration values as an argument.
 Let's add that to our service.
 
-.. literalinclude:: serve_ready.py
+.. literalinclude:: helloworld.py
    :language: python
    :emphasize-lines: 10-11
 
@@ -113,8 +112,8 @@ Alright, third time's the charm, right?
 .. code-block:: console
 
    $ baseplate-serve --debug helloworld.ini
-   12593:MainThread:baseplate.server.runtime_monitor:INFO:No metrics client configured. Server metrics will not be sent.
-   12593:MainThread:baseplate.server:INFO:Listening on ('127.0.0.1', 9090)
+   {"message": "No metrics client configured. Server metrics will not be sent.", ...
+   {"message": "Listening on ('127.0.0.1', 9090), PID:2303772", ...
 
 Success! The ``--debug`` flag will turn on some extra log messages, so we can
 see a request log when we try hitting the service with :program:`curl` again.
@@ -128,12 +127,13 @@ And something shows up in the server's logs:
 
 .. code-block:: none
 
-   12593:DummyThread-1:baseplate.server.wsgi:DEBUG:127.0.0.1 - - [2019-08-07 23:42:32] "GET / HTTP/1.1" 200 147 0.007743
+   {"message": "127.0.0.1 - - [2021-03-02 15:05:46] \"GET / HTTP/1.1\" 200 126 0.002916", ...
 
-You'll notice the logs look a bit different from before.
+You'll notice the logs look a bit different from before. In fact, they're quite
+a bit longer (though we've truncated a lot in the examples above.)
 :program:`baseplate-serve` adds some extra info to help give context to your
-log entries. That ``DummyThread-1`` is pretty useless though, so we'll make it
-useful in the next chapter.
+log entries and structures them as JSON so the log entries can be parsed and
+indexed.
 
 Summary
 -------
