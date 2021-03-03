@@ -16,6 +16,9 @@ services:
 
   cassandra:
     image: "cassandra:3.11"
+    environment:
+      HEAP_NEWSIZE: 128M
+      MAX_HEAP_SIZE: 256M
   memcached:
     image: "memcached:1.5.6"
   redis:
