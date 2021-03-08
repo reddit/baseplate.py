@@ -383,6 +383,7 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         with self.server_span.make_child(trace_name):
             return super().execute_command(command, *args[1:], **kwargs)
 
+    # pylint: disable=arguments-differ
     def pipeline(self, name: str) -> "MonitoredClusterRedisPipeline":
         """Create a pipeline.
 
