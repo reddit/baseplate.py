@@ -13,6 +13,9 @@ services:
       - "memcached"
       - "redis"
       - "zookeeper"
+      - "redis-cluster-node-0"
+      - "redis-cluster-node-1"
+      - "redis-cluster-node-2"
 
   cassandra:
     image: "cassandra:3.11"
@@ -25,3 +28,29 @@ services:
     image: "redis:4.0.9"
   zookeeper:
     image: "zookeeper:3.4.10"
+  redis-cluster-node-0:
+    image: docker.io/bitnami/redis-cluster:6.2-debian-10
+    environment:
+      - 'ALLOW_EMPTY_PASSWORD=yes'
+      - 'REDIS_NODES=redis-cluster-node-0 redis-cluster-node-1 redis-cluster-node-2'
+  redis-cluster-node-1:
+    image: docker.io/bitnami/redis-cluster:6.2-debian-10
+    environment:
+      - 'ALLOW_EMPTY_PASSWORD=yes'
+      - 'REDIS_NODES=redis-cluster-node-0 redis-cluster-node-1 redis-cluster-node-2'
+  redis-cluster-node-2:
+    image: docker.io/bitnami/redis-cluster:6.2-debian-10
+    environment:
+      - 'ALLOW_EMPTY_PASSWORD=yes'
+      - 'REDIS_NODES=redis-cluster-node-0 redis-cluster-node-1 redis-cluster-node-2'
+ redis-cluster-init:
+    image: docker.io/bitnami/redis-cluster:6.2-debian-10
+    depends_on:
+      - redis-cluster-node-0
+      - redis-cluster-node-1
+      - redis-cluster-node-2
+    environment:
+      - 'REDISCLI_AUTH='
+      - 'REDIS_CLUSTER_REPLICAS=1'
+      - 'REDIS_NODES=redis-cluster-node-0 redis-cluster-node-1 redis-cluster-node-2'
+      - 'REDIS_CLUSTER_CREATOR=yes'
