@@ -279,7 +279,7 @@ def cluster_pool_from_config(
 
     parser = config.SpecParser(
         {
-            "startup_nodes": config.TupleOf(config.String),
+            "startup_nodes": config.TupleOf(config.Endpoint),
             "max_connections": config.Optional(config.Integer, default=None),
             "timeout": config.Optional(config.Timespan, default=None),
         }
