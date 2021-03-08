@@ -365,7 +365,6 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
 
     """
 
-    # TODO: Add all args below
     def __init__(
         self,
         context_name: str,
