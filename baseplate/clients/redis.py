@@ -287,10 +287,7 @@ def cluster_pool_from_config(
 
     options = parser.parse(prefix[:-1], app_config)
 
-    nodes = [
-        {"host": node[0], "port": node[1]}
-        for node in [startup_node.split(":") for startup_node in options.startup_nodes]
-    ]
+    nodes = [{"host": endpoint.address.host, "port": endpoint.address.port} for endpoint in options.startup_nodes]
 
     kwargs["startup_nodes"] = nodes
 
