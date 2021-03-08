@@ -11,7 +11,7 @@ try:
 except ImportError:
     raise unittest.SkipTest("redis-py-cluster is not installed")
 
-from baseplate.clients.redis import RedisClient, ClusterRedisClient
+from baseplate.clients.redis import RedisClient
 from baseplate import Baseplate
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
