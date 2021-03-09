@@ -224,6 +224,31 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         self.assertEqual(handler.server_span.sampled, False)
         self.assertTrue(client_result)
 
+    def test_budget_header(self):
+        """Test that the bedget header is set in the headers if the client sets it."""
+        budget = "1234"
+
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.server_span = None
+
+            def example(self, context):
+                self.server_span = context.span
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"Deadline-Budget", budget.encode())
+                client_result = client.example()
+
+        self.assertIsNotNone(handler.server_span)
+        self.assertEqual(handler.context.headers.get(b"Deadline-Budget").decode(), budget)
+        self.assertTrue(client_result)
+
 
 class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
     def _test(self, header_name=None):
@@ -405,6 +430,24 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 context.example_service.example()
 
         assert handler.edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
+
+    def test_budget_header(self):
+        """Test that the budget header is set in the headers if the client sets it."""
+        budget = 100
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(server.endpoint, TestService, span_observer) as context:
+                with context.example_service.retrying(attempts=3, budget=budget) as svc:
+                    svc.example()
+
+        assert handler.context.headers.get(b"Deadline-Budget").decode( ) == str(budget)
 
 
 class ThriftHealthcheck(GeventPatchedTestCase):

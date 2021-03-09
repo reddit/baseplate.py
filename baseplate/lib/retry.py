@@ -79,7 +79,7 @@ class IndefiniteRetryPolicy(RetryPolicy):  # pragma: noqa
 
     def yield_attempts(self) -> Iterator[Optional[float]]:
         while True:
-            yield None
+            yield (self, None)
 
 
 class MaximumAttemptsRetryPolicy(RetryPolicy):
@@ -93,7 +93,7 @@ class MaximumAttemptsRetryPolicy(RetryPolicy):
         for i, remaining in enumerate(self.subpolicy):
             if i == self.attempts:
                 break
-            yield remaining
+            yield (self, remaining)
 
 
 class TimeBudgetRetryPolicy(RetryPolicy):
@@ -107,14 +107,14 @@ class TimeBudgetRetryPolicy(RetryPolicy):
     def yield_attempts(self) -> Iterator[Optional[float]]:
         start_time = time.time()
 
-        yield self.budget
+        yield (self, self.budget)
 
         for _ in self.subpolicy:
             elapsed = time.time() - start_time
             time_remaining = self.budget - elapsed
             if time_remaining <= 0:
                 break
-            yield time_remaining
+            yield (self, time_remaining)
 
 
 class ExponentialBackoffRetryPolicy(RetryPolicy):
@@ -134,4 +134,4 @@ class ExponentialBackoffRetryPolicy(RetryPolicy):
 
                 time.sleep(delay)
 
-            yield time_remaining
+            yield (self, time_remaining)

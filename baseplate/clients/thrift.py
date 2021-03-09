@@ -16,7 +16,9 @@ from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import metrics
+from baseplate.lib.retry import ExponentialBackoffRetryPolicy
 from baseplate.lib.retry import RetryPolicy
+from baseplate.lib.retry import TimeBudgetRetryPolicy
 from baseplate.lib.thrift_pool import thrift_pool_from_config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 
@@ -145,7 +147,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         trace_name = f"{self.namespace}.{name}"
         last_error = None
 
-        for _ in self.retry_policy:
+        for retry_policy, value in self.retry_policy:
             span = self.server_span.make_child(trace_name)
             span.start()
 
@@ -160,6 +162,8 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     prot.trans.set_header(b"Trace", str(span.trace_id).encode())
                     prot.trans.set_header(b"Parent", str(span.parent_id).encode())
                     prot.trans.set_header(b"Span", str(span.id).encode())
+                    if isinstance(retry_policy, (TimeBudgetRetryPolicy, ExponentialBackoffRetryPolicy)):
+                        prot.trans.set_header(b"Deadline-Budget", str(value).encode())
                     if span.sampled is not None:
                         sampled = "1" if span.sampled else "0"
                         prot.trans.set_header(b"Sampled", sampled.encode())
