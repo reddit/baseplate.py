@@ -89,4 +89,4 @@ The following metrics are reported:
    How many connections have been established and are currently checked out and
    being used.
 
-.. versionadded:: 1.6
+.. versionadded:: 2.1
