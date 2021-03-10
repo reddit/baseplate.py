@@ -35,7 +35,7 @@ def cluster_pool_from_config(
 ) -> rediscluster.ClusterConnectionPool:
     """Make a ClusterConnectionPool from a configuration dictionary.
 
-    The keys useful to :py:func:`clusterpool_from_config` should be prefixed, e.g.
+    The keys useful to :py:func:`cluster_pool_from_config` should be prefixed, e.g.
     ``rediscluster.url``, ``rediscluster.max_connections``, etc. The ``prefix`` argument
     specifies the prefix used to filter keys.  Each key is mapped to a
     corresponding keyword argument on the :py:class:`rediscluster.ClusterConnectionPool`
