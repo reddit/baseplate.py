@@ -8,6 +8,7 @@ except ImportError:
 
 from baseplate.clients.redis import RedisClient
 from baseplate import Baseplate
+
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
 from baseplate.clients.redis import MessageQueue

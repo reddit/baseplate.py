@@ -3,9 +3,9 @@ import random
 from typing import Any
 from typing import Dict
 
-import rediscluster  # type: ignore
+import rediscluster
 
-from rediscluster.pipeline import ClusterPipeline  # type: ignore
+from rediscluster.pipeline import ClusterPipeline
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -14,20 +14,23 @@ from baseplate.lib import metrics
 
 
 # We want to be able to combine blocking behaviour with the ability to read from replicas
-# Unfortunately this is not provide as-is so we cmobine two connection pool classes to provide
+# Unfortunately this is not provide as-is so we combine two connection pool classes to provide
 # the desired behaviour.
 class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlockingConnectionPool):
     # pylint: disable=arguments-differ
     def get_node_by_slot(self, slot: int, read_command: bool = False) -> Dict[str, Any]:
         """
-        Get a random node from the slot, including master
+        Get a node from the slot.
+        If the command is a read command we'll try to return a random replica.
+        If there are no replicas or this isn't a read command we'll return the primary.
         """
-        nodes_in_slot = self.nodes.slots[slot]
-        if read_command:
-            random_index = random.randrange(1, len(nodes_in_slot))
-            return nodes_in_slot[random_index]
+        primary, *replicas = self.nodes.slots[slot]
 
-        return nodes_in_slot[0]
+        if replicas and read_command:
+            return random.choice(replicas)
+
+        # Either this isn't a read command or there aren't any replicas
+        return primary
 
 
 def cluster_pool_from_config(
@@ -60,7 +63,7 @@ def cluster_pool_from_config(
     parser = config.SpecParser(
         {
             "url": config.String,
-            "max_connections": config.Optional(config.Integer, default=None),
+            "max_connections": config.Optional(config.Integer, default=50),
             "timeout": config.Optional(config.Timespan, default=100),
             "read_from_replicas": config.Optional(config.Boolean, default=False),
             "skip_full_coverage_check": config.Optional(config.Boolean, default=True),
