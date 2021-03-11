@@ -21,16 +21,14 @@ class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlocking
     def get_node_by_slot(self, slot: int, read_command: bool = False) -> Dict[str, Any]:
         """
         Get a node from the slot.
-        If the command is a read command we'll try to return a random replica.
+        If the command is a read command we'll try to return a random node.
         If there are no replicas or this isn't a read command we'll return the primary.
         """
-        primary, *replicas = self.nodes.slots[slot]
+        if read_command:
+            return random.choice(self.nodes.slots[slot])
 
-        if replicas and read_command:
-            return random.choice(replicas)
-
-        # Either this isn't a read command or there aren't any replicas
-        return primary
+        # This isn't a read command, so return the primary
+        return self.nodes.slots[slot]
 
 
 def cluster_pool_from_config(
