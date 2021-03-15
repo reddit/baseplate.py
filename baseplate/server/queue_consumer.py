@@ -301,8 +301,8 @@ class QueueConsumerServer:
             handler.stop()
         retry_policy = RetryPolicy.new(budget=self.stop_timeout.total_seconds())
         logger.debug("Waiting for message handler threads to drain.")
-        for time_remaining, thread in zip(retry_policy, self.threads):
-            thread.join(timeout=time_remaining)
+        for retry_tuple, thread in zip(retry_policy, self.threads):
+            thread.join(timeout=retry_tuple[1])
         # Stop the healthcheck server last
         logger.debug("Stopping healthcheck server.")
         self.healthcheck_server.stop()

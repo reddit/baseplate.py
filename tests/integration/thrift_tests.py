@@ -72,13 +72,16 @@ def raw_thrift_client(endpoint, client_spec):
 
 
 @contextlib.contextmanager
-def baseplate_thrift_client(endpoint, client_spec, client_span_observer=None):
-    baseplate = Baseplate(
-        app_config={
-            "baseplate.service_name": "fancy test client",
-            "example_service.endpoint": str(endpoint),
-        }
-    )
+def baseplate_thrift_client(
+    endpoint, client_spec, client_span_observer=None, budget_header_test=False,
+):
+    app_config = {
+        "baseplate.service_name": "fancy test client",
+        "example_service.endpoint": str(endpoint),
+    }
+    if budget_header_test:
+        app_config["example_service.timeout"] = "1000 seconds"
+    baseplate = Baseplate(app_config=app_config)
 
     if client_span_observer:
 
@@ -431,9 +434,10 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
 
         assert handler.edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
-    def test_budget_header(self):
+    def test_budget_header_pool_timeout(self):
         """Test that the budget header is set in the headers if the client sets it."""
-        budget = 100
+        budget = 100.0
+
         class Handler(TestService.Iface):
             def example(self, context):
                 self.context = context
@@ -447,7 +451,28 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 with context.example_service.retrying(attempts=3, budget=budget) as svc:
                     svc.example()
 
-        assert handler.context.headers.get(b"Deadline-Budget").decode( ) == str(budget)
+        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(1000)
+
+    def test_budget_header_retry_timeout(self):
+        """Test that the budget header is set in the headers if the client sets it."""
+        budget = 100.0
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, budget_header_test=True
+            ) as context:
+                with context.example_service.retrying(attempts=3, budget=budget) as svc:
+                    svc.example()
+
+        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(int(budget) * 1000)
 
 
 class ThriftHealthcheck(GeventPatchedTestCase):

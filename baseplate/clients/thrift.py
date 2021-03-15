@@ -2,6 +2,7 @@ import contextlib
 import inspect
 import sys
 
+from math import ceil
 from typing import Any
 from typing import Callable
 from typing import Iterator
@@ -162,13 +163,26 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     prot.trans.set_header(b"Trace", str(span.trace_id).encode())
                     prot.trans.set_header(b"Parent", str(span.parent_id).encode())
                     prot.trans.set_header(b"Span", str(span.id).encode())
-                    if isinstance(retry_policy, (TimeBudgetRetryPolicy, ExponentialBackoffRetryPolicy)):
-                        prot.trans.set_header(b"Deadline-Budget", str(value).encode())
                     if span.sampled is not None:
                         sampled = "1" if span.sampled else "0"
                         prot.trans.set_header(b"Sampled", sampled.encode())
                     if span.flags:
                         prot.trans.set_header(b"Flags", str(span.flags).encode())
+
+                    min_timeout = None
+                    is_time_retry_policy = (
+                        retry_policy is TimeBudgetRetryPolicy
+                        or retry_policy is ExponentialBackoffRetryPolicy
+                    )
+                    if is_time_retry_policy:
+                        min_timeout = value
+                    if self.pool.timeout:
+                        if not min_timeout or self.pool.timeout < min_timeout:
+                            min_timeout = self.pool.timeout
+                    if min_timeout:
+                        prot.trans.set_header(
+                            b"Deadline-Budget", str(int(ceil(min_timeout * 1000))).encode()
+                        )
 
                     try:
                         edge_context = span.context.raw_edge_context
