@@ -170,16 +170,16 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         prot.trans.set_header(b"Flags", str(span.flags).encode())
 
                     min_timeout = None
-                    is_time_retry_policy = (
-                        retry_policy is TimeBudgetRetryPolicy
-                        or retry_policy is ExponentialBackoffRetryPolicy
+                    is_time_retry_policy = isinstance(retry_policy, TimeBudgetRetryPolicy) or (
+                        isinstance(retry_policy, ExponentialBackoffRetryPolicy)
+                        and isinstance(retry_policy.subpolicy, TimeBudgetRetryPolicy)
                     )
                     if is_time_retry_policy:
                         min_timeout = value
                     if self.pool.timeout:
                         if not min_timeout or self.pool.timeout < min_timeout:
                             min_timeout = self.pool.timeout
-                    if min_timeout:
+                    if min_timeout and min_timeout > 0:
                         prot.trans.set_header(
                             b"Deadline-Budget", str(int(ceil(min_timeout * 1000))).encode()
                         )

@@ -53,7 +53,7 @@ class RetryPolicyTests(unittest.TestCase):
     @mock.patch("time.sleep", autospec=True)
     def test_exponential_backoff(self, sleep):
         base_policy = mock.MagicMock()
-        base_policy.__iter__.return_value = itertools.repeat((base_policy, 0.9))
+        base_policy.__iter__.return_value = itertools.repeat((TimeBudgetRetryPolicy(None, 1), 0.9))
         policy = ExponentialBackoffRetryPolicy(base_policy, base=0.1)
 
         retries = iter(policy)
@@ -112,7 +112,7 @@ class ComplexPolicyTests(unittest.TestCase):
 
         time.return_value = 0.9
         time_remaining = next(retries)[1]
-        self.assertAlmostEqual(time_remaining, 0)
+        self.assertAlmostEqual(time_remaining, 0.1)
         self.assertAlmostEqual(sleep.call_args[0][0], 0.1, places=2)
 
         time.return_value = 1

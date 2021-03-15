@@ -4,7 +4,6 @@ import time
 from typing import Iterator
 from typing import Optional
 from typing import Tuple
-from typing import Type
 
 
 class RetryPolicy:
@@ -23,7 +22,7 @@ class RetryPolicy:
 
     """
 
-    def yield_attempts(self) -> Iterator[Tuple[Type["RetryPolicy"], Optional[float]]]:
+    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
         """Return an iterator which controls attempts.
 
         On each iteration, the iterator will yield the class of the retry
@@ -38,7 +37,7 @@ class RetryPolicy:
         """
         raise NotImplementedError
 
-    def __iter__(self) -> Iterator[Tuple[Type["RetryPolicy"], Optional[float]]]:
+    def __iter__(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
         """Return the result of :py:meth:`yield_attempts`.
 
         This allows policies to be directly iterated over.
@@ -80,9 +79,9 @@ class RetryPolicy:
 class IndefiniteRetryPolicy(RetryPolicy):  # pragma: noqa
     """Retry immediately forever."""
 
-    def yield_attempts(self) -> Iterator[Tuple[Type[RetryPolicy], Optional[float]]]:
+    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
         while True:
-            yield (self.__class__, None)
+            yield (self, None)
 
 
 class MaximumAttemptsRetryPolicy(RetryPolicy):
@@ -92,11 +91,11 @@ class MaximumAttemptsRetryPolicy(RetryPolicy):
         self.subpolicy = policy
         self.attempts = attempts
 
-    def yield_attempts(self) -> Iterator[Tuple[Type[RetryPolicy], Optional[float]]]:
+    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
         for i, (_, remaining) in enumerate(self.subpolicy):
             if i == self.attempts:
                 break
-            yield (self.__class__, remaining)
+            yield (self, remaining)
 
 
 class TimeBudgetRetryPolicy(RetryPolicy):
@@ -107,17 +106,17 @@ class TimeBudgetRetryPolicy(RetryPolicy):
         self.subpolicy = policy
         self.budget = budget
 
-    def yield_attempts(self) -> Iterator[Tuple[Type[RetryPolicy], Optional[float]]]:
+    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
         start_time = time.time()
 
-        yield (self.__class__, self.budget)
+        yield (self, self.budget)
 
         for _ in self.subpolicy:
             elapsed = time.time() - start_time
             time_remaining = self.budget - elapsed
             if time_remaining <= 0:
                 break
-            yield (self.__class__, time_remaining)
+            yield (self, time_remaining)
 
 
 class ExponentialBackoffRetryPolicy(RetryPolicy):
@@ -127,14 +126,15 @@ class ExponentialBackoffRetryPolicy(RetryPolicy):
         self.subpolicy = policy
         self.base = base
 
-    def yield_attempts(self) -> Iterator[Tuple[Type[RetryPolicy], Optional[float]]]:
-        for attempt, (_, time_remaining) in enumerate(self.subpolicy):
+    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
+        for attempt, (return_policy, value) in enumerate(self.subpolicy):
+            time_remaining = None
             if attempt > 0:
                 delay = self.base * 2.0 ** (attempt - 1.0)
-                if time_remaining:
-                    delay = min(delay, time_remaining)
-                    time_remaining -= delay
+                if value and isinstance(return_policy, TimeBudgetRetryPolicy):
+                    delay = min(delay, value)
+                    time_remaining = value - delay
 
                 time.sleep(delay)
 
-            yield (self.__class__, time_remaining)
+            yield (self, time_remaining if time_remaining else value)

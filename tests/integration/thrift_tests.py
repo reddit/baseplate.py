@@ -73,14 +73,14 @@ def raw_thrift_client(endpoint, client_spec):
 
 @contextlib.contextmanager
 def baseplate_thrift_client(
-    endpoint, client_spec, client_span_observer=None, budget_header_test=False,
+    endpoint, client_spec, client_span_observer=None, timeout=None,
 ):
     app_config = {
         "baseplate.service_name": "fancy test client",
         "example_service.endpoint": str(endpoint),
     }
-    if budget_header_test:
-        app_config["example_service.timeout"] = "1000 seconds"
+    if timeout:
+        app_config["example_service.timeout"] = timeout
     baseplate = Baseplate(app_config=app_config)
 
     if client_span_observer:
@@ -467,9 +467,33 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
         span_observer = mock.Mock(spec=SpanObserver)
         with serve_thrift(handler, TestService) as server:
             with baseplate_thrift_client(
-                server.endpoint, TestService, span_observer, budget_header_test=True
+                server.endpoint, TestService, span_observer, timeout="1000 seconds"
             ) as context:
                 with context.example_service.retrying(attempts=3, budget=budget) as svc:
+                    svc.example()
+
+        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(int(budget) * 1000)
+
+    def test_budget_header_budget_and_backoff(self):
+        """Test that the budget header is set in the headers if the client sets it."""
+        budget = 1.0
+        backoff = 1.0
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1000 seconds"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=budget, backoff=backoff
+                ) as svc:
                     svc.example()
 
         assert handler.context.headers.get(b"Deadline-Budget").decode() == str(int(budget) * 1000)
