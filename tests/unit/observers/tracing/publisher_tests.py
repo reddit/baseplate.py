@@ -32,14 +32,3 @@ class ZipkinPublisherTest(unittest.TestCase):
         spans = b"[]"
         self.publisher.publish(SerializedBatch(item_count=1, serialized=spans))
         self.assertEqual(self.session.post.call_count, 3)
-
-    def test_client_error(self):
-        self.session.post.side_effect = [
-            requests.HTTPError(400, response=mock.Mock(status_code=400))
-        ]
-        spans = b"[]"
-
-        with self.assertRaises(requests.HTTPError):
-            self.publisher.publish(SerializedBatch(item_count=1, serialized=spans))
-
-        self.assertEqual(self.session.post.call_count, 1)

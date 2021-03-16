@@ -99,9 +99,10 @@ class ZipkinPublisher:
                 response = getattr(exc, "response", None)
                 if response is not None:
                     logger.exception("HTTP Request failed. Error: %s", response.text)
-                    # If client error, crash
+                    # If client error, skip retries
                     if response.status_code < 500:
-                        raise
+                        self.metrics.counter("error.http.client").increment()
+                        return
                 else:
                     logger.exception("HTTP Request failed. Response not available")
             except OSError:
