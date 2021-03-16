@@ -127,11 +127,11 @@ class ExponentialBackoffRetryPolicy(RetryPolicy):
         self.base = base
 
     def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
-        for attempt, (return_policy, value) in enumerate(self.subpolicy):
+        for attempt, (retry_policy, value) in enumerate(self.subpolicy):
             time_remaining = None
             if attempt > 0:
                 delay = self.base * 2.0 ** (attempt - 1.0)
-                if value and isinstance(return_policy, TimeBudgetRetryPolicy):
+                if value and isinstance(retry_policy, TimeBudgetRetryPolicy):
                     delay = min(delay, value)
                     time_remaining = value - delay
 
