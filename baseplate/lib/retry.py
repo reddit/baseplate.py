@@ -3,7 +3,6 @@ import time
 
 from typing import Iterator
 from typing import Optional
-from typing import Tuple
 
 
 class RetryPolicy:
@@ -22,14 +21,13 @@ class RetryPolicy:
 
     """
 
-    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
+    def yield_attempts(self) -> Iterator[Optional[float]]:
         """Return an iterator which controls attempts.
 
-        On each iteration, the iterator will yield the class of the retry
-        policy and number of seconds left to retry of applicable, this
-        should be used to set the timeout on the operation being carried
-        out. If there is no maximum time remaining, :py:data:`None` is
-        yielded instead.
+        On each iteration, the iterator will yield the number of seconds left
+        to retry, this should be used to set the timeout on the operation
+        being carried out. If there is no maximum time remaining,
+        :py:data:`None` is yielded instead.
 
         The iterable will raise :py:exc:`StopIteration` once the operation
         should not be retried any further.
@@ -37,7 +35,7 @@ class RetryPolicy:
         """
         raise NotImplementedError
 
-    def __iter__(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
+    def __iter__(self) -> Iterator[Optional[float]]:
         """Return the result of :py:meth:`yield_attempts`.
 
         This allows policies to be directly iterated over.
@@ -79,9 +77,9 @@ class RetryPolicy:
 class IndefiniteRetryPolicy(RetryPolicy):  # pragma: noqa
     """Retry immediately forever."""
 
-    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
+    def yield_attempts(self) -> Iterator[Optional[float]]:
         while True:
-            yield (self, None)
+            yield None
 
 
 class MaximumAttemptsRetryPolicy(RetryPolicy):
@@ -91,11 +89,11 @@ class MaximumAttemptsRetryPolicy(RetryPolicy):
         self.subpolicy = policy
         self.attempts = attempts
 
-    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
-        for i, (_, remaining) in enumerate(self.subpolicy):
+    def yield_attempts(self) -> Iterator[Optional[float]]:
+        for i, remaining in enumerate(self.subpolicy):
             if i == self.attempts:
                 break
-            yield (self, remaining)
+            yield remaining
 
 
 class TimeBudgetRetryPolicy(RetryPolicy):
@@ -106,17 +104,17 @@ class TimeBudgetRetryPolicy(RetryPolicy):
         self.subpolicy = policy
         self.budget = budget
 
-    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
+    def yield_attempts(self) -> Iterator[Optional[float]]:
         start_time = time.time()
 
-        yield (self, self.budget)
+        yield self.budget
 
         for _ in self.subpolicy:
             elapsed = time.time() - start_time
             time_remaining = self.budget - elapsed
             if time_remaining <= 0:
                 break
-            yield (self, time_remaining)
+            yield time_remaining
 
 
 class ExponentialBackoffRetryPolicy(RetryPolicy):
@@ -126,15 +124,14 @@ class ExponentialBackoffRetryPolicy(RetryPolicy):
         self.subpolicy = policy
         self.base = base
 
-    def yield_attempts(self) -> Iterator[Tuple["RetryPolicy", Optional[float]]]:
-        for attempt, (retry_policy, value) in enumerate(self.subpolicy):
-            time_remaining = None
+    def yield_attempts(self) -> Iterator[Optional[float]]:
+        for attempt, time_remaining in enumerate(self.subpolicy):
             if attempt > 0:
                 delay = self.base * 2.0 ** (attempt - 1.0)
-                if value and isinstance(retry_policy, TimeBudgetRetryPolicy):
-                    delay = min(delay, value)
-                    time_remaining = value - delay
+                if time_remaining:
+                    delay = min(delay, time_remaining)
+                    time_remaining -= delay
 
                 time.sleep(delay)
 
-            yield (self, time_remaining if time_remaining else value)
+            yield time_remaining

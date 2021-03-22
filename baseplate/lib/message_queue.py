@@ -72,7 +72,7 @@ class MessageQueue:
             duration of the call.
 
         """
-        for _, time_remaining in RetryPolicy.new(budget=timeout):
+        for time_remaining in RetryPolicy.new(budget=timeout):
             try:
                 message, _ = self.queue.receive()
                 return message
@@ -92,7 +92,7 @@ class MessageQueue:
             duration of the call.
 
         """
-        for _, time_remaining in RetryPolicy.new(budget=timeout):
+        for time_remaining in RetryPolicy.new(budget=timeout):
             try:
                 return self.queue.send(message=message)
             except posix_ipc.SignalError:  # pragma: nocover

@@ -228,7 +228,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         self.assertTrue(client_result)
 
     def test_budget_header(self):
-        """Test that the bedget header is set in the headers if the client sets it."""
+        """Test that the budget header is set in the headers if the client sets it."""
         budget = "1234"
 
         class Handler(TestService.Iface):
@@ -435,7 +435,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
         assert handler.edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
     def test_budget_header_pool_timeout(self):
-        """Test that the budget header is set in the headers if the client sets it."""
+        """Test that the budget header is set in the headers with the pool timeout."""
         budget = 100.0
 
         class Handler(TestService.Iface):
@@ -454,7 +454,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
         assert handler.context.headers.get(b"Deadline-Budget").decode() == str(1000)
 
     def test_budget_header_retry_timeout(self):
-        """Test that the budget header is set in the headers if the client sets it."""
+        """Test that the budget header is set in the headers with the retry timeout."""
         budget = 100.0
 
         class Handler(TestService.Iface):
@@ -475,7 +475,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
         assert handler.context.headers.get(b"Deadline-Budget").decode() == str(int(budget) * 1000)
 
     def test_budget_header_budget_and_backoff(self):
-        """Test that the budget header is set in the headers if the client sets it."""
+        """Test that the budget header is set in the headers with the backoff timeout."""
         budget = 1.0
         backoff = 1.0
 
