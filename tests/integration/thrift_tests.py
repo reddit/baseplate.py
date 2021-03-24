@@ -248,7 +248,6 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
                 transport.set_header(b"Deadline-Budget", budget.encode())
                 client_result = client.example()
 
-        self.assertIsNotNone(handler.server_span)
         self.assertEqual(handler.context.headers.get(b"Deadline-Budget").decode(), budget)
         self.assertTrue(client_result)
 
@@ -436,7 +435,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
 
     def test_budget_header_pool_timeout(self):
         """Test that the budget header is set in the headers with the pool timeout."""
-        budget = 100.0
+        retry_timeout_seconds = 100.0
 
         class Handler(TestService.Iface):
             def example(self, context):
@@ -447,15 +446,19 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
 
         span_observer = mock.Mock(spec=SpanObserver)
         with serve_thrift(handler, TestService) as server:
-            with baseplate_thrift_client(server.endpoint, TestService, span_observer) as context:
-                with context.example_service.retrying(attempts=3, budget=budget) as svc:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1 second"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds
+                ) as svc:
                     svc.example()
 
         assert handler.context.headers.get(b"Deadline-Budget").decode() == str(1000)
 
     def test_budget_header_retry_timeout(self):
         """Test that the budget header is set in the headers with the retry timeout."""
-        budget = 100.0
+        retry_timeout_seconds = 0.1
 
         class Handler(TestService.Iface):
             def example(self, context):
@@ -469,14 +472,18 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
             with baseplate_thrift_client(
                 server.endpoint, TestService, span_observer, timeout="1000 seconds"
             ) as context:
-                with context.example_service.retrying(attempts=3, budget=budget) as svc:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds
+                ) as svc:
                     svc.example()
 
-        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(int(budget) * 1000)
+        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(
+            int(retry_timeout_seconds * 1000)
+        )
 
     def test_budget_header_budget_and_backoff(self):
         """Test that the budget header is set in the headers with the backoff timeout."""
-        budget = 1.0
+        retry_timeout_seconds = 1.0
         backoff = 1.0
 
         class Handler(TestService.Iface):
@@ -492,11 +499,13 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 server.endpoint, TestService, span_observer, timeout="1000 seconds"
             ) as context:
                 with context.example_service.retrying(
-                    attempts=3, budget=budget, backoff=backoff
+                    attempts=3, budget=retry_timeout_seconds, backoff=backoff
                 ) as svc:
                     svc.example()
 
-        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(int(budget) * 1000)
+        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(
+            int(retry_timeout_seconds) * 1000
+        )
 
 
 class ThriftHealthcheck(GeventPatchedTestCase):
