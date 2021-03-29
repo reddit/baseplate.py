@@ -117,4 +117,4 @@ class ComplexPolicyTests(unittest.TestCase):
 
         time.return_value = 1
         with self.assertRaises(StopIteration):
-            next(retries)[1]
+            next(retries)

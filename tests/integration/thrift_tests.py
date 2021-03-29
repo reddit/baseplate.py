@@ -454,6 +454,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 ) as svc:
                     svc.example()
 
+        # this should be 1 second (1000 ms)
         assert handler.context.headers.get(b"Deadline-Budget").decode() == str(1000)
 
     def test_budget_header_retry_timeout(self):
@@ -504,7 +505,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                     svc.example()
 
         assert handler.context.headers.get(b"Deadline-Budget").decode() == str(
-            int(retry_timeout_seconds) * 1000
+            int(retry_timeout_seconds * 1000)
         )
 
 
