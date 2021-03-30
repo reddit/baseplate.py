@@ -82,7 +82,13 @@ def _make_baseplate_tween(
             if request.span:
                 request.span.set_tag("http.status_code", response.status_code)
                 if hasattr(response, "explanation") and response.explanation:
-                    response.app_iter = SpanFinishingAppIterWrapper(request.span, chain(response.app_iter, [str.encode(response._status), str.encode(response.explanation)]))
+                    response.app_iter = SpanFinishingAppIterWrapper(
+                        request.span,
+                        chain(
+                            response.app_iter,
+                            [str.encode(response._status), str.encode(response.explanation)],
+                        ),
+                    )
                 else:
                     response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
         finally:
