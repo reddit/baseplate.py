@@ -51,7 +51,7 @@ def cluster_pool_from_config(
     * ``nodemanager_follow_cluster``: Tell the node manager to reuse the last set of
       nodes it was operating on when intializing.
     * ``read_from_replicas``: (Boolean) Whether the client should send all read queries to
-        replicas instead of the primary
+        replicas instead of just the primary
     * ``timeout``: how long to wait for sockets to connect. e.g.
         ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
     """
@@ -62,8 +62,8 @@ def cluster_pool_from_config(
         {
             "url": config.String,
             "max_connections": config.Optional(config.Integer, default=50),
-            "timeout": config.Optional(config.Timespan, default=100),
-            "read_from_replicas": config.Optional(config.Boolean, default=False),
+            "timeout": config.Optional(config.Timespan, default=None),
+            "read_from_replicas": config.Optional(config.Boolean, default=True),
             "skip_full_coverage_check": config.Optional(config.Boolean, default=True),
             "nodemanager_follow_cluster": config.Optional(config.Boolean, default=None),
             "decode_responses": config.Optional(config.Boolean, default=True),
