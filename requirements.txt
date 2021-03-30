@@ -1,3 +1,8 @@
+# This file is just used to set up baseplate.py's test environment. It is not
+# indicative of the versions you must use in your applications.
+#
+# See install_requires and extras_require in setup.py for the range of versions
+# supported.
 -r requirements-transitive.txt
 astroid==2.4.2
 black==19.10b0

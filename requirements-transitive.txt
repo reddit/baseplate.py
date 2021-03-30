@@ -1,3 +1,8 @@
+# This file is just used to set up baseplate.py's test environment. It is not
+# indicative of the versions you must use in your applications.
+#
+# See install_requires and extras_require in setup.py for the range of versions
+# supported.
 advocate==1.0.0
 alabaster==0.7.12
 amqp==2.6.1
