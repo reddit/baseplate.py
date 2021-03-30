@@ -81,7 +81,10 @@ def _make_baseplate_tween(
         else:
             if request.span:
                 request.span.set_tag("http.status_code", response.status_code)
-                response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
+                if hasattr(response, "explanation") and response.explanation:
+                    response.app_iter = SpanFinishingAppIterWrapper(request.span, chain(response.app_iter, [str.encode(response._status), str.encode(response.explanation)]))
+                else:
+                    response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
         finally:
             # avoid a reference cycle
             request.start_server_span = None
