@@ -2,6 +2,7 @@ import base64
 import logging
 import sys
 
+from itertools import chain
 from typing import Any
 from typing import Callable
 from typing import Dict
