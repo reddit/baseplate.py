@@ -27,8 +27,8 @@ class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlocking
         if read_command:
             return random.choice(self.nodes.slots[slot])
 
-        # This isn't a read command, so return the primary
-        return self.nodes.slots[slot]
+        # This isn't a read command, so return the primary (first node)
+        return self.nodes.slots[slot][0]
 
 
 def cluster_pool_from_config(
