@@ -13,6 +13,7 @@ Instrumented Client Libraries
    baseplate.clients.kombu: Client for publishing to queues <kombu>
    baseplate.clients.memcache: Memcached Client <memcache>
    baseplate.clients.redis: Redis Client <redis>
+   baseplate.clients.redis_cluster: Redis Cluster Client <redis_cluster>
    baseplate.clients.requests: Requests (HTTP) Client <requests>
    baseplate.clients.sqlalchemy: SQL Client for relational databases (e.g. PostgreSQL) <sqlalchemy>
    baseplate.clients.thrift: Thrift client for RPC to other backend services <thrift>
