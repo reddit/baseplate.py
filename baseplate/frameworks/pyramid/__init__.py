@@ -93,7 +93,9 @@ def _make_baseplate_tween(
                         ),
                     )
                 else:
-                    response.app_iter = SpanFinishingAppIterWrapper(request.trace, response.app_iter)
+                    response.app_iter = SpanFinishingAppIterWrapper(
+                        request.trace, response.app_iter
+                    )
         finally:
             # avoid a reference cycle
             request.start_server_span = None
