@@ -461,8 +461,8 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 ) as svc:
                     svc.example()
 
-        # this should be 1 second (1000 ms)
-        assert handler.context.deadline_budget == 1.0  # pool timeout seconds
+        # this should be 1 second (1000 ms) for the pool timeout
+        self.assertAlmostEqual(handler.context.deadline_budget, 1.0)
 
     def test_budget_header_retry_timeout(self):
         """Test that the budget header is set in the headers with the retry timeout."""
@@ -485,7 +485,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 ) as svc:
                     svc.example()
 
-        assert handler.context.deadline_budget == retry_timeout_seconds
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
 
     def test_budget_header_budget_and_backoff(self):
         """Test that the budget header is set in the headers with the backoff timeout."""
@@ -509,7 +509,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 ) as svc:
                     svc.example()
 
-        assert handler.context.deadline_budget == retry_timeout_seconds
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
 
     def test_budget_timeout_from_client(self):
         """Test that the server times out when passed a short timeout from the client."""
@@ -537,7 +537,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 ) as svc:
                     svc.example()
 
-        assert handler.context.deadline_budget == retry_timeout_seconds
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
 
 
 class ThriftHealthcheck(GeventPatchedTestCase):

@@ -35,7 +35,7 @@ def test_route_specific_timeout():
 
     context = baseplate.make_context_object()
     with baseplate.make_server_span(context, "test"):
-        gevent.sleep(0)  #
+        gevent.sleep(0)
 
 
 def test_timeout_from_context():
