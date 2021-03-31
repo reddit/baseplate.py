@@ -2,6 +2,7 @@ import base64
 import logging
 import sys
 
+from itertools import chain
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -83,7 +84,16 @@ def _make_baseplate_tween(
         else:
             if request.trace:
                 request.trace.set_tag("http.status_code", response.status_code)
-                response.app_iter = SpanFinishingAppIterWrapper(request.trace, response.app_iter)
+                if hasattr(response, "explanation") and response.explanation:
+                    response.app_iter = SpanFinishingAppIterWrapper(
+                        request.trace,
+                        chain(
+                            response.app_iter,
+                            [str.encode(response._status), str.encode(response.explanation)],
+                        ),
+                    )
+                else:
+                    response.app_iter = SpanFinishingAppIterWrapper(request.trace, response.app_iter)
         finally:
             # avoid a reference cycle
             request.start_server_span = None
