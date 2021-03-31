@@ -43,10 +43,6 @@ class TimeoutBaseplateObserver(BaseplateObserver):
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         timeout = self.config.by_endpoint.get(server_span.name, self.config.default)
-        try:
-            deadline_budget = context.deadline_budget
-        except AttributeError:
-            deadline_budget = None
 
         min_timeout = None
         if timeout is not config.InfiniteTimespan:
