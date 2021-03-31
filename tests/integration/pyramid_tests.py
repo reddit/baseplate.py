@@ -19,6 +19,7 @@ try:
 
     from baseplate.frameworks.pyramid import BaseplateConfigurator, ServerSpanInitialized
     from pyramid.config import Configurator
+    from pyramid.httpexceptions import HTTPNotImplemented
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
@@ -65,7 +66,7 @@ def example_application(request):
 
 
 def render_exception_view(request):
-    return
+    return HTTPNotImplemented(title="a fancy title", explanation="a fancy explanation")
 
 
 def render_bad_exception_view(request):
@@ -230,7 +231,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertIsInstance(captured_exc, TestException)
 
     def test_control_flow_exception_not_caught(self):
-        self.test_app.get("/example?control_flow_exception")
+        response = self.test_app.get("/example?control_flow_exception", status=501)
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
@@ -245,6 +246,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
         self.assertTrue(self.context_init_event_subscriber.called)
+        self.assertIn(b"a fancy explanation", response.body)
         _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
         self.assertIsInstance(captured_exc, ExceptionViewException)
 
