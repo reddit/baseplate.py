@@ -236,6 +236,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
         self.assertTrue(self.context_init_event_subscriber.called)
+        self.assertIn(b"a fancy explanation", response.body)
         args, _ = self.server_observer.on_finish.call_args
         self.assertEqual(args[0], None)
 
@@ -246,7 +247,6 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
         self.assertTrue(self.context_init_event_subscriber.called)
-        self.assertIn(b"a fancy explanation", response.body)
         _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
         self.assertIsInstance(captured_exc, ExceptionViewException)
 
