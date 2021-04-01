@@ -82,9 +82,11 @@ def _make_baseplate_tween(
                 request.trace.finish(exc_info=sys.exc_info())
             raise
         else:
+            print("\n\n\n\nhere")
             if request.trace:
                 request.trace.set_tag("http.status_code", response.status_code)
                 if hasattr(response, "explanation") and response.explanation:
+                    print("\n\n\n\nhere2")
                     response.app_iter = SpanFinishingAppIterWrapper(
                         request.trace,
                         chain(
