@@ -103,10 +103,11 @@ def baseplateify_processor(
             if edge_context_factory:
                 context.edge_context = edge_context_factory.from_upstream(edge_payload)
 
-            deadline_budget = headers.get(b"Deadline-Budget", None)
-            context.deadline_budget = (
-                float(deadline_budget.decode()) / 1000 if deadline_budget else None
-            )
+            try:
+                raw_deadline_budget = headers[b"Deadline-Budget"].decode()
+                context.deadline_budget = float(raw_deadline_budget) / 1000
+            except (KeyError, ValueError):
+                context.deadline_budget = None
 
             span = baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
 

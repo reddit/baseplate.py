@@ -47,10 +47,11 @@ class TimeoutBaseplateObserver(BaseplateObserver):
         min_timeout = None
         if timeout is not config.InfiniteTimespan:
             min_timeout = timeout.total_seconds()
+
         try:
             deadline_budget = context.deadline_budget
             if deadline_budget:
-                if not min_timeout or deadline_budget < timeout.total_seconds():
+                if not min_timeout or deadline_budget < min_timeout:
                     min_timeout = deadline_budget
         except AttributeError:
             # no deadline budget in request header
