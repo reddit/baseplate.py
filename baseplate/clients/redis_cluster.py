@@ -137,12 +137,9 @@ class ClusterRedisContextFactory(ContextFactory):
 
         size = self.connection_pool.max_connections
         open_connections = len(self.connection_pool._connections)
-        available = self.connection_pool.pool.qsize()
-        in_use = size - available
 
         batch.gauge("pool.size").replace(size)
-        batch.gauge("pool.in_use").replace(in_use)
-        batch.gauge("pool.open_and_available").replace(open_connections - in_use)
+        batch.gauge("pool.open_connections").replace(open_connections)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredClusterRedisConnection":
         return MonitoredClusterRedisConnection(name, span, self.connection_pool)
