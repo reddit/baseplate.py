@@ -6,6 +6,7 @@ from importlib import reload
 from unittest import mock
 
 import gevent.monkey
+import pytest
 
 from thrift.Thrift import TApplicationException
 
@@ -18,6 +19,8 @@ from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
+from baseplate.observers.timeout import ServerTimeout
+from baseplate.observers.timeout import TimeoutBaseplateObserver
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 from baseplate.thrift import BaseplateService
@@ -30,9 +33,10 @@ from .test_thrift import TestService
 
 
 @contextlib.contextmanager
-def serve_thrift(handler, server_spec, server_span_observer=None):
+def serve_thrift(handler, server_spec, server_span_observer=None, baseplate_observer=None):
     # create baseplate root
     baseplate = Baseplate()
+
     if server_span_observer:
 
         class TestBaseplateObserver(BaseplateObserver):
@@ -40,6 +44,9 @@ def serve_thrift(handler, server_spec, server_span_observer=None):
                 server_span.register(server_span_observer)
 
         baseplate.register(TestBaseplateObserver())
+
+    if baseplate_observer:
+        baseplate.register(baseplate_observer)
 
     # set up the server's processor
     logger = mock.Mock(spec=logging.Logger)
@@ -454,8 +461,8 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 ) as svc:
                     svc.example()
 
-        # this should be 1 second (1000 ms)
-        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(1000)
+        # this should be 1 second (1000 ms) for the pool timeout
+        self.assertAlmostEqual(handler.context.deadline_budget, 1.0)
 
     def test_budget_header_retry_timeout(self):
         """Test that the budget header is set in the headers with the retry timeout."""
@@ -478,9 +485,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 ) as svc:
                     svc.example()
 
-        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(
-            int(retry_timeout_seconds * 1000)
-        )
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
 
     def test_budget_header_budget_and_backoff(self):
         """Test that the budget header is set in the headers with the backoff timeout."""
@@ -504,9 +509,35 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 ) as svc:
                     svc.example()
 
-        assert handler.context.headers.get(b"Deadline-Budget").decode() == str(
-            int(retry_timeout_seconds * 1000)
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
+
+    def test_budget_timeout_from_client(self):
+        """Test that the server times out when passed a short timeout from the client."""
+        retry_timeout_seconds = 0.25
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                with pytest.raises(ServerTimeout):
+                    gevent.sleep(1)
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        timeout_observer = TimeoutBaseplateObserver.from_config(
+            {"server_timeout.default": "1 hour"}
         )
+        with serve_thrift(handler, TestService, baseplate_observer=timeout_observer) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1000 seconds"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds
+                ) as svc:
+                    svc.example()
+
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
 
 
 class ThriftHealthcheck(GeventPatchedTestCase):
