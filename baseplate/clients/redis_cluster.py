@@ -195,6 +195,7 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
             self.server_span,
             self.connection_pool,
             self.response_callbacks,
+            read_from_replicas=self.read_from_replicas,
         )
 
     # No transaction support in redis-py-cluster
