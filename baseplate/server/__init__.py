@@ -120,7 +120,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
         logging_level = logging.INFO
 
     formatter: logging.Formatter
-    if not sys.stdout.isatty():
+    if not sys.stdin.isatty():
         formatter = CustomJsonFormatter(
             "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d %(threadName)s"
         )
