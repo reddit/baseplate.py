@@ -119,9 +119,13 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     else:
         logging_level = logging.INFO
 
-    formatter = CustomJsonFormatter(
-        "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d %(threadName)s"
-    )
+    formatter: logging.Formatter
+    if not sys.stdin.isatty():
+        formatter = CustomJsonFormatter(
+            "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d %(threadName)s"
+        )
+    else:
+        formatter = logging.Formatter("%(levelname)-8s %(message)s")
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)

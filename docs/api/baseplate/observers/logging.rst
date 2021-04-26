@@ -20,9 +20,15 @@ controlled with :ref:`Python's standard logging configuration
 Outputs
 -------
 
-When used with :program:`baseplate-serve`, log entries are formatted as JSON
-objects that can be parsed automatically by log analysis systems. Log entry
-objects contain the following keys:
+The :program:`baseplate-serve` command will automatically set up log
+formatting.
+
+When directly used from a TTY, a simplified human-readable message format is
+emitted. Only the level and message are included.
+
+In production usage, log entries are formatted as JSON objects that can be
+parsed automatically by log analysis systems. Log entry objects contain the
+following keys:
 
 ``message``
    The message.
