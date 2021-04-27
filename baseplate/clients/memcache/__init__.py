@@ -13,6 +13,7 @@ from pymemcache.client.base import PooledClient
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib import metrics
 
 
 Serializer = Callable[[str, Any], Tuple[bytes, int]]
@@ -130,6 +131,12 @@ class MemcacheContextFactory(ContextFactory):
 
     def __init__(self, pooled_client: PooledClient):
         self.pooled_client = pooled_client
+
+    def report_memcache_runtime_metrics(self, batch: metrics.Client) -> None:
+        pool = self.pooled_client.client_pool
+        batch.gauge("pool.in_use").replace(len(pool.used))
+        batch.gauge("pool.open_and_available").replace(len(pool.free))
+        batch.gauge("pool.size").replace(pool.max_size)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredMemcacheConnection":
         return MonitoredMemcacheConnection(name, span, self.pooled_client)
