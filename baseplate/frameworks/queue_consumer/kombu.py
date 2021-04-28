@@ -79,11 +79,11 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
         self.serializer = serializer
         self.kwargs = kwargs
 
-    def get_consumers(self, Consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
+    def get_consumers(self, consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
         args = dict(queues=self.queues, on_message=self.work_queue.put, **self.kwargs)
         if self.serializer:
             args["accept"] = [self.serializer.name]
-        return [Consumer(**args)]
+        return [consumer(**args)]
 
     def stop(self) -> None:
         logger.debug("Closing KombuConsumerWorker.")
@@ -104,11 +104,11 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
         self.work_queue = work_queue
         self.serializer = serializer
 
-    def get_consumers(self, Consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
+    def get_consumers(self, consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
         args = dict(queues=self.queues, on_message=self.work_queue.put)
         if self.serializer:
             args["accept"] = [self.serializer.name]
-        return [Consumer(**args)]
+        return [consumer(**args)]
 
     def stop(self) -> None:
         logger.debug("Closing KombuBatchConsumerWorker.")
