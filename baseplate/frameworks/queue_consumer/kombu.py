@@ -234,13 +234,13 @@ class KombuBatchMessageHandler(MessageHandler):
                 delivery_tags.remove(None)
                 exchanges.remove(None)
 
-                routing_keys_span_tag = ",".join(item in routing_keys)
+                routing_keys_span_tag = ",".join(sorted(routing_keys))
                 span.set_tag("amqp.routing_keys", routing_keys_span_tag)
-                consumer_tags_span_tag = ",".join(item in consumer_tags)
+                consumer_tags_span_tag = ",".join(sorted(consumer_tags))
                 span.set_tag("amqp.consumer_tags", consumer_tags_span_tag)
-                delivery_tags_span_tag = ",".join(item in delivery_tags)
+                delivery_tags_span_tag = ",".join(sorted(delivery_tags))
                 span.set_tag("amqp.delivery_tags", delivery_tags_span_tag)
-                exchanges_span_tag = ",".join(item in exchanges)
+                exchanges_span_tag = ",".join(sorted(exchanges))
                 span.set_tag("amqp.exchanges", exchanges_span_tag)
 
                 self.handler_fn(context, list(messages))
