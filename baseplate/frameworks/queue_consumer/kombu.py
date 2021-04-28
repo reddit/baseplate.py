@@ -111,6 +111,9 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
         if self.serializer:
             args["accept"] = [self.serializer.name]
         return [consumer(**args)]
+    
+    def on_iteration(self):
+        self.work_queue.flush()
 
     def stop(self) -> None:
         logger.debug("Closing KombuBatchConsumerWorker.")
