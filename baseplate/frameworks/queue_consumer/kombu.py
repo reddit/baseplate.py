@@ -212,10 +212,10 @@ class KombuBatchMessageHandler(MessageHandler):
                 # The routing keys, consumer tags, delivery tags and exchanges span tags are
                 # comma-separated, de-duplicated lists of the tags in the messages
 
-                routing_keys = set(None)
-                consumer_tags = set(None)
-                delivery_tags = set(None)
-                exchanges = set(None)
+                routing_keys = set([None])
+                consumer_tags = set([None])
+                delivery_tags = set([None])
+                exchanges = set([None])
 
                 for message in messages:
                     message: kombu.Message
