@@ -1,0 +1,27 @@
+---
+
+version: "3"
+services:
+  baseplate:
+    build:
+      context: "."
+      dockerfile: "Dockerfile"
+    volumes:
+      - ".:/src"
+    links:
+      - "cassandra"
+      - "memcached"
+      - "redis"
+      - "zookeeper"
+
+  cassandra:
+    image: "cassandra:3.11"
+    environment:
+      HEAP_NEWSIZE: 128M
+      MAX_HEAP_SIZE: 256M
+  memcached:
+    image: "memcached:1.5.6"
+  redis:
+    image: "redis:4.0.9"
+  zookeeper:
+    image: "zookeeper:3.4.10"

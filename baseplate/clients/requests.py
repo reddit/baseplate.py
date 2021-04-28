@@ -58,7 +58,6 @@ def http_adapter_from_config(
         comprehensively to).
 
     """
-
     assert prefix.endswith(".")
     parser = config.SpecParser(
         {
@@ -187,16 +186,20 @@ class BaseplateSession:
         See :py:func:`requests.request` for valid keyword arguments.
 
         """
+        send_kwargs = {
+            "timeout": kwargs.pop("timeout", None),
+            "allow_redirects": kwargs.pop("allow_redirects", None),
+            "verify": kwargs.pop("verify", True),
+        }
         request = Request(method=method.upper(), url=url, **kwargs)
         prepared = self.prepare_request(request)
-        return self.send(prepared)
+        return self.send(prepared, **send_kwargs)
 
     def _add_span_context(self, span: Span, request: PreparedRequest) -> None:
         pass
 
-    def send(self, request: PreparedRequest) -> Response:
+    def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
         """Send a :py:class:`~requests.PreparedRequest`."""
-
         with self.span.make_child(f"{self.name}.request") as span:
             span.set_tag("http.method", request.method)
             span.set_tag("http.url", request.url)
@@ -211,7 +214,7 @@ class BaseplateSession:
             session = Session()
             session.mount("http://", self.adapter)
             session.mount("https://", self.adapter)
-            response = session.send(request)
+            response = session.send(request, **kwargs)
 
             span.set_tag("http.status_code", response.status_code)
         return response
@@ -228,7 +231,7 @@ class InternalBaseplateSession(BaseplateSession):
             request.headers["X-Flags"] = str(span.flags)
 
         try:
-            edge_context = span.context.raw_request_context
+            edge_context = span.context.raw_edge_context
         except AttributeError:
             pass
         else:
@@ -269,7 +272,7 @@ class InternalRequestsClient(config.Parser):
     """Configure a Requests client for use with internal Baseplate HTTP services.
 
     Requests made with this client **will** include trace context and
-    :doc:`edge context </api/baseplate/lib/edge_context>`. This client should
+    :doc:`edge context </api/baseplate/lib/edgecontext>`. This client should
     only be used to speak to trusted internal services.  URLs that resolve to
     public addresses will be rejected.  It is not possible to override the
     Advocate address validator used by this client.
@@ -316,7 +319,7 @@ class ExternalRequestsClient(config.Parser):
     """Configure a Requests client for use with external HTTP services.
 
     Requests made with this client **will not** include trace context and
-    :doc:`edge context </api/baseplate/lib/edge_context>`. This client is
+    :doc:`edge context </api/baseplate/lib/edgecontext>`. This client is
     suitable for use with third party or untrusted services.
 
     This is meant to be used with

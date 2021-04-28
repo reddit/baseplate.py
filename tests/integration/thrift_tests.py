@@ -2,10 +2,11 @@ import contextlib
 import logging
 import unittest
 
+from importlib import reload
 from unittest import mock
 
 import gevent.monkey
-import jwt
+import pytest
 
 from thrift.Thrift import TApplicationException
 
@@ -17,10 +18,9 @@ from baseplate import TraceInfo
 from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
-from baseplate.lib.edge_context import EdgeRequestContextFactory
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
 from baseplate.lib.thrift_pool import ThriftConnectionPool
+from baseplate.observers.timeout import ServerTimeout
+from baseplate.observers.timeout import TimeoutBaseplateObserver
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 from baseplate.thrift import BaseplateService
@@ -28,46 +28,15 @@ from baseplate.thrift import BaseplateServiceV2
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
 
-from .. import AUTH_TOKEN_PUBLIC_KEY
-from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
+from . import FakeEdgeContextFactory
 from .test_thrift import TestService
 
 
-cryptography_installed = True
-try:
-    import cryptography
-except ImportError:
-    cryptography_installed = False
-else:
-    del cryptography
-
-
-try:
-    from importlib import reload
-except ImportError:
-    pass
-
-
-def make_edge_context_factory():
-    mock_filewatcher = mock.Mock(spec=FileWatcher)
-    mock_filewatcher.get_data.return_value = {
-        "secrets": {
-            "secret/authentication/public-key": {
-                "type": "versioned",
-                "current": AUTH_TOKEN_PUBLIC_KEY,
-            }
-        },
-        "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-    }
-    secrets = SecretsStore("/secrets")
-    secrets._filewatcher = mock_filewatcher
-    return EdgeRequestContextFactory(secrets)
-
-
 @contextlib.contextmanager
-def serve_thrift(handler, server_spec, server_span_observer=None):
+def serve_thrift(handler, server_spec, server_span_observer=None, baseplate_observer=None):
     # create baseplate root
     baseplate = Baseplate()
+
     if server_span_observer:
 
         class TestBaseplateObserver(BaseplateObserver):
@@ -76,18 +45,19 @@ def serve_thrift(handler, server_spec, server_span_observer=None):
 
         baseplate.register(TestBaseplateObserver())
 
+    if baseplate_observer:
+        baseplate.register(baseplate_observer)
+
     # set up the server's processor
     logger = mock.Mock(spec=logging.Logger)
-    edge_context_factory = make_edge_context_factory()
+    edge_context_factory = FakeEdgeContextFactory()
     processor = server_spec.Processor(handler)
     processor = baseplateify_processor(processor, logger, baseplate, edge_context_factory)
 
     # bind a server socket on an available port
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
     listener = make_listener(server_bind_endpoint)
-    server = make_server(
-        {"max_concurrency": "100", "stop_timeout": "1 millisecond"}, listener, processor
-    )
+    server = make_server({"stop_timeout": "1 millisecond"}, listener, processor)
 
     # figure out what port the server ended up on
     server_address = listener.getsockname()
@@ -109,13 +79,16 @@ def raw_thrift_client(endpoint, client_spec):
 
 
 @contextlib.contextmanager
-def baseplate_thrift_client(endpoint, client_spec, client_span_observer=None):
-    baseplate = Baseplate(
-        app_config={
-            "baseplate.service_name": "fancy test client",
-            "example_service.endpoint": str(endpoint),
-        }
-    )
+def baseplate_thrift_client(
+    endpoint, client_spec, client_span_observer=None, timeout=None,
+):
+    app_config = {
+        "baseplate.service_name": "fancy test client",
+        "example_service.endpoint": str(endpoint),
+    }
+    if timeout:
+        app_config["example_service.timeout"] = timeout
+    baseplate = Baseplate(app_config=app_config)
 
     if client_span_observer:
 
@@ -133,16 +106,14 @@ def baseplate_thrift_client(endpoint, client_spec, client_span_observer=None):
 
     context = baseplate.make_context_object()
     trace_info = TraceInfo.from_upstream(
-        trace_id=1234, parent_id=2345, span_id=3456, flags=4567, sampled=True
+        trace_id="1234", parent_id="2345", span_id="3456", flags=4567, sampled=True
     )
 
     baseplate.configure_context({"example_service": ThriftClient(client_spec.Client)})
 
     baseplate.make_server_span(context, "example_service.example", trace_info)
 
-    edge_context_factory = make_edge_context_factory()
-    edge_context = edge_context_factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-    edge_context.attach_context(context)
+    context.raw_edge_context = FakeEdgeContextFactory.RAW_BYTES
 
     yield context
 
@@ -182,7 +153,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
                 self.server_span = None
 
             def example(self, context):
-                self.server_span = context.trace
+                self.server_span = context.span
                 return True
 
         handler = Handler()
@@ -192,15 +163,14 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
                 client_result = client.example()
 
         self.assertIsNotNone(handler.server_span)
-        self.assertGreaterEqual(handler.server_span.id, 0)
+        self.assertGreaterEqual(len(handler.server_span.id), 0)
         self.assertTrue(client_result)
 
     def test_header_propagation(self):
         """If the client sends headers, we should set the trace up accordingly."""
-
-        trace_id = 1234
-        parent_id = 2345
-        span_id = 3456
+        trace_id = "1234"
+        parent_id = "2345"
+        span_id = "3456"
         flags = 4567
         sampled = 1
 
@@ -209,7 +179,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
                 self.server_span = None
 
             def example(self, context):
-                self.server_span = context.trace
+                self.server_span = context.span
                 return True
 
         handler = Handler()
@@ -217,9 +187,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         with serve_thrift(handler, TestService) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
-                transport.set_header(b"Trace", str(trace_id).encode())
-                transport.set_header(b"Parent", str(parent_id).encode())
-                transport.set_header(b"Span", str(span_id).encode())
+                transport.set_header(b"Trace", trace_id.encode())
+                transport.set_header(b"Parent", parent_id.encode())
+                transport.set_header(b"Span", span_id.encode())
                 transport.set_header(b"Flags", str(flags).encode())
                 transport.set_header(b"Sampled", str(sampled).encode())
                 client_result = client.example()
@@ -234,17 +204,16 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
     def test_optional_headers_optional(self):
         """Test that we accept traces from clients that don't include all headers."""
-
-        trace_id = 1234
-        parent_id = 2345
-        span_id = 3456
+        trace_id = "1234"
+        parent_id = "2345"
+        span_id = "3456"
 
         class Handler(TestService.Iface):
             def __init__(self):
                 self.server_span = None
 
             def example(self, context):
-                self.server_span = context.trace
+                self.server_span = context.span
                 return True
 
         handler = Handler()
@@ -252,9 +221,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         with serve_thrift(handler, TestService) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
-                transport.set_header(b"Trace", str(trace_id).encode())
-                transport.set_header(b"Parent", str(parent_id).encode())
-                transport.set_header(b"Span", str(span_id).encode())
+                transport.set_header(b"Trace", trace_id.encode())
+                transport.set_header(b"Parent", parent_id.encode())
+                transport.set_header(b"Span", span_id.encode())
                 client_result = client.example()
 
         self.assertIsNotNone(handler.server_span)
@@ -265,69 +234,65 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         self.assertEqual(handler.server_span.sampled, False)
         self.assertTrue(client_result)
 
+    def test_budget_header(self):
+        """Test that the budget header is set in the headers if the client sets it."""
+        budget = "1234"
+
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.server_span = None
+
+            def example(self, context):
+                self.server_span = context.span
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"Deadline-Budget", budget.encode())
+                client_result = client.example()
+
+        self.assertEqual(handler.context.headers.get(b"Deadline-Budget").decode(), budget)
+        self.assertTrue(client_result)
+
 
 class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
+    def _test(self, header_name=None):
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.edge_context = None
+
+            def example(self, context):
+                self.edge_context = context.edge_context
+                return True
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                if header_name:
+                    transport = client._oprot.trans
+                    transport.set_header(header_name, FakeEdgeContextFactory.RAW_BYTES)
+                client_result = client.example()
+
+        assert client_result is True
+        return handler.edge_context
+
     def test_edge_request_context(self):
         """If the client sends an edge-request header we should parse it."""
+        edge_context = self._test(b"Edge-Request")
+        assert edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
-        class Handler(TestService.Iface):
-            def __init__(self):
-                self.request_context = None
-
-            def example(self, context):
-                self.request_context = context.request_context
-                return True
-
-        handler = Handler()
-
-        with serve_thrift(handler, TestService) as server:
-            with raw_thrift_client(server.endpoint, TestService) as client:
-                transport = client._oprot.trans
-                transport.set_header(b"Edge-Request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-                client_result = client.example()
-
-        self.assertIsNotNone(handler.request_context)
-        self.assertEqual(handler.request_context.user.id, "t2_example")
-        self.assertEqual(handler.request_context.user.roles, set())
-        self.assertEqual(handler.request_context.user.is_logged_in, True)
-        self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
-        self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
-        self.assertEqual(handler.request_context.oauth_client.id, None)
-        self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
-        self.assertEqual(handler.request_context.session.id, "beefdead")
-        self.assertTrue(client_result)
-
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
     def test_edge_request_context_case_insensitive(self):
-        """We should be case-insensitive to edge-request headers."""
+        edge_context = self._test(b"edge-request")
+        assert edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
-        class Handler(TestService.Iface):
-            def __init__(self):
-                self.request_context = None
-
-            def example(self, context):
-                self.request_context = context.request_context
-                return True
-
-        handler = Handler()
-
-        with serve_thrift(handler, TestService) as server:
-            with raw_thrift_client(server.endpoint, TestService) as client:
-                transport = client._oprot.trans
-                transport.set_header(b"edge-request", SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-                client_result = client.example()
-
-        self.assertIsNotNone(handler.request_context)
-        self.assertEqual(handler.request_context.user.id, "t2_example")
-        self.assertEqual(handler.request_context.user.roles, set())
-        self.assertEqual(handler.request_context.user.is_logged_in, True)
-        self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
-        self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
-        self.assertEqual(handler.request_context.oauth_client.id, None)
-        self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
-        self.assertEqual(handler.request_context.session.id, "beefdead")
-        self.assertTrue(client_result)
+    def test_no_edge_context(self):
+        edge_context = self._test()
+        assert edge_context is None
 
 
 class ThriftServerSpanTests(GeventPatchedTestCase):
@@ -460,10 +425,10 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
     def test_end_to_end(self):
         class Handler(TestService.Iface):
             def __init__(self):
-                self.request_context = None
+                self.edge_context = None
 
             def example(self, context):
-                self.request_context = context.request_context
+                self.edge_context = context.edge_context
                 return True
 
         handler = Handler()
@@ -473,17 +438,106 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
             with baseplate_thrift_client(server.endpoint, TestService, span_observer) as context:
                 context.example_service.example()
 
-        try:
-            self.assertEqual(handler.request_context.user.id, "t2_example")
-            self.assertEqual(handler.request_context.user.roles, set())
-            self.assertEqual(handler.request_context.user.is_logged_in, True)
-            self.assertEqual(handler.request_context.user.loid, "t2_deadbeef")
-            self.assertEqual(handler.request_context.user.cookie_created_ms, 100000)
-            self.assertEqual(handler.request_context.oauth_client.id, None)
-            self.assertFalse(handler.request_context.oauth_client.is_type("third_party"))
-            self.assertEqual(handler.request_context.session.id, "beefdead")
-        except jwt.exceptions.InvalidAlgorithmError:
-            raise unittest.SkipTest("cryptography is not installed")
+        assert handler.edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
+
+    def test_budget_header_pool_timeout(self):
+        """Test that the budget header is set in the headers with the pool timeout."""
+        retry_timeout_seconds = 100.0
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1 second"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds
+                ) as svc:
+                    svc.example()
+
+        # this should be 1 second (1000 ms) for the pool timeout
+        self.assertAlmostEqual(handler.context.deadline_budget, 1.0)
+
+    def test_budget_header_retry_timeout(self):
+        """Test that the budget header is set in the headers with the retry timeout."""
+        retry_timeout_seconds = 0.1
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1000 seconds"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds
+                ) as svc:
+                    svc.example()
+
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
+
+    def test_budget_header_budget_and_backoff(self):
+        """Test that the budget header is set in the headers with the backoff timeout."""
+        retry_timeout_seconds = 1.0
+        backoff = 1.0
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1000 seconds"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds, backoff=backoff
+                ) as svc:
+                    svc.example()
+
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
+
+    def test_budget_timeout_from_client(self):
+        """Test that the server times out when passed a short timeout from the client."""
+        retry_timeout_seconds = 0.25
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                with pytest.raises(ServerTimeout):
+                    gevent.sleep(1)
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        timeout_observer = TimeoutBaseplateObserver.from_config(
+            {"server_timeout.default": "1 hour"}
+        )
+        with serve_thrift(handler, TestService, baseplate_observer=timeout_observer) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1000 seconds"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds
+                ) as svc:
+                    svc.example()
+
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
 
 
 class ThriftHealthcheck(GeventPatchedTestCase):

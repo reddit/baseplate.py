@@ -3,29 +3,24 @@ import unittest
 
 from unittest import mock
 
-import jwt
-
 from pyramid.response import Response
 
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
-from baseplate.lib.edge_context import EdgeRequestContextFactory
-from baseplate.lib.edge_context import NoAuthenticationError
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
+
+from . import FakeEdgeContextFactory
+
 
 try:
     import webtest
 
-    from baseplate.frameworks.pyramid import BaseplateConfigurator, ServerSpanInitialized
+    from baseplate.frameworks.pyramid import BaseplateConfigurator
+    from baseplate.frameworks.pyramid import ServerSpanInitialized
+    from baseplate.frameworks.pyramid import StaticTrustHandler
     from pyramid.config import Configurator
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
-
-from .. import AUTH_TOKEN_PUBLIC_KEY
-from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
-from .. import SERIALIZED_EDGECONTEXT_WITH_NO_AUTH
 
 
 class TestException(Exception):
@@ -74,7 +69,7 @@ def render_bad_exception_view(request):
 
 
 def local_tracing_within_context(request):
-    with request.trace.make_child("local-req", local=True, component_name="in-context"):
+    with request.span.make_child("local-req", local=True, component_name="in-context"):
         pass
     return {"trace": "success"}
 
@@ -97,19 +92,6 @@ class ConfiguratorTests(unittest.TestCase):
             render_bad_exception_view, context=ControlFlowException2, renderer="json"
         )
 
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/authentication/public-key": {
-                    "type": "versioned",
-                    "current": AUTH_TOKEN_PUBLIC_KEY,
-                }
-            },
-            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-        }
-        secrets = SecretsStore("/secrets")
-        secrets._filewatcher = mock_filewatcher
-
         self.observer = mock.Mock(spec=BaseplateObserver)
         self.server_observer = mock.Mock(spec=ServerSpanObserver)
 
@@ -122,8 +104,8 @@ class ConfiguratorTests(unittest.TestCase):
         self.baseplate.register(self.observer)
         self.baseplate_configurator = BaseplateConfigurator(
             self.baseplate,
-            trust_trace_headers=True,
-            edge_context_factory=EdgeRequestContextFactory(secrets),
+            edge_context_factory=FakeEdgeContextFactory(),
+            header_trust_handler=StaticTrustHandler(trust_headers=True),
         )
         configurator.include(self.baseplate_configurator.includeme)
         self.context_init_event_subscriber = mock.Mock()
@@ -139,9 +121,9 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, 1234)
+        self.assertEqual(server_span.trace_id, "1234")
         self.assertEqual(server_span.parent_id, None)
-        self.assertEqual(server_span.id, 1234)
+        self.assertEqual(server_span.id, "1234")
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
@@ -152,7 +134,7 @@ class ConfiguratorTests(unittest.TestCase):
             "/example",
             headers={
                 "X-Trace": "1234",
-                "X-Edge-Request": base64.b64encode(SERIALIZED_EDGECONTEXT_WITH_NO_AUTH).decode(),
+                "X-Edge-Request": base64.b64encode(FakeEdgeContextFactory.RAW_BYTES).decode(),
                 "X-Parent": "2345",
                 "X-Span": "3456",
                 "X-Sampled": "1",
@@ -163,14 +145,11 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, 1234)
-        self.assertEqual(server_span.parent_id, 2345)
-        self.assertEqual(server_span.id, 3456)
+        self.assertEqual(server_span.trace_id, "1234")
+        self.assertEqual(server_span.parent_id, "2345")
+        self.assertEqual(server_span.id, "3456")
         self.assertEqual(server_span.sampled, True)
         self.assertEqual(server_span.flags, 1)
-
-        with self.assertRaises(NoAuthenticationError):
-            context.request_context.user.id
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
@@ -181,7 +160,7 @@ class ConfiguratorTests(unittest.TestCase):
             "/example",
             headers={
                 "X-Trace": "1234",
-                "X-Edge-Request": base64.b64encode(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH).decode(),
+                "X-Edge-Request": base64.b64encode(FakeEdgeContextFactory.RAW_BYTES).decode(),
                 "X-Parent": "2345",
                 "X-Span": "3456",
                 "X-Sampled": "1",
@@ -189,17 +168,7 @@ class ConfiguratorTests(unittest.TestCase):
             },
         )
         context, _ = self.observer.on_server_span_created.call_args[0]
-        try:
-            self.assertEqual(context.request_context.user.id, "t2_example")
-            self.assertEqual(context.request_context.user.roles, set())
-            self.assertEqual(context.request_context.user.is_logged_in, True)
-            self.assertEqual(context.request_context.user.loid, "t2_deadbeef")
-            self.assertEqual(context.request_context.user.cookie_created_ms, 100000)
-            self.assertEqual(context.request_context.oauth_client.id, None)
-            self.assertFalse(context.request_context.oauth_client.is_type("third_party"))
-            self.assertEqual(context.request_context.session.id, "beefdead")
-        except jwt.exceptions.InvalidAlgorithmError:
-            raise unittest.SkipTest("cryptography is not installed")
+        assert context.edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
     def test_empty_edge_request_headers(self):
         self.test_app.get(
@@ -214,7 +183,7 @@ class ConfiguratorTests(unittest.TestCase):
             },
         )
         context, _ = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(context.raw_request_context, b"")
+        self.assertEqual(context.raw_edge_context, b"")
 
     def test_not_found(self):
         self.test_app.get("/nope", status=404)
@@ -253,7 +222,7 @@ class ConfiguratorTests(unittest.TestCase):
 
     @mock.patch("random.getrandbits")
     def test_distrust_headers(self, getrandbits):
-        getrandbits.return_value = 1234
+        getrandbits.return_value = 9999
         self.baseplate_configurator.header_trust_handler.trust_headers = False
 
         self.test_app.get(
@@ -261,9 +230,9 @@ class ConfiguratorTests(unittest.TestCase):
         )
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, getrandbits.return_value)
+        self.assertEqual(server_span.trace_id, str(getrandbits.return_value))
         self.assertEqual(server_span.parent_id, None)
-        self.assertEqual(server_span.id, getrandbits.return_value)
+        self.assertEqual(server_span.id, str(getrandbits.return_value))
 
     def test_local_trace_in_context(self):
         self.test_app.get("/trace_context")

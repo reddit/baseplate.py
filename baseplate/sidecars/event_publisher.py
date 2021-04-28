@@ -12,6 +12,7 @@ from typing import Optional
 
 import requests
 
+from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
@@ -92,6 +93,9 @@ class BatchPublisher:
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
         self.session = requests.Session()
+        self.session.headers[
+            "User-Agent"
+        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
 
     def _sign_payload(self, payload: bytes) -> str:
         digest = hmac.new(self.key_secret, payload, hashlib.sha256).hexdigest()
@@ -180,13 +184,16 @@ def publish_events() -> None:
                 "version": config.Optional(config.Integer, default=1),
             },
             "key": {"name": config.String, "secret": config.Base64},
+            "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
         },
     )
 
     metrics_client = metrics_client_from_config(raw_config)
 
     event_queue = MessageQueue(
-        "/events-" + args.queue_name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE
+        "/events-" + args.queue_name,
+        max_messages=cfg.max_queue_size,
+        max_message_size=MAX_EVENT_SIZE,
     )
 
     # pylint: disable=maybe-no-member

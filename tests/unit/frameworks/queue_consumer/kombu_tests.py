@@ -234,6 +234,7 @@ class TestQueueConsumerFactory:
     @pytest.fixture
     def make_queue_consumer_factory(self, baseplate, exchange, connection, name, routing_keys):
         def _make_queue_consumer_factory(health_check_fn=None):
+            worker_kwargs = {"prefetch_limit": 1}
             return KombuQueueConsumerFactory.new(
                 baseplate=baseplate,
                 exchange=exchange,
@@ -243,6 +244,7 @@ class TestQueueConsumerFactory:
                 handler_fn=lambda ctx, body, msg: True,
                 error_handler_fn=lambda ctx, body, msg: True,
                 health_check_fn=health_check_fn,
+                worker_kwargs=worker_kwargs,
             )
 
         return _make_queue_consumer_factory
@@ -251,6 +253,7 @@ class TestQueueConsumerFactory:
         handler_fn = mock.Mock()
         error_handler_fn = mock.Mock()
         health_check_fn = mock.Mock()
+        worker_kwargs = {"prefetch_limit": 1}
         factory = KombuQueueConsumerFactory.new(
             baseplate=baseplate,
             exchange=exchange,
@@ -260,6 +263,7 @@ class TestQueueConsumerFactory:
             handler_fn=handler_fn,
             error_handler_fn=error_handler_fn,
             health_check_fn=health_check_fn,
+            worker_kwargs=worker_kwargs,
         )
         assert factory.baseplate == baseplate
         assert factory.connection == connection
@@ -271,6 +275,7 @@ class TestQueueConsumerFactory:
             assert queue.routing_key == routing_key
             assert queue.name == name
             assert queue.exchange == exchange
+        assert worker_kwargs == worker_kwargs
 
     def test_build_pump_worker(self, make_queue_consumer_factory):
         factory = make_queue_consumer_factory()
@@ -280,6 +285,7 @@ class TestQueueConsumerFactory:
         assert pump.connection == factory.connection
         assert pump.queues == factory.queues
         assert pump.work_queue == work_queue
+        assert pump.kwargs == {"prefetch_limit": 1}
 
     def test_build_message_handler(self, make_queue_consumer_factory):
         factory = make_queue_consumer_factory()

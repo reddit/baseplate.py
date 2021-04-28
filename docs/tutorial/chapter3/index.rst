@@ -15,27 +15,27 @@ etc.---this class works the same. The magic happens when we use one of
 Baseplate.py's framework integrations to connect the two things together.
 Let's do that in our service now.
 
-.. literalinclude:: observed.py
+.. literalinclude:: helloworld.py
    :language: python
    :emphasize-lines: 1-2, 13-14, 17
 
 This is all we need to do to get basic observability in our service.
 Line-by-line:
 
-.. literalinclude:: observed.py
+.. literalinclude:: helloworld.py
    :language: python
    :lines: 13
 
 We create a :py:class:`~baseplate.Baseplate` object during application startup.
 
-.. literalinclude:: observed.py
+.. literalinclude:: helloworld.py
    :language: python
    :lines: 14
 
 Then we call :py:meth:`~baseplate.Baseplate.configure_observers` and pass in
 the application configuration. We'll talk more about this in a moment.
 
-.. literalinclude:: observed.py
+.. literalinclude:: helloworld.py
    :language: python
    :lines: 17
 
@@ -48,10 +48,10 @@ different.
    :emphasize-lines: 2
 
    $ baseplate-serve --debug helloworld.ini
-   1072:MainThread:baseplate:DEBUG:The following observers are unconfigured and won't run: metrics, tracing, error_reporter
-   1072:MainThread:baseplate.server.runtime_monitor:INFO:No metrics client configured. Server metrics will not be sent.
-   1072:MainThread:baseplate.server:INFO:Listening on ('127.0.0.1', 9090)
-   1072:3776872808671626432:baseplate.server.wsgi:DEBUG:127.0.0.1 - - [2019-08-08 04:46:58] "GET / HTTP/1.1" 200 147 0.008789
+   {"message": "The following observers are unconfigured and won't run: metrics, tracing, sentry", ...
+   {"message": "No metrics client configured. Server metrics will not be sent.", ...
+   {"message": "Listening on ('127.0.0.1', 9090), PID:2308014", ...
+   {"message": "127.0.0.1 - - [2021-03-02 15:08:15] \"GET / HTTP/1.1\" 200 145 0.002052", ...
 
 It still works and things don't look too different. The first thing you'll see
 is the ``observers are unconfigured`` line. This is there because we called
@@ -59,10 +59,10 @@ is the ``observers are unconfigured`` line. This is there because we called
 our configuration file so of course they're all unconfigured!
 
 There is one other change even with those unconfigured observers. The log line
-for the test request we sent no longer says ``DummyThread-1`` but instead has a
-really long number in its place. That's the Trace ID of the request. You'll see
-in the next section that when a single request causes multiple log lines,
-they'll all have the same Trace ID which helps correlate them.
+for the test request we sent now has a field called "traceID".  That's the
+Trace ID of the request. You'll see in the next section that when a single
+request causes multiple log lines, they'll all have the same Trace ID which
+helps correlate them.
 
 .. note::
 
@@ -85,22 +85,23 @@ that just prints the metrics it would send out to the logs instead.
 
 .. _`StatsD`: https://github.com/statsd/statsd
 
-.. literalinclude:: observed.ini
+.. literalinclude:: helloworld.ini
    :language: ini
-   :emphasize-lines: 4
+   :emphasize-lines: 4-5
 
-To turn it on, we just add one line to our configuration file. This tells the
-observer what base name it should use for the metrics it sends. Once we have
-done that, we can start the server up again.
+This tells Baseplate to configure the :doc:`tagged metrics observer
+</api/baseplate/observers/tagged_statsd>` and that it should log the metrics
+it would send had we configured a destination. Once we have done that, we can
+start the server up again.
 
 .. code-block:: console
 
    $ baseplate-serve --debug helloworld.ini
-   1104:MainThread:baseplate:DEBUG:The following observers are unconfigured and won't run: tracing, error_reporter
-   1104:MainThread:baseplate.server:INFO:Listening on ('127.0.0.1', 9090)
-   1104:2115808718993382189:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.server.hello_world:3.53074|ms'
-   1104:2115808718993382189:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.server.hello_world.success:1|c'
-   1104:2115808718993382189:baseplate.server.wsgi:DEBUG:127.0.0.1 - - [2019-08-08 04:47:32] "GET / HTTP/1.1" 200 147 0.009720
+   {"message": "The following observers are unconfigured and won't run: tracing, sentry", ...
+   {"message": "Listening on ('127.0.0.1', 9090), PID:2310914", ...
+   {"message": "Would send metric b'baseplate.server.latency,endpoint=hello_world:1.80316|ms'", ...
+   {"message": "Would send metric b'baseplate.server.rate,endpoint=hello_world,success=True:1|c'", ...
+   {"message": "127.0.0.1 - - [2021-03-02 15:10:34] \"GET / HTTP/1.1\" 200 145 0.004433", ...
 
 If it worked right, ``metrics`` won't be listed as an unconfigured observer
 anymore. Now when you make requests to your service you'll see a few extra log
@@ -118,9 +119,9 @@ metrics appear periodically:
 
 .. code-block:: console
 
-   1104:Server Monitoring:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.runtime.reddit.PID1104.active_requests:0|g'
-   1104:Server Monitoring:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.runtime.reddit.PID1104.gc.gen0.collections:154|g'
-   1104:Server Monitoring:baseplate.lib.metrics:DEBUG:Would send metric b'helloworld.runtime.reddit.PID1104.gc.gen0.collected:8244|g'
+   {"message": "Would send metric b'runtime.open_connections,hostname=reddit,PID=2311569:0|g'", ...
+   {"message": "Would send metric b'runtime.active_requests,hostname=reddit,PID=2311569:0|g'", ...
+   {"message": "Would send metric b'runtime.gc.collections,hostname=reddit,PID=2311569,generation=0:110|g'" ...
    ...
 
 These metrics come out of the server itself and track information that's not

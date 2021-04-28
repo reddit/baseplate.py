@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 
 from contextlib import contextmanager
@@ -10,24 +11,25 @@ from typing import Iterator
 from typing import List
 from typing import NamedTuple
 from typing import Optional
-from typing import overload
 from typing import Tuple
 from typing import Type
-from typing import TYPE_CHECKING
 
 import gevent.monkey
+
+from pkg_resources import DistributionNotFound
+from pkg_resources import get_distribution
 
 from baseplate.lib import config
 from baseplate.lib import get_calling_module_name
 from baseplate.lib import metrics
 from baseplate.lib import UnknownCallerError
-from baseplate.lib import warn_deprecated
 
 
-if TYPE_CHECKING:
-    import baseplate.clients
-    import baseplate.observers.tracing
-    import raven
+try:
+    __version__ = get_distribution(__name__).version
+except DistributionNotFound:
+    # package is not installed
+    __version__ = "unknown"
 
 
 logger = logging.getLogger(__name__)
@@ -100,13 +102,13 @@ class TraceInfo(NamedTuple):
     """
 
     #: The ID of the whole trace. This will be the same for all downstream requests.
-    trace_id: int
+    trace_id: str
 
     #: The ID of the parent span, or None if this is the root span.
-    parent_id: Optional[int]
+    parent_id: Optional[str]
 
     #: The ID of the current span. Should be unique within a trace.
-    span_id: int
+    span_id: str
 
     #: True if this trace was selected for sampling. Will be propagated to child spans.
     sampled: Optional[bool]
@@ -122,15 +124,15 @@ class TraceInfo(NamedTuple):
         with any upstream requests.
 
         """
-        trace_id = random.getrandbits(64)
+        trace_id = str(random.getrandbits(64))
         return cls(trace_id=trace_id, parent_id=None, span_id=trace_id, sampled=None, flags=None)
 
     @classmethod
     def from_upstream(
         cls,
-        trace_id: Optional[int],
-        parent_id: Optional[int],
-        span_id: Optional[int],
+        trace_id: Optional[str],
+        parent_id: Optional[str],
+        span_id: Optional[str],
         sampled: Optional[bool],
         flags: Optional[int],
     ) -> "TraceInfo":
@@ -145,13 +147,13 @@ class TraceInfo(NamedTuple):
         :raises: :py:exc:`ValueError` if any of the values are inappropriate.
 
         """
-        if trace_id is None or not 0 <= trace_id < 2 ** 64:
+        if trace_id is None:
             raise ValueError("invalid trace_id")
 
-        if span_id is None or not 0 <= span_id < 2 ** 64:
+        if span_id is None:
             raise ValueError("invalid span_id")
 
-        if parent_id is None or not 0 <= parent_id < 2 ** 64:
+        if parent_id is None:
             raise ValueError("invalid parent_id")
 
         if sampled is not None and not isinstance(sampled, bool):
@@ -198,7 +200,7 @@ class RequestContext:
         # reference. so we fake it here and say "trust us".
         #
         # this would be much cleaner with a different API but this is where we are.
-        self.trace: "Span" = span  # type: ignore
+        self.span: "Span" = span  # type: ignore
 
     def __getattr__(self, name: str) -> Any:
         try:
@@ -217,9 +219,9 @@ class RequestContext:
             full_name = name
 
         if isinstance(config_item, dict):
-            obj = RequestContext(context_config=config_item, prefix=full_name, span=self.trace)
+            obj = RequestContext(context_config=config_item, prefix=full_name, span=self.span)
         elif hasattr(config_item, "make_object_for_context"):
-            obj = config_item.make_object_for_context(full_name, self.trace)
+            obj = config_item.make_object_for_context(full_name, self.span)
         else:
             obj = config_item
 
@@ -235,9 +237,14 @@ class RequestContext:
         return RequestContext(
             context_config=self.__context_config,
             prefix=self.__prefix,
-            span=self.trace,
+            span=self.span,
             wrapped=self,
         )
+
+
+class ReusedContextObjectError(Exception):
+    def __init__(self) -> None:
+        super().__init__("Context objects cannot be re-used. See https://git.io/JtEKq")
 
 
 class Baseplate:
@@ -273,7 +280,6 @@ class Baseplate:
             ...
 
         """
-
         self.observers: List[BaseplateObserver] = []
         self._metrics_client: Optional[metrics.Client] = None
         self._context_config: Dict[str, Any] = {}
@@ -295,106 +301,8 @@ class Baseplate:
         """
         self.observers.append(observer)
 
-    def configure_logging(self) -> None:
-        """Add request context to the logging system.
-
-        .. deprecated:: 1.0
-
-            Use :py:meth:`configure_observers` instead.
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.logging import LoggingBaseplateObserver
-
-        self.register(LoggingBaseplateObserver())
-
-    def configure_tagged_metrics(self, metrics_client: metrics.Client) -> None:
-        """Register a Tagged Metrics Observer on the metrics client.
-
-        Only called if already determined that the user has configured tagging to be on.
-
-        :param metrics_client: Metrics client to send request metrics to.
-        :param app_config: The configuration file for the application to parse for metrics tags and flags
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.metrics_tagged import TaggedMetricsBaseplateObserver
-
-        self._metrics_client = metrics_client
-        self.register(
-            TaggedMetricsBaseplateObserver.from_config_and_client(self._app_config, metrics_client)
-        )
-
-    def configure_metrics(self, metrics_client: metrics.Client) -> None:
-        """Send timing metrics to the given client.
-
-        This also adds a :py:class:`baseplate.lib.metrics.Batch` object to the
-        ``metrics`` attribute on the :py:class:`~baseplate.RequestContext`
-        where you can add your own application-specific metrics. The batch is
-        automatically flushed at the end of the request.
-
-        .. deprecated:: 1.0
-
-            Use :py:meth:`configure_observers` instead.
-
-        :param metrics_client: Metrics client to send request metrics to.
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.metrics import MetricsBaseplateObserver
-
-        self._metrics_client = metrics_client
-        self.register(
-            MetricsBaseplateObserver.from_config_and_client(self._app_config, metrics_client)
-        )
-
-    def configure_tracing(
-        self, tracing_client: "baseplate.observers.tracing.TracingClient"
-    ) -> None:
-        """Collect and send span information for request tracing.
-
-        When configured, this will send tracing information automatically
-        collected by Baseplate to the configured distributed tracing service.
-
-        .. deprecated:: 1.0
-
-            Use :py:meth:`configure_observers` instead.
-
-        :param tracing_client: Tracing client to send request traces to.
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.tracing import TraceBaseplateObserver
-
-        self.register(TraceBaseplateObserver(tracing_client))
-
-    def configure_error_reporting(self, client: "raven.Client") -> None:
-        """Send reports for unexpected exceptions to the given client.
-
-        This also adds a :py:class:`raven.Client` object to the ``sentry``
-        attribute on the :py:class:`~baseplate.RequestContext` where you can
-        send your own application-specific events.
-
-        .. deprecated:: 1.0
-
-            Use :py:meth:`configure_observers` instead.
-
-        :param client: A configured raven client.
-
-        """
-        # pylint: disable=cyclic-import
-        from baseplate.observers.sentry import SentryBaseplateObserver, SentryUnhandledErrorReporter
-
-        from gevent import get_hub
-
-        hub = get_hub()
-        hub.print_exception = SentryUnhandledErrorReporter(hub, client)
-
-        self.register(SentryBaseplateObserver(client))
-
-    def configure_observers(
-        self, app_config: Optional[config.RawConfig] = None, module_name: Optional[str] = None
-    ) -> None:
+    # pylint: disable=cyclic-import
+    def configure_observers(self) -> None:
         """Configure diagnostics observers based on application configuration.
 
         This installs all the currently supported observers that have settings
@@ -403,84 +311,72 @@ class Baseplate:
         See :py:mod:`baseplate.observers` for the configuration settings
         available for each observer.
 
-        :param app_config: The application configuration which should have
-            settings for the error reporter. If not specified, the config must be passed
-            to the Baseplate() constructor.
-        :param module_name: Name of the root package of the application. If not specified,
-            will be guessed from the package calling this function.
-
         """
         skipped = []
 
-        if app_config:
-            if self._app_config:
-                raise Exception("pass app_config to the constructor or this method but not both")
+        from baseplate.observers.logging import LoggingBaseplateObserver
 
-            warn_deprecated(
-                "Passing configuration to configure_observers is deprecated in "
-                "favor of passing it to the Baseplate constructor"
-            )
-        else:
-            app_config = self._app_config
-
-        self.configure_logging()
+        self.register(LoggingBaseplateObserver())
 
         if gevent.monkey.is_module_patched("socket"):
-            # pylint: disable=cyclic-import
             from baseplate.observers.timeout import TimeoutBaseplateObserver
 
-            timeout_observer = TimeoutBaseplateObserver.from_config(app_config)
+            timeout_observer = TimeoutBaseplateObserver.from_config(self._app_config)
             self.register(timeout_observer)
         else:
             skipped.append("timeout")
-        if "metrics.tagging" in app_config:
-            if "metrics.namespace" in app_config:
+
+        if "metrics.tagging" in self._app_config:
+            if "metrics.namespace" in self._app_config:
                 raise ValueError("metrics.namespace not allowed with metrics.tagging")
             from baseplate.lib.metrics import metrics_client_from_config
+            from baseplate.observers.metrics_tagged import TaggedMetricsBaseplateObserver
 
-            metrics_client = metrics_client_from_config(app_config)
-            self.configure_tagged_metrics(metrics_client)
-        elif "metrics.namespace" in app_config:
+            self._metrics_client = metrics_client_from_config(self._app_config)
+            self.register(
+                TaggedMetricsBaseplateObserver.from_config_and_client(
+                    self._app_config, self._metrics_client
+                )
+            )
+        elif "metrics.namespace" in self._app_config:
             from baseplate.lib.metrics import metrics_client_from_config
+            from baseplate.observers.metrics import MetricsBaseplateObserver
 
-            metrics_client = metrics_client_from_config(app_config)
-            self.configure_metrics(metrics_client)
+            self._metrics_client = metrics_client_from_config(self._app_config)
+            self.register(
+                MetricsBaseplateObserver.from_config_and_client(
+                    self._app_config, self._metrics_client
+                )
+            )
         else:
             skipped.append("metrics")
 
-        if "tracing.service_name" in app_config:
+        if "tracing.service_name" in self._app_config:
             from baseplate.observers.tracing import tracing_client_from_config
+            from baseplate.observers.tracing import TraceBaseplateObserver
 
-            tracing_client = tracing_client_from_config(app_config)
-            self.configure_tracing(tracing_client)
+            tracing_client = tracing_client_from_config(self._app_config)
+            self.register(TraceBaseplateObserver(tracing_client))
         else:
             skipped.append("tracing")
 
-        if "sentry.dsn" in app_config:
-            from baseplate.observers.sentry import error_reporter_from_config
+        if "sentry.dsn" in self._app_config or "SENTRY_DSN" in os.environ:
+            from baseplate.observers.sentry import init_sentry_client_from_config
+            from baseplate.observers.sentry import SentryBaseplateObserver
+            from baseplate.observers.sentry import _SentryUnhandledErrorReporter
 
-            if module_name is None:
-                module_name = get_calling_module_name()
-
-            error_reporter = error_reporter_from_config(app_config, module_name)
-            self.configure_error_reporting(error_reporter)
+            init_sentry_client_from_config(self._app_config)
+            _SentryUnhandledErrorReporter.install()
+            self.register(SentryBaseplateObserver())
         else:
-            skipped.append("error_reporter")
+            skipped.append("sentry")
 
         if skipped:
             logger.debug(
                 "The following observers are unconfigured and won't run: %s", ", ".join(skipped)
             )
 
-    @overload
     def configure_context(self, context_spec: Dict[str, Any]) -> None:
-        ...
-
-    @overload  # noqa: F811
-    def configure_context(self, app_config: config.RawConfig, context_spec: Dict[str, Any]) -> None:
-        ...
-
-    def configure_context(self, *args: Any, **kwargs: Any) -> None:  # noqa: F811
         """Add a number of objects to each request's context object.
 
         Configure and attach multiple clients to the
@@ -514,46 +410,32 @@ class Baseplate:
             look like.
 
         """
-
-        if len(args) == 1:
-            kwargs["context_spec"] = args[0]
-        elif len(args) == 2:
-            kwargs["app_config"] = args[0]
-            kwargs["context_spec"] = args[1]
-        else:
-            raise Exception("bad parameters to configure_context")
-
-        if "app_config" in kwargs:
-            if self._app_config:
-                raise Exception("pass app_config to the constructor or this method but not both")
-
-            warn_deprecated(
-                "Passing configuration to configure_context is deprecated in "
-                "favor of passing it to the Baseplate constructor"
-            )
-            app_config = kwargs["app_config"]
-        else:
-            app_config = self._app_config
-        context_spec = kwargs["context_spec"]
-
-        cfg = config.parse_config(app_config, context_spec)
+        cfg = config.parse_config(self._app_config, context_spec)
         self._context_config.update(cfg)
 
-    def add_to_context(
-        self, name: str, context_factory: "baseplate.clients.ContextFactory"
-    ) -> None:
-        """Add an attribute to each request's context object.
+    def add_to_context(self, name: str, attribute_config: Any) -> None:
+        """Add an attribute or a structure of attributes to each request's context object.
 
-        On each request, the factory will be asked to create an appropriate
-        object to attach to the :py:class:`~baseplate.RequestContext`.
+        The given attribute config object can be one of the following:
+
+        * An arbitrary object to be added to the :py:class:`~baseplate.RequestContext`.
+
+        * A factory with a method named ``make_object_for_context``.  On each
+          request, the factory will be asked to create an appropriate object to
+          attach to the :py:class:`~baseplate.RequestContext`.
+
+        * A dict containing arbitrary objects, factories, or other dicts.  In
+          this case, a nested object will be added to the context. Each item of
+          the dict will be processed using the same rules to become an attribute
+          of the nested object.
 
         :param name: The attribute on the context object to attach the
             created object to. This may also be used for metric/tracing
             purposes so it should be descriptive.
-        :param context_factory: A factory.
+        :param attribute_config: A configuration object.
 
         """
-        self._context_config[name] = context_factory
+        self._context_config[name] = attribute_config
 
     def make_context_object(self) -> RequestContext:
         """Make a context object for the request."""
@@ -579,6 +461,9 @@ class Baseplate:
         """
         assert isinstance(context, RequestContext)
 
+        if context.span is not None:
+            raise ReusedContextObjectError
+
         if trace_info is None:
             trace_info = TraceInfo.new()
 
@@ -592,7 +477,7 @@ class Baseplate:
             context,
             baseplate=self,
         )
-        context.trace = server_span
+        context.span = server_span
 
         for observer in self.observers:
             observer.on_server_span_created(context, server_span)
@@ -647,9 +532,9 @@ class Span:
 
     def __init__(
         self,
-        trace_id: int,
-        parent_id: Optional[int],
-        span_id: int,
+        trace_id: str,
+        parent_id: Optional[str],
+        span_id: str,
         sampled: Optional[bool],
         flags: Optional[int],
         name: str,
@@ -768,6 +653,13 @@ class Span:
         raise NotImplementedError
 
 
+class ParentSpanAlreadyFinishedError(Exception):
+    def __init__(self) -> None:
+        super().__init__(
+            "Cannot make child span of parent that already finished. See https://git.io/JTeqT"
+        )
+
+
 class LocalSpan(Span):
     def make_child(
         self, name: str, local: bool = False, component_name: Optional[str] = None
@@ -790,8 +682,10 @@ class LocalSpan(Span):
         :param component_name: Name to identify local component
             this span is recording in if it is a local span.
         """
-        span_id = random.getrandbits(64)
+        if not self.context:
+            raise ParentSpanAlreadyFinishedError
 
+        span_id = str(random.getrandbits(64))
         context_copy = self.context.clone()
         span: Span
         if local:
@@ -817,7 +711,7 @@ class LocalSpan(Span):
                 context_copy,
                 self.baseplate,
             )
-        context_copy.trace = span
+        context_copy.span = span
 
         for observer in self.observers:
             observer.on_child_span_created(span)
@@ -828,7 +722,7 @@ class ServerSpan(LocalSpan):
     """A server span represents a request this server is handling.
 
     The server span is available on the :py:class:`~baseplate.RequestContext`
-    during requests as the ``trace`` attribute.
+    during requests as the ``span`` attribute.
 
     """
 

@@ -9,6 +9,7 @@ from typing import Dict
 from typing import Iterator
 from typing import NamedTuple
 from typing import Optional
+from typing import Tuple
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -130,9 +131,9 @@ class SecretsStore(ContextFactory):
     def __init__(self, path: str, timeout: Optional[int] = None, backoff: Optional[float] = None):
         self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
 
-    def _get_data(self) -> Any:
+    def _get_data(self) -> Tuple[Any, float]:
         try:
-            return self._filewatcher.get_data()
+            return self._filewatcher.get_data_and_mtime()
         except WatchedFileNotAvailableError as exc:
             raise SecretsNotAvailableError(exc)
 
@@ -142,12 +143,7 @@ class SecretsStore(ContextFactory):
         This is the raw representation of the secret in the underlying store.
 
         """
-        data = self._get_data()
-
-        try:
-            return data["secrets"][path]
-        except KeyError:
-            raise SecretNotFoundError(path)
+        return self.get_raw_and_mtime(path)[0]
 
     def get_credentials(self, path: str) -> CredentialSecret:
         """Decode and return a credential secret.
@@ -167,7 +163,91 @@ class SecretsStore(ContextFactory):
             This contains the raw password.
 
         """
-        secret_attributes = self.get_raw(path)
+        return self.get_credentials_and_mtime(path)[0]
+
+    def get_simple(self, path: str) -> bytes:
+        """Decode and return a simple secret.
+
+        Simple secrets are a convention of key/value pairs in the raw secret
+        payload.  The following keys are significant:
+
+        ``type``
+            This must always be ``simple`` for this method.
+        ``value``
+            This contains the raw value of the secret token.
+        ``encoding``
+            (Optional) If present, how to decode the value from how it's
+            encoded at rest (only ``base64`` currently supported).
+
+        """
+        return self.get_simple_and_mtime(path)[0]
+
+    def get_versioned(self, path: str) -> VersionedSecret:
+        """Decode and return a versioned secret.
+
+        Versioned secrets are a convention of key/value pairs in the raw secret
+        payload. The following keys are significant:
+
+        ``type``
+            This must always be ``versioned`` for this method.
+        ``current``, ``next``, and ``previous``
+            The raw secret value's versions. ``current`` is the "active"
+            version, which is used for new creation/signing operations.
+            ``previous`` and ``next`` are only used for validation (e.g.
+            checking signatures) to ensure continuity when keys rotate. Both
+            ``previous`` and ``next`` are optional.
+        ``encoding``
+            (Optional) If present, how to decode the values from how they are
+            encoded at rest (only ``base64`` currently supported).
+
+        """
+        return self.get_versioned_and_mtime(path)[0]
+
+    def get_vault_url(self) -> str:
+        """Return the URL for accessing Vault directly."""
+        data, _ = self._get_data()
+        return data["vault"]["url"]
+
+    def get_vault_token(self) -> str:
+        """Return a Vault authentication token.
+
+        The token will have policies attached based on the current EC2 server's
+        Vault role. This is only necessary if talking directly to Vault.
+
+        """
+        data, _ = self._get_data()
+        return data["vault"]["token"]
+
+    def get_raw_and_mtime(self, path: str) -> Tuple[Dict[str, str], float]:
+        """Return raw secret and modification time.
+
+        This returns the same data as :py:meth:`get_raw` as well as a UNIX
+        epoch timestamp indicating the last time the secrets data was updated.
+        This modification time can be used to know when to invalidate
+        downstream caching.
+
+        .. versionadded:: 1.5
+
+        """
+        data, mtime = self._get_data()
+
+        try:
+            return data["secrets"][path], mtime
+        except KeyError:
+            raise SecretNotFoundError(path)
+
+    def get_credentials_and_mtime(self, path: str) -> Tuple[CredentialSecret, float]:
+        """Return credentials secret and modification time.
+
+        This returns the same data as :py:meth:`get_credentials` as well as a
+        UNIX epoch timestamp indicating the last time the secrets data was
+        updated.  This modification time can be used to know when to invalidate
+        downstream caching.
+
+        .. versionadded:: 1.5
+
+        """
+        secret_attributes, mtime = self.get_raw_and_mtime(path)
 
         if secret_attributes.get("type") != "credential":
             raise CorruptSecretError(path, "secret does not have type=credential")
@@ -189,24 +269,20 @@ class SecretsStore(ContextFactory):
             except KeyError:
                 raise CorruptSecretError(path, f"secret does not have key '{key}'")
 
-        return CredentialSecret(**values)
+        return CredentialSecret(**values), mtime
 
-    def get_simple(self, path: str) -> bytes:
-        """Decode and return a simple secret.
+    def get_simple_and_mtime(self, path: str) -> Tuple[bytes, float]:
+        """Return simple secret and modification time.
 
-        Simple secrets are a convention of key/value pairs in the raw secret
-        payload.  The following keys are significant:
+        This returns the same data as :py:meth:`get_simple` as well as a UNIX
+        epoch timestamp indicating the last time the secrets data was updated.
+        This modification time can be used to know when to invalidate
+        downstream caching.
 
-        ``type``
-            This must always be ``simple`` for this method.
-        ``value``
-            This contains the raw value of the secret token.
-        ``encoding``
-            (Optional) If present, how to decode the value from how it's
-            encoded at rest (only ``base64`` currently supported).
+        .. versionadded:: 1.5
 
         """
-        secret_attributes = self.get_raw(path)
+        secret_attributes, mtime = self.get_raw_and_mtime(path)
 
         if secret_attributes.get("type") != "simple":
             raise CorruptSecretError(path, "secret does not have type=simple")
@@ -217,28 +293,20 @@ class SecretsStore(ContextFactory):
             raise CorruptSecretError(path, "secret does not have value")
 
         encoding = secret_attributes.get("encoding", "identity")
-        return _decode_secret(path, encoding, value)
+        return _decode_secret(path, encoding, value), mtime
 
-    def get_versioned(self, path: str) -> VersionedSecret:
-        """Decode and return a versioned secret.
+    def get_versioned_and_mtime(self, path: str) -> Tuple[VersionedSecret, float]:
+        """Return versioned secret and modification time.
 
-        Versioned secrets are a convention of key/value pairs in the raw secret
-        payload. The following keys are significant:
+        This returns the same data as :py:meth:`get_versioned` as well as a
+        UNIX epoch timestamp indicating the last time the secrets data was
+        updated.  This modification time can be used to know when to invalidate
+        downstream caching.
 
-        ``type``
-            This must always be ``versioned`` for this method.
-        ``current``, ``next``, and ``previous``
-            The raw secret value's versions. ``current`` is the "active"
-            version, which is used for new creation/signing operations.
-            ``previous`` and ``next`` are only used for validation (e.g.
-            checking signatures) to ensure continuity when keys rotate. Both
-            ``previous`` and ``next`` are optional.
-        ``encoding``
-            (Optional) If present, how to decode the values from how they are
-            encoded at rest (only ``base64`` currently supported).
+        .. versionadded:: 1.5
 
         """
-        secret_attributes = self.get_raw(path)
+        secret_attributes, mtime = self.get_raw_and_mtime(path)
 
         if secret_attributes.get("type") != "versioned":
             raise CorruptSecretError(path, "secret does not have type=versioned")
@@ -252,34 +320,14 @@ class SecretsStore(ContextFactory):
             raise CorruptSecretError(path, "secret does not have 'current' value")
 
         encoding = secret_attributes.get("encoding", "identity")
-        return VersionedSecret(
-            previous=_decode_secret(path, encoding, previous_value) if previous_value else None,
-            current=_decode_secret(path, encoding, current_value),
-            next=_decode_secret(path, encoding, next_value) if next_value else None,
+        return (
+            VersionedSecret(
+                previous=_decode_secret(path, encoding, previous_value) if previous_value else None,
+                current=_decode_secret(path, encoding, current_value),
+                next=_decode_secret(path, encoding, next_value) if next_value else None,
+            ),
+            mtime,
         )
-
-    def get_vault_url(self) -> str:
-        """Return the URL for accessing Vault directly.
-
-        .. seealso:: The :py:mod:`baseplate.clients.hvac` module provides
-            integration with HVAC, a Vault client.
-
-        """
-        data = self._get_data()
-        return data["vault"]["url"]
-
-    def get_vault_token(self) -> str:
-        """Return a Vault authentication token.
-
-        The token will have policies attached based on the current EC2 server's
-        Vault role. This is only necessary if talking directly to Vault.
-
-        .. seealso:: The :py:mod:`baseplate.clients.hvac` module provides
-            integration with HVAC, a Vault client.
-
-        """
-        data = self._get_data()
-        return data["vault"]["token"]
 
     def make_object_for_context(self, name: str, span: Span) -> "SecretsStore":
         """Return an object that can be added to the context object.
@@ -301,10 +349,10 @@ class _CachingSecretsStore(SecretsStore):
         self._filewatcher = filewatcher
 
     @cached_property
-    def _data(self) -> Any:
+    def _data(self) -> Tuple[Any, float]:
         return super()._get_data()
 
-    def _get_data(self) -> Dict:
+    def _get_data(self) -> Tuple[Dict, float]:
         return self._data
 
 

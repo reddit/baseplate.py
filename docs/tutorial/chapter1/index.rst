@@ -46,7 +46,7 @@ We'll start our service out by using it without Baseplate.py at all:
 Now let's write a tiny Pyramid service, open your editor and put the following
 in ``helloworld.py``:
 
-.. literalinclude:: pure_pyramid.py
+.. literalinclude:: helloworld.py
    :language: python
 
 Then run it:
@@ -84,7 +84,7 @@ There are three things going on in this tiny service. Following how the code
 actually runs, we start out at the end of the file with the creation of the
 HTTP server:
 
-.. literalinclude:: pure_pyramid.py
+.. literalinclude:: helloworld.py
    :language: python
    :start-at: __main__
 
@@ -102,14 +102,14 @@ can be run on any WSGI server.
 This server code calls our ``make_wsgi_app`` function to get the actual
 application. Let's look at that next:
 
-.. literalinclude:: pure_pyramid.py
+.. literalinclude:: helloworld.py
    :language: python
    :pyobject: make_wsgi_app
 
 The real workhorse here is the :py:class:`~pyramid.config.Configurator` object
 from Pyramid. This object helps us configure and build an application.
 
-.. literalinclude:: pure_pyramid.py
+.. literalinclude:: helloworld.py
    :language: python
    :start-at: add_route
    :end-at: add_route
@@ -119,7 +119,7 @@ First off, we add a route that maps the URL path ``/`` to the route named
 comes in that matches those criteria, Pyramid will try to find a "view"
 function that is registered for that route name.
 
-.. literalinclude:: pure_pyramid.py
+.. literalinclude:: helloworld.py
    :language: python
    :start-at: scan
    :end-at: scan
@@ -129,7 +129,7 @@ registrations <decorations_and_code_scanning>`. Because of the ``@view_config``
 decorator, Pyramid will find the ``hello_world`` function in our service and
 recognize that we have registered it to handle the ``hello_world`` route.
 
-.. literalinclude:: pure_pyramid.py
+.. literalinclude:: helloworld.py
    :language: python
    :pyobject: make_wsgi_app
    :start-at: return
@@ -141,7 +141,7 @@ At this point, we have done the one-time application startup and handed off our
 application to the server which is ready to call into it when requests come in.
 Now it's time to look at the code that actually runs on each request.
 
-.. literalinclude:: pure_pyramid.py
+.. literalinclude:: helloworld.py
    :language: python
    :pyobject: hello_world
 

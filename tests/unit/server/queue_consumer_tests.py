@@ -14,6 +14,7 @@ import webtest
 
 from gevent.server import StreamServer
 
+from baseplate.observers.timeout import ServerTimeout
 from baseplate.server.queue_consumer import HealthcheckApp
 from baseplate.server.queue_consumer import MessageHandler
 from baseplate.server.queue_consumer import PumpWorker
@@ -225,6 +226,13 @@ class TestQueueConsumerServer:
 
     def test_handler_exception_terminates(self, build_server):
         server = build_server(max_concurrency=1, handler_raises=Exception())
+        server._terminate = mock.Mock()
+        server.start()
+        time.sleep(0.5)
+        server._terminate.assert_called_once()
+
+    def test_handler_timeout_terminates(self, build_server):
+        server = build_server(max_concurrency=1, handler_raises=ServerTimeout("", 10, False))
         server._terminate = mock.Mock()
         server.start()
         time.sleep(0.5)

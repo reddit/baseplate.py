@@ -5,6 +5,7 @@ import unittest
 from baseplate import BaseplateObserver
 from baseplate import SpanObserver
 from baseplate.lib.config import Endpoint
+from baseplate.lib.edgecontext import EdgeContextFactory
 
 
 def get_endpoint_or_skip_container(name, default_port):
@@ -14,11 +15,10 @@ def get_endpoint_or_skip_container(name, default_port):
     servers.
 
     If an environment variable like BASEPLATE_MEMCACHED_ADDR is present, that will
-    override the default of localhost:{default_port}.
+    override the default of {name}:{default_port}.
 
     """
-
-    address = os.environ.get("BASEPLATE_%s_ADDR" % name.upper(), "localhost:%d" % default_port)
+    address = os.environ.get(f"BASEPLATE_{name.upper()}_ADDR", f"{name}:{default_port:d}")
     endpoint = Endpoint(address)
 
     try:
@@ -86,3 +86,14 @@ class TestBaseplateObserver(BaseplateObserver):
         child = TestSpanObserver(server_span)
         self.children.append(child)
         server_span.register(child)
+
+
+class FakeEdgeContextFactory(EdgeContextFactory):
+    RAW_BYTES = b"raw_payload"
+    DECODED_CONTEXT = "foo"
+
+    def from_upstream(self, header_value):
+        if header_value == self.RAW_BYTES:
+            return self.DECODED_CONTEXT
+        elif header_value is None:
+            return None

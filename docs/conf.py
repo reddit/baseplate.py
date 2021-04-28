@@ -16,7 +16,6 @@ sys.path.insert(0, os.path.abspath(".."))
 # ones.
 extensions = [
     "alabaster",
-    "sphinxcontrib.spelling",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
@@ -37,6 +36,7 @@ intersphinx_mapping = {
     "redis": ("https://redis-py.readthedocs.io/en/latest/", None),
     "sqlalchemy": ("https://docs.sqlalchemy.org/en/13/", None),
     "requests": ("https://requests.readthedocs.io/en/stable/", None),
+    "sentry_sdk": ("https://getsentry.github.io/sentry-python/", None),
 }
 
 # The suffix of source filenames.
@@ -116,7 +116,3 @@ html_show_copyright = False
 
 # -- Autodoc --
 autodoc_member_order = "bysource"
-
-# -- Spelling --
-spelling_word_list_filename = "words.txt"
-spelling_show_suggestions = True

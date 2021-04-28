@@ -8,7 +8,6 @@ from baseplate import RequestContext
 from baseplate import ServerSpan
 from baseplate import SpanObserver
 from baseplate.lib import config
-from baseplate.lib import warn_deprecated
 
 
 # this deliberately inherits from BaseException rather than Exception, just
@@ -29,21 +28,14 @@ class TimeoutBaseplateObserver(BaseplateObserver):
             app_config,
             {
                 "server_timeout": {
-                    "default": config.Optional(config.TimespanOrInfinite, default=None),
+                    "default": config.Optional(
+                        config.TimespanOrInfinite, default=config.InfiniteTimespan,
+                    ),
                     "debug": config.Optional(config.Boolean, default=False),
                     "by_endpoint": config.DictOf(config.TimespanOrInfinite),
                 }
             },
         )
-
-        if cfg.server_timeout.default is None:
-            warn_deprecated(
-                "No server_timeout.default configured. Defaulting to no timeout. "
-                "Set the default timeout to 'infinite' or a timespan like '2 seconds'. "
-                "This will become mandatory in Baseplate.py 2.0."
-            )
-            cfg.server_timeout.default = config.InfiniteTimespan
-
         return cls(cfg.server_timeout)
 
     def __init__(self, timeout_config: config.ConfigNamespace):
@@ -51,10 +43,22 @@ class TimeoutBaseplateObserver(BaseplateObserver):
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         timeout = self.config.by_endpoint.get(server_span.name, self.config.default)
+
+        min_timeout = None
         if timeout is not config.InfiniteTimespan:
-            observer = TimeoutServerSpanObserver(
-                server_span, timeout.total_seconds(), self.config.debug
-            )
+            min_timeout = timeout.total_seconds()
+
+        try:
+            deadline_budget = context.deadline_budget
+            if deadline_budget:
+                if not min_timeout or deadline_budget < min_timeout:
+                    min_timeout = deadline_budget
+        except AttributeError:
+            # no deadline budget in request header
+            pass
+
+        if min_timeout:
+            observer = TimeoutServerSpanObserver(server_span, min_timeout, self.config.debug)
             server_span.register(observer)
 
 

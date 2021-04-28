@@ -119,9 +119,13 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     else:
         logging_level = logging.INFO
 
-    formatter = CustomJsonFormatter(
-        "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d"
-    )
+    formatter: logging.Formatter
+    if not sys.stdin.isatty():
+        formatter = CustomJsonFormatter(
+            "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d %(threadName)s"
+        )
+    else:
+        formatter = logging.Formatter("%(levelname)-8s %(message)s")
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -129,9 +133,6 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger = logging.getLogger()
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
-
-    sentry_logger = logging.getLogger("raven.base.Client")
-    sentry_logger.setLevel(logging.WARNING)
 
     if config.has_logging_options:
         logging.config.fileConfig(config.filename)
@@ -221,7 +222,6 @@ def register_signal_handlers() -> threading.Event:
 
 def load_app_and_run_server() -> None:
     """Parse arguments, read configuration, and start the server."""
-
     sys.path.append(os.getcwd())
 
     shutdown_event = register_signal_handlers()
@@ -246,17 +246,17 @@ def load_app_and_run_server() -> None:
     # clean up leftovers from initialization before we get into requests
     gc.collect()
 
-    logger.info("Listening on %s", listener.getsockname())
+    logger.info("Listening on %s, PID:%s", listener.getsockname(), os.getpid())
     server.start()
     try:
         shutdown_event.wait()
+        logger.info("Finally stopping server, PID:%s", os.getpid())
     finally:
         server.stop()
 
 
 def load_and_run_script() -> None:
     """Launch a script with an entrypoint similar to a server."""
-
     sys.path.append(os.getcwd())
 
     args, extra_args = _parse_baseplate_script_args()
@@ -264,10 +264,12 @@ def load_and_run_script() -> None:
         config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     configure_logging(config, args.debug)
 
-    if _fn_accepts_additional_args(args.entrypoint, extra_args):
-        args.entrypoint(config.app, extra_args)
+    entrypoint = _load_factory(args.entrypoint)
+
+    if _fn_accepts_additional_args(entrypoint, extra_args):
+        entrypoint(config.app, extra_args)
     else:
-        args.entrypoint(config.app)
+        entrypoint(config.app)
 
 
 def _parse_baseplate_script_args() -> Tuple[argparse.Namespace, List[str]]:
@@ -288,9 +290,7 @@ def _parse_baseplate_script_args() -> Tuple[argparse.Namespace, List[str]]:
     parser.add_argument(
         "config_file", type=argparse.FileType("r"), help="path to a configuration file"
     )
-    parser.add_argument(
-        "entrypoint", type=_load_factory, help="function to call, e.g. module.path:fn_name"
-    )
+    parser.add_argument("entrypoint", type=str, help="function to call, e.g. module.path:fn_name")
     return parser.parse_known_args(sys.argv[1:])
 
 
@@ -323,7 +323,6 @@ def _fn_accepts_additional_args(script_fn: Callable[..., Any], fn_args: Sequence
 
 def load_and_run_shell() -> None:
     """Launch a shell for a thrift service."""
-
     sys.path.append(os.getcwd())
 
     parser = argparse.ArgumentParser(
@@ -374,11 +373,19 @@ def load_and_run_shell() -> None:
 
     try:
         # try to use IPython if possible
-        from IPython.terminal.embed import InteractiveShellEmbed
-        from IPython.core.interactiveshell import DummyMod
+        from IPython import start_ipython
 
-        shell = InteractiveShellEmbed(banner2=banner)
-        shell(local_ns=env, module=DummyMod())
+        try:
+            # IPython 5.x+
+            from traitlets.config.loader import Config
+        except ImportError:
+            # IPython 4 and below
+            from IPython import Config
+
+        ipython_config = Config()
+        ipython_config.TerminalInteractiveShell.banner2 = banner
+        start_ipython(argv=[], user_ns=env, config=ipython_config)
+        raise SystemExit
     except ImportError:
         import code
 

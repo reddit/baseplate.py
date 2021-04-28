@@ -15,6 +15,7 @@ try:
     from pyramid.config import Configurator
 
     from baseplate.frameworks.pyramid import BaseplateConfigurator
+    from baseplate.frameworks.pyramid import StaticTrustHandler
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
@@ -32,7 +33,7 @@ def example_application(request):
 def local_parent_trace_within_context(request):
     # For testing embedded tracing contexts
     #  See `TracingTests.test_local_tracing_embedded`
-    with request.trace.make_child("local-req", local=True, component_name="in-context") as span:
+    with request.span.make_child("local-req", local=True, component_name="in-context") as span:
         with span.make_child("local-req", local=True, component_name="in-context"):
             pass
 
@@ -73,7 +74,7 @@ class TracingTests(unittest.TestCase):
         self.baseplate.register(self.observer)
 
         self.baseplate_configurator = BaseplateConfigurator(
-            self.baseplate, trust_trace_headers=True
+            self.baseplate, header_trust_handler=StaticTrustHandler(trust_headers=True),
         )
         configurator.include(self.baseplate_configurator.includeme)
         app = configurator.make_wsgi_app()
@@ -107,12 +108,3 @@ class TracingTests(unittest.TestCase):
             self.assertEqual(span["name"], "local-req")
             self.assertEqual(len(span["annotations"]), 0)
             self.assertEqual(span["parentId"], self.local_span_ids[-2])
-
-    def test_configure_tracing_with_defaults_new_style(self):
-        baseplate = Baseplate()
-        self.assertEqual(0, len(baseplate.observers))
-        client = make_client("test")
-        baseplate.configure_tracing(client)
-        self.assertEqual(1, len(baseplate.observers))
-        tracing_observer = baseplate.observers[0]
-        self.assertEqual("test", tracing_observer.service_name)

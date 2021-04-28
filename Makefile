@@ -25,7 +25,7 @@ $(THRIFT_BUILDDIR)/baseplate/thrift/baseplate.thrift_buildstamp: baseplate/thrif
 $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/test.thrift
 	mkdir -p $(THRIFT_BUILDDIR)/$<
 	$(THRIFT) $(THRIFT_OPTS) -out $(THRIFT_BUILDDIR)/$< $<
-	cp -r $(THRIFT_BUILDDIR)/$</test tests/integration/test_thrift
+	cp $(THRIFT_BUILDDIR)/$</test/* tests/integration/test_thrift
 	rm -f tests/integration/test_thrift/TestService-remote
 	touch $@
 
@@ -41,19 +41,16 @@ doctest:
 linkcheck:
 	sphinx-build -M linkcheck docs/ build/
 
-.PHONY: spelling
-spelling:
-	sphinx-build -M spelling docs/ build/
-
 .PHONY: test
-test: tox doctest
-
-.PHONY: tox
-tox:
-	tox
+test: doctest
+	pytest -v tests/
 
 .PHONY: fmt
 fmt:
+	@if [ ! -f /baseplate-py-dev-docker-image ]; then \
+		echo "Please use the docker-compose environment for consistency. See https://git.io/Jtdzy."; \
+		exit 1; \
+	fi
 	$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
 	black baseplate/ tests/
 	$(REORDER_PYTHON_IMPORTS) --application-directories /tmp --exit-zero-even-if-changed $(PYTHON_EXAMPLES)
@@ -68,7 +65,7 @@ lint:
 	mypy baseplate/
 
 .PHONY: checks
-checks: test lint spelling linkcheck
+checks: test lint linkcheck
 
 .PHONY: clean
 clean:

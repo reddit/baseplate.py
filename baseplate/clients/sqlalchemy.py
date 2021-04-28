@@ -1,3 +1,5 @@
+import re
+
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -55,6 +57,8 @@ def engine_from_config(
         checkout. When used, this obviates most of the reasons you might use
         pool_recycle, and as such they shouldn't normally be used
         simultaneously.  Requires SQLAlchemy 1.3.
+    * ``pool_size`` (optional) : The number of connections that can be saved in the pool.
+    * ``max_overflow`` (optional) : Max connections that can be opened beyond the pool size.
 
     """
     assert prefix.endswith(".")
@@ -64,6 +68,8 @@ def engine_from_config(
             "credentials_secret": config.Optional(config.String),
             "pool_recycle": config.Optional(config.Integer),
             "pool_pre_ping": config.Optional(config.Boolean),
+            "pool_size": config.Optional(config.Integer),
+            "max_overflow": config.Optional(config.Integer),
         }
     )
     options = parser.parse(prefix[:-1], app_config)
@@ -74,6 +80,12 @@ def engine_from_config(
 
     if options.pool_pre_ping is not None:
         kwargs.setdefault("pool_pre_ping", options.pool_pre_ping)
+
+    if options.pool_size is not None:
+        kwargs.setdefault("pool_size", options.pool_size)
+
+    if options.max_overflow is not None:
+        kwargs.setdefault("max_overflow", options.max_overflow)
 
     if options.credentials_secret:
         if not secrets:
@@ -111,6 +123,9 @@ class SQLAlchemySession(config.Parser):
 
 
 Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
+
+
+SAFE_TRACE_ID = re.compile("^[A-Za-z0-9_-]+$")
 
 
 class SQLAlchemyEngineContextFactory(ContextFactory):
@@ -177,7 +192,11 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         # add a comment to the sql statement with the trace and span ids
         # this is useful for slow query logs and active query views
-        annotated_statement = f"{statement} -- trace:{span.trace_id:d},span:{span.id:d}"
+        if SAFE_TRACE_ID.match(span.trace_id) and SAFE_TRACE_ID.match(span.id):
+            annotated_statement = f"{statement} -- trace:{span.trace_id},span:{span.id}"
+        else:
+            annotated_statement = f"{statement} -- invalid trace id"
+
         return annotated_statement, parameters
 
     # pylint: disable=unused-argument, too-many-arguments

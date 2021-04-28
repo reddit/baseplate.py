@@ -1,17 +1,6 @@
 ``baseplate.lib.experiments``
 ===============================
 
-.. automodule:: baseplate.lib.experiments
+.. versionchanged:: 2.0
 
-Configuration Parsing
----------------------
-
-.. autofunction:: experiments_client_from_config
-
-Classes
--------
-
-.. autoclass:: ExperimentsContextFactory
-
-.. autoclass:: Experiments
-   :members:
+   The experiments framework was moved to <https://reddit-experiments.readthedocs.io/en/latest/>.

@@ -74,3 +74,26 @@ Classes
 
 .. autoclass:: MessageQueue
    :members:
+
+Runtime Metrics
+---------------
+
+In addition to request-level metrics reported through spans, this wrapper
+reports connection pool statistics periodically via the :ref:`runtime-metrics`
+system.  All metrics are tagged with ``client``, the name given to
+:py:meth:`~baseplate.Baseplate.configure_context` when registering this context
+factory.
+
+The following metrics are reported:
+
+``runtime.pool.size``
+   The size limit for the connection pool.
+``runtime.pool.in_use``
+   How many connections have been established and are currently checked out and
+   being used.
+
+.. versionadded:: 1.5
+
+.. versionchanged:: 2.0
+
+   Runtime metrics were changed to use tags.

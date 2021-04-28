@@ -17,7 +17,6 @@ from baseplate.server import make_listener
 from baseplate.server.wsgi import make_server
 
 from . import TestBaseplateObserver
-from .. import SERIALIZED_EDGECONTEXT_WITH_NO_AUTH
 
 
 @pytest.fixture
@@ -127,17 +126,17 @@ def test_internal_client_sends_headers(http_server):
     baseplate.configure_context({"internal": InternalRequestsClient()})
 
     with baseplate.server_context("test") as context:
-        setattr(context, "raw_request_context", SERIALIZED_EDGECONTEXT_WITH_NO_AUTH)
+        setattr(context, "raw_edge_context", b"test payload")
 
         response = context.internal.get(http_server.url)
 
         assert response.status_code == 204
         assert response.text == ""
         assert http_server.requests[0].method == "GET"
-        assert http_server.requests[0].trace.trace_id == context.trace.trace_id
-        assert http_server.requests[0].trace.parent_id == context.trace.id
-        assert http_server.requests[0].trace.id != context.trace.id
-        assert http_server.requests[0].raw_request_context == SERIALIZED_EDGECONTEXT_WITH_NO_AUTH
+        assert http_server.requests[0].span.trace_id == context.span.trace_id
+        assert http_server.requests[0].span.parent_id == context.span.id
+        assert http_server.requests[0].span.id != context.span.id
+        assert http_server.requests[0].raw_edge_context == b"test payload"
 
 
 def test_external_client_doesnt_send_headers(http_server):
@@ -147,7 +146,7 @@ def test_external_client_doesnt_send_headers(http_server):
     baseplate.configure_context({"external": ExternalRequestsClient()})
 
     with baseplate.server_context("test") as context:
-        setattr(context, "raw_request_context", SERIALIZED_EDGECONTEXT_WITH_NO_AUTH)
+        setattr(context, "raw_edge_context", b"test payload")
 
         response = context.external.get(http_server.url)
 
@@ -157,4 +156,4 @@ def test_external_client_doesnt_send_headers(http_server):
         assert "X-Trace" not in http_server.requests[0].headers
         assert "X-Parent" not in http_server.requests[0].headers
         assert "X-Span" not in http_server.requests[0].headers
-        assert "X-Edge" not in http_server.requests[0].headers
+        assert "X-Edge-Request" not in http_server.requests[0].headers

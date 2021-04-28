@@ -4,8 +4,7 @@ import unittest
 from unittest import mock
 
 from baseplate.lib.crypto import validate_signature
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
+from baseplate.testing.lib.secrets import FakeSecretsStore
 
 
 has_csrf_policy = True
@@ -19,19 +18,17 @@ except ImportError:
 @mock.patch("baseplate.lib.crypto.time")
 class TokenCSRFStoragePolicyTests(unittest.TestCase):
     def setUp(self):
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/csrf/signing-key": {
-                    "type": "versioned",
-                    "current": base64.b64encode(b"test"),
-                    "encoding": "base64",
+        secrets = FakeSecretsStore(
+            {
+                "secrets": {
+                    "secret/csrf/signing-key": {
+                        "type": "versioned",
+                        "current": base64.b64encode(b"test"),
+                        "encoding": "base64",
+                    }
                 }
-            },
-            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-        }
-        secrets = SecretsStore("/secrets")
-        secrets._filewatcher = mock_filewatcher
+            }
+        )
         self.policy = TokenCSRFStoragePolicy(secrets=secrets, secret_path="secret/csrf/signing-key")
 
     def test_make_csrf_token_payload(self, _):

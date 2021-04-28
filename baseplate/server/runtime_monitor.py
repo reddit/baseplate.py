@@ -48,7 +48,7 @@ class _OpenConnectionsReporter(_Reporter):
 
 class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
     def __init__(self) -> None:
-        self.live_requests: Dict[int, float] = {}
+        self.live_requests: Dict[str, float] = {}
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         observer = _ActiveRequestsServerSpanObserver(self, server_span.trace_id)
@@ -68,7 +68,7 @@ class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
 
 
 class _ActiveRequestsServerSpanObserver(ServerSpanObserver):
-    def __init__(self, reporter: _ActiveRequestsObserver, trace_id: int):
+    def __init__(self, reporter: _ActiveRequestsObserver, trace_id: str):
         self.reporter = reporter
         self.trace_id = trace_id
 
@@ -107,7 +107,8 @@ class _GCStatsReporter(_Reporter):
     def report(self, batch: metrics.Batch) -> None:
         for generation, stats in enumerate(gc.get_stats()):
             for name, value in stats.items():
-                batch.gauge(f"gc.gen{generation}.{name}").replace(value)
+                gauge = batch.gauge(f"gc.{name}", tags={"generation": generation})
+                gauge.replace(value)
 
 
 class _GCTimingReporter(_Reporter):
@@ -140,14 +141,13 @@ class _BaseplateReporter(_Reporter):
 
     def report(self, batch: metrics.Batch) -> None:
         for name, reporter in self.reporters.items():
-            original_namespace = batch.namespace
             try:
-                batch.namespace = b".".join((batch.namespace, b"clients", name.encode()))
+                batch.base_tags["client"] = name
                 reporter(batch)
             except Exception as exc:
                 logger.exception("Error generating client metrics: %s: %s", name, exc)
             finally:
-                batch.namespace = original_namespace
+                del batch.base_tags["client"]
 
 
 class _RefCycleReporter(_Reporter):
@@ -188,7 +188,7 @@ def _report_runtime_metrics_periodically(
     metrics_client: metrics.Client, reporters: List[_Reporter]
 ) -> NoReturn:
     hostname = socket.gethostname()
-    pid = os.getpid()
+    pid = str(os.getpid())
 
     while True:
         now = time.time()
@@ -198,7 +198,10 @@ def _report_runtime_metrics_periodically(
 
         try:
             with metrics_client.batch() as batch:
-                batch.namespace += f".runtime.{hostname}.PID{pid}".encode()
+                batch.namespace += b".runtime"
+                batch.base_tags["hostname"] = hostname
+                batch.base_tags["PID"] = pid
+
                 for reporter in reporters:
                     try:
                         reporter.report(batch)

@@ -19,6 +19,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
 .. testsetup:: overview
 
+    import os
     import configparser
     from baseplate import config
     from tempfile import NamedTemporaryFile
@@ -29,6 +30,9 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     tempfile.write(b"cool")
     tempfile.flush()
     config_parser.set("app:main", "some_file", tempfile.name)
+
+    env_var_name = "BASEPLATE_DEFAULT_VALUE"
+    os.environ[env_var_name] = "default"
 
 .. doctest:: overview
 
@@ -49,6 +53,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     ...     "optional": config.Optional(config.Integer, default=9001),
     ...     "sample_rate": config.Percent,
     ...     "interval": config.Fallback(config.Timespan, config.Integer),
+    ...     "default_from_env": config.DefaultFromEnv(config.String, env_var_name),
     ... })
 
     >>> print(cfg.simple)
@@ -62,6 +67,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
     >>> cfg.some_file.read()
     'cool'
+
     >>> cfg.some_file.close()
 
     >>> cfg.sample_rate
@@ -69,6 +75,9 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
     >>> print(cfg.interval)
     0:00:30
+
+    >>> print(cfg.default_from_env)
+    blah
 
 .. testcleanup:: overview
 
@@ -79,6 +88,7 @@ import base64
 import datetime
 import functools
 import grp
+import os
 import pwd
 import re
 import socket
@@ -306,7 +316,7 @@ def Percent(text: str) -> float:  # noqa: D401
 
 
 def UnixUser(text: str) -> int:  # noqa: D401
-    """A Unix user name.
+    """A Unix user name or decimal ID.
 
     The parsed value will be the integer user ID.
 
@@ -314,11 +324,14 @@ def UnixUser(text: str) -> int:  # noqa: D401
     try:
         return pwd.getpwnam(text).pw_uid
     except KeyError as exc:
-        raise ValueError(exc)
+        try:
+            return int(text)
+        except ValueError:
+            raise ValueError(exc) from None
 
 
 def UnixGroup(text: str) -> int:  # noqa: D401
-    """A Unix group name.
+    """A Unix group name or decimal ID.
 
     The parsed value will be the integer group ID.
 
@@ -326,7 +339,10 @@ def UnixGroup(text: str) -> int:  # noqa: D401
     try:
         return grp.getgrnam(text).gr_gid
     except KeyError as exc:
-        raise ValueError(exc)
+        try:
+            return int(text)
+        except ValueError:
+            raise ValueError(exc) from None
 
 
 T = TypeVar("T")
@@ -377,6 +393,28 @@ def TupleOf(item_parser: Callable[[str], T]) -> Callable[[str], Sequence[T]]:  #
         return [item_parser(item) for item in stripped if item]
 
     return tuple_of
+
+
+def DefaultFromEnv(
+    item_parser: Callable[[str], T], default_src: str, fallback: OptionalType[T] = None
+) -> Callable[[str], OptionalType[T]]:  # noqa: D401
+    """An option of type T or a default.
+
+    The default is sourced from an environment variable with the name specified in ``default_src``.
+    If the environment variable is not set, then the fallback will be used.
+    One of the following values must be provided: fallback, default_src, or the provided configuration
+    """
+    env = os.getenv(default_src) or ""
+    default = Optional(item_parser, fallback)(env)
+
+    def default_from_env(text: str) -> OptionalType[T]:
+        val = Optional(item_parser, default)(text)
+        if val:
+            return val
+
+        raise ValueError("no value provided")
+
+    return default_from_env
 
 
 def Optional(

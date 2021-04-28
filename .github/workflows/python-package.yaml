@@ -1,0 +1,50 @@
+name: Lint and Test
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8]
+
+    container:
+      image: python:${{ matrix.python-version }}
+
+    services:
+      cassandra:
+        image: "cassandra:3.11"
+      memcached:
+        image: "memcached:1.5.6"
+      redis:
+        image: "redis:4.0.9"
+      zookeeper:
+        image: "zookeeper:3.4.10"
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python --version
+          python -m pip install -r requirements.txt
+
+      - name: Lint
+        run: |
+          make lint
+
+      - name: Test
+        run: |
+          make test

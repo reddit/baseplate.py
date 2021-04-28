@@ -13,6 +13,7 @@ class ZipkinPublisherTest(unittest.TestCase):
     @mock.patch("requests.Session", autospec=True)
     def setUp(self, mock_Session):
         self.session = mock_Session.return_value
+        self.session.headers = {}
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
         self.zipkin_api_url = "http://test.local/api/v2"
         self.publisher = trace_publisher.ZipkinPublisher(self.zipkin_api_url, self.metrics_client)
@@ -31,14 +32,3 @@ class ZipkinPublisherTest(unittest.TestCase):
         spans = b"[]"
         self.publisher.publish(SerializedBatch(item_count=1, serialized=spans))
         self.assertEqual(self.session.post.call_count, 3)
-
-    def test_client_error(self):
-        self.session.post.side_effect = [
-            requests.HTTPError(400, response=mock.Mock(status_code=400))
-        ]
-        spans = b"[]"
-
-        with self.assertRaises(requests.HTTPError):
-            self.publisher.publish(SerializedBatch(item_count=1, serialized=spans))
-
-        self.assertEqual(self.session.post.call_count, 1)

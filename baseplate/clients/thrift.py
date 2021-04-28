@@ -2,6 +2,7 @@ import contextlib
 import inspect
 import sys
 
+from math import ceil
 from typing import Any
 from typing import Callable
 from typing import Iterator
@@ -145,7 +146,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         trace_name = f"{self.namespace}.{name}"
         last_error = None
 
-        for _ in self.retry_policy:
+        for time_remaining in self.retry_policy:
             span = self.server_span.make_child(trace_name)
             span.start()
 
@@ -166,8 +167,19 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     if span.flags:
                         prot.trans.set_header(b"Flags", str(span.flags).encode())
 
+                    min_timeout = time_remaining
+                    if self.pool.timeout:
+                        if not min_timeout or self.pool.timeout < min_timeout:
+                            min_timeout = self.pool.timeout
+                    if min_timeout and min_timeout > 0:
+                        # min_timeout is in float seconds, we are converting to int milliseconds
+                        # rounding up here.
+                        prot.trans.set_header(
+                            b"Deadline-Budget", str(int(ceil(min_timeout * 1000))).encode()
+                        )
+
                     try:
-                        edge_context = span.context.raw_request_context
+                        edge_context = span.context.raw_edge_context
                     except AttributeError:
                         edge_context = None
 

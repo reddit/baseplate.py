@@ -97,9 +97,13 @@ class Transport:
 class NullTransport(Transport):
     """A transport which doesn't send messages at all."""
 
+    def __init__(self, log_if_unconfigured: bool):
+        self.log_if_unconfigured = log_if_unconfigured
+
     def send(self, serialized_metric: bytes) -> None:
-        for metric_line in serialized_metric.splitlines():
-            logger.debug("Would send metric %r", metric_line)
+        if self.log_if_unconfigured:
+            for metric_line in serialized_metric.splitlines():
+                logger.debug("Would send metric %r", metric_line)
 
     def flush(self) -> None:
         pass
@@ -108,7 +112,10 @@ class NullTransport(Transport):
 class RawTransport(Transport):
     """A transport which sends messages on a socket."""
 
-    def __init__(self, endpoint: config.EndpointConfiguration):
+    def __init__(
+        self, endpoint: config.EndpointConfiguration, swallow_network_errors: bool = False,
+    ):
+        self.swallow_network_errors = swallow_network_errors
         self.socket = socket.socket(endpoint.family, socket.SOCK_DGRAM)
         self.socket.connect(endpoint.address)
 
@@ -116,6 +123,9 @@ class RawTransport(Transport):
         try:
             self.socket.sendall(serialized_metric)
         except socket.error as exc:
+            if self.swallow_network_errors:
+                logger.exception("Failed to send to metrics collector")
+                return
             if exc.errno == errno.EMSGSIZE:
                 raise MessageTooBigTransportError(len(serialized_metric))
             raise TransportError(exc)
@@ -144,6 +154,7 @@ class BufferedTransport(Transport):
 class BaseClient:
     def __init__(self, transport: Transport, namespace: str):
         self.transport = transport
+        self.base_tags: Dict[str, Any] = {}
         self.namespace = namespace.encode("ascii")
 
     def timer(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Timer":
@@ -153,7 +164,7 @@ class BaseClient:
 
         """
         timer_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Timer(self.transport, timer_name, tags)
+        return Timer(self.transport, timer_name, {**self.base_tags, **(tags or {})})
 
     def counter(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Counter":
         """Return a Counter with the given name.
@@ -164,7 +175,7 @@ class BaseClient:
 
         """
         counter_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Counter(self.transport, counter_name, tags)
+        return Counter(self.transport, counter_name, {**self.base_tags, **(tags or {})})
 
     def gauge(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Gauge":
         """Return a Gauge with the given name.
@@ -173,7 +184,7 @@ class BaseClient:
 
         """
         gauge_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Gauge(self.transport, gauge_name, tags)
+        return Gauge(self.transport, gauge_name, {**self.base_tags, **(tags or {})})
 
     def histogram(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Histogram":
         """Return a Histogram with the given name.
@@ -182,7 +193,7 @@ class BaseClient:
 
         """
         histogram_name = _metric_join(self.namespace, name.encode("ascii"))
-        return Histogram(self.transport, histogram_name, tags)
+        return Histogram(self.transport, histogram_name, {**self.base_tags, **(tags or {})})
 
 
 class Client(BaseClient):
@@ -214,6 +225,7 @@ class Batch(BaseClient):
     def __init__(self, transport: Transport, namespace: bytes):
         self.transport = BufferedTransport(transport)
         self.namespace = namespace
+        self.base_tags = {}
         self.counters: Dict[bytes, BatchCounter] = {}
 
     def __enter__(self) -> "Batch":
@@ -450,10 +462,7 @@ class Histogram:
     """
 
     def __init__(
-        self,
-        transport: Transport,
-        name: bytes,
-        tags: Optional[Dict[str, Any]] = None,  # pylint: disable=bad-whitespace
+        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.transport = transport
         self.name = name
@@ -465,7 +474,6 @@ class Histogram:
         This records a new value to the histogram; the bucket it goes in
         is determined by the backend service configurations.
         """
-
         formatted_tags = _format_tags(self.tags)
         if formatted_tags:
             serialized = self.name + formatted_tags + (f":{value:g}|h".encode())
@@ -514,12 +522,19 @@ class Gauge:
         self.transport.send(serialized)
 
 
-def make_client(namespace: str, endpoint: config.EndpointConfiguration) -> Client:
+def make_client(
+    namespace: str,
+    endpoint: config.EndpointConfiguration,
+    log_if_unconfigured: bool,
+    swallow_network_errors: bool = False,
+) -> Client:
     """Return a configured client.
 
     :param namespace: The root key to prefix all metrics with.
     :param endpoint: The endpoint to send metrics to or :py:data:`None`.  If
         :py:data:`None`, the returned client will discard all metrics.
+    :param swallow_network_errors: Swallow (log) network errors during sending
+        to metrics collector.
     :return: A configured client.
 
     .. seealso:: :py:func:`baseplate.lib.metrics.metrics_client_from_config`.
@@ -528,9 +543,9 @@ def make_client(namespace: str, endpoint: config.EndpointConfiguration) -> Clien
     transport: Transport
 
     if endpoint:
-        transport = RawTransport(endpoint)
+        transport = RawTransport(endpoint, swallow_network_errors=swallow_network_errors)
     else:
-        transport = NullTransport()
+        transport = NullTransport(log_if_unconfigured)
     return Client(transport, namespace)
 
 
@@ -544,6 +559,14 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
     ``metrics.endpoint``
         A ``host:port`` pair, e.g. ``localhost:2014``. If an empty string, a
         client that discards all metrics will be returned.
+    `metrics.log_if_unconfigured``
+        Whether to log metrics when there is no unconfigured endpoint.
+        Defaults to false.
+    `metrics.swallow_network_errors``
+        When false, network errors during sending to metrics collector will
+        cause an exception to be thrown. When true, those exceptions are logged
+        and swallowed instead.
+        Defaults to false.
 
     :param raw_config: The application configuration which should have
         settings for the metrics client.
@@ -556,9 +579,11 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
             "metrics": {
                 "namespace": config.Optional(config.String, default=""),
                 "endpoint": config.Optional(config.Endpoint),
+                "log_if_unconfigured": config.Optional(config.Boolean, default=False),
+                "swallow_network_errors": config.Optional(config.Boolean, default=False),
             }
         },
     )
 
     # pylint: disable=maybe-no-member
-    return make_client(cfg.metrics.namespace, cfg.metrics.endpoint)
+    return make_client(cfg.metrics.namespace, cfg.metrics.endpoint, cfg.metrics.log_if_unconfigured)

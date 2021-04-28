@@ -17,7 +17,7 @@ from thrift.transport.TTransport import TTransportException
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import TraceInfo
-from baseplate.lib.edge_context import EdgeRequestContextFactory
+from baseplate.lib.edgecontext import EdgeContextFactory
 
 
 class _ContextAwareHandler:
@@ -32,7 +32,7 @@ class _ContextAwareHandler:
 
             handler_fn = getattr(self.handler, fn_name)
 
-            span = self.context.trace
+            span = self.context.span
             try:
                 span.start()
                 result = handler_fn(self.context, *args, **kwargs)
@@ -61,7 +61,7 @@ def baseplateify_processor(
     processor: TProcessor,
     logger: Logger,
     baseplate: Baseplate,
-    edge_context_factory: Optional[EdgeRequestContextFactory] = None,
+    edge_context_factory: Optional[EdgeContextFactory] = None,
 ) -> TProcessor:
     """Wrap a Thrift Processor with Baseplate's span lifecycle.
 
@@ -89,9 +89,9 @@ def baseplateify_processor(
                 sampled = bool(headers.get(b"Sampled") == b"1")
                 flags = headers.get(b"Flags", None)
                 trace_info = TraceInfo.from_upstream(
-                    int(headers[b"Trace"]),
-                    int(headers[b"Parent"]),
-                    int(headers[b"Span"]),
+                    headers[b"Trace"].decode(),
+                    headers[b"Parent"].decode(),
+                    headers[b"Span"].decode(),
                     sampled,
                     int(flags) if flags is not None else None,
                 )
@@ -99,13 +99,15 @@ def baseplateify_processor(
                 trace_info = None
 
             edge_payload = headers.get(b"Edge-Request", None)
+            context.raw_edge_context = edge_payload
             if edge_context_factory:
-                edge_context = edge_context_factory.from_upstream(edge_payload)
-                edge_context.attach_context(context)
-            else:
-                # just attach the raw context so it gets passed on
-                # downstream even if we don't know how to handle it.
-                context.raw_request_context = edge_payload
+                context.edge_context = edge_context_factory.from_upstream(edge_payload)
+
+            try:
+                raw_deadline_budget = headers[b"Deadline-Budget"].decode()
+                context.deadline_budget = float(raw_deadline_budget) / 1000
+            except (KeyError, ValueError):
+                context.deadline_budget = None
 
             span = baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
 

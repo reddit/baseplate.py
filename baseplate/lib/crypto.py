@@ -39,7 +39,6 @@ import time
 
 from typing import NamedTuple
 
-from baseplate.lib import warn_deprecated
 from baseplate.lib.secrets import VersionedSecret
 
 
@@ -166,26 +165,3 @@ def validate_signature(secret: VersionedSecret, message: str, signature: bytes) 
         raise IncorrectSignatureError
 
     return SignatureInfo(version, expiration)
-
-
-class MessageSigner:
-    """Helper which signs messages and validates signatures given a secret.
-
-    This is for backwards compatibility. Use the secret store and proper
-    versioned secrets for new code.
-
-    """
-
-    def __init__(self, secret_key: bytes):
-        warn_deprecated(
-            "MessageSigner is deprecated in favor of the top-level "
-            "make_signature and validate_signature functions which "
-            "accept versioned secrets from the secret store."
-        )
-        self.secret = VersionedSecret.from_simple_secret(secret_key)
-
-    def make_signature(self, message: str, max_age: datetime.timedelta) -> bytes:
-        return make_signature(self.secret, message, max_age)
-
-    def validate_signature(self, message: str, signature: bytes) -> SignatureInfo:
-        return validate_signature(self.secret, message, signature)

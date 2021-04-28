@@ -5,33 +5,16 @@ from unittest import mock
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import LocalSpan
+from baseplate import ParentSpanAlreadyFinishedError
 from baseplate import RequestContext
+from baseplate import ReusedContextObjectError
 from baseplate import ServerSpan
 from baseplate import ServerSpanObserver
 from baseplate import Span
 from baseplate import SpanObserver
 from baseplate import TraceInfo
+from baseplate.clients import ContextFactory
 from baseplate.lib import config
-from baseplate.lib.edge_context import EdgeRequestContextFactory
-from baseplate.lib.edge_context import NoAuthenticationError
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.secrets import SecretsStore
-
-from .. import AUTH_TOKEN_PUBLIC_KEY
-from .. import AUTH_TOKEN_VALID
-from .. import SERIALIZED_EDGECONTEXT_WITH_ANON_AUTH
-from .. import SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH
-from .. import SERIALIZED_EDGECONTEXT_WITH_NO_AUTH
-from .. import SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH
-
-
-cryptography_installed = True
-try:
-    import cryptography
-
-    del cryptography
-except ImportError:
-    cryptography_installed = False
 
 
 def make_test_server_span(context=None):
@@ -83,9 +66,8 @@ class BaseplateTests(unittest.TestCase):
             "thrift.bar.endpoint": "localhost:9091",
         }
 
-        baseplate = Baseplate()
+        baseplate = Baseplate(app_config)
         baseplate.configure_context(
-            app_config,
             {
                 "enable_some_fancy_feature": config.Boolean,
                 "thrift": {
@@ -110,6 +92,35 @@ class BaseplateTests(unittest.TestCase):
         with baseplate.server_context("example") as context:
             observer.on_server_span_created.assert_called_once()
             self.assertIsInstance(context, RequestContext)
+
+    def test_add_to_context(self):
+        baseplate = Baseplate()
+        forty_two_factory = mock.Mock(spec=ContextFactory)
+        forty_two_factory.make_object_for_context = mock.Mock(return_value=42)
+        baseplate.add_to_context("forty_two", forty_two_factory)
+        baseplate.add_to_context("true", True)
+
+        context = baseplate.make_context_object()
+
+        self.assertEqual(42, context.forty_two)
+        self.assertTrue(context.true)
+
+    def test_add_to_context_supports_complex_specs(self):
+        baseplate = Baseplate()
+        forty_two_factory = mock.Mock(spec=ContextFactory)
+        forty_two_factory.make_object_for_context = mock.Mock(return_value=42)
+        context_spec = {
+            "forty_two": forty_two_factory,
+            "true": True,
+            "nested": {"foo": "bar"},
+        }
+        baseplate.add_to_context("complex", context_spec)
+
+        context = baseplate.make_context_object()
+
+        self.assertEqual(42, context.complex.forty_two)
+        self.assertTrue(context.complex.true)
+        self.assertEqual("bar", context.complex.nested.foo)
 
 
 class SpanTests(unittest.TestCase):
@@ -173,7 +184,7 @@ class ServerSpanTests(unittest.TestCase):
         child_span = server_span.make_child("child_name")
 
         self.assertEqual(child_span.name, "child_name")
-        self.assertEqual(child_span.id, 0xCAFE)
+        self.assertEqual(child_span.id, "51966")
         self.assertEqual(child_span.trace_id, "trace")
         self.assertEqual(child_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
@@ -203,7 +214,7 @@ class ServerSpanTests(unittest.TestCase):
         local_span = server_span.make_child("test_op", local=True, component_name="test_component")
 
         self.assertEqual(local_span.name, "test_op")
-        self.assertEqual(local_span.id, 0xCAFE)
+        self.assertEqual(local_span.id, "51966")
         self.assertEqual(local_span.trace_id, "trace")
         self.assertEqual(local_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
@@ -256,11 +267,31 @@ class LocalSpanTests(unittest.TestCase):
         child_span = local_span.make_child("child_name")
 
         self.assertEqual(child_span.name, "child_name")
-        self.assertEqual(child_span.id, 0xCAFE)
+        self.assertEqual(child_span.id, "51966")
         self.assertEqual(child_span.trace_id, "trace")
         self.assertEqual(child_span.parent_id, "id")
         self.assertEqual(mock_observer.on_child_span_created.call_count, 1)
         self.assertEqual(mock_observer.on_child_span_created.call_args, mock.call(child_span))
+
+    def test_context_object_reused(self):
+        baseplate = Baseplate()
+        context = baseplate.make_context_object()
+
+        with baseplate.make_server_span(context, "foo"):
+            pass
+
+        with self.assertRaises(ReusedContextObjectError):
+            with baseplate.make_server_span(context, "bar"):
+                pass
+
+    def test_parent_already_finished(self):
+        mock_context = mock.Mock()
+        local_span = LocalSpan("trace", "parent", "id", None, 0, "name", mock_context)
+        local_span.start()
+        local_span.finish()
+
+        with self.assertRaises(ParentSpanAlreadyFinishedError):
+            local_span.make_child("foo")
 
 
 class TraceInfoTests(unittest.TestCase):
@@ -290,163 +321,3 @@ class TraceInfoTests(unittest.TestCase):
         span = TraceInfo.from_upstream(1, 2, 3, None, None)
         self.assertIsNone(span.sampled)
         self.assertIsNone(span.flags)
-
-
-class EdgeRequestContextTests(unittest.TestCase):
-    LOID_ID = "t2_deadbeef"
-    LOID_CREATED_MS = 100000
-    SESSION_ID = "beefdead"
-    DEVICE_ID = "becc50f6-ff3d-407a-aa49-fa49531363be"
-    ORIGIN_NAME = "baseplate"
-    COUNTRY_CODE = "OK"
-
-    def setUp(self):
-        mock_filewatcher = mock.Mock(spec=FileWatcher)
-        mock_filewatcher.get_data.return_value = {
-            "secrets": {
-                "secret/authentication/public-key": {
-                    "type": "versioned",
-                    "current": AUTH_TOKEN_PUBLIC_KEY,
-                }
-            },
-            "vault": {"token": "test", "url": "http://vault.example.com:8200/"},
-        }
-        self.store = SecretsStore("/secrets")
-        self.store._filewatcher = mock_filewatcher
-        self.factory = EdgeRequestContextFactory(self.store)
-
-    def test_create(self):
-        request_context = self.factory.new(
-            authentication_token=AUTH_TOKEN_VALID,
-            loid_id=self.LOID_ID,
-            loid_created_ms=self.LOID_CREATED_MS,
-            session_id=self.SESSION_ID,
-            device_id=self.DEVICE_ID,
-            origin_service_name=self.ORIGIN_NAME,
-            country_code=self.COUNTRY_CODE,
-        )
-        self.assertIsNot(request_context._t_request, None)
-        self.assertEqual(request_context._header, SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-
-    def test_create_validation(self):
-        with self.assertRaises(ValueError):
-            self.factory.new(
-                authentication_token=None,
-                loid_id="abc123",
-                loid_created_ms=self.LOID_CREATED_MS,
-                session_id=self.SESSION_ID,
-            )
-        with self.assertRaises(ValueError):
-            self.factory.new(
-                authentication_token=AUTH_TOKEN_VALID,
-                loid_id=self.LOID_ID,
-                loid_created_ms=self.LOID_CREATED_MS,
-                session_id=self.SESSION_ID,
-                country_code="aa",
-            )
-
-    def test_create_empty_context(self):
-        request_context = self.factory.new()
-        self.assertEqual(
-            request_context._header,
-            b"\x0c\x00\x01\x00\x0c\x00\x02\x00\x0c\x00\x04\x00\x0c\x00\x05\x00\x0c\x00\x06\x00\x00",
-        )
-
-    def test_logged_out_user(self):
-        request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_NO_AUTH)
-
-        with self.assertRaises(NoAuthenticationError):
-            request_context.user.id
-        with self.assertRaises(NoAuthenticationError):
-            request_context.user.roles
-
-        self.assertFalse(request_context.user.is_logged_in)
-        self.assertEqual(request_context.user.loid, self.LOID_ID)
-        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
-
-        with self.assertRaises(NoAuthenticationError):
-            request_context.oauth_client.id
-        with self.assertRaises(NoAuthenticationError):
-            request_context.oauth_client.is_type("third_party")
-
-        self.assertEqual(request_context.session.id, self.SESSION_ID)
-        self.assertEqual(request_context.device.id, self.DEVICE_ID)
-        self.assertEqual(
-            request_context.event_fields(),
-            {
-                "user_id": self.LOID_ID,
-                "logged_in": False,
-                "cookie_created_timestamp": self.LOID_CREATED_MS,
-                "session_id": self.SESSION_ID,
-                "oauth_client_id": None,
-                "device_id": self.DEVICE_ID,
-            },
-        )
-
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
-    def test_logged_in_user(self):
-        request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH)
-
-        self.assertEqual(request_context.user.id, "t2_example")
-        self.assertTrue(request_context.user.is_logged_in)
-        self.assertEqual(request_context.user.loid, self.LOID_ID)
-        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
-        self.assertEqual(request_context.user.roles, set())
-        self.assertFalse(request_context.user.has_role("test"))
-        self.assertIs(request_context.oauth_client.id, None)
-        self.assertFalse(request_context.oauth_client.is_type("third_party"))
-        self.assertEqual(request_context.session.id, self.SESSION_ID)
-        self.assertEqual(request_context.device.id, self.DEVICE_ID)
-        self.assertEqual(request_context.origin_service.name, self.ORIGIN_NAME)
-        self.assertEqual(request_context.geolocation.country_code, self.COUNTRY_CODE)
-        self.assertEqual(
-            request_context.event_fields(),
-            {
-                "user_id": "t2_example",
-                "logged_in": True,
-                "cookie_created_timestamp": self.LOID_CREATED_MS,
-                "session_id": self.SESSION_ID,
-                "oauth_client_id": None,
-                "device_id": self.DEVICE_ID,
-            },
-        )
-
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
-    def test_expired_token(self):
-        request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH)
-
-        with self.assertRaises(NoAuthenticationError):
-            request_context.user.id
-        with self.assertRaises(NoAuthenticationError):
-            request_context.user.roles
-        with self.assertRaises(NoAuthenticationError):
-            request_context.oauth_client.id
-        with self.assertRaises(NoAuthenticationError):
-            request_context.oauth_client.is_type("third_party")
-
-        self.assertFalse(request_context.user.is_logged_in)
-        self.assertEqual(request_context.user.loid, self.LOID_ID)
-        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
-        self.assertEqual(request_context.session.id, self.SESSION_ID)
-        self.assertEqual(
-            request_context.event_fields(),
-            {
-                "user_id": self.LOID_ID,
-                "logged_in": False,
-                "cookie_created_timestamp": self.LOID_CREATED_MS,
-                "session_id": self.SESSION_ID,
-                "oauth_client_id": None,
-            },
-        )
-
-    @unittest.skipIf(not cryptography_installed, "cryptography not installed")
-    def test_anonymous_token(self):
-        request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_ANON_AUTH)
-
-        with self.assertRaises(NoAuthenticationError):
-            request_context.user.id
-        self.assertFalse(request_context.user.is_logged_in)
-        self.assertEqual(request_context.user.loid, self.LOID_ID)
-        self.assertEqual(request_context.user.cookie_created_ms, self.LOID_CREATED_MS)
-        self.assertEqual(request_context.session.id, self.SESSION_ID)
-        self.assertTrue(request_context.user.has_role("anonymous"))
