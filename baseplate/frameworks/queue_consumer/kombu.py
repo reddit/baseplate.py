@@ -263,7 +263,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
     For simple cases where you just need a basic queue with all the default
     parameters for your message broker, you can use `KombuQueueConsumerFactory.new`.
 
-    If you need more control, you can create the :py:class:`~kombu.Queue` s yourself and
+    If you need more control, you can create the :py:class:`~kombu.Queue` objects yourself and
     use the constructor directly.
     """
 
@@ -282,11 +282,11 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         """`KombuQueueConsumerFactory` constructor.
 
         :param baseplate: The Baseplate set up for your consumer.
-        :param exchange: The `kombu.Exchange` that you will bind your :py:class:`~kombu.Queue` s
+        :param exchange: The `kombu.Exchange` that you will bind your :py:class:`~kombu.Queue` objects
             to.
-        :param queues: List of  :py:class:`~kombu.Queue` s to consume from.
+        :param queues: List of  :py:class:`~kombu.Queue` objects to consume from.
         :param queue_name: Name for your queue.
-        :param routing_keys: List of routing keys that you will create :py:class:`~kombu.Queue` s
+        :param routing_keys: List of routing keys that you will create :py:class:`~kombu.Queue` objects
             to consume from.
         :param handler_fn: A function that will process an individual message from a queue.
         :param error_handler_fn: A function that will be called when an error is thrown
@@ -325,17 +325,17 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
     ) -> "KombuQueueConsumerFactory":
         """Return a new `KombuQueueConsumerFactory`.
 
-        This method will create the :py:class:`~kombu.Queue` s for you and is
+        This method will create the :py:class:`~kombu.Queue` objects for you and is
         appropriate to use in simple cases where you just need a basic queue with
         all the default parameters for your message broker.
 
         :param baseplate: The Baseplate set up for your consumer.
         :param exchange: The `kombu.Exchange` that you will bind your
-            :py:class:`~kombu.Queue` s to.
+            :py:class:`~kombu.Queue` objects to.
         :param exchange: The `kombu.Connection` to your message broker.
         :param queue_name: Name for your queue.
         :param routing_keys: List of routing keys that you will create
-            :py:class:`~kombu.Queue` s to consume from.
+            :py:class:`~kombu.Queue` objects to consume from.
         :param handler_fn: A function that will process an individual message from a queue.
         :param error_handler_fn: A function that will be called when an error is thrown
             while executing the `handler_fn`. This function will be responsible for calling
@@ -388,7 +388,7 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
     For simple cases where you just need a basic queue with all the default
     parameters for your message broker, you can use `KombuQueueConsumerFactory.new`.
 
-    If you need more control, you can create the :py:class:`~kombu.Queue` s yourself and
+    If you need more control, you can create the :py:class:`~kombu.Queue` objects yourself and
     use the constructor directly.
     """
 
@@ -408,11 +408,11 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
         """`KombuQueueConsumerFactory` constructor.
 
         :param baseplate: The Baseplate set up for your consumer.
-        :param exchange: The `kombu.Exchange` that you will bind your :py:class:`~kombu.Queue` s
+        :param exchange: The `kombu.Exchange` that you will bind your :py:class:`~kombu.Queue` objects
             to.
-        :param queues: List of  :py:class:`~kombu.Queue` s to consume from.
+        :param queues: List of  :py:class:`~kombu.Queue` objects to consume from.
         :param queue_name: Name for your queue.
-        :param routing_keys: List of routing keys that you will create :py:class:`~kombu.Queue` s
+        :param routing_keys: List of routing keys that you will create :py:class:`~kombu.Queue` objects
             to consume from.
         :param handler_fn: A function that will process an individual message from a queue.
         :param error_handler_fn: A function that will be called when an error is thrown
@@ -455,17 +455,17 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
     ) -> "KombuBatchQueueConsumerFactory":
         """Return a new `KombuBatchQueueConsumerFactory`.
 
-        This method will create the :py:class:`~kombu.Queue` s for you and is
+        This method will create the :py:class:`~kombu.Queue` objects for you and is
         appropriate to use in simple cases where you just need a basic queue with
         all the default parameters for your message broker.
 
         :param baseplate: The Baseplate set up for your consumer.
         :param exchange: The `kombu.Exchange` that you will bind your
-            :py:class:`~kombu.Queue` s to.
+            :py:class:`~kombu.Queue` objects to.
         :param exchange: The `kombu.Connection` to your message broker.
         :param queue_name: Name for your queue.
         :param routing_keys: List of routing keys that you will create
-            :py:class:`~kombu.Queue` s to consume from.
+            :py:class:`~kombu.Queue` objects to consume from.
         :param handler_fn: A function that will process an individual message from a queue.
         :param error_handler_fn: A function that will be called when an error is thrown
             while executing the `handler_fn`. This function will be responsible for calling
