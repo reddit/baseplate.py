@@ -160,7 +160,7 @@ class KombuMessageHandler(MessageHandler):
                 self.handler_fn(context, message_body, message)
         except Exception as exc:
             logger.exception(
-                "Unhandled error while trying to process a message.  The message "
+                "Unhandled error while trying to process a message. The message "
                 "has been returned to the queue broker."
             )
             if self.error_handler_fn:
@@ -200,13 +200,39 @@ class KombuBatchMessageHandler(MessageHandler):
                 span.set_tag("kind", "batch_consumer")
                 span.set_tag("size", len(messages))
 
-                message: kombu.Message
-                for i, message in enumerate(messages):
+                # The routing keys, consumer tags, delivery tags and exchanges span tags are
+                # comma-separated, de-duplicated lists of the tags in the messages
+
+                routing_keys = set(None)
+                consumer_tags = set(None)
+                delivery_tags = set(None)
+                exchanges = set(None)
+
+                for message in messages:
+                    message: kombu.Message
                     delivery_info = message.delivery_info
-                    span.set_tag(f"amqp.routing_key_{i}", delivery_info.get("routing_key", ""))
-                    span.set_tag(f"amqp.consumer_tag_{i}", delivery_info.get("consumer_tag", ""))
-                    span.set_tag(f"amqp.delivery_tag_{i}", delivery_info.get("delivery_tag", ""))
-                    span.set_tag(f"amqp.exchange_{i}", delivery_info.get("exchange", ""))
+                    routing_key = delivery_info.get("routing_key", None)
+                    routing_keys.add(routing_key)
+                    consumer_tag = delivery_info.get("consumer_tag", None)
+                    consumer_tags.add(consumer_tag)
+                    delivery_tag = delivery_info.get("delivery_tag", None)
+                    delivery_tags.add(delivery_tag)
+                    exchange = delivery_info.get("exchange", None)
+                    exchanges.add(exchange)
+                
+                routing_keys.remove(None)
+                consumer_tags.remove(None)
+                delivery_tags.remove(None)
+                exchanges.remove(None)
+
+                routing_keys_span_tag = ",".join(item in routing_keys)
+                span.set_tag("amqp.routing_keys", routing_keys_span_tag)
+                consumer_tags_span_tag = ",".join(item in consumer_tags)
+                span.set_tag("amqp.consumer_tags", consumer_tags_span_tag)
+                delivery_tags_span_tag = ",".join(item in delivery_tags)
+                span.set_tag("amqp.delivery_tags", delivery_tags_span_tag)
+                exchanges_span_tag = ",".join(item in exchanges)
+                span.set_tag("amqp.exchanges", exchanges_span_tag)
 
                 self.handler_fn(context, list(messages))
         except Exception as exc:  # pylint: disable=broad-except
@@ -222,7 +248,7 @@ class KombuBatchMessageHandler(MessageHandler):
                         message.requeue()
 
             if isinstance(exc, FatalMessageHandlerError):
-                logger.info("Recieved a fatal error, terminating the server.")
+                logger.info("Received a fatal error, terminating the server.")
                 raise
         else:
             for message in messages:
