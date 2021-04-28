@@ -146,7 +146,17 @@ class TestKombuBatchMessageHandler:
         }
         msg2.decode.return_value = {"foo": "bar"}
 
-        return [msg1, msg2]
+        msg3 = mock.Mock(spec=kombu.Message)
+        msg3.acknowledged = False
+        msg3.delivery_info = {
+            "routing_key": "routing-key-2",
+            "consumer_tag": "consumer-tag-2",
+            "delivery_tag": "delivery-tag-2",
+            "exchange": "exchange-2",
+        }
+        msg3.decode.return_value = {"foo": "bar"}
+
+        return [msg1, msg2, msg3]
 
     def test_handle(self, context, span, baseplate, name, messages):
         handler_fn = mock.Mock()
@@ -158,15 +168,11 @@ class TestKombuBatchMessageHandler:
         span.set_tag.assert_has_calls(
             [
                 mock.call("kind", "batch_consumer"),
-                mock.call("size", 2),
-                mock.call("amqp.routing_key_0", "routing-key-1"),
-                mock.call("amqp.consumer_tag_0", "consumer-tag-1"),
-                mock.call("amqp.delivery_tag_0", "delivery-tag-1"),
-                mock.call("amqp.exchange_0", "exchange-1"),
-                mock.call("amqp.routing_key_1", "routing-key-2"),
-                mock.call("amqp.consumer_tag_1", "consumer-tag-2"),
-                mock.call("amqp.delivery_tag_1", "delivery-tag-2"),
-                mock.call("amqp.exchange_1", "exchange-2"),
+                mock.call("size", 3),
+                mock.call("amqp.routing_keys", "routing-key-1,routing-key-2"),
+                mock.call("amqp.consumer_tags", "consumer-tag-1,consumer-tag-2"),
+                mock.call("amqp.delivery_tags", "delivery-tag-1,delivery-tag-2"),
+                mock.call("amqp.exchanges", "exchange-1,exchange-2"),
             ],
             any_order=True,
         )

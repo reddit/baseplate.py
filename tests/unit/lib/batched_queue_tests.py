@@ -28,6 +28,7 @@ class TestBatchedQueue:
         batched_queue.put(2)
 
         sleep(0.2)
+        batched_queue.flush()
 
         assert queue.qsize() == 1
         batch = queue.get(True, 0.1)
@@ -48,6 +49,7 @@ class TestBatchedQueue:
         batched_queue.put(4)
 
         sleep(0.21)
+        batched_queue.flush()
 
         assert queue.qsize() == 2
         batch_1 = queue.get(True, 0.1)
@@ -70,6 +72,7 @@ class TestBatchedQueue:
         batched_queue.put(4)
 
         sleep(0.21)
+        batched_queue.flush()
 
         assert queue.qsize() == 2
         batch_1 = queue.get(True, 0.1)
