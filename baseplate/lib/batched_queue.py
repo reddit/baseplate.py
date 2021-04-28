@@ -44,20 +44,20 @@ class BatchedQueue(Generic[T]):
     def flush(self, force: bool = False) -> None:
         if force or self._should_flush():
             self._flush()
-    
+
     def _flush(self) -> None:
         batch = self.drain()
         self._work_queue.put(batch)
         self._last_flush = time()
-    
+
     def _should_flush(self) -> bool:
         return self._batch_is_full() or self._flush_interval_has_expired()
-    
+
     def _batch_is_full(self) -> bool:
         return len(self._batch) >= self._batch_size
-    
+
     def _flush_interval_has_expired(self) -> bool:
         return (
-            self._last_flush is not None and
-            time() - self._last_flush >= self._flush_interval.total_seconds()
+            self._last_flush is not None
+            and time() - self._last_flush >= self._flush_interval.total_seconds()
         )

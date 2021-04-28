@@ -111,7 +111,7 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
         if self.serializer:
             args["accept"] = [self.serializer.name]
         return [consumer(**args)]
-    
+
     def on_iteration(self):
         self.work_queue.flush()
 
@@ -130,11 +130,11 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
                     message.requeue()
                 else:
                     logger.warning(
-                        "KombuBatchConsumerWorker is stopping and requeuing messages in the " + 
-                        "unprocessed batch. A message in this unprocessed batch had already " +
-                        "been acknowledged, so it is not being requeued. However, this indicates " + 
-                        "an inconsistency in the batch processing logic which should be " + 
-                        "investigated."
+                        "KombuBatchConsumerWorker is stopping and requeuing messages in the "
+                        + "unprocessed batch. A message in this unprocessed batch had already "
+                        + "been acknowledged, so it is not being requeued. However, this indicates "
+                        + "an inconsistency in the batch processing logic which should be "
+                        + "investigated."
                     )
 
 
@@ -228,7 +228,7 @@ class KombuBatchMessageHandler(MessageHandler):
                     delivery_tags.add(delivery_tag)
                     exchange = delivery_info.get("exchange", None)
                     exchanges.add(exchange)
-                
+
                 routing_keys.remove(None)
                 consumer_tags.remove(None)
                 delivery_tags.remove(None)
@@ -522,7 +522,7 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
             queues=self.queues,
             work_queue=batched_queue,
             serializer=self.serializer,
-            **kwargs
+            **kwargs,
         )
 
     def build_message_handler(self) -> KombuBatchMessageHandler:
