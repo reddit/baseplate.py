@@ -98,14 +98,16 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
         queues: Sequence[kombu.Queue],
         work_queue: BatchedQueue,
         serializer: Optional[KombuSerializer] = None,
+        **kwargs: Any,
     ) -> None:
         self.connection = connection
         self.queues = queues
         self.work_queue = work_queue
         self.serializer = serializer
+        self.kwargs = kwargs
 
     def get_consumers(self, consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
-        args = dict(queues=self.queues, on_message=self.work_queue.put)
+        args = dict(queues=self.queues, on_message=self.work_queue.put, **self.kwargs)
         if self.serializer:
             args["accept"] = [self.serializer.name]
         return [consumer(**args)]
@@ -169,7 +171,7 @@ class KombuMessageHandler(MessageHandler):
                 message.requeue()
 
             if isinstance(exc, FatalMessageHandlerError):
-                logger.info("Recieved a fatal error, terminating the server.")
+                logger.info("Received a fatal error, terminating the server.")
                 raise
         else:
             message.ack()
@@ -402,6 +404,7 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[BatchErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
+        worker_kwargs: Optional[Dict[str, Any]] = None,
         batch_size: int = 1,
         batch_timeout: timedelta = timedelta(seconds=1),
     ) -> None:
@@ -423,6 +426,8 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
             be used to decode the messages you are consuming.
+        :param worker_kwargs: A dictionary of keyword arguments used to configure a
+            queue consumer.
         :param batch_size: The size of a message batch
         :param batch_timeout: The timeout after which a message will latest be processed even if
             the batch is not full
@@ -435,6 +440,7 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
         self.error_handler_fn = error_handler_fn
         self.health_check_fn = health_check_fn
         self.serializer = serializer
+        self.worker_kwargs = worker_kwargs
         self.batch_size = batch_size
         self.batch_timeout = batch_timeout
 
@@ -450,6 +456,7 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[BatchErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
+        worker_kwargs: Optional[Dict[str, Any]] = None,
         batch_size: int = 1,
         batch_timeout: timedelta = timedelta(seconds=1),
     ) -> "KombuBatchQueueConsumerFactory":
@@ -475,6 +482,8 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
             be used to decode the messages you are consuming.
+        :param worker_kwargs: A dictionary of keyword arguments used to configure a
+            queue consumer.
         :param batch_size: The size of a message batch
         :param batch_timeout: The timeout after which a message will latest be processed even if
             the batch is not full
@@ -491,11 +500,13 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
             error_handler_fn=error_handler_fn,
             health_check_fn=health_check_fn,
             serializer=serializer,
+            worker_kwargs=worker_kwargs,
             batch_size=batch_size,
             batch_timeout=batch_timeout,
         )
 
     def build_pump_worker(self, work_queue: queue.Queue) -> KombuBatchConsumerWorker:
+        kwargs = self.worker_kwargs or {}
         batched_queue: BatchedQueue[kombu.Message] = BatchedQueue(
             work_queue, self.batch_size, self.batch_timeout
         )
@@ -504,6 +515,7 @@ class KombuBatchQueueConsumerFactory(QueueConsumerFactory):
             queues=self.queues,
             work_queue=batched_queue,
             serializer=self.serializer,
+            **kwargs
         )
 
     def build_message_handler(self) -> KombuBatchMessageHandler:
