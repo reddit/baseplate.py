@@ -91,8 +91,14 @@ def engine_from_config(
         if not secrets:
             raise TypeError("'secrets' is required if 'credentials_secret' is set")
         credentials = secrets.get_credentials(options.credentials_secret)
-        url.username = credentials.username
-        url.password = credentials.password
+
+        # support sqlalchemy 1.4+ where URL is immutable
+        # https://docs.sqlalchemy.org/en/14/changelog/migration_14.html#the-url-object-is-now-immutable
+        if hasattr(url, "set"):
+            url = url.set(username=credentials.username, password=credentials.password)
+        else:
+            url.username = credentials.username
+            url.password = credentials.password
 
     return create_engine(url, **kwargs)
 
