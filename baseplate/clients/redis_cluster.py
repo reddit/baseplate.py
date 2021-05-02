@@ -235,6 +235,8 @@ def cluster_pool_from_config(
     Supported keys:
     * ``url`` (required): a URL like ``redis://localhost/0``.
     * ``max_connections``: an integer maximum number of connections in the pool
+    * ``max_connections_per_node``: Boolean, whether max_connections should be applied
+        globally (False) or per node (True).
     * ``skip_full_coverage_check``: Skips the check of cluster-require-full-coverage
       config, useful for clusters without the CONFIG command (like aws)
     * ``nodemanager_follow_cluster``: Tell the node manager to reuse the last set of
@@ -259,6 +261,7 @@ def cluster_pool_from_config(
         {
             "url": config.String,
             "max_connections": config.Optional(config.Integer, default=50),
+            "max_connections_per_node": config.Optional(config.Boolean, default=False),
             "timeout": config.Optional(config.Timespan, default=None),
             "read_from_replicas": config.Optional(config.Boolean, default=True),
             "skip_full_coverage_check": config.Optional(config.Boolean, default=True),
