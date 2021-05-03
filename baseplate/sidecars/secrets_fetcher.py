@@ -107,7 +107,7 @@ def fetch_instance_identity() -> str:
 
     """
     logger.debug("Fetching identity.")
-    resp = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")
+    resp = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7", timeout=5)
     resp.raise_for_status()
     return resp.text
 
@@ -300,6 +300,7 @@ class VaultClient:
             response = self.session.get(
                 urllib.parse.urljoin(self.base_url, posixpath.join("v1", secret_name)),
                 headers={"X-Vault-Token": self.token},
+                timeout=5,  # seconds
             )
             response.raise_for_status()
         except requests.HTTPError as e:
