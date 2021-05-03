@@ -107,9 +107,7 @@ def fetch_instance_identity() -> str:
 
     """
     logger.debug("Fetching identity.")
-    resp = requests.get(
-        "http://169.254.169.254/latest/dynamic/instance-identity/pkcs7",
-        timeout=5)
+    resp = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7", timeout=5)
     resp.raise_for_status()
     return resp.text
 
