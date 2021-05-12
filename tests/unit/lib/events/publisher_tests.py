@@ -56,6 +56,25 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(result.item_count, 0)
 
 
+class V2JBatchTests(unittest.TestCase):
+    def test_v2j(self):
+        batch = event_publisher.V2JBatch(max_size=50)
+        batch.add(None)
+        batch.add(b'{"source":1}')
+        batch.add(b'{"source":2}')
+
+        result = batch.serialize()
+        self.assertEqual(result.item_count, 2)
+        self.assertEqual(result.serialized, b'[{"source":1},{"source":2}]')
+
+        with self.assertRaises(event_publisher.BatchFull):
+            batch.add(b"x" * 100)
+
+        batch.reset()
+        result = batch.serialize()
+        self.assertEqual(result.item_count, 0)
+
+
 class PublisherTests(unittest.TestCase):
     @mock.patch("requests.Session", autospec=True)
     def setUp(self, Session):
