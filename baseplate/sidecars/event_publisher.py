@@ -89,14 +89,12 @@ class V2Batch(Batch):
 class V2JBatch(V2Batch):
     # Send a batch as a plain JSON array.  Useful when your events are not
     # Thrift JSON
-    _header = b'['
-    _end = b']'
+    _header = "["
+    _end = b"]"
 
     def serialize(self) -> SerializedBatch:
-        serialized = self._header + b",".join(self._items) + self._end
-        return SerializedBatch(
-            item_count=len(self._items), serialized=serialized
-        )
+        serialized = self._header.encode() + b",".join(self._items) + self._end
+        return SerializedBatch(item_count=len(self._items), serialized=serialized)
 
 
 class BatchPublisher:
@@ -162,7 +160,7 @@ class BatchPublisher:
         raise MaxRetriesError("could not sent batch")
 
 
-SERIALIZER_BY_VERSION = {'2': V2Batch, '2j': V2JBatch}
+SERIALIZER_BY_VERSION = {"2": V2Batch, "2j": V2JBatch}
 
 
 def publish_events() -> None:
@@ -194,7 +192,7 @@ def publish_events() -> None:
         {
             "collector": {
                 "hostname": config.String,
-                "version": config.Optional(config.String, default='2'),
+                "version": config.Optional(config.String, default="2"),
             },
             "key": {"name": config.String, "secret": config.Base64},
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
