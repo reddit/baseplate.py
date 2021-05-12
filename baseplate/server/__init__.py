@@ -15,9 +15,11 @@ import signal
 import socket
 import sys
 import threading
+import time
 import traceback
 import warnings
 
+from dataclasses import dataclass
 from types import FrameType
 from typing import Any
 from typing import Callable
@@ -34,12 +36,23 @@ from gevent.server import StreamServer
 from baseplate import Baseplate
 from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
+from baseplate.lib.config import Optional as OptionalConfig
+from baseplate.lib.config import parse_config
+from baseplate.lib.config import Timespan
 from baseplate.lib.log_formatter import CustomJsonFormatter
 from baseplate.server import einhorn
 from baseplate.server import reloader
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ServerState:
+    shutting_down: bool = False
+
+
+SERVER_STATE = ServerState()
 
 
 def parse_args(args: Sequence[str]) -> argparse.Namespace:
@@ -237,6 +250,8 @@ def load_app_and_run_server() -> None:
     listener = make_listener(args.bind)
     server = make_server(config.server, listener, app)
 
+    cfg = parse_config(config.server, {"drain_time": OptionalConfig(Timespan)})
+
     if einhorn.is_worker():
         einhorn.ack_startup()
 
@@ -246,13 +261,20 @@ def load_app_and_run_server() -> None:
     # clean up leftovers from initialization before we get into requests
     gc.collect()
 
-    logger.info("Listening on %s, PID:%s", listener.getsockname(), os.getpid())
+    logger.info("Listening on %s", listener.getsockname())
     server.start()
     try:
         shutdown_event.wait()
-        logger.info("Finally stopping server, PID:%s", os.getpid())
+
+        SERVER_STATE.shutting_down = True
+
+        if cfg.drain_time:
+            logger.debug("Draining inbound requests...")
+            time.sleep(cfg.drain_time.total_seconds())
     finally:
+        logger.debug("Gracefully shutting down...")
         server.stop()
+        logger.info("Exiting")
 
 
 def load_and_run_script() -> None:

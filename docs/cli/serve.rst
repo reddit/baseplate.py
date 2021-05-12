@@ -126,6 +126,42 @@ An example command line::
 
 .. _Stripe's Einhorn socket manager: https://github.com/stripe/einhorn
 
+Graceful shutdown
+-----------------
+
+The flow of graceful shutdown while handling live traffic looks like this:
+
+* The server receives a ``SIGTERM`` from the infrastructure.
+* The server sets ``baseplate.server.SERVER_STATE.shutting_down`` to ``True``.
+* If the ``drain_time`` setting is set in the server configuration, the server
+  will wait the specified amount of time before continuing to the next step.
+  This gives your application a chance to use the ``shutting_down`` flag in
+  healthcheck responses.
+* The server begins graceful shutdown. No new connections will be accepted. The
+  server will continue processing the existing in-flight requests until they
+  are all done or ``stop_timeout`` time has elapsed.
+* The server exits and lets the infrastructure clean up.
+
+During the period between receiving the ``SIGTERM`` and the server exiting, the
+application may still be routed new requests. To ensure requests aren't lost
+during the graceful shutdown (where they won't be listened for) your
+application should set an appropriate ``drain_time`` and use the
+``SERVER_STATE.shutting_down`` flag to fail ``READINESS`` healthchecks.
+
+For example:
+
+.. code-block:: py
+
+   def is_healthy(self, context, healthcheck_request):
+       if healthcheck_request.probe == IsHealthyProbe.LIVENESS:
+           return True
+       elif healthcheck_request.probe == IsHealthyProbe.READINESS:
+           if SERVER_STATE.shutting_down:
+               return False
+           return True
+       return True
+
+
 Debug Signal
 ------------
 
