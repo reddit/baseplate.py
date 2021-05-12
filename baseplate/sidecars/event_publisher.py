@@ -86,10 +86,23 @@ class V2Batch(Batch):
         self._size = len(self._header) + len(self._end)
 
 
+class V2JBatch(V2Batch):
+    # Send a batch as a plain JSON array.  Useful when your events are not
+    # Thrift JSON
+    _header = b'['
+    _end = b']'
+
+    def serialize(self) -> SerializedBatch:
+        serialized = self._header + b",".join(self._items) + self._end
+        return SerializedBatch(
+            item_count=len(self._items), serialized=serialized
+        )
+
+
 class BatchPublisher:
     def __init__(self, metrics_client: metrics.Client, cfg: Any):
         self.metrics = metrics_client
-        self.url = f"https://{cfg.collector.hostname}/v{cfg.collector.version:d}"
+        self.url = f"https://{cfg.collector.hostname}/v{cfg.collector.version}"
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
         self.session = requests.Session()
@@ -149,7 +162,7 @@ class BatchPublisher:
         raise MaxRetriesError("could not sent batch")
 
 
-SERIALIZER_BY_VERSION = {2: V2Batch}
+SERIALIZER_BY_VERSION = {'2': V2Batch, '2j': V2JBatch}
 
 
 def publish_events() -> None:
@@ -181,7 +194,7 @@ def publish_events() -> None:
         {
             "collector": {
                 "hostname": config.String,
-                "version": config.Optional(config.Integer, default=1),
+                "version": config.Optional(config.String, default='2'),
             },
             "key": {"name": config.String, "secret": config.Base64},
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
