@@ -1,8 +1,12 @@
 import unittest
 
+from typing import Any
+from typing import Dict
+from typing import Optional
 from unittest import mock
 
 from baseplate import LocalSpan
+from baseplate import RequestContext
 from baseplate import ServerSpan
 from baseplate import Span
 from baseplate.lib.metrics import Batch
@@ -197,6 +201,12 @@ class LocalSpanObserverTests(unittest.TestCase):
         self.assertFalse("error" in self.observer_empty_whitelist.tags)
         self.assertFalse("test" in self.observer_empty_whitelist.tags)
 
+    def test_on_child_span_created(self):
+        mock_child_span = mock.Mock()
+        mock_child_span.name = "example"
+        self.observer.on_child_span_created(mock_child_span)
+        self.assertEqual(mock_child_span.register.call_count, 1)
+
 
 class ClientSpanObserverTests(unittest.TestCase):
     def setUp(self):
@@ -271,3 +281,9 @@ class ClientSpanObserverTests(unittest.TestCase):
         self.observer.on_finish(exc_info=(ServerTimeout, ServerTimeout("timeout", 3.0, False)))
         self.assertFalse(self.observer.tags["success"])
         self.assertFalse("timed_out" in self.observer.tags)
+
+    def test_on_child_span_created(self):
+        mock_child_span = mock.Mock()
+        mock_child_span.name = "example"
+        self.observer.on_child_span_created(mock_child_span)
+        self.assertEqual(mock_child_span.register.call_count, 1)
