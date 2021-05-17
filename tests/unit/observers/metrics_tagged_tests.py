@@ -9,6 +9,7 @@ from typing import Optional
 import pytest
 
 from baseplate import RequestContext
+from baseplate import ServerSpan
 from baseplate import Span
 from baseplate.lib.metrics import Counter
 from baseplate.lib.metrics import Gauge
@@ -156,3 +157,21 @@ def test_observer(observer_cls, name):
             assert counter["tags"].pop("endpoint") == "span"
         assert counter["tags"].pop("tag2") == "bar"
         assert counter["tags"] == {}
+
+
+def test_nested():
+    batch = FakeBatch()
+    span = ServerSpan(
+        trace_id=1234,
+        parent_id=2345,
+        span_id=3456,
+        sampled=None,
+        flags=None,
+        name="fancy.span",
+        context=RequestContext({}),
+    )
+    observer = TaggedMetricsLocalSpanObserver(batch, span, {"client", "endpoint"})
+    span.register(observer)
+
+    with span.make_child("foo", local=True, component_name="foo") as child_span:
+        assert len(child_span.observers) == 1
