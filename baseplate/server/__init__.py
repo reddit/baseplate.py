@@ -5,6 +5,7 @@ This command serves your application from the given configuration file.
 """
 import argparse
 import configparser
+import enum
 import fcntl
 import gc
 import importlib
@@ -20,6 +21,7 @@ import traceback
 import warnings
 
 from dataclasses import dataclass
+from enum import Enum
 from types import FrameType
 from typing import Any
 from typing import Callable
@@ -34,6 +36,7 @@ from typing import Tuple
 from gevent.server import StreamServer
 
 from baseplate import Baseplate
+from baseplate.lib import warn_deprecated
 from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
 from baseplate.lib.config import Optional as OptionalConfig
@@ -47,9 +50,19 @@ from baseplate.server import reloader
 logger = logging.getLogger(__name__)
 
 
+class ServerLifecycle(Enum):
+    RUNNING = enum.auto()
+    SHUTTING_DOWN = enum.auto()
+
+
 @dataclass
 class ServerState:
-    shutting_down: bool = False
+    state: ServerLifecycle = ServerLifecycle.RUNNING
+
+    @property
+    def shutting_down(self) -> bool:
+        warn_deprecated("SERVER_STATE.shutting_down is deprecated in favor of SERVER_STATE.state")
+        return self.state == ServerLifecycle.SHUTTING_DOWN
 
 
 SERVER_STATE = ServerState()
@@ -266,7 +279,7 @@ def load_app_and_run_server() -> None:
     try:
         shutdown_event.wait()
 
-        SERVER_STATE.shutting_down = True
+        SERVER_STATE.state = ServerLifecycle.SHUTTING_DOWN
 
         if cfg.drain_time:
             logger.debug("Draining inbound requests...")
