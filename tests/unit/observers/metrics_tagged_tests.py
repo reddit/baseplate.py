@@ -197,6 +197,12 @@ class LocalSpanObserverTests(unittest.TestCase):
         self.assertFalse("error" in self.observer_empty_whitelist.tags)
         self.assertFalse("test" in self.observer_empty_whitelist.tags)
 
+    def test_on_child_span_created(self):
+        mock_child_span = mock.Mock()
+        mock_child_span.name = "example"
+        self.observer.on_child_span_created(mock_child_span)
+        self.assertEqual(mock_child_span.register.call_count, 1)
+
 
 class ClientSpanObserverTests(unittest.TestCase):
     def setUp(self):

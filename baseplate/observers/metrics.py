@@ -124,6 +124,14 @@ class MetricsLocalSpanObserver(SpanObserver):
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
 
+    def on_child_span_created(self, span: Span) -> None:
+        observer: SpanObserver
+        if isinstance(span, LocalSpan):
+            observer = MetricsLocalSpanObserver(self.batch, span, self.sample_rate)
+        else:
+            observer = MetricsClientSpanObserver(self.batch, span, self.sample_rate)
+        span.register(observer)
+
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         self.timer.stop()
 
