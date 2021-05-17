@@ -183,11 +183,11 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
         observer: SpanObserver
         if isinstance(span, LocalSpan):
             observer = TaggedMetricsLocalSpanObserver(
-                self.batch, span, self.allowlist, self.sample_rate
+                self.batch, span, self.whitelist, self.sample_rate
             )
         else:
             observer = TaggedMetricsClientSpanObserver(
-                self.batch, span, self.allowlist, self.sample_rate
+                self.batch, span, self.whitelist, self.sample_rate
             )
         span.register(observer)
 

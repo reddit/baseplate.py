@@ -277,9 +277,3 @@ class ClientSpanObserverTests(unittest.TestCase):
         self.observer.on_finish(exc_info=(ServerTimeout, ServerTimeout("timeout", 3.0, False)))
         self.assertFalse(self.observer.tags["success"])
         self.assertFalse("timed_out" in self.observer.tags)
-
-    def test_on_child_span_created(self):
-        mock_child_span = mock.Mock()
-        mock_child_span.name = "example"
-        self.observer.on_child_span_created(mock_child_span)
-        self.assertEqual(mock_child_span.register.call_count, 1)
