@@ -1,12 +1,8 @@
 import unittest
 
-from typing import Any
-from typing import Dict
-from typing import Optional
 from unittest import mock
 
 from baseplate import LocalSpan
-from baseplate import RequestContext
 from baseplate import ServerSpan
 from baseplate import Span
 from baseplate.lib.metrics import Batch
