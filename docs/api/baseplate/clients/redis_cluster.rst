@@ -11,6 +11,8 @@ client library that supports interacting with Redis when operating in cluster mo
 
 .. automodule:: baseplate.clients.redis_cluster
 
+.. versionadded:: 2.1
+
 Example
 -------
 
@@ -89,4 +91,55 @@ The following metrics are reported:
    How many connections have been established and are currently checked out and
    being used.
 
-.. versionadded:: 2.1
+
+Hot Key Tracking
+----------------
+
+Optionally, the client can help track key usage across the Redis cluster to
+help you identify if you have "hot" keys (keys that are read from or
+written to much more frequently than other keys). This is particularly useful
+in clusters with the `noeviction` set as the eviction policy, since Redis
+lacks a built-in mechanism to help you track hot keys in this case.
+
+Since tracking every single key used is expensive, the tracker works by
+tracking a small percentage or reads and/or writes, which can be configured
+on your client:
+
+.. code-block:: ini
+
+   [app:main]
+
+   ...
+   # Note that by default the sample rate will be zero for both reads and writes
+
+   # optional: Sample keys for 1% of read operations
+   foo.track_key_reads_sample_rate = 0.01
+
+   # optional: Sample keys for 10% of write operations
+   foo.track_key_writes_sample_rate = 0.01
+
+   ...
+
+The keys tracked will be written to a sorted set in the Redis cluster itself,
+which we can query at any time to see what keys are read from or written to
+more often than others. Keys used for writes will be stored in
+`baseplate-hot-key-tracker-writes` and keys used for reads will be stored in
+`baseplate-hot-key-tracker-reads`. Here's an example of how you can query the
+top 10 keys on each categories with their associated scores:
+
+.. code-block:: console
+
+   > ZREVRANGEBYSCORE baseplate-hot-key-tracker-reads +inf 0 WITHSCORES LIMIT 0 10
+
+   > ZREVRANGEBYSCORE baseplate-hot-key-tracker-writes +inf 0 WITHSCORES LIMIT 0 10
+
+
+Note that due to how the sampling works the scores are only meaningful in a
+relative sense (by comparing one key's access frequency to others in the list)
+but can't be used to make any inferences about key access rate or anything like
+that.
+
+Both tracker sets have a default TTL of 24 hours, so once they stop being
+written to (for instance, if key tracking is disabled) they will clean up
+after themselves in 24 hours, allowing us to start fresh the next time we
+want to enable key tracking.
