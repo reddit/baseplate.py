@@ -98,7 +98,7 @@ Hot Key Tracking
 Optionally, the client can help track key usage across the Redis cluster to
 help you identify if you have "hot" keys (keys that are read from or
 written to much more frequently than other keys). This is particularly useful
-in clusters with the `noeviction` set as the eviction policy, since Redis
+in clusters with ``noeviction`` set as the eviction policy, since Redis
 lacks a built-in mechanism to help you track hot keys in this case.
 
 Since tracking every single key used is expensive, the tracker works by
