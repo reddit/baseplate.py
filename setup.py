@@ -12,6 +12,7 @@ extras_require = {
     "memcache": ["pymemcache>=1.3.0,<1.4.4"],
     "pyramid": ["pyramid>=1.9.0,<2.0"],
     "redis": ["redis>=2.10.0,<4.0.0"],
+    "redis-py-cluster": ["redis-py-cluster>=2.1.2,<3.0.0"],
     "refcycle": ["objgraph>=3.0,<4.0"],
     "requests": ["advocate>=1.0.0,<2.0"],
     "sentry": ["sentry-sdk>=0.19,<1.0"],
