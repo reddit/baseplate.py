@@ -7,7 +7,7 @@ caching, prefer :doc:`memcached <memcache>`). `Redis-py-cluster`_ is a Python
 client library that supports interacting with Redis when operating in cluster mode.
 
 .. _`Redis`: https://redis.io/
-.. _`redis-py-cluster`: https://github.com/Grokzen/redis-py
+.. _`redis-py-cluster`: https://github.com/Grokzen/redis-py-cluster
 
 .. automodule:: baseplate.clients.redis_cluster
 
@@ -46,8 +46,8 @@ configure it in your application's configuration file:
    # optional: how long to wait for a connection to establish
    foo.timeout = 3 seconds
 
-   # optional: Whether read requests should be directed to replicas as well
-   #  instead of just the primary
+   # optional: Whether read requests should be directed to replicas
+   # as well instead of just the primary
    foo.read_from_replicas = true
    ...
 
