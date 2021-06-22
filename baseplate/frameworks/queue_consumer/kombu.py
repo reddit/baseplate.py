@@ -106,7 +106,7 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
         self.serializer = serializer
         self.kwargs = kwargs
 
-    def get_consumers(self, consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
+    def get_consumers(self, Consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
         args = dict(queues=self.queues, on_message=self.work_queue.put, **self.kwargs)
         if self.serializer:
             args["accept"] = [self.serializer.name]
