@@ -83,7 +83,7 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
         args = dict(queues=self.queues, on_message=self.work_queue.put, **self.kwargs)
         if self.serializer:
             args["accept"] = [self.serializer.name]
-        return [consumer(**args)]
+        return [Consumer(**args)]
 
     def stop(self) -> None:
         logger.debug("Closing KombuConsumerWorker.")
