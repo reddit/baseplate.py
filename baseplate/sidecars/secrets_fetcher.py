@@ -82,6 +82,7 @@ import requests
 
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
+from baseplate.server import EnvironmentInterpolation
 
 
 logger = logging.getLogger(__name__)
@@ -378,7 +379,7 @@ def main() -> None:
         level = logging.INFO
 
     logging.basicConfig(format="%(asctime)s:%(levelname)s:%(message)s", level=level)
-    parser = configparser.RawConfigParser()
+    parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
     parser.read_file(args.config_file)
     fetcher_config = dict(parser.items("secret-fetcher"))
 

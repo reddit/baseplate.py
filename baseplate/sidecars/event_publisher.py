@@ -21,6 +21,7 @@ from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
+from baseplate.server import EnvironmentInterpolation
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import SerializedBatch
@@ -184,7 +185,7 @@ def publish_events() -> None:
         level = logging.WARNING
     logging.basicConfig(level=level)
 
-    config_parser = configparser.RawConfigParser()
+    config_parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
     config_parser.read_file(args.config_file)
     raw_config = dict(config_parser.items("event-publisher:" + args.queue_name))
     cfg = config.parse_config(

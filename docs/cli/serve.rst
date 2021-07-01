@@ -15,6 +15,12 @@ part after is the "name". Baseplate looks for sections named ``main`` by
 default but can be overridden with the ``--server-name`` and ``--app-name``
 options.
 
+Shell-like environment variable references in configuration values will be
+expanded at server startup. For example, ``foo = $MY_PATH`` or ``foo =
+${MY_PATH}`` will result in the application seeing the value from the
+``$MY_PATH`` environment variable as the value of the ``foo`` setting as if it
+had been written in the config file directly.
+
 .. highlight:: ini
 
 The Server

@@ -27,6 +27,8 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
+from typing import Mapping
+from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
@@ -109,6 +111,18 @@ def parse_args(args: Sequence[str]) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
+class EnvironmentInterpolation(configparser.Interpolation):
+    def before_get(
+        self,
+        parser: MutableMapping[str, Mapping[str, str]],
+        section: str,
+        option: str,
+        value: str,
+        defaults: Mapping[str, str],
+    ) -> str:
+        return os.path.expandvars(value)
+
+
 class Configuration(NamedTuple):
     filename: str
     server: Optional[Dict[str, str]]
@@ -120,7 +134,7 @@ class Configuration(NamedTuple):
 def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) -> Configuration:
     # we use RawConfigParser to reduce surprise caused by interpolation and so
     # that config.Percent works more naturally (no escaping %).
-    parser = configparser.RawConfigParser()
+    parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
     parser.read_file(config_file)
 
     filename = config_file.name

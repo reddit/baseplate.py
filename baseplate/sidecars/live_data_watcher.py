@@ -16,6 +16,7 @@ from kazoo.protocol.states import ZnodeStat
 from baseplate.lib import config
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
+from baseplate.server import EnvironmentInterpolation
 
 
 logger = logging.getLogger(__name__)
@@ -102,7 +103,7 @@ def main() -> NoReturn:
     # quiet kazoo's verbose logs a bit
     logging.getLogger("kazoo").setLevel(logging.WARNING)
 
-    parser = configparser.RawConfigParser()
+    parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
     parser.read_file(args.config_file)
     watcher_config = dict(parser.items("live-data"))
 
