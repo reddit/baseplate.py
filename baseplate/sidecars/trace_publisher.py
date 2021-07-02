@@ -16,6 +16,7 @@ from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.observers.tracing import MAX_QUEUE_SIZE
 from baseplate.observers.tracing import MAX_SPAN_SIZE
+from baseplate.server import EnvironmentInterpolation
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import RawJSONBatch
 from baseplate.sidecars import SerializedBatch
@@ -144,7 +145,7 @@ def publish_traces() -> None:
         level = logging.WARNING
     logging.basicConfig(level=level)
 
-    config_parser = configparser.RawConfigParser()
+    config_parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
     config_parser.read_file(args.config_file)
 
     publisher_raw_cfg = dict(config_parser.items("trace-publisher:" + args.queue_name))
