@@ -16,6 +16,7 @@
 
 	// Set *default* container specific settings.json values on container create.
 	"settings": { 
+		"terminal.integrated.defaultProfile.linux": "zsh",
 		"python.pythonPath": "/usr/local/bin/python",
 		"python.languageServer": "Pylance",
 		"python.linting.enabled": true,
