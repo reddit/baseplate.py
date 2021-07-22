@@ -115,15 +115,15 @@ class ConfiguratorTests(unittest.TestCase):
 
     @mock.patch("random.getrandbits")
     def test_no_trace_headers(self, getrandbits):
-        getrandbits.return_value = 1234
+        getrandbits.return_value = 3735928559
         self.test_app.get("/example")
 
         self.assertEqual(self.observer.on_server_span_created.call_count, 1)
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, "1234")
+        self.assertEqual(server_span.trace_id, "0" * 24 + "deadbeef")
         self.assertEqual(server_span.parent_id, None)
-        self.assertEqual(server_span.id, "1234")
+        self.assertEqual(server_span.id, "0" * 8 + "deadbeef")
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
@@ -222,7 +222,7 @@ class ConfiguratorTests(unittest.TestCase):
 
     @mock.patch("random.getrandbits")
     def test_distrust_headers(self, getrandbits):
-        getrandbits.return_value = 9999
+        getrandbits.return_value = 3735928559
         self.baseplate_configurator.header_trust_handler.trust_headers = False
 
         self.test_app.get(
@@ -230,9 +230,9 @@ class ConfiguratorTests(unittest.TestCase):
         )
 
         context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, str(getrandbits.return_value))
+        self.assertEqual(server_span.trace_id, "0" * 24 + "deadbeef")
         self.assertEqual(server_span.parent_id, None)
-        self.assertEqual(server_span.id, str(getrandbits.return_value))
+        self.assertEqual(server_span.id, "0" * 8 + "deadbeef")
 
     def test_local_trace_in_context(self):
         self.test_app.get("/trace_context")
