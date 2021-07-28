@@ -262,6 +262,8 @@ def cluster_pool_from_config(
             "url": config.String,
             "max_connections": config.Optional(config.Integer, default=50),
             "max_connections_per_node": config.Optional(config.Boolean, default=False),
+            "socket_connect_timeout": config.Optional(config.Timespan, default=None),
+            "socket_timeout": config.Optional(config.Timespan, default=None),
             "timeout": config.Optional(config.Timespan, default=None),
             "read_from_replicas": config.Optional(config.Boolean, default=True),
             "skip_full_coverage_check": config.Optional(config.Boolean, default=True),
@@ -283,8 +285,15 @@ def cluster_pool_from_config(
         kwargs.setdefault("nodemanager_follow_cluster", options.nodemanager_follow_cluster)
     if options.skip_full_coverage_check is not None:
         kwargs.setdefault("skip_full_coverage_check", options.skip_full_coverage_check)
+    if options.socket_connect_timeout is not None:
+        kwargs.setdefault("socket_connect_timeout", options.socket_connect_timeout.total_seconds())
+    if options.socket_timeout is not None:
+        kwargs.setdefault("socket_timeout", options.socket_timeout.total_seconds())
     if options.timeout is not None:
         kwargs.setdefault("timeout", options.timeout.total_seconds())
+        # set socket_connection_timeout and socket_timeout if not set already
+        kwargs.setdefault("socket_connect_timeout", options.timeout.total_seconds())
+        kwargs.setdefault("socket_timeout", options.timeout.total_seconds())
 
     if options.read_from_replicas:
         connection_pool = ClusterWithReadReplicasBlockingConnectionPool.from_url(
