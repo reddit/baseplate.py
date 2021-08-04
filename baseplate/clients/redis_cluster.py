@@ -232,7 +232,9 @@ def cluster_pool_from_config(
     specifies the prefix used to filter keys.  Each key is mapped to a
     corresponding keyword argument on the :py:class:`rediscluster.ClusterConnectionPool`
     constructor.
+
     Supported keys:
+
     * ``url`` (required): a URL like ``redis://localhost/0``.
     * ``max_connections``: an integer maximum number of connections in the pool
     * ``max_connections_per_node``: Boolean, whether max_connections should be applied
@@ -243,8 +245,13 @@ def cluster_pool_from_config(
       nodes it was operating on when intializing.
     * ``read_from_replicas``: (Boolean) Whether the client should send all read queries to
         replicas instead of just the primary
-    * ``timeout``: how long to wait for sockets to connect. e.g.
-        ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
+    * ``timeout``: . e.g. ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`).
+        How long to wait for a connection to become available.  Additionally, will set
+        ``socket_connect_timeout`` and ``socket_timeout`` if they're not set explicitly.
+    * ``socket_connect_timeout``: e.g. ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
+        How long to wait for sockets to connect.
+    * ``socket_timeout``: e.g. ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
+        How long to wait for socket operations.
     * ``track_key_reads_sample_rate``: If greater than zero, which percentage of requests will
         be inspected to keep track of hot key usage within Redis when reading.
         Every command inspected will result in a write to a sorted set
@@ -262,6 +269,8 @@ def cluster_pool_from_config(
             "url": config.String,
             "max_connections": config.Optional(config.Integer, default=50),
             "max_connections_per_node": config.Optional(config.Boolean, default=False),
+            "socket_connect_timeout": config.Optional(config.Timespan, default=None),
+            "socket_timeout": config.Optional(config.Timespan, default=None),
             "timeout": config.Optional(config.Timespan, default=None),
             "read_from_replicas": config.Optional(config.Boolean, default=True),
             "skip_full_coverage_check": config.Optional(config.Boolean, default=True),
@@ -283,8 +292,15 @@ def cluster_pool_from_config(
         kwargs.setdefault("nodemanager_follow_cluster", options.nodemanager_follow_cluster)
     if options.skip_full_coverage_check is not None:
         kwargs.setdefault("skip_full_coverage_check", options.skip_full_coverage_check)
+    if options.socket_connect_timeout is not None:
+        kwargs.setdefault("socket_connect_timeout", options.socket_connect_timeout.total_seconds())
+    if options.socket_timeout is not None:
+        kwargs.setdefault("socket_timeout", options.socket_timeout.total_seconds())
     if options.timeout is not None:
         kwargs.setdefault("timeout", options.timeout.total_seconds())
+        # set socket_connection_timeout and socket_timeout if not set already
+        kwargs.setdefault("socket_connect_timeout", options.timeout.total_seconds())
+        kwargs.setdefault("socket_timeout", options.timeout.total_seconds())
 
     if options.read_from_replicas:
         connection_pool = ClusterWithReadReplicasBlockingConnectionPool.from_url(
