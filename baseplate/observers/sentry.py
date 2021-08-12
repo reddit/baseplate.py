@@ -87,7 +87,7 @@ def init_sentry_client_from_config(raw_config: config.RawConfig, **kwargs: Any) 
     ignore_errors.extend(ALWAYS_IGNORE_ERRORS)
     ignore_errors.extend(cfg.sentry.ignore_errors)
     kwargs.setdefault("ignore_errors", ignore_errors)
-    
+
     kwargs.setdefault("with_locals", False)
 
     client = sentry_sdk.Client(**kwargs)
