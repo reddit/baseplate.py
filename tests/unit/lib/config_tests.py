@@ -276,7 +276,7 @@ class OptionalDefaultFromEnvTests(unittest.TestCase):
         self.assertEqual(parser("foo"), "foo")
 
     def test_use_provided(self):
-        parser = config.DefaultFromEnv(config.String, "BASEPALTE_DEFAULT_VALUE")
+        parser = config.DefaultFromEnv(config.String, "BASEPLATE_DEFAULT_VALUE")
         self.assertEqual(parser("foo"), "foo")
 
     def test_fallback(self):
