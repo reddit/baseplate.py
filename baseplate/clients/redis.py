@@ -7,9 +7,9 @@ import redis
 
 # redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
 try:
-    from redis.client import StrictPipeline as Pipeline
+    from redis.client import StrictPipeline as Pipeline  # type: ignore
 except ImportError:
-    from redis.client import Pipeline  # type: ignore
+    from redis.client import Pipeline
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -182,7 +182,7 @@ class MonitoredRedisPipeline(Pipeline):
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
     # pylint: disable=arguments-differ
-    def execute(self, **kwargs: Any) -> Any:  # type: ignore
+    def execute(self, **kwargs: Any) -> Any:
         with self.server_span.make_child(self.trace_name):
             return super().execute(**kwargs)
 
