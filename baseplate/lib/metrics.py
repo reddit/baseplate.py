@@ -586,4 +586,9 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
     )
 
     # pylint: disable=maybe-no-member
-    return make_client(cfg.metrics.namespace, cfg.metrics.endpoint, cfg.metrics.log_if_unconfigured)
+    return make_client(
+        namespace=cfg.metrics.namespace,
+        endpoint=cfg.metrics.endpoint,
+        log_if_unconfigured=cfg.metrics.log_if_unconfigured,
+        swallow_network_errors=cfg.metrics.swallow_network_errors,
+    )
