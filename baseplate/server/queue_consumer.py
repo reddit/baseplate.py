@@ -213,6 +213,7 @@ class QueueConsumerServer:
                 except (Exception, ServerTimeout):
                     logger.exception("Unhandled error in pump or handler thread, terminating.")
                     self._terminate()
+                return None
 
             return _run_and_terminate
 
