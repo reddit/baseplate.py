@@ -7,7 +7,7 @@
 astroid==2.6.6
 black==19.10b0
 flake8==3.8.4
-lxml==4.6.2
+lxml==4.6.3
 mypy==0.910
 pydocstyle==5.1.1
 pylint==2.9.6
