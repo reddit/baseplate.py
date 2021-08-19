@@ -24,7 +24,7 @@ class NoDbQueryStringFormatChecker(BaseChecker):
 
     def check_string_is_query(self, string: str) -> bool:
         query = string.split(" ")
-        if query[0].lower() in self.query_verbs and ("{}" or "%s" in query):
+        if query[0].lower() in self.query_verbs and ("{}" in query or "%s" in query):
             return True
         return False
 
