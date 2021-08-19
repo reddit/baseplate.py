@@ -353,7 +353,7 @@ def trigger_callback(
         if last_proc and last_proc.poll() is None:
             logger.info("Previous callback process is still running. Skipping")
         else:
-            return subprocess.Popen([callback, secrets_file])
+            return subprocess.Popen([callback, secrets_file])  # pylint: disable=R1732
     return last_proc
 
 
