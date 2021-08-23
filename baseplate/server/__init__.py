@@ -466,7 +466,7 @@ def _shell_commands_log_path() -> str:
     # Define path for console log output
     pid_1_path = "/proc/1/fd/1"
     # check if running in a containerized environment
-    if os.getenv('KUBERNETES_SERVICE_HOST') and os.access(pid_1_path, os.W_OK):
+    if os.getenv("KUBERNETES_SERVICE_HOST") and os.access(pid_1_path, os.W_OK):
         return os.path.abspath(pid_1_path)
     else:
         return os.path.abspath("/var/log/.shell_history")
