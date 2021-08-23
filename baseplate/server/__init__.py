@@ -4,6 +4,7 @@ This command serves your application from the given configuration file.
 
 """
 import argparse
+import atexit
 import configparser
 import enum
 import fcntl
@@ -22,6 +23,7 @@ import warnings
 
 from dataclasses import dataclass
 from enum import Enum
+from rlcompleter import Completer
 from types import FrameType
 from typing import Any
 from typing import Callable
@@ -415,6 +417,8 @@ def load_and_run_shell() -> None:
         setup = _load_factory(config.shell["setup"])
         setup(env, env_banner)
 
+    configure_logging(config, False)
+
     # generate banner text
     banner = "Available Objects:\n"
     for var in sorted(env_banner.keys()):
@@ -441,14 +445,31 @@ def load_and_run_shell() -> None:
         newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
         banner = newbanner + banner
 
-        # import this just for its side-effects (of enabling nice keyboard
-        # movement while editing text)
         try:
-            import readline
+            _interactive_console_setup(env)
 
-            del readline
         except ImportError:
             pass
 
         shell = code.InteractiveConsole(locals=env)
         shell.interact(banner)
+
+
+def _interactive_console_setup(env: Dict) -> None:
+    # setup some quality of life console interactions
+    import readline
+    readline.set_completer(Completer(env).complete)
+    readline.parse_and_bind("tab: complete")
+
+    # create audit log output for executed commands
+    pid_1_path = "/proc/1/fd/1"
+    # check if running in a containerized environment
+    if (os.environ.get('KUBERNETES_SERVICE_HOST', False) and os.access(pid_1_path, os.W_OK)):
+        log_output = os.path.abspath(pid_1_path)
+    else:
+        log_output = os.path.expanduser("~/.shell_history")
+
+    def save_console_history(history_path=log_output) -> None:
+        readline.write_history_file(history_path)
+
+    atexit.register(save_console_history)
