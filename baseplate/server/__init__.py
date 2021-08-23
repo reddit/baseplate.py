@@ -176,6 +176,11 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
 
+    if (os.getpid() != 1):
+        file_handler = logging.FileHandler("/proc/1/fd/1")
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(handler)
+
     if config.has_logging_options:
         logging.config.fileConfig(config.filename)
 
@@ -424,6 +429,8 @@ def load_and_run_shell() -> None:
     for var in sorted(env_banner.keys()):
         banner += "\n  {:<12} {}".format(var, env_banner[var])
 
+    console_logpath = _shell_commands_log_path()
+
     try:
         # try to use IPython if possible
         from IPython import start_ipython
@@ -437,7 +444,7 @@ def load_and_run_shell() -> None:
 
         ipython_config = Config()
         ipython_config.TerminalInteractiveShell.banner2 = banner
-        start_ipython(argv=[], user_ns=env, config=ipython_config)
+        start_ipython(argv=[f"--logfile=/{console_logpath}"], user_ns=env, config=ipython_config)
         raise SystemExit
     except ImportError:
         import code
@@ -446,7 +453,7 @@ def load_and_run_shell() -> None:
         banner = newbanner + banner
 
         try:
-            _interactive_console_setup(env)
+            _InteractiveConsole_setup(env, console_logpath)
 
         except ImportError:
             pass
@@ -455,21 +462,23 @@ def load_and_run_shell() -> None:
         shell.interact(banner)
 
 
-def _interactive_console_setup(env: Dict) -> None:
-    # setup some quality of life console interactions
+def _shell_commands_log_path() -> str:
+    # Define path for console log output
+    pid_1_path = "/proc/1/fd/1"
+    # check if running in a containerized environment
+    if (os.getenv('KUBERNETES_SERVICE_HOST') and os.access(pid_1_path, os.W_OK)):
+        return os.path.abspath(pid_1_path)
+    else:
+        return os.path.abspath("/var/log/.shell_history")
+
+def _InteractiveConsole_setup(env: Dict, console_logpath: str) -> None:
+    # Setup some quality of life console interactions
     import readline
     readline.set_completer(Completer(env).complete)
     readline.parse_and_bind("tab: complete")
 
-    # create audit log output for executed commands
-    pid_1_path = "/proc/1/fd/1"
-    # check if running in a containerized environment
-    if (os.environ.get('KUBERNETES_SERVICE_HOST', False) and os.access(pid_1_path, os.W_OK)):
-        log_output = os.path.abspath(pid_1_path)
-    else:
-        log_output = os.path.expanduser("~/.shell_history")
-
-    def save_console_history(history_path=log_output) -> None:
+    # Define audit logging with readline history
+    def save_console_history(history_path=console_logpath) -> None:
         readline.write_history_file(history_path)
 
     atexit.register(save_console_history)
