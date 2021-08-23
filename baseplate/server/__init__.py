@@ -176,7 +176,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
 
-    if (os.getpid() != 1):
+    if os.getpid() != 1:
         file_handler = logging.FileHandler("/proc/1/fd/1")
         file_handler.setFormatter(formatter)
         root_logger.addHandler(handler)
@@ -466,14 +466,16 @@ def _shell_commands_log_path() -> str:
     # Define path for console log output
     pid_1_path = "/proc/1/fd/1"
     # check if running in a containerized environment
-    if (os.getenv('KUBERNETES_SERVICE_HOST') and os.access(pid_1_path, os.W_OK)):
+    if os.getenv('KUBERNETES_SERVICE_HOST') and os.access(pid_1_path, os.W_OK):
         return os.path.abspath(pid_1_path)
     else:
         return os.path.abspath("/var/log/.shell_history")
 
+
 def _InteractiveConsole_setup(env: Dict, console_logpath: str) -> None:
     # Setup some quality of life console interactions
     import readline
+
     readline.set_completer(Completer(env).complete)
     readline.parse_and_bind("tab: complete")
 
