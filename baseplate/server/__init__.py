@@ -422,7 +422,7 @@ def load_and_run_shell() -> None:
         setup = _load_factory(config.shell["setup"])
         setup(env, env_banner)
 
-    configure_logging(config, False)
+    configure_logging(config, args.debug)
 
     # generate banner text
     banner = "Available Objects:\n"
@@ -468,8 +468,7 @@ def _shell_commands_log_path() -> str:
     # check if running in a containerized environment
     if os.getenv("KUBERNETES_SERVICE_HOST") and os.access(pid_1_path, os.W_OK):
         return os.path.abspath(pid_1_path)
-    else:
-        return os.path.abspath("/var/log/.shell_history")
+    return os.path.abspath("/var/log/.shell_history")
 
 
 def _InteractiveConsole_setup(env: Dict, console_logpath: str) -> None:
@@ -478,6 +477,7 @@ def _InteractiveConsole_setup(env: Dict, console_logpath: str) -> None:
 
     readline.set_completer(Completer(env).complete)
     readline.parse_and_bind("tab: complete")
+    readline.set_history_length(10000)
 
     # Define audit logging with readline history
     def save_console_history(history_path=console_logpath) -> None:
