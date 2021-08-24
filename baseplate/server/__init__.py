@@ -429,7 +429,7 @@ def load_and_run_shell() -> None:
     for var in sorted(env_banner.keys()):
         banner += "\n  {:<12} {}".format(var, env_banner[var])
 
-    console_logpath = _shell_commands_log_path()
+    console_logpath = _get_shell_log_path()
 
     try:
         # try to use IPython if possible
@@ -453,7 +453,7 @@ def load_and_run_shell() -> None:
         banner = newbanner + banner
 
         try:
-            _InteractiveConsole_setup(env, console_logpath)
+            _set_up_interactive_console(env, console_logpath)
 
         except ImportError:
             pass
@@ -462,7 +462,7 @@ def load_and_run_shell() -> None:
         shell.interact(banner)
 
 
-def _shell_commands_log_path() -> str:
+def _get_shell_log_path() -> str:
     # Define path for console log output
     pid_1_path = "/proc/1/fd/1"
     # check if running in a containerized environment
@@ -471,7 +471,7 @@ def _shell_commands_log_path() -> str:
     return os.path.abspath("/var/log/.shell_history")
 
 
-def _InteractiveConsole_setup(env: Dict, console_logpath: str) -> None:
+def _set_up_interactive_console(env: Dict, console_logpath: str) -> None:
     # Setup some quality of life console interactions
     import readline
 
