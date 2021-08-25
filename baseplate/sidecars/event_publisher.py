@@ -224,7 +224,10 @@ def publish_events() -> None:
             batcher.add(message)
         except BatchFull:
             serialized = batcher.serialize()
-            publisher.publish(serialized)
+            try:
+                publisher.publish(serialized)
+            except Exception:
+                logger.exception("Events publishing failed.")
             batcher.reset()
             batcher.add(message)
 
