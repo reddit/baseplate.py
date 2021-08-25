@@ -300,10 +300,15 @@ class InternalRequestsClient(config.Parser):
         # use advocate to ensure this client only ever gets used
         # with internal services over the internal network.
         #
-        # the allowlist takes precedence. allow loopback and 10./8 private
-        # addresses, deny the rest.
+        # the allowlist takes precedence. allow loopback and private addresses,
+        # deny the rest.
         validator = AddrValidator(
-            ip_whitelist={ipaddress.ip_network("127.0.0.0/8"), ipaddress.ip_network("10.0.0.0/8")},
+            ip_whitelist={
+                ipaddress.ip_network("127.0.0.0/8"),
+                ipaddress.ip_network("10.0.0.0/8"),
+                ipaddress.ip_network("172.16.0.0/12"),
+                ipaddress.ip_network("192.168.0.0/16"),
+            },
             ip_blacklist={ipaddress.ip_network("0.0.0.0/0")},
             port_blacklist=[0],  # disable the default allowlist by giving an explicit denylist
             allow_ipv6=False,
