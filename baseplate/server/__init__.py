@@ -444,7 +444,8 @@ def load_and_run_shell() -> None:
 
         ipython_config = Config()
         ipython_config.TerminalInteractiveShell.banner2 = banner
-        start_ipython(argv=[f"--logfile=/{console_logpath}"], user_ns=env, config=ipython_config)
+        ipython_config.InteractiveShell.logfile = console_logpath
+        start_ipython(argv=[], user_ns=env, config=ipython_config)
         raise SystemExit
     except ImportError:
         import code
@@ -459,16 +460,22 @@ def load_and_run_shell() -> None:
             pass
 
         shell = code.InteractiveConsole(locals=env)
-        shell.interact(banner)
+        shell.interact(banner, readfunc=_log_interactive_console(console_logpath))
 
 
 def _get_shell_log_path() -> str:
     # Define path for console log output
-    pid_1_path = "/proc/1/fd/1"
+    path = "/proc/self/cgroup"
+    in_container = ["kubepods", "docker", "containerd"]
     # check if running in a containerized environment
-    if os.getenv("KUBERNETES_SERVICE_HOST") and os.access(pid_1_path, os.W_OK):
-        return os.path.abspath(pid_1_path)
+    if os.path.exists("/.dockerenv") or os.path.isfile(path) and any(in_container in line for line in open(path)):
+        # write to PID 1 stdout for log aggregation
+        return os.path.abspath("/proc/1/fd/1")
+    # otherwise write to a local file
     return os.path.abspath("/var/log/.shell_history")
+
+def _log_interactive_console(path):
+
 
 
 def _set_up_interactive_console(env: Dict, console_logpath: str) -> None:
