@@ -1,3 +1,7 @@
+import random
+import time
+
+from collections import defaultdict
 from math import ceil
 from typing import Any
 from typing import Dict
@@ -16,6 +20,56 @@ from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
 from baseplate.lib import metrics
+
+
+# Not complete, but covers the major ones
+# https://redis.io/commands
+# TODO(Fran): Currently this is just a list of known read commands, technically
+#   we can add any command we consider idempotent to the list (such as SETNX) but
+#   I feel like "we only retry read commands" is easier to reason about initially.
+RETRIABLE_COMMANDS = frozenset(
+    [
+        "BITCOUNT",
+        "BITPOS",
+        "EXISTS",
+        "GEODIST",
+        "GEOHASH",
+        "GEOPOS",
+        "GEORADIUS",
+        "GEORADIUSBYMEMBER",
+        "GET",
+        "GETBIT",
+        "GETRANGE",
+        "HEXISTS",
+        "HGET",
+        "HGETALL",
+        "HKEYS",
+        "HLEN",
+        "HMGET",
+        "HSTRLEN",
+        "HVALS",
+        "KEYS",
+        "LINDEX",
+        "LLEN",
+        "LRANGE",
+        "MGET",
+        "PTTL",
+        "RANDOMKEY",
+        "SCARD",
+        "SDIFF",
+        "SINTER",
+        "SISMEMBER",
+        "SMEMBERS",
+        "SRANDMEMBER",
+        "STRLEN",
+        "SUNION",
+        "TTL",
+        "ZCARD",
+        "ZCOUNT",
+        "ZRANGE",
+        "ZSCORE",
+    ]
+)
 
 
 def pool_from_config(
@@ -46,6 +100,7 @@ def pool_from_config(
             "max_connections": config.Optional(config.Integer, default=None),
             "socket_connect_timeout": config.Optional(config.Timespan, default=None),
             "socket_timeout": config.Optional(config.Timespan, default=None),
+            "enable_retries": config.Optional(config.Boolean, default=True),
         }
     )
     options = parser.parse(prefix[:-1], app_config)
@@ -53,11 +108,16 @@ def pool_from_config(
     if options.max_connections is not None:
         kwargs.setdefault("max_connections", options.max_connections)
     if options.socket_connect_timeout is not None:
-        kwargs.setdefault("socket_connect_timeout", options.socket_connect_timeout.total_seconds())
+        kwargs.setdefault(
+            "socket_connect_timeout", options.socket_connect_timeout.total_seconds()
+        )
     if options.socket_timeout is not None:
         kwargs.setdefault("socket_timeout", options.socket_timeout.total_seconds())
 
-    return redis.BlockingConnectionPool.from_url(options.url, **kwargs)
+    pool = redis.BlockingConnectionPool.from_url(options.url, **kwargs)
+    setattr(pool, "redis_enable_retries", options.enable_retries)
+
+    return pool
 
 
 class RedisClient(config.Parser):
@@ -73,7 +133,9 @@ class RedisClient(config.Parser):
     def __init__(self, **kwargs: Any):
         self.kwargs = kwargs
 
-    def parse(self, key_path: str, raw_config: config.RawConfig) -> "RedisContextFactory":
+    def parse(
+        self, key_path: str, raw_config: config.RawConfig
+    ) -> "RedisContextFactory":
         connection_pool = pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
         return RedisContextFactory(connection_pool)
 
@@ -108,12 +170,134 @@ class RedisContextFactory(ContextFactory):
         batch.gauge("pool.in_use").replace(in_use)
         batch.gauge("pool.open_and_available").replace(open_connections - in_use)
 
-    def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
-        return MonitoredRedisConnection(name, span, self.connection_pool)
+        retry_stats = RetryStats.get_retry_stats(self.connection_pool)
+        for event_name, value in retry_stats.items():
+            batch.counter(event_name).increment(value)
+
+    def make_object_for_context(
+        self, name: str, span: Span
+    ) -> "MonitoredRedisConnection":
+        kwargs = {}
+        if hasattr(self.connection_pool, "redis_enable_retries"):
+            kwargs["enable_retries"] = getattr(
+                self.connection_pool, "redis_enable_retries"
+            )
+        return MonitoredRedisConnection(name, span, self.connection_pool, **kwargs)
+
+
+class PipelineWithRetry(Pipeline):
+    """Subclass of Pipeline that will automatically retry pipelines with only read commands."""
+
+    def __init__(  # type: ignore
+        self, connection_pool, response_callbacks, transaction, shard_hint, retriable
+    ) -> None:
+        super().__init__(
+            connection_pool=connection_pool,
+            response_callbacks=response_callbacks,
+            transaction=transaction,
+            shard_hint=shard_hint,
+        )
+        self.is_retriable_pipeline = retriable
+
+    def _execute_pipeline(self, connection, commands, raise_on_error):  # type: ignore
+        retries = 0
+        MAX_RETRIES = 10
+        MAX_RETRY_WAIT_MS = 50
+
+        cmd_list = [args[0] for args, _ in commands]
+        is_read_only = all(cmd in RETRIABLE_COMMANDS for cmd in cmd_list)
+
+        while retries < MAX_RETRIES:
+            try:
+                return super()._execute_pipeline(connection, commands, raise_on_error)
+            except Exception:
+                if self.is_retriable_pipeline and is_read_only:
+                    retries += 1
+                    if retries == MAX_RETRIES:
+                        raise
+                else:
+                    raise
+                RetryStats.increase_retry_stats(self.connection_pool, "pipeline")
+                time.sleep(random.randint(0, MAX_RETRY_WAIT_MS) / 1000)
+
+
+class RedisWithRetry(redis.StrictRedis):
+    """
+    Redis client subclass with ability to retry commands.
+
+    The behavior of this class is identical to that of Redis, with the only
+    difference that this class will attempt to retry a failed command if the
+    failure belongs to a subset of known "safe to retry" errors
+    """
+
+    enable_retries = True
+
+    def _is_retriable_error(self, e: Exception) -> bool:
+        """
+        Return True if exception e is one that we want to retry for.
+
+        There are certain types of errors that we want to retry on the
+        client side, but unfortunately it's not as simple as filtering
+        for one particular exception type. A given exception type
+        (such as ConnectionError) can mean anything from a connection
+        closed to a Redis instance unavailable because it's loading its
+        dataset in memory, so we need to be able to check the instance
+        type *and* the exception message before we decide if we should
+        retry it.
+
+        If we want to always retry one particular exception type, setting
+        its list of messages to an empty list will do it.
+        """
+        if not self.enable_retries:
+            return False
+
+        retriable_errors = {
+            # "Redis is loading the dataset in memory" is technically a BusyLoadingError,
+            # but that's a subclass of ConnectionError so this grouping is technically correct.
+            # The reason we don't explicitly catch BusyLoadingError here is that when using
+            # hiredis this exception is somehow only catchable as ConnectionError, but
+            # if hiredis is not present you can choose to catch it as either.
+            # Doing it as ConnectionError will just work for both, so we do that.
+            redis.exceptions.ConnectionError: [
+                "Connection closed by server",
+                "Connection reset by peer",
+                "Connection refused",
+                "Redis is loading the dataset in memory",
+            ],
+            # upstream failures can happen when using Envoy as a proxy.
+            # If we retry the proxy will eventually get us a healthy upstream host
+            redis.exceptions.ResponseError: ["upstream failure", "no upstream host"],
+        }
+
+        for error_type, message_list in retriable_errors.items():
+            if isinstance(e, error_type):
+                if not message_list or any(err in str(e) for err in message_list):
+                    return True
+
+        return False
+
+    def execute_command(self, *args: Any, **options: Any) -> Any:
+        """Execute a command and return a parsed response."""
+        retries = 0
+        MAX_RETRIES = 25
+        MAX_RETRY_WAIT_MS = 25
+        while retries < MAX_RETRIES:
+            try:
+                return super().execute_command(*args, **options)
+            except Exception as e:
+                if self._is_retriable_error(e):
+                    retries += 1
+                    if retries == MAX_RETRIES:
+                        raise
+                else:
+                    raise
+
+                RetryStats.increase_retry_stats(self.connection_pool, args[0])
+                time.sleep(random.randint(0, MAX_RETRY_WAIT_MS) / 1000)
 
 
 # pylint: disable=too-many-public-methods
-class MonitoredRedisConnection(redis.StrictRedis):
+class MonitoredRedisConnection(RedisWithRetry):
     """Redis connection that collects diagnostic information.
 
     This connection acts like :py:class:`redis.StrictRedis` except that all
@@ -123,13 +307,24 @@ class MonitoredRedisConnection(redis.StrictRedis):
     :py:meth:`~baseplate.clients.redis.MonitoredRedisConnection.pipeline`
     method.
 
+    We take an enable_retries argument in case we need to disable the optional
+    retry behavior.
+
     """
 
-    def __init__(self, context_name: str, server_span: Span, connection_pool: redis.ConnectionPool):
+    def __init__(
+        self,
+        context_name: str,
+        server_span: Span,
+        connection_pool: redis.ConnectionPool,
+        enable_retries: bool = True,
+    ):
         self.context_name = context_name
         self.server_span = server_span
 
         super().__init__(connection_pool=connection_pool)
+
+        self.enable_retries = enable_retries
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         command = args[0]
@@ -140,7 +335,11 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     # pylint: disable=arguments-differ
     def pipeline(  # type: ignore
-        self, name: str, transaction: bool = True, shard_hint: Optional[str] = None
+        self,
+        name: str,
+        transaction: bool = False,
+        shard_hint: Optional[str] = None,
+        retriable: Optional[bool] = None,
     ) -> "MonitoredRedisPipeline":
         """Create a pipeline.
 
@@ -151,8 +350,16 @@ class MonitoredRedisConnection(redis.StrictRedis):
         :param name: The name to attach to diagnostics for this pipeline.
         :param transaction: Whether or not the commands in the pipeline
             are wrapped with a transaction and executed atomically.
+            Disabled by default.
 
+        :param retriable: When an exception happens executing a pipeline,
+            whether to retry. A pipeline will only be retried if it only
+            contains read commands.
         """
+        # By default we will retry pipelines if we already want to retry single commands
+        if retriable is None:
+            retriable = self.enable_retries
+
         return MonitoredRedisPipeline(
             f"{self.context_name}.pipeline_{name}",
             self.server_span,
@@ -160,6 +367,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
             self.response_callbacks,
             transaction=transaction,
             shard_hint=shard_hint,
+            retriable=retriable,
         )
 
     # these commands are not yet implemented, but probably not unimplementable
@@ -168,7 +376,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         raise NotImplementedError
 
 
-class MonitoredRedisPipeline(Pipeline):
+class MonitoredRedisPipeline(PipelineWithRetry):
     def __init__(
         self,
         trace_name: str,
@@ -202,7 +410,7 @@ class MessageQueue:
     def __init__(self, name: str, client: redis.ConnectionPool):
         self.queue = name
         if isinstance(client, (redis.BlockingConnectionPool, redis.ConnectionPool)):
-            self.client = redis.Redis(connection_pool=client)
+            self.client = RedisWithRetry(connection_pool=client)
         else:
             self.client = client
 
@@ -253,3 +461,33 @@ class MessageQueue:
         and dequeue as the actions will recreate the queue)
         """
         self.client.delete(self.queue)
+
+
+class RetryStats:
+    """
+    Helper class to track some retry stats inside a Redis connection_pool object.
+
+    We have to smuggle the stats inside a connection_pool object because it's the
+    only part of the Redis client that persists across different calls.
+    """
+
+    @staticmethod
+    def reset_retry_stats(connection_pool: redis.ConnectionPool) -> None:
+        setattr(connection_pool, "retry_stats", defaultdict(lambda: 0))
+
+    @classmethod
+    def increase_retry_stats(
+        cls, connection_pool: redis.ConnectionPool, event_name: str, delta: int = 1
+    ) -> None:
+        if not hasattr(connection_pool, "retry_stats"):
+            cls.reset_retry_stats(connection_pool)
+
+        stats = getattr(connection_pool, "retry_stats")
+        stats[event_name] += 1
+
+    @classmethod
+    def get_retry_stats(cls, connection_pool: redis.ConnectionPool) -> Dict[Any, Any]:
+        if not hasattr(connection_pool, "retry_stats"):
+            cls.reset_retry_stats(connection_pool)
+
+        return getattr(connection_pool, "retry_stats")
