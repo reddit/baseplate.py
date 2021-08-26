@@ -444,8 +444,32 @@ def load_and_run_shell() -> None:
             from IPython import Config
 
         ipython_config = Config()
+        ipython_config.InteractiveShellApp.exec_lines = [
+            # monkeypatch IPython's log-write() to enable formatted input logging, copying original code:
+            # https://github.com/ipython/ipython/blob/a54bf00feb5182fa821bd5457897b3b30a313436/IPython/core/logger.py#L187-L201
+            f"""
+            ip = get_ipython()
+            from functools import partial
+            ip.magic('logstart {console_logpath}')
+            def log_write(self, data, kind="input"):
+                import time, os
+                if self.log_active and data:
+                    write = self.logfile.write
+                    if kind=='input':
+                        if self.timestamp:
+                            write(time.strftime('# %a, %d %b %Y %H:%M:%S\\n', time.localtime()))
+                        write(f"{{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}} {{os.getpid()}} - {{data}}")
+                    elif kind=='output' and self.log_output:
+                        odata = u'\\n'.join([u'#[Out]# %s' % s
+                                        for s in data.splitlines()])
+                        write(u'%s\\n' % odata)
+                    self.logfile.flush()
+            ip.logger.logstop = None
+            ip.logger.log_write = partial(log_write, ip.logger)
+            """
+        ]
         ipython_config.TerminalInteractiveShell.banner2 = banner
-        ipython_config.InteractiveShell.logfile = console_logpath
+        # ipython_config.InteractiveShell.logfile = console_logpath
         ipython_config.LoggingMagics.quiet = True
         start_ipython(argv=[], user_ns=env, config=ipython_config)
         raise SystemExit
@@ -475,6 +499,7 @@ def _get_shell_log_path() -> str:
     # otherwise write to a local file
     return os.path.abspath("/var/log/.shell_history")
 
+
 def _is_containerized() -> bool:
     """Determine if we're running in a container based on cgroup awareness for various container runtimes."""
     path = "/proc/self/cgroup"
@@ -490,10 +515,10 @@ def _is_containerized() -> bool:
 class LoggedInteractiveConsole(code.InteractiveConsole):
     def __init__(self, locals, logpath):
         code.InteractiveConsole.__init__(self, locals)
-        self.output_file = open(logpath, 'a')
+        self.output_file = open(logpath, "a")
         print(
             f"{datetime.now()} {os.getpid()} - Start InteractiveConsole logging",
-            file=self.output_file
+            file=self.output_file,
         )
         self.output_file.flush()
 
