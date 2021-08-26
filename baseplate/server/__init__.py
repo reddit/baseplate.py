@@ -512,6 +512,7 @@ def _is_containerized() -> bool:
         return True
     return False
 
+
 class LoggedInteractiveConsole(code.InteractiveConsole):
     def __init__(self, locals, logpath):
         code.InteractiveConsole.__init__(self, locals)
