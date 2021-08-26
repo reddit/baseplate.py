@@ -4,7 +4,7 @@ This command serves your application from the given configuration file.
 
 """
 import argparse
-import atexit
+import code
 import configparser
 import enum
 import fcntl
@@ -22,6 +22,7 @@ import traceback
 import warnings
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from rlcompleter import Completer
 from types import FrameType
@@ -176,10 +177,10 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
 
-    if os.getpid() != 1:
+    if _is_containerized():
         file_handler = logging.FileHandler("/proc/1/fd/1")
         file_handler.setFormatter(formatter)
-        root_logger.addHandler(handler)
+        root_logger.addHandler(file_handler)
 
     if config.has_logging_options:
         logging.config.fileConfig(config.filename)
@@ -445,49 +446,62 @@ def load_and_run_shell() -> None:
         ipython_config = Config()
         ipython_config.TerminalInteractiveShell.banner2 = banner
         ipython_config.InteractiveShell.logfile = console_logpath
+        ipython_config.LoggingMagics.quiet = True
         start_ipython(argv=[], user_ns=env, config=ipython_config)
         raise SystemExit
     except ImportError:
-        import code
-
         newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
         banner = newbanner + banner
 
         try:
-            _set_up_interactive_console(env, console_logpath)
+            import readline
+
+            readline.set_completer(Completer(env).complete)
+            readline.parse_and_bind("tab: complete")
 
         except ImportError:
             pass
 
-        shell = code.InteractiveConsole(locals=env)
-        shell.interact(banner, readfunc=_log_interactive_console(console_logpath))
+        shell = LoggedInteractiveConsole(locals=env, logpath=console_logpath)
+        shell.interact(banner)
 
 
 def _get_shell_log_path() -> str:
+    """Determine where to write shell audit logs."""
     # Define path for console log output
-    path = "/proc/self/cgroup"
-    in_container = ["kubepods", "docker", "containerd"]
-    # check if running in a containerized environment
-    if os.path.exists("/.dockerenv") or os.path.isfile(path) and any(in_container in line for line in open(path)):
+    if _is_containerized():
         # write to PID 1 stdout for log aggregation
         return os.path.abspath("/proc/1/fd/1")
     # otherwise write to a local file
     return os.path.abspath("/var/log/.shell_history")
 
-def _log_interactive_console(path):
+def _is_containerized() -> bool:
+    """Determine if we're running in a container based on cgroup awareness for various container runtimes."""
+    path = "/proc/self/cgroup"
+    in_container = ["kubepods", "docker", "containerd"]
+    if (
+        os.path.exists("/.dockerenv")
+        or os.path.isfile(path)
+        and any(in_container in line for line in open(path))
+    ):
+        return True
+    return False
 
+class LoggedInteractiveConsole(code.InteractiveConsole):
+    def __init__(self, locals, logpath):
+        code.InteractiveConsole.__init__(self, locals)
+        self.output_file = open(logpath, 'a')
+        print(
+            f"{datetime.now()} {os.getpid()} - Start InteractiveConsole logging",
+            file=self.output_file
+        )
+        self.output_file.flush()
 
+    def __del__(self):
+        self.output_file.close()
 
-def _set_up_interactive_console(env: Dict, console_logpath: str) -> None:
-    # Setup some quality of life console interactions
-    import readline
-
-    readline.set_completer(Completer(env).complete)
-    readline.parse_and_bind("tab: complete")
-    readline.set_history_length(10000)
-
-    # Define audit logging with readline history
-    def save_console_history(history_path=console_logpath) -> None:
-        readline.write_history_file(history_path)
-
-    atexit.register(save_console_history)
+    def raw_input(self, _prompt=""):
+        data = input(_prompt)
+        print(f"{datetime.now()} {os.getpid()} - {data}", file=self.output_file)
+        self.output_file.flush()
+        return data
