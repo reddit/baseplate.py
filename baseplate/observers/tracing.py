@@ -563,6 +563,7 @@ class SidecarRecorder(Recorder):
                 MAX_SPAN_SIZE,
                 len(serialized_str),
             )
+            return
         try:
             self.queue.put(serialized_str, timeout=0)
         except TimedOutError:
