@@ -30,6 +30,7 @@ from .. import (
     SERIALIZED_EDGECONTEXT_WITH_EXPIRED_AUTH,
     SERIALIZED_EDGECONTEXT_WITH_NO_AUTH,
     SERIALIZED_EDGECONTEXT_WITH_VALID_AUTH,
+    REQUEST_ID,
 )
 
 cryptography_installed = True
@@ -326,7 +327,7 @@ class EdgeRequestContextTests(unittest.TestCase):
 
     def test_create_empty_context(self):
         request_context = self.factory.new()
-        self.assertEqual(request_context._header, b"\x0c\x00\x01\x00\x0c\x00\x02\x00\x0c\x00\x04\x00\x0c\x00\x05\x00\x0c\x00\x06\x00\x00")
+        self.assertEqual(request_context._header, b"\x0c\x00\x01\x00\x0c\x00\x02\x00\x0c\x00\x04\x00\x0c\x00\x05\x00\x0c\x00\x06\x00\x0c\x00\x07\x00\x00")
 
     def test_logged_out_user(self):
         request_context = self.factory.from_upstream(SERIALIZED_EDGECONTEXT_WITH_NO_AUTH)
