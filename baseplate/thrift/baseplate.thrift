@@ -111,6 +111,20 @@ struct Geolocation {
     1: CountryCode country_code
 }
 
+
+/** Unique identifier of this Edge Request
+
+This model is a component of the "Edge-Request" header.  You should not need to
+interact with this model directly, but rather through the EdgeRequestContext
+interface provided by baseplate.
+
+*/
+struct RequestId {
+    /** The id of this Edge Request, in the most human-readable format.
+    */
+    1: string readable_id
+}
+
 /** Container model for the Edge-Request context header.
 
 Baseplate will automatically parse this from the "Edge-Request" header and
@@ -126,6 +140,7 @@ struct Request {
     4: Device device;
     5: OriginService origin_service;
     6: Geolocation geolocation;
+    7: optional RequestId request_id;
 }
 
 /** The integer values within this enum correspond to HTTP status codes.
