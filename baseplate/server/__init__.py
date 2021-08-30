@@ -469,7 +469,6 @@ def load_and_run_shell() -> None:
             """
         ]
         ipython_config.TerminalInteractiveShell.banner2 = banner
-        # ipython_config.InteractiveShell.logfile = console_logpath
         ipython_config.LoggingMagics.quiet = True
         start_ipython(argv=[], user_ns=env, config=ipython_config)
         raise SystemExit
@@ -504,12 +503,12 @@ def _is_containerized() -> bool:
     """Determine if we're running in a container based on cgroup awareness for various container runtimes."""
     path = "/proc/self/cgroup"
     in_container = ["kubepods", "docker", "containerd"]
-    if (
-        os.path.exists("/.dockerenv")
-        or os.path.isfile(path)
-        and any(in_container in line for line in open(path))
-    ):
+    if os.path.exists("/.dockerenv"):
         return True
+    elif os.path.isfile(path):
+        for c in in_container:
+            if (c in line for line in open(path)):
+                return True
     return False
 
 
@@ -526,8 +525,8 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
     def __del__(self):
         self.output_file.close()
 
-    def raw_input(self, _prompt=""):
-        data = input(_prompt)
+    def raw_input(self, prompt=""):
+        data = input(prompt)
         print(f"{datetime.now()} {os.getpid()} - {data}", file=self.output_file)
         self.output_file.flush()
         return data
