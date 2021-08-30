@@ -177,7 +177,8 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
 
-    if _is_containerized():
+    # add PID 1 stdout logging if we're containerized and not running under init system
+    if _is_containerized() and os.getppid() != 1:
         file_handler = logging.FileHandler("/proc/1/fd/1")
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
@@ -466,6 +467,7 @@ def load_and_run_shell() -> None:
                     self.logfile.flush()
             ip.logger.logstop = None
             ip.logger.log_write = partial(log_write, ip.logger)
+            ip.logger.log_write("Start IPython logging\\n")
             """
         ]
         ipython_config.TerminalInteractiveShell.banner2 = banner
@@ -494,9 +496,9 @@ def _get_shell_log_path() -> str:
     # Define path for console log output
     if _is_containerized():
         # write to PID 1 stdout for log aggregation
-        return os.path.abspath("/proc/1/fd/1")
+        return "/proc/1/fd/1"
     # otherwise write to a local file
-    return os.path.abspath("/var/log/.shell_history")
+    return "/var/log/.shell_history"
 
 
 def _is_containerized() -> bool:
