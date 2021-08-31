@@ -82,6 +82,7 @@ class PublisherTests(unittest.TestCase):
         self.config.collector = config.ConfigNamespace()
         self.config.collector.hostname = "test.local"
         self.config.collector.version = 1
+        self.config.collector.scheme = "https"
         self.config.key = config.ConfigNamespace()
         self.config.key.name = "TestKey"
         self.config.key.secret = b"hunter2"
