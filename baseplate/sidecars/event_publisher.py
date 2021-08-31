@@ -100,7 +100,7 @@ class V2JBatch(V2Batch):
 class BatchPublisher:
     def __init__(self, metrics_client: metrics.Client, cfg: Any):
         self.metrics = metrics_client
-        self.url = f"https://{cfg.collector.hostname}/v{cfg.collector.version}"
+        self.url = f"{cfg.collector.scheme}://{cfg.collector.hostname}/v{cfg.collector.version}"
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
         self.session = requests.Session()
@@ -193,6 +193,7 @@ def publish_events() -> None:
             "collector": {
                 "hostname": config.String,
                 "version": config.Optional(config.String, default="2"),
+                "scheme": config.Optional(config.String, default="https"),
             },
             "key": {"name": config.String, "secret": config.Base64},
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
