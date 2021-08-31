@@ -24,6 +24,7 @@ from typing import Any
 from typing import Generator
 from typing import Optional
 from typing import TYPE_CHECKING
+from typing import Union
 
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase
@@ -152,7 +153,7 @@ class ThriftConnectionPool:
         endpoint: config.EndpointConfiguration,
         size: int = 10,
         max_age: int = 120,
-        timeout: int = 1,
+        timeout: Union[int, float] = 1,
         max_connection_attempts: int = 3,
         protocol_factory: TProtocolFactory = _DEFAULT_PROTOCOL_FACTORY,
     ):
