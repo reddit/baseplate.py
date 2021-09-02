@@ -152,7 +152,7 @@ class ThriftConnectionPool:
         endpoint: config.EndpointConfiguration,
         size: int = 10,
         max_age: int = 120,
-        timeout: int = 1,
+        timeout: float = 1,
         max_connection_attempts: int = 3,
         protocol_factory: TProtocolFactory = _DEFAULT_PROTOCOL_FACTORY,
     ):
