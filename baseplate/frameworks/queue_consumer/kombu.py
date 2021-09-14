@@ -135,7 +135,7 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
                         "unprocessed batch. A message in this unprocessed batch had already",
                         "been acknowledged, so it is not being requeued. However, this indicates",
                         "an inconsistency in the batch processing logic which should be",
-                        "investigated."
+                        "investigated.",
                     )
 
 
