@@ -198,7 +198,9 @@ class KombuBatchMessageHandler(MessageHandler):
         self.handler_fn = handler_fn
         self.error_handler_fn = error_handler_fn
 
-    def handle(self, messages: Sequence[kombu.Message]) -> None:  # pylint: disable=arguments-differ, arguments-renamed
+    def handle(
+            self, messages: Sequence[kombu.Message]
+    ) -> None:  # pylint: disable=arguments-differ, arguments-renamed
         logger.debug("Processing batch with %i messages", len(messages))
 
         context = self.baseplate.make_context_object()
