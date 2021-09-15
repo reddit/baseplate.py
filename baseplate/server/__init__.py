@@ -529,13 +529,9 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
         self.hostname = os.uname().nodename
         self.log_event(message="Start InteractiveConsole logging", message_id="CSTR")
 
-    def __del__(self):
-        self.output_file.close()
-
     def raw_input(self, prompt=""):
         data = input(prompt)
-        with open(self.output_file, "w"):
-            self.log_event(message=data, message_id="CEXC")
+        self.log_event(message=data, message_id="CEXC")
         return data
 
     def log_event(
@@ -544,5 +540,6 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
         """Generate an RFC 5424 compliant syslog format."""
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
-        print(prompt, file=self.output_file)
+        with open(self.output_file, "w") as f:
+            print(prompt, file=f)
         self.output_file.flush()
