@@ -179,7 +179,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
     # add PID 1 stdout logging if we're containerized and not running under init system
     if _is_containerized() and os.getppid() != 1:
-        file_handler = logging.FileHandler("/proc/1/fd/1")
+        file_handler = logging.FileHandler("/proc/1/fd/1", mode='w')
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
 
@@ -452,14 +452,13 @@ def load_and_run_shell() -> None:
             ip = get_ipython()
             from functools import partial
             ip.magic('logstart {console_logpath}')
-            def log_write(self, data, kind="input"):
+            def log_write(self, data, kind="input", message_id="IEXC"):
                 import time, os
                 if self.log_active and data:
                     write = self.logfile.write
                     if kind=='input':
-                        if self.timestamp:
-                            write(time.strftime('# %a, %d %b %Y %H:%M:%S\\n', time.localtime()))
-                        write(f"{{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}} {{os.getpid()}} - {{data}}")
+                        # Generate an RFC 5424 compliant syslog format
+                        write(f"<13>1 {{time.strftime('%Y-%m-%dT%H:%M:%S.%fZ', time.gmtime())}} {{os.uname().nodename}} baseplate-shell {{os.getpid()}} {{message_id}} - {{data}}")
                     elif kind=='output' and self.log_output:
                         odata = u'\\n'.join([u'#[Out]# %s' % s
                                         for s in data.splitlines()])
@@ -467,7 +466,7 @@ def load_and_run_shell() -> None:
                     self.logfile.flush()
             ip.logger.logstop = None
             ip.logger.log_write = partial(log_write, ip.logger)
-            ip.logger.log_write("Start IPython logging\\n")
+            ip.logger.log_write(data="Start IPython logging\\n", message_id="ISTR")
             """
         ]
         ipython_config.TerminalInteractiveShell.banner2 = banner
@@ -503,32 +502,44 @@ def _get_shell_log_path() -> str:
 
 def _is_containerized() -> bool:
     """Determine if we're running in a container based on cgroup awareness for various container runtimes."""
-    path = "/proc/self/cgroup"
-    in_container = ["kubepods", "docker", "containerd"]
+
     if os.path.exists("/.dockerenv"):
         return True
-    elif os.path.isfile(path):
-        for c in in_container:
-            if (c in line for line in open(path)):
-                return True
+
+    try:
+        with open("/proc/self/cgroup") as my_cgroups_file:
+            my_cgroups = my_cgroups_file.read()
+
+            for hint in ["kubepods", "docker", "containerd"]:
+                if hint in my_cgroups:
+                    return True
+    except IOError:
+        pass
+
     return False
 
 
 class LoggedInteractiveConsole(code.InteractiveConsole):
     def __init__(self, locals, logpath):
         code.InteractiveConsole.__init__(self, locals)
-        self.output_file = open(logpath, "a")
-        print(
-            f"{datetime.now()} {os.getpid()} - Start InteractiveConsole logging",
-            file=self.output_file,
-        )
-        self.output_file.flush()
+        self.output_file = open(logpath, "w")
+        self.pid = os.getpid()
+        # PRI = User Level Facility (1) * 8 + Notice Severity (5)
+        self.pri = 13
+        self.hostname = os.uname().nodename
+        self.log_event(message="Start InteractiveConsole logging", message_id="CSTR")
 
     def __del__(self):
         self.output_file.close()
 
     def raw_input(self, prompt=""):
         data = input(prompt)
-        print(f"{datetime.now()} {os.getpid()} - {data}", file=self.output_file)
-        self.output_file.flush()
+        self.log_event(message=data, message_id="CEXC")
         return data
+
+    def log_event(self, message: str, message_id: Optional[str] = "-", structured: Optional[str] = "-"):
+        """Generate an RFC 5424 compliant syslog format."""
+        timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
+        print(prompt, file=self.output_file)
+        self.output_file.flush()
