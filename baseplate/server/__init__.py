@@ -486,7 +486,7 @@ def load_and_run_shell() -> None:
         except ImportError:
             pass
 
-        shell = LoggedInteractiveConsole(locals=env, logpath=console_logpath)
+        shell = LoggedInteractiveConsole(_locals=env, logpath=console_logpath)
         shell.interact(banner)
 
 
@@ -520,9 +520,9 @@ def _is_containerized() -> bool:
 
 
 class LoggedInteractiveConsole(code.InteractiveConsole):
-    def __init__(self, locals, logpath):
-        code.InteractiveConsole.__init__(self, locals)
-        self.output_file = open(logpath, "w")
+    def __init__(self, _locals, logpath):
+        code.InteractiveConsole.__init__(self, _locals)
+        self.output_file = logpath
         self.pid = os.getpid()
         # PRI = User Level Facility (1) * 8 + Notice Severity (5)
         self.pri = 13
@@ -534,7 +534,8 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
 
     def raw_input(self, prompt=""):
         data = input(prompt)
-        self.log_event(message=data, message_id="CEXC")
+        with open(self.output_file, "w"):
+            self.log_event(message=data, message_id="CEXC")
         return data
 
     def log_event(
