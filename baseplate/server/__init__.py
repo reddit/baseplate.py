@@ -542,4 +542,4 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
         prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
         with open(self.output_file, "w") as f:
             print(prompt, file=f)
-        self.output_file.flush()
+            f.flush()
