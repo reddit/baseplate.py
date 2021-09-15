@@ -520,7 +520,7 @@ def _is_containerized() -> bool:
 
 
 class LoggedInteractiveConsole(code.InteractiveConsole):
-    def __init__(self, _locals: dict[str, Any], logpath: str) -> None:
+    def __init__(self, _locals: Dict[str, Any], logpath: str) -> None:
         code.InteractiveConsole.__init__(self, _locals)
         self.output_file = logpath
         self.pid = os.getpid()
