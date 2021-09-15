@@ -112,7 +112,7 @@ class KombuBatchConsumerWorker(ConsumerMixin, PumpWorker):
             args["accept"] = [self.serializer.name]
         return [Consumer(**args)]
 
-    def on_iteration(self):
+    def on_iteration(self) -> None:
         self.work_queue.flush()
 
     def stop(self) -> None:
@@ -215,27 +215,26 @@ class KombuBatchMessageHandler(MessageHandler):
                 # The routing keys, consumer tags, delivery tags and exchanges span tags are
                 # comma-separated, de-duplicated lists of the tags in the messages
 
-                routing_keys = set([None])
-                consumer_tags = set([None])
-                delivery_tags = set([None])
-                exchanges = set([None])
+                routing_keys = set()
+                consumer_tags = set()
+                delivery_tags = set()
+                exchanges = set()
 
+                message: kombu.Message
                 for message in messages:
-                    message: kombu.Message
                     delivery_info = message.delivery_info
                     routing_key = delivery_info.get("routing_key", None)
-                    routing_keys.add(routing_key)
+                    if routing_key is not None:
+                        routing_keys.add(routing_key)
                     consumer_tag = delivery_info.get("consumer_tag", None)
-                    consumer_tags.add(consumer_tag)
+                    if consumer_tag is not None:
+                        consumer_tags.add(consumer_tag)
                     delivery_tag = delivery_info.get("delivery_tag", None)
-                    delivery_tags.add(delivery_tag)
+                    if delivery_tag is not None:
+                        delivery_tags.add(delivery_tag)
                     exchange = delivery_info.get("exchange", None)
-                    exchanges.add(exchange)
-
-                routing_keys.remove(None)
-                consumer_tags.remove(None)
-                delivery_tags.remove(None)
-                exchanges.remove(None)
+                    if exchange is not None:
+                        exchanges.add(exchange)
 
                 routing_keys_span_tag = ",".join(sorted(routing_keys))
                 span.set_tag("amqp.routing_keys", routing_keys_span_tag)
