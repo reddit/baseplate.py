@@ -520,7 +520,7 @@ def _is_containerized() -> bool:
 
 
 class LoggedInteractiveConsole(code.InteractiveConsole):
-    def __init__(self, _locals, logpath):
+    def __init__(self, _locals: dict[str, Any], logpath: str) -> None:
         code.InteractiveConsole.__init__(self, _locals)
         self.output_file = logpath
         self.pid = os.getpid()
@@ -529,14 +529,14 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
         self.hostname = os.uname().nodename
         self.log_event(message="Start InteractiveConsole logging", message_id="CSTR")
 
-    def raw_input(self, prompt=""):
+    def raw_input(self, prompt: Optional[str] = "") -> str:
         data = input(prompt)
         self.log_event(message=data, message_id="CEXC")
         return data
 
     def log_event(
         self, message: str, message_id: Optional[str] = "-", structured: Optional[str] = "-"
-    ):
+    ) -> None:
         """Generate an RFC 5424 compliant syslog format."""
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
