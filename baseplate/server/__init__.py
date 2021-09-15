@@ -179,7 +179,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
     # add PID 1 stdout logging if we're containerized and not running under init system
     if _is_containerized() and os.getppid() != 1:
-        file_handler = logging.FileHandler("/proc/1/fd/1", mode='w')
+        file_handler = logging.FileHandler("/proc/1/fd/1", mode="w")
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
 
@@ -537,7 +537,9 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
         self.log_event(message=data, message_id="CEXC")
         return data
 
-    def log_event(self, message: str, message_id: Optional[str] = "-", structured: Optional[str] = "-"):
+    def log_event(
+        self, message: str, message_id: Optional[str] = "-", structured: Optional[str] = "-"
+    ):
         """Generate an RFC 5424 compliant syslog format."""
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
