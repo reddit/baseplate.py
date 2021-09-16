@@ -24,6 +24,7 @@ import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from psutil import Process
 from rlcompleter import Completer
 from types import FrameType
 from typing import Any
@@ -177,8 +178,8 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
 
-    # add PID 1 stdout logging if we're containerized and not running under init system
-    if _is_containerized() and os.getppid() != 1:
+    # add PID 1 stdout logging if we're containerized and not running under an init system
+    if _is_containerized() and Process(1) not in Process(os.getpid()).parents():
         file_handler = logging.FileHandler("/proc/1/fd/1", mode="w")
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
@@ -492,7 +493,6 @@ def load_and_run_shell() -> None:
 
 def _get_shell_log_path() -> str:
     """Determine where to write shell audit logs."""
-    # Define path for console log output
     if _is_containerized():
         # write to PID 1 stdout for log aggregation
         return "/proc/1/fd/1"
@@ -502,7 +502,6 @@ def _get_shell_log_path() -> str:
 
 def _is_containerized() -> bool:
     """Determine if we're running in a container based on cgroup awareness for various container runtimes."""
-
     if os.path.exists("/.dockerenv"):
         return True
 
