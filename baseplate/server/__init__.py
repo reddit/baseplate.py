@@ -526,7 +526,7 @@ def _has_PID1_parent() -> bool:
                 if line.startswith("PPid:"):
                     parent_pid = int((line.replace("PPid:", "")))
                     break
-    return True if parent_pid == 1 else False
+    return bool(parent_pid)
 
 
 class LoggedInteractiveConsole(code.InteractiveConsole):
