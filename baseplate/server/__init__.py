@@ -39,7 +39,6 @@ from typing import TextIO
 from typing import Tuple
 
 from gevent.server import StreamServer
-from psutil import Process
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
@@ -179,7 +178,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger.addHandler(handler)
 
     # add PID 1 stdout logging if we're containerized and not running under an init system
-    if _is_containerized() and Process(1) not in Process(os.getpid()).parents():
+    if _is_containerized() and not _has_PID1_parent():
         file_handler = logging.FileHandler("/proc/1/fd/1", mode="w")
         file_handler.setFormatter(formatter)
         root_logger.addHandler(file_handler)
@@ -516,6 +515,18 @@ def _is_containerized() -> bool:
         pass
 
     return False
+
+
+def _has_PID1_parent() -> bool:
+    """Determine parent PIDs up the tree until PID 1 or 0 is reached, do this natively"""
+    parent_pid = os.getppid()
+    while parent_pid > 1:
+        with open(f"/proc/{parent_pid}/status", "r") as proc_status:
+            for line in proc_status.readlines():
+                if line.startswith("PPid:"):
+                    parent_pid = int((line.replace("PPid:", "")))
+                    break
+    return True if parent_pid == 1 else False
 
 
 class LoggedInteractiveConsole(code.InteractiveConsole):
