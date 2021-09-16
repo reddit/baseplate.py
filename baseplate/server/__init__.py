@@ -24,7 +24,6 @@ import warnings
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from psutil import Process
 from rlcompleter import Completer
 from types import FrameType
 from typing import Any
@@ -40,6 +39,7 @@ from typing import TextIO
 from typing import Tuple
 
 from gevent.server import StreamServer
+from psutil import Process
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
