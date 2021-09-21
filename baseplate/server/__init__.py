@@ -451,14 +451,13 @@ def load_and_run_shell() -> None:
             f"""
             ip = get_ipython()
             from functools import partial
-            ip.magic('logstart {console_logpath}')
             def log_write(self, data, kind="input", message_id="IEXC"):
-                import time, os
+                import datetime, os
                 if self.log_active and data:
                     write = self.logfile.write
                     if kind=='input':
                         # Generate an RFC 5424 compliant syslog format
-                        write(f"<13>1 {{time.strftime('%Y-%m-%dT%H:%M:%S.%fZ', time.gmtime())}} {{os.uname().nodename}} baseplate-shell {{os.getpid()}} {{message_id}} - {{data}}")
+                        write(f"<13>1 {{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")}} {{os.uname().nodename}} baseplate-shell {{os.getpid()}} {{message_id}} - {{data}}")
                     elif kind=='output' and self.log_output:
                         odata = u'\\n'.join([u'#[Out]# %s' % s
                                         for s in data.splitlines()])
@@ -466,6 +465,7 @@ def load_and_run_shell() -> None:
                     self.logfile.flush()
             ip.logger.logstop = None
             ip.logger.log_write = partial(log_write, ip.logger)
+            ip.magic('logstart {console_logpath} append')
             ip.logger.log_write(data="Start IPython logging\\n", message_id="ISTR")
             """
         ]
@@ -496,7 +496,7 @@ def _get_shell_log_path() -> str:
         # write to PID 1 stdout for log aggregation
         return "/proc/1/fd/1"
     # otherwise write to a local file
-    return "/var/log/.shell_history"
+    return "/var/log/baseplate-shell.log"
 
 
 def _is_containerized() -> bool:
