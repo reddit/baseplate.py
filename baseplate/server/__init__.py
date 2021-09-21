@@ -4,6 +4,7 @@ This command serves your application from the given configuration file.
 
 """
 import argparse
+import code
 import configparser
 import enum
 import fcntl
@@ -21,7 +22,9 @@ import traceback
 import warnings
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
+from rlcompleter import Completer
 from types import FrameType
 from typing import Any
 from typing import Callable
@@ -173,6 +176,12 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger = logging.getLogger()
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
+
+    # add PID 1 stdout logging if we're containerized and not running under an init system
+    if _is_containerized() and not _has_PID1_parent():
+        file_handler = logging.FileHandler("/proc/1/fd/1", mode="w")
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
 
     if config.has_logging_options:
         logging.config.fileConfig(config.filename)
@@ -415,10 +424,14 @@ def load_and_run_shell() -> None:
         setup = _load_factory(config.shell["setup"])
         setup(env, env_banner)
 
+    configure_logging(config, args.debug)
+
     # generate banner text
     banner = "Available Objects:\n"
     for var in sorted(env_banner.keys()):
         banner += "\n  {:<12} {}".format(var, env_banner[var])
+
+    console_logpath = _get_shell_log_path()
 
     try:
         # try to use IPython if possible
@@ -432,23 +445,111 @@ def load_and_run_shell() -> None:
             from IPython import Config
 
         ipython_config = Config()
+        ipython_config.InteractiveShellApp.exec_lines = [
+            # monkeypatch IPython's log-write() to enable formatted input logging, copying original code:
+            # https://github.com/ipython/ipython/blob/a54bf00feb5182fa821bd5457897b3b30a313436/IPython/core/logger.py#L187-L201
+            f"""
+            ip = get_ipython()
+            from functools import partial
+            ip.magic('logstart {console_logpath}')
+            def log_write(self, data, kind="input", message_id="IEXC"):
+                import time, os
+                if self.log_active and data:
+                    write = self.logfile.write
+                    if kind=='input':
+                        # Generate an RFC 5424 compliant syslog format
+                        write(f"<13>1 {{time.strftime('%Y-%m-%dT%H:%M:%S.%fZ', time.gmtime())}} {{os.uname().nodename}} baseplate-shell {{os.getpid()}} {{message_id}} - {{data}}")
+                    elif kind=='output' and self.log_output:
+                        odata = u'\\n'.join([u'#[Out]# %s' % s
+                                        for s in data.splitlines()])
+                        write(u'%s\\n' % odata)
+                    self.logfile.flush()
+            ip.logger.logstop = None
+            ip.logger.log_write = partial(log_write, ip.logger)
+            ip.logger.log_write(data="Start IPython logging\\n", message_id="ISTR")
+            """
+        ]
         ipython_config.TerminalInteractiveShell.banner2 = banner
+        ipython_config.LoggingMagics.quiet = True
         start_ipython(argv=[], user_ns=env, config=ipython_config)
         raise SystemExit
     except ImportError:
-        import code
-
         newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
         banner = newbanner + banner
 
-        # import this just for its side-effects (of enabling nice keyboard
-        # movement while editing text)
         try:
             import readline
 
-            del readline
+            readline.set_completer(Completer(env).complete)
+            readline.parse_and_bind("tab: complete")
+
         except ImportError:
             pass
 
-        shell = code.InteractiveConsole(locals=env)
+        shell = LoggedInteractiveConsole(_locals=env, logpath=console_logpath)
         shell.interact(banner)
+
+
+def _get_shell_log_path() -> str:
+    """Determine where to write shell audit logs."""
+    if _is_containerized():
+        # write to PID 1 stdout for log aggregation
+        return "/proc/1/fd/1"
+    # otherwise write to a local file
+    return "/var/log/.shell_history"
+
+
+def _is_containerized() -> bool:
+    """Determine if we're running in a container based on cgroup awareness for various container runtimes."""
+    if os.path.exists("/.dockerenv"):
+        return True
+
+    try:
+        with open("/proc/self/cgroup") as my_cgroups_file:
+            my_cgroups = my_cgroups_file.read()
+
+            for hint in ["kubepods", "docker", "containerd"]:
+                if hint in my_cgroups:
+                    return True
+    except IOError:
+        pass
+
+    return False
+
+
+def _has_PID1_parent() -> bool:
+    """Determine parent PIDs up the tree until PID 1 or 0 is reached, do this natively"""
+    parent_pid = os.getppid()
+    while parent_pid > 1:
+        with open(f"/proc/{parent_pid}/status", "r") as proc_status:
+            for line in proc_status.readlines():
+                if line.startswith("PPid:"):
+                    parent_pid = int((line.replace("PPid:", "")))
+                    break
+    return bool(parent_pid)
+
+
+class LoggedInteractiveConsole(code.InteractiveConsole):
+    def __init__(self, _locals: Dict[str, Any], logpath: str) -> None:
+        code.InteractiveConsole.__init__(self, _locals)
+        self.output_file = logpath
+        self.pid = os.getpid()
+        # PRI = User Level Facility (1) * 8 + Notice Severity (5)
+        self.pri = 13
+        self.hostname = os.uname().nodename
+        self.log_event(message="Start InteractiveConsole logging", message_id="CSTR")
+
+    def raw_input(self, prompt: Optional[str] = "") -> str:
+        data = input(prompt)
+        self.log_event(message=data, message_id="CEXC")
+        return data
+
+    def log_event(
+        self, message: str, message_id: Optional[str] = "-", structured: Optional[str] = "-"
+    ) -> None:
+        """Generate an RFC 5424 compliant syslog format."""
+        timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
+        with open(self.output_file, "w") as f:
+            print(prompt, file=f)
+            f.flush()
