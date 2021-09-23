@@ -16,6 +16,7 @@ import os
 import signal
 import socket
 import sys
+import syslog
 import threading
 import time
 import traceback
@@ -534,8 +535,7 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
         code.InteractiveConsole.__init__(self, _locals)
         self.output_file = logpath
         self.pid = os.getpid()
-        # PRI = User Level Facility (1) * 8 + Notice Severity (5)
-        self.pri = 13
+        self.pri = syslog.LOG_USER | syslog.LOG_NOTICE
         self.hostname = os.uname().nodename
         self.log_event(message="Start InteractiveConsole logging", message_id="CSTR")
 
