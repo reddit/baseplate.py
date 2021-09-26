@@ -37,6 +37,7 @@ setup(
     python_requires=">=3.7",
     setup_requires=["setuptools_scm"],
     install_requires=[
+        "expandvars>=0.7.0",
         "posix_ipc>=1.0.0,<2.0",
         "python-json-logger>=2.0,<3.0",
         "requests>=2.21.0,<3.0",

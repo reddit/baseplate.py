@@ -39,6 +39,8 @@ from typing import Sequence
 from typing import TextIO
 from typing import Tuple
 
+from expandvars import expandvars
+from expandvars import ExpandvarsException
 from gevent.server import StreamServer
 
 from baseplate import Baseplate
@@ -124,7 +126,11 @@ class EnvironmentInterpolation(configparser.Interpolation):
         value: str,
         defaults: Mapping[str, str],
     ) -> str:
-        return os.path.expandvars(value)
+        try:
+            return expandvars(value, nounset=True)
+        except ExpandvarsException:
+            logger.warning("Failed to interpolate config value %s for option %s", value, option)
+            return value
 
 
 class Configuration(NamedTuple):

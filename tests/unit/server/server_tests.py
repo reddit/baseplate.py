@@ -7,6 +7,8 @@ from unittest import mock
 
 import pytest
 
+from pytest_check import check
+
 from baseplate import server
 from baseplate.lib import config
 
@@ -175,7 +177,7 @@ class ParseBaseplateScriptArgs(unittest.TestCase):
         self.assertEqual(extra_args, ["extra_arg1", "extra_arg2"])
 
 
-@mock.patch.dict("os.environ", {"FOO_FROM_ENV": "environmental"})
+@mock.patch.dict("os.environ", {"FOO_FROM_ENV": "environmental", "environmental": "42"})
 @pytest.mark.parametrize(
     "config_text,expected",
     (
@@ -183,7 +185,12 @@ class ParseBaseplateScriptArgs(unittest.TestCase):
         ("foo = bar", "bar"),
         ("foo = $FOO_FROM_ENV", "environmental"),
         ("foo = ${FOO_FROM_ENV}", "environmental"),
-        ("foo = ${this:is:not:valid}", "${this:is:not:valid}"),
+        ("foo = ${BAR_FROM_ENV:-$FOO_FROM_ENV}", "environmental"),
+        ("foo = ${BAR_FROM_ENV:-}", ""),
+        ("foo = ${BAR_FROM_ENV:-default}", "default"),
+        ("foo = ${FOO_FROM_ENV:0:11}", "environment"),
+        ("foo = ${FOO_FROM_ENV: -6}", "mental"),
+        ("foo = ${!FOO_FROM_ENV}", "42"),
     ),
 )
 def test_read_config(config_text, expected):
@@ -191,3 +198,24 @@ def test_read_config(config_text, expected):
     config_file.name = "<test>"
     config = server.read_config(config_file, server_name=None, app_name="main")
     assert config.app.get("foo") == expected
+
+
+@mock.patch.dict("os.environ", {})
+@pytest.mark.parametrize(
+    "option, config_value, expected",
+    (
+        ("foo", "$FOO_FROM_ENV", "$FOO_FROM_ENV"),
+        ("foo", "$FOO_FROM_ENV:?error", "$FOO_FROM_ENV:?error"),
+        ("foo", "${this:is:not:valid}", "${this:is:not:valid}"),
+    ),
+)
+def test_read_config_invalid_interpolation(caplog, option, config_value, expected):
+    config_file = io.StringIO(f"[app:main]\n{option}={config_value}\n")
+    config_file.name = "<test>"
+    config = server.read_config(config_file, server_name=None, app_name="main")
+    with check:
+        assert config.app.get(option) == expected
+    with check:
+        assert (
+            f"Failed to interpolate config value {config_value} for option {option}" in caplog.text
+        )
