@@ -458,7 +458,7 @@ def load_and_run_shell() -> None:
                     write = self.logfile.write
                     if kind=='input':
                         # Generate an RFC 5424 compliant syslog format
-                        write(f"<13>1 {{datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")}} {{os.uname().nodename}} baseplate-shell {{os.getpid()}} {{message_id}} - {{data}}")
+                        write(f'<13>1 {{datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")}} {{os.uname().nodename}} baseplate-shell {{os.getpid()}} {{message_id}} - {{data}}')
                     elif kind=='output' and self.log_output:
                         odata = u'\\n'.join([u'#[Out]# %s' % s
                                         for s in data.splitlines()])
