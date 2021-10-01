@@ -26,7 +26,7 @@ def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
         client = BaseplateServiceV2.Client(protocol)
         assert client.is_healthy(
             request=IsHealthyRequest(probe=probe),
-        ), "service indicated unhealthiness in probe {probe}"
+        ), f"service indicated unhealthiness in probe {probe}"
 
 
 def check_http_service(endpoint: EndpointConfiguration, probe: int) -> None:
