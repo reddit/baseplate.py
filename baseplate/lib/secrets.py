@@ -3,6 +3,7 @@ import base64
 import binascii
 import json
 import logging
+import os
 
 from typing import Any
 from typing import Dict
@@ -10,11 +11,12 @@ from typing import Iterator
 from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
+from typing import Type
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.lib import cached_property
 from baseplate.lib import config
+from baseplate.lib import warn_deprecated
 from baseplate.lib.file_watcher import FileWatcher
 from baseplate.lib.file_watcher import WatchedFileNotAvailableError
 
@@ -116,11 +118,32 @@ def _decode_secret(path: str, encoding: str, value: str) -> bytes:
     raise CorruptSecretError(path, f"unknown encoding: {encoding!r}")
 
 
+class SecretParser:
+    @staticmethod
+    def get_secret(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
+        raise NotImplementedError
+
+
+class VaultFileParser(SecretParser):
+    @staticmethod
+    def get_secret(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
+        try:
+            return data["secrets"][secret_path]
+        except KeyError:
+            raise SecretNotFoundError(secret_path)
+
+
+class VaultCSIParser(SecretParser):
+    @staticmethod
+    def get_secret(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
+        return data["data"]
+
+
 class SecretsStore(ContextFactory):
     """Access to secret tokens with automatic refresh when changed.
 
-    This local vault allows access to the secrets cached on disk by the fetcher
-    daemon. It will automatically reload the cache when it is changed. Do not
+    This local vault allows access to the secrets cached on disk.
+    It will automatically reload the cache when it is changed. Do not
     cache or store the values returned by this class's methods but rather get
     them from this class each time you need them. The secrets are served from
     memory so there's little performance impact to doing so and you will be
@@ -128,12 +151,35 @@ class SecretsStore(ContextFactory):
 
     """
 
-    def __init__(self, path: str, timeout: Optional[int] = None, backoff: Optional[float] = None):
-        self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
+    def __init__(
+        self,
+        path: str,
+        timeout: Optional[int] = None,
+        backoff: Optional[float] = None,
+        parser: Optional[Type[SecretParser]] = None,
+    ):
+        self._filewatchers = {}
+        self.path = path
+        self.path_type = "dir" if os.path.isdir(path) else "file"
+        self.parser = parser or VaultFileParser
+        if self.path_type == "dir":
+            for root, _, files in os.walk(path):
+                for f in files:
+                    file_path = os.path.relpath(os.path.join(root, f), path)
 
-    def _get_data(self) -> Tuple[Any, float]:
+                    self._filewatchers[file_path] = FileWatcher(
+                        file_path, json.load, timeout=timeout, backoff=backoff
+                    )
+        else:
+            self._filewatchers[path] = FileWatcher(
+                path, json.load, timeout=timeout, backoff=backoff
+            )
+
+    def _get_data(self, filename: str) -> Tuple[Any, float]:
         try:
-            return self._filewatcher.get_data_and_mtime()
+            return self._filewatchers[filename].get_data_and_mtime()
+        except KeyError:
+            raise SecretNotFoundError(filename)
         except WatchedFileNotAvailableError as exc:
             raise SecretsNotAvailableError(exc)
 
@@ -205,7 +251,11 @@ class SecretsStore(ContextFactory):
 
     def get_vault_url(self) -> str:
         """Return the URL for accessing Vault directly."""
-        data, _ = self._get_data()
+        if self.path_type == "dir":
+            raise NotImplementedError
+
+        warn_deprecated("get_vault_url is deprecated and will be removed in the future.")
+        data, _ = self._get_data(self.path)
         return data["vault"]["url"]
 
     def get_vault_token(self) -> str:
@@ -215,10 +265,14 @@ class SecretsStore(ContextFactory):
         Vault role. This is only necessary if talking directly to Vault.
 
         """
-        data, _ = self._get_data()
+        if self.path_type == "dir":
+            raise NotImplementedError
+
+        warn_deprecated("get_vault_token is deprecated and will be removed in the future.")
+        data, _ = self._get_data(self.path)
         return data["vault"]["token"]
 
-    def get_raw_and_mtime(self, path: str) -> Tuple[Dict[str, str], float]:
+    def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         """Return raw secret and modification time.
 
         This returns the same data as :py:meth:`get_raw` as well as a UNIX
@@ -229,12 +283,12 @@ class SecretsStore(ContextFactory):
         .. versionadded:: 1.5
 
         """
-        data, mtime = self._get_data()
+        if self.path_type == "file":
+            data, mtime = self._get_data(self.path)
+        else:
+            data, mtime = self._get_data(secret_path)
 
-        try:
-            return data["secrets"][path], mtime
-        except KeyError:
-            raise SecretNotFoundError(path)
+        return self.parser.get_secret(data, secret_path), mtime
 
     def get_credentials_and_mtime(self, path: str) -> Tuple[CredentialSecret, float]:
         """Return credentials secret and modification time.
@@ -339,21 +393,22 @@ class SecretsStore(ContextFactory):
            baseplate.add_to_context("secrets", secrets)
 
         """
-        return _CachingSecretsStore(self._filewatcher)
+        return _CachingSecretsStore(self._filewatchers)
 
 
 class _CachingSecretsStore(SecretsStore):
     """Lazily load and cache the parsed data until the server span ends."""
 
-    def __init__(self, filewatcher: FileWatcher):  # pylint: disable=super-init-not-called
-        self._filewatcher = filewatcher
+    def __init__(
+        self, filewatchers: Dict[str, FileWatcher]
+    ):  # pylint: disable=super-init-not-called
+        self._filewatchers = filewatchers
+        self._cached_data: Dict[str, Tuple[Dict, float]] = {}
 
-    @cached_property
-    def _data(self) -> Tuple[Any, float]:
-        return super()._get_data()
-
-    def _get_data(self) -> Tuple[Dict, float]:
-        return self._data
+    def _get_data(self, filename: str) -> Tuple[Dict, float]:
+        if not self._cached_data[filename]:
+            self._cached_data[filename] = super()._get_data(filename)
+        return self._cached_data[filename]
 
 
 def secrets_store_from_config(
@@ -376,8 +431,10 @@ def secrets_store_from_config(
         to "secrets."
     :param backoff: retry backoff time for secrets file watcher. Defaults to
         None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
+    :param provider: The secrets provider. Defaults to 'vault'.
 
     """
+    parser: Type[SecretParser]
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
 
@@ -386,6 +443,7 @@ def secrets_store_from_config(
         {
             config_prefix: {
                 "path": config.Optional(config.String, default="/var/local/secrets.json"),
+                "provider": config.Optional(config.String, default="vault"),
                 "backoff": config.Optional(config.Timespan),
             }
         },
@@ -398,4 +456,9 @@ def secrets_store_from_config(
         backoff = None
 
     # pylint: disable=maybe-no-member
-    return SecretsStore(options.path, timeout=timeout, backoff=backoff)
+    if options.provider == "vault":
+        parser = VaultFileParser
+    elif options.provider == "vault_csi":
+        parser = VaultCSIParser
+
+    return SecretsStore(options.path, timeout=timeout, backoff=backoff, parser=parser)

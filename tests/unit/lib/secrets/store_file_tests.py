@@ -9,11 +9,11 @@ from baseplate.lib.secrets import SecretsStore
 from baseplate.testing.lib.file_watcher import FakeFileWatcher
 
 
-class StoreTests(unittest.TestCase):
+class StoreFileTests(unittest.TestCase):
     def setUp(self):
         self.fake_filewatcher = FakeFileWatcher()
         self.store = SecretsStore("/whatever")
-        self.store._filewatcher = self.fake_filewatcher
+        self.store._filewatchers["/whatever"] = self.fake_filewatcher
 
     def test_file_not_found(self):
         with self.assertRaises(SecretsNotAvailableError):
@@ -182,4 +182,4 @@ class StoreFromConfigTests(unittest.TestCase):
             prefix="test_secrets.",
         )
         self.assertIsInstance(secrets, SecretsStore)
-        self.assertEqual(secrets._filewatcher._path, "/tmp/secrets")
+        self.assertEqual(secrets._filewatchers["/tmp/secrets"]._path, "/tmp/secrets")
