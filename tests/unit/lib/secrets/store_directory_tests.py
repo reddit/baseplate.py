@@ -2,10 +2,10 @@ import unittest
 
 from baseplate.lib.secrets import CorruptSecretError
 from baseplate.lib.secrets import CredentialSecret
+from baseplate.lib.secrets import DirectorySecretsStore
+from baseplate.lib.secrets import parse_vault_csi
 from baseplate.lib.secrets import SecretNotFoundError
 from baseplate.lib.secrets import secrets_store_from_config
-from baseplate.lib.secrets import SecretsStore
-from baseplate.lib.secrets import VaultCSIParser
 from baseplate.testing.lib.file_watcher import FakeFileWatcher
 
 
@@ -14,8 +14,7 @@ class StoreDirectoryTests(unittest.TestCase):
         self.fake_filewatcher_1 = FakeFileWatcher()
         self.fake_filewatcher_2 = FakeFileWatcher()
         self.fake_filewatcher_3 = FakeFileWatcher()
-        self.store = SecretsStore("/whatever", parser=VaultCSIParser)
-        self.store.path_type = "dir"
+        self.store = DirectorySecretsStore("/whatever", parser=parse_vault_csi)
         self.store._filewatchers["secret1"] = self.fake_filewatcher_1
         self.store._filewatchers["secret2"] = self.fake_filewatcher_2
         self.store._filewatchers["secret3"] = self.fake_filewatcher_3
@@ -217,13 +216,5 @@ class StoreDirectoryTests(unittest.TestCase):
 
 class StoreFromConfigTests(unittest.TestCase):
     def test_make_store(self):
-        secrets = secrets_store_from_config({"secrets.path": "/tmp/test"})
-        self.assertIsInstance(secrets, SecretsStore)
-
-    def test_prefix(self):
-        secrets = secrets_store_from_config(
-            {"secrets.path": "/tmp/test", "test_secrets.path": "/tmp/secrets"},
-            prefix="test_secrets.",
-        )
-        self.assertIsInstance(secrets, SecretsStore)
-        self.assertEqual(secrets._filewatchers["/tmp/secrets"]._path, "/tmp/secrets")
+        secrets = secrets_store_from_config({"secrets.path": "/tmp"})
+        self.assertIsInstance(secrets, DirectorySecretsStore)

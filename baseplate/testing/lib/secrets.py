@@ -1,12 +1,12 @@
 from typing import Dict
 
 from baseplate import Span
-from baseplate.lib.secrets import SecretsStore
-from baseplate.lib.secrets import VaultFileParser
+from baseplate.lib.secrets import FileSecretsStore
+from baseplate.lib.secrets import parse_secrets_fetcher
 from baseplate.testing.lib.file_watcher import FakeFileWatcher
 
 
-class FakeSecretsStore(SecretsStore):
+class FakeSecretsStore(FileSecretsStore):
     """Fake secrets store for testing purposes.
 
     Use this in place of a :py:class:`~baseplate.lib.secrets.SecretsStore` in
@@ -35,11 +35,8 @@ class FakeSecretsStore(SecretsStore):
 
     # pylint: disable=super-init-not-called
     def __init__(self, fake_secrets: Dict) -> None:
-        self.path_type = "file"
-        self.path = ""
-        self._filewatchers = {}
-        self._filewatchers[self.path] = FakeFileWatcher(fake_secrets)
-        self.parser = VaultFileParser
+        self._filewatcher = FakeFileWatcher(fake_secrets)
+        self.parser = parse_secrets_fetcher
 
-    def make_object_for_context(self, name: str, span: Span) -> SecretsStore:
+    def make_object_for_context(self, name: str, span: Span) -> FileSecretsStore:
         return self
