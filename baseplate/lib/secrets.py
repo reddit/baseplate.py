@@ -3,7 +3,6 @@ import base64
 import binascii
 import json
 import logging
-import os
 
 from pathlib import Path
 from typing import Any
@@ -400,13 +399,12 @@ class DirectorySecretsStore(SecretsStore):
     ):  # pylint: disable=super-init-not-called
         self.parser = parser
         self._filewatchers = {}
-        for root, _, files in os.walk(path):
-            for f in files:
-                p = Path(root, f)
-                file_path = str(p.relative_to(path))
-                self._filewatchers[file_path] = FileWatcher(
-                    file_path, json.load, timeout=timeout, backoff=backoff
-                )
+        root = Path(path)
+        for p in root.glob("**"):
+            file_path = str(p.relative_to(path))
+            self._filewatchers[file_path] = FileWatcher(
+                file_path, json.load, timeout=timeout, backoff=backoff
+            )
 
     def get_vault_url(self) -> str:
         raise NotImplementedError
