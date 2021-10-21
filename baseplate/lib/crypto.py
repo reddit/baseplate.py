@@ -4,9 +4,9 @@
 
     import datetime
     from baseplate.lib.crypto import make_signature, validate_signature
-    from baseplate.lib.secrets import FileSecretsStore
+    from baseplate.lib.secrets import SecretsStore
 
-    secrets = FileSecretsStore("docs/secrets.json")
+    secrets = SecretsStore("docs/secrets.json")
 
 .. testcode::
 

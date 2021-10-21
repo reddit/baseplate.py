@@ -14,7 +14,7 @@ class StoreDirectoryTests(unittest.TestCase):
         self.fake_filewatcher_1 = FakeFileWatcher()
         self.fake_filewatcher_2 = FakeFileWatcher()
         self.fake_filewatcher_3 = FakeFileWatcher()
-        self.store = DirectorySecretsStore("/whatever", parser=parse_vault_csi)
+        self.store = DirectorySecretsStore("/whatever", parse_vault_csi)
         self.store._filewatchers["secret1"] = self.fake_filewatcher_1
         self.store._filewatchers["secret2"] = self.fake_filewatcher_2
         self.store._filewatchers["secret3"] = self.fake_filewatcher_3
@@ -216,5 +216,7 @@ class StoreDirectoryTests(unittest.TestCase):
 
 class StoreFromConfigTests(unittest.TestCase):
     def test_make_store(self):
-        secrets = secrets_store_from_config({"secrets.path": "/tmp"})
+        secrets = secrets_store_from_config(
+            {"secrets.path": "/tmp", "secrets.provider": "vault_csi"}
+        )
         self.assertIsInstance(secrets, DirectorySecretsStore)

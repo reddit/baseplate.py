@@ -2,17 +2,17 @@ import unittest
 
 from baseplate.lib.secrets import CorruptSecretError
 from baseplate.lib.secrets import CredentialSecret
-from baseplate.lib.secrets import FileSecretsStore
 from baseplate.lib.secrets import SecretNotFoundError
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.lib.secrets import SecretsNotAvailableError
+from baseplate.lib.secrets import SecretsStore
 from baseplate.testing.lib.file_watcher import FakeFileWatcher
 
 
-class StoreFileTests(unittest.TestCase):
+class StoreTests(unittest.TestCase):
     def setUp(self):
         self.fake_filewatcher = FakeFileWatcher()
-        self.store = FileSecretsStore("/whatever")
+        self.store = SecretsStore("/whatever")
         self.store._filewatcher = self.fake_filewatcher
 
     def test_file_not_found(self):
@@ -174,12 +174,12 @@ class StoreFileTests(unittest.TestCase):
 class StoreFromConfigTests(unittest.TestCase):
     def test_make_store(self):
         secrets = secrets_store_from_config({"secrets.path": "/tmp/test"})
-        self.assertIsInstance(secrets, FileSecretsStore)
+        self.assertIsInstance(secrets, SecretsStore)
 
     def test_prefix(self):
         secrets = secrets_store_from_config(
             {"secrets.path": "/tmp/test", "test_secrets.path": "/tmp/secrets"},
             prefix="test_secrets.",
         )
-        self.assertIsInstance(secrets, FileSecretsStore)
+        self.assertIsInstance(secrets, SecretsStore)
         self.assertEqual(secrets._filewatcher._path, "/tmp/secrets")
