@@ -138,8 +138,8 @@ def parse_vault_csi(data: Dict[str, Any], secret_path: str = "") -> Dict[str, st
 class SecretsStore(ContextFactory):
     """Access to secret tokens with automatic refresh when changed.
 
-    This local vault allows access to the secrets cached on disk.
-    It will automatically reload the cache when it is changed. Do not
+    This local vault allows access to the secrets cached on disk by the fetcher
+    daemon. It will automatically reload the cache when it is changed. Do not
     cache or store the values returned by this class's methods but rather get
     them from this class each time you need them. The secrets are served from
     memory so there's little performance impact to doing so and you will be
@@ -170,23 +170,6 @@ class SecretsStore(ContextFactory):
 
         """
         return self.get_raw_and_mtime(path)[0]
-
-    def get_vault_url(self) -> str:
-        """Return the URL for accessing Vault directly."""
-        warn_deprecated("get_vault_url is deprecated and will be removed in v3.0.")
-        data, _ = self._get_data()
-        return data["vault"]["url"]
-
-    def get_vault_token(self) -> str:
-        """Return a Vault authentication token.
-
-        The token will have policies attached based on the current EC2 server's
-        Vault role. This is only necessary if talking directly to Vault.
-
-        """
-        warn_deprecated("get_vault_token is deprecated and will be removed in v3.0.")
-        data, _ = self._get_data()
-        return data["vault"]["token"]
 
     def get_credentials(self, path: str) -> CredentialSecret:
         """Decode and return a credential secret.
@@ -245,6 +228,37 @@ class SecretsStore(ContextFactory):
 
         """
         return self.get_versioned_and_mtime(path)[0]
+
+    def get_vault_url(self) -> str:
+        """Return the URL for accessing Vault directly."""
+        warn_deprecated("get_vault_url is deprecated and will be removed in v3.0.")
+        data, _ = self._get_data()
+        return data["vault"]["url"]
+
+    def get_vault_token(self) -> str:
+        """Return a Vault authentication token.
+
+        The token will have policies attached based on the current EC2 server's
+        Vault role. This is only necessary if talking directly to Vault.
+
+        """
+        warn_deprecated("get_vault_token is deprecated and will be removed in v3.0.")
+        data, _ = self._get_data()
+        return data["vault"]["token"]
+
+    def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
+        """Return raw secret and modification time.
+
+        This returns the same data as :py:meth:`get_raw` as well as a UNIX
+        epoch timestamp indicating the last time the secrets data was updated.
+        This modification time can be used to know when to invalidate
+        downstream caching.
+
+        .. versionadded:: 1.5
+
+        """
+        data, mtime = self._get_data()
+        return self.parser(data, secret_path), mtime
 
     def get_credentials_and_mtime(self, path: str) -> Tuple[CredentialSecret, float]:
         """Return credentials secret and modification time.
@@ -339,20 +353,6 @@ class SecretsStore(ContextFactory):
             mtime,
         )
 
-    def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
-        """Return raw secret and modification time.
-
-        This returns the same data as :py:meth:`get_raw` as well as a UNIX
-        epoch timestamp indicating the last time the secrets data was updated.
-        This modification time can be used to know when to invalidate
-        downstream caching.
-
-        .. versionadded:: 1.5
-
-        """
-        data, mtime = self._get_data()
-        return self.parser(data, secret_path), mtime
-
     def make_object_for_context(self, name: str, span: Span) -> "SecretsStore":
         """Return an object that can be added to the context object.
 
@@ -382,8 +382,9 @@ class _CachingSecretsStore(SecretsStore):
 
 class DirectorySecretsStore(SecretsStore):
     """Access to secret tokens with automatic refresh when changed.
-    This local vault allows access to the secrets cached on disk.
-    It will automatically reload the cache when it is changed. Do not
+
+    This local vault allows access to the secrets cached on disk given a path to
+    a directory. It will automatically reload the cache when it is changed. Do not
     cache or store the values returned by this class's methods but rather get
     them from this class each time you need them. The secrets are served from
     memory so there's little performance impact to doing so and you will be
