@@ -202,6 +202,7 @@ class VaultClientFactory:
         response = self.session.post(
             urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
+            timeout=5,  # seconds
         )
         response.raise_for_status()
         auth = response.json()["auth"]
@@ -246,6 +247,7 @@ class VaultClientFactory:
         response = self.session.post(
             urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
+            timeout=5,  # seconds
         )
         if response.status_code == 400:
             logger.error(REAUTHENTICATION_ERROR_MESSAGE)
