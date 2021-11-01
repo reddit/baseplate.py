@@ -547,7 +547,9 @@ class SidecarRecorder(Recorder):
 
     def __init__(self, queue_name: str):
         self.queue = MessageQueue(
-            "/traces-" + queue_name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_SPAN_SIZE,
+            "/traces-" + queue_name,
+            max_messages=MAX_QUEUE_SIZE,
+            max_message_size=MAX_SPAN_SIZE,
         )
 
     def send(self, span: TraceSpanObserver) -> None:
