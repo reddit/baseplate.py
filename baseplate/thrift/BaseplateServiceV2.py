@@ -177,7 +177,8 @@ class is_healthy_args(object):
     __slots__ = ("request",)
 
     def __init__(
-        self, request=None,
+        self,
+        request=None,
     ):
         self.request = request
 
@@ -241,7 +242,13 @@ class is_healthy_args(object):
 all_structs.append(is_healthy_args)
 is_healthy_args.thrift_spec = (
     None,  # 0
-    (1, TType.STRUCT, "request", [IsHealthyRequest, None], None,),  # 1
+    (
+        1,
+        TType.STRUCT,
+        "request",
+        [IsHealthyRequest, None],
+        None,
+    ),  # 1
 )
 
 
@@ -255,7 +262,8 @@ class is_healthy_result(object):
     __slots__ = ("success",)
 
     def __init__(
-        self, success=None,
+        self,
+        success=None,
     ):
         self.success = success
 
@@ -316,6 +324,14 @@ class is_healthy_result(object):
 
 
 all_structs.append(is_healthy_result)
-is_healthy_result.thrift_spec = ((0, TType.BOOL, "success", None, None,),)  # 0
+is_healthy_result.thrift_spec = (
+    (
+        0,
+        TType.BOOL,
+        "success",
+        None,
+        None,
+    ),
+)  # 0
 fix_spec(all_structs)
 del all_structs

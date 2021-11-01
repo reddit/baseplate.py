@@ -162,7 +162,8 @@ class IsHealthyRequest(object):
     __slots__ = ("probe",)
 
     def __init__(
-        self, probe=None,
+        self,
+        probe=None,
     ):
         self.probe = probe
 
@@ -259,7 +260,11 @@ class Error(TException):
     )
 
     def __init__(
-        self, code=None, message=None, details=None, retryable=None,
+        self,
+        code=None,
+        message=None,
+        details=None,
+        retryable=None,
     ):
         super(Error, self).__setattr__("code", code)
         super(Error, self).__setattr__("message", message)
@@ -273,7 +278,14 @@ class Error(TException):
         raise TypeError("can't modify immutable instance")
 
     def __hash__(self):
-        return hash(self.__class__) ^ hash((self.code, self.message, self.details, self.retryable,))
+        return hash(self.__class__) ^ hash(
+            (
+                self.code,
+                self.message,
+                self.details,
+                self.retryable,
+            )
+        )
 
     @classmethod
     def read(cls, iprot):
@@ -334,7 +346,12 @@ class Error(TException):
                 iprot.skip(ftype)
             iprot.readFieldEnd()
         iprot.readStructEnd()
-        return cls(code=code, message=message, details=details, retryable=retryable,)
+        return cls(
+            code=code,
+            message=message,
+            details=details,
+            retryable=retryable,
+        )
 
     def write(self, oprot):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
@@ -393,15 +410,45 @@ class Error(TException):
 all_structs.append(IsHealthyRequest)
 IsHealthyRequest.thrift_spec = (
     None,  # 0
-    (1, TType.I32, "probe", None, None,),  # 1
+    (
+        1,
+        TType.I32,
+        "probe",
+        None,
+        None,
+    ),  # 1
 )
 all_structs.append(Error)
 Error.thrift_spec = (
     None,  # 0
-    (1, TType.I32, "code", None, None,),  # 1
-    (2, TType.STRING, "message", "UTF8", None,),  # 2
-    (3, TType.MAP, "details", (TType.STRING, "UTF8", TType.STRING, "UTF8", False), None,),  # 3
-    (4, TType.BOOL, "retryable", None, None,),  # 4
+    (
+        1,
+        TType.I32,
+        "code",
+        None,
+        None,
+    ),  # 1
+    (
+        2,
+        TType.STRING,
+        "message",
+        "UTF8",
+        None,
+    ),  # 2
+    (
+        3,
+        TType.MAP,
+        "details",
+        (TType.STRING, "UTF8", TType.STRING, "UTF8", False),
+        None,
+    ),  # 3
+    (
+        4,
+        TType.BOOL,
+        "retryable",
+        None,
+        None,
+    ),  # 4
 )
 fix_spec(all_structs)
 del all_structs

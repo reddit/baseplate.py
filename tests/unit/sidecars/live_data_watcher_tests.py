@@ -17,7 +17,7 @@ class NodeWatcherTests(unittest.TestCase):
 
     def test_on_change(self):
         dest = self.output_dir.joinpath("data.txt")
-        inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777,)
+        inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
 
         new_content = b"foobar"
         inst.on_change(new_content, None)
@@ -27,7 +27,7 @@ class NodeWatcherTests(unittest.TestCase):
 
     def test_on_change_new_dir(self):
         dest = self.output_dir.joinpath("data/output.json")
-        inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777,)
+        inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
 
         new_content = b"foobar"
         inst.on_change(new_content, None)
@@ -35,7 +35,7 @@ class NodeWatcherTests(unittest.TestCase):
 
     def test_on_change_deep_new_dir(self):
         dest = self.output_dir.joinpath("data/foo/bar.json")
-        inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777,)
+        inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
 
         new_content = b"foobar"
         inst.on_change(new_content, None)

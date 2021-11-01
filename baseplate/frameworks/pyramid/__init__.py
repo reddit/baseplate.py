@@ -233,7 +233,9 @@ class BaseplateConfigurator:
                 request.edge_context = self.edge_context_factory.from_upstream(edge_payload)
 
         span = self.baseplate.make_server_span(
-            request, name=request.matched_route.name, trace_info=trace_info,
+            request,
+            name=request.matched_route.name,
+            trace_info=trace_info,
         )
         span.set_tag("http.url", request.url)
         span.set_tag("http.method", request.method)
@@ -285,6 +287,7 @@ def get_is_healthy_probe(request: Request) -> int:
         return IsHealthyProbe._NAMES_TO_VALUES[code.upper()]
     except KeyError:
         logger.warning(
-            "Unrecognized health check type %s, fallback to READINESS", code,
+            "Unrecognized health check type %s, fallback to READINESS",
+            code,
         )
         return IsHealthyProbe.READINESS

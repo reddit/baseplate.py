@@ -229,7 +229,8 @@ class is_healthy_result(object):
     __slots__ = ("success",)
 
     def __init__(
-        self, success=None,
+        self,
+        success=None,
     ):
         self.success = success
 
@@ -290,6 +291,14 @@ class is_healthy_result(object):
 
 
 all_structs.append(is_healthy_result)
-is_healthy_result.thrift_spec = ((0, TType.BOOL, "success", None, None,),)  # 0
+is_healthy_result.thrift_spec = (
+    (
+        0,
+        TType.BOOL,
+        "success",
+        None,
+        None,
+    ),
+)  # 0
 fix_spec(all_structs)
 del all_structs

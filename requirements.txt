@@ -5,7 +5,7 @@
 # supported.
 -r requirements-transitive.txt
 astroid==2.6.6
-black==19.10b0
+black==21.10b0
 flake8==3.8.4
 lxml==4.6.5
 mypy==0.910
