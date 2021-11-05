@@ -4,13 +4,13 @@
 # See install_requires and extras_require in setup.py for the range of versions
 # supported.
 -r requirements-transitive.txt
-astroid==2.6.6
+astroid==2.8.4
 black==21.10b0
 flake8==3.8.4
 lxml==4.6.3
 mypy==0.910
 pydocstyle==5.1.1
-pylint==2.9.6
+pylint==2.11.1
 pytest==6.2.2
 pytest-cov==2.11.1
 pytz==2021.1

@@ -238,7 +238,7 @@ def File(mode: str = "r") -> Callable[[str], IO]:  # noqa: D401
 
     def open_file(text: str) -> IO:
         try:
-            return open(text, mode=mode)  # pylint: disable=R1732
+            return open(text, mode=mode, encoding="UTF-8")  # pylint: disable=R1732
         except OSError:
             raise ValueError(f"could not open file: {text}")
 
