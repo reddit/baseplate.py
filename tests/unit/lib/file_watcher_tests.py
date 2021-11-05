@@ -147,7 +147,7 @@ class FileWatcherTests(unittest.TestCase):
             ) as open_mock:
                 watcher.get_data()
             open_mock.assert_called_once_with(
-                watched_file.name, encoding=None, mode="r", newline=None
+                watched_file.name, encoding="UTF-8", mode="r", newline=None
             )
 
             watcher = file_watcher.FileWatcher(
