@@ -24,7 +24,7 @@ class TimedOutError(MessageQueueError):
 # is rather opaque.
 class InvalidParametersError(ValueError):
     def __init__(self, inner: Exception):
-        super().__init__("%s (check fs.mqueue.{msg_max,msgsize_max} sysctls?)" % inner)
+        super().__init__(f"{inner} (check fs.mqueue.{{msg_max,msgsize_max}} sysctls?)")
 
 
 # this wrapper-exception is here just to give the user a bit more of an idea

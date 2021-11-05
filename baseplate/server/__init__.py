@@ -520,7 +520,7 @@ def _is_containerized() -> bool:
         return True
 
     try:
-        with open("/proc/self/cgroup") as my_cgroups_file:
+        with open("/proc/self/cgroup", encoding="UTF-8") as my_cgroups_file:
             my_cgroups = my_cgroups_file.read()
 
             for hint in ["kubepods", "docker", "containerd"]:
@@ -536,7 +536,7 @@ def _has_PID1_parent() -> bool:
     """Determine parent PIDs up the tree until PID 1 or 0 is reached, do this natively"""
     parent_pid = os.getppid()
     while parent_pid > 1:
-        with open(f"/proc/{parent_pid}/status") as proc_status:
+        with open(f"/proc/{parent_pid}/status", encoding="UTF-8") as proc_status:
             for line in proc_status.readlines():
                 if line.startswith("PPid:"):
                     parent_pid = int(line.replace("PPid:", ""))
@@ -564,6 +564,6 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
         """Generate an RFC 5424 compliant syslog format."""
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
-        with open(self.output_file, "w") as f:
+        with open(self.output_file, "w", encoding="UTF-8") as f:
             print(prompt, file=f)
             f.flush()

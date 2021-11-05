@@ -118,7 +118,9 @@ class FileWatcher(Generic[T]):
         self._mtime = 0.0
         self._data: Union[T, Type[_NOT_LOADED]] = _NOT_LOADED
         self._open_options = _OpenOptions(
-            mode="rb" if binary else "r", encoding=encoding, newline=newline
+            mode="rb" if binary else "r",
+            encoding=encoding or ("UTF-8" if not binary else None),
+            newline=newline,
         )
 
         backoff = backoff or DEFAULT_FILEWATCHER_BACKOFF
@@ -184,6 +186,7 @@ class FileWatcher(Generic[T]):
         if self._mtime < current_mtime:
             logger.debug("Loading %s.", self._path)
             try:
+                # pylint: disable=unspecified-encoding
                 with open(self._path, **self._open_options._asdict()) as f:
                     self._data = self._parser(f)
             except Exception as exc:

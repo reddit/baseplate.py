@@ -214,8 +214,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
         raise TTransportException(
             type=TTransportException.TIMED_OUT,
-            message="retry policy exhausted while attempting {}.{}, "
-            "last error was: {}".format(self.namespace, name, last_error),
+            message=f"retry policy exhausted while attempting {self.namespace}.{name}, last error was: {last_error}",
         )
 
     return _call_thrift_method
