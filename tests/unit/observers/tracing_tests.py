@@ -223,14 +223,14 @@ class TraceSpanObserverTests(TraceTestBase):
 
     def test_create_binary_annotation(self):
         annotation = self.test_span_observer._create_binary_annotation("test-key", "test-value")
-        self.assertEquals(annotation["key"], "test-key")
-        self.assertEquals(annotation["value"], "test-value")
+        self.assertEqual(annotation["key"], "test-key")
+        self.assertEqual(annotation["value"], "test-value")
         self.assertTrue(annotation["endpoint"])
 
     def test_create_binary_annotation_coerces_string(self):
         annotation = self.test_span_observer._create_binary_annotation("test-key", 1)
-        self.assertEquals(annotation["key"], "test-key")
-        self.assertEquals(annotation["value"], "1")
+        self.assertEqual(annotation["key"], "test-key")
+        self.assertEqual(annotation["value"], "1")
         self.assertTrue(annotation["endpoint"])
 
     def test_on_set_tag_adds_binary_annotation(self):
@@ -238,8 +238,8 @@ class TraceSpanObserverTests(TraceTestBase):
         self.assertFalse(self.test_span_observer.binary_annotations)
         self.test_span_observer.on_set_tag("test-key", "test-value")
         annotation = self.test_span_observer.binary_annotations[0]
-        self.assertEquals(annotation["key"], "test-key")
-        self.assertEquals(annotation["value"], "test-value")
+        self.assertEqual(annotation["key"], "test-key")
+        self.assertEqual(annotation["value"], "test-value")
 
     def test_to_span_obj_sets_parent_id(self):
         span_obj = self.test_span_observer._to_span_obj([], [])
@@ -257,8 +257,8 @@ class TraceSpanObserverTests(TraceTestBase):
         self.test_span_observer.on_incr_tag("test-key", 5)
         self.test_span_observer.on_finish(None)
         annotation = self.test_span_observer.binary_annotations[0]
-        self.assertEquals(annotation["key"], "counter.test-key")
-        self.assertEquals(annotation["value"], "8.0")
+        self.assertEqual(annotation["key"], "counter.test-key")
+        self.assertEqual(annotation["value"], "8.0")
 
 
 class TraceServerSpanObserverTests(TraceTestBase):

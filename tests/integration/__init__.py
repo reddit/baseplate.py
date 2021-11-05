@@ -25,7 +25,7 @@ def get_endpoint_or_skip_container(name, default_port):
         sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
         sock.settimeout(0.1)
         sock.connect(endpoint.address)
-    except socket.error:
+    except OSError:
         raise unittest.SkipTest("could not find %s server for integration tests" % name)
     else:
         sock.close()
@@ -51,7 +51,7 @@ class TestSpanObserver(SpanObserver):
         self.tags[key] = value
 
     def assert_tag(self, key, value):
-        assert key in self.tags, "{!r} not found in tags ({!r})".format(key, list(self.tags.keys()))
+        assert key in self.tags, f"{key!r} not found in tags ({list(self.tags.keys())!r})"
         assert self.tags[key] == value, "tag {!r}: expected value {!r} but found {!r}".format(
             key, value, self.tags[key]
         )

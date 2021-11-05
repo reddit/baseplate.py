@@ -123,7 +123,7 @@ def load_nonce() -> Optional[str]:
     """Load the nonce from disk."""
     try:
         logger.debug("Loading nonce.")
-        with open(NONCE_FILENAME, "r") as f:
+        with open(NONCE_FILENAME) as f:
             return f.read()
     except OSError as exc:
         logger.debug("Nonce not found: %s.", exc)
@@ -188,7 +188,7 @@ class VaultClientFactory:
 
         """
         try:
-            with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE, "r") as f:
+            with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE) as f:
                 token = f.read()
         except OSError:
             logger.error(
