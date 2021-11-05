@@ -1,8 +1,10 @@
-FROM ghcr.io/reddit/thrift-compiler:0.14.1 AS thrift
+FROM docker.io/library/python:3.10
 
-FROM python:3.9
+COPY --from=ghcr.io/reddit/thrift-compiler:0.14.1 /usr/local/bin/thrift /usr/local/bin/thrift
 
-COPY --from=thrift /usr/local/bin/thrift /usr/local/bin/thrift
+RUN apt-get update && \
+    apt-get install -y librdkafka-dev && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
 
