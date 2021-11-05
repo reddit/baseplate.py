@@ -430,7 +430,7 @@ def load_and_run_shell() -> None:
     # generate banner text
     banner = "Available Objects:\n"
     for var in sorted(env_banner.keys()):
-        banner += "\n  {:<12} {}".format(var, env_banner[var])
+        banner += f"\n  {var:<12} {env_banner[var]}"
 
     console_logpath = _get_shell_log_path()
 
@@ -512,7 +512,7 @@ def _is_containerized() -> bool:
             for hint in ["kubepods", "docker", "containerd"]:
                 if hint in my_cgroups:
                     return True
-    except IOError:
+    except OSError:
         pass
 
     return False
@@ -522,10 +522,10 @@ def _has_PID1_parent() -> bool:
     """Determine parent PIDs up the tree until PID 1 or 0 is reached, do this natively"""
     parent_pid = os.getppid()
     while parent_pid > 1:
-        with open(f"/proc/{parent_pid}/status", "r") as proc_status:
+        with open(f"/proc/{parent_pid}/status") as proc_status:
             for line in proc_status.readlines():
                 if line.startswith("PPid:"):
-                    parent_pid = int((line.replace("PPid:", "")))
+                    parent_pid = int(line.replace("PPid:", ""))
                     break
     return bool(parent_pid)
 

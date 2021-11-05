@@ -285,7 +285,7 @@ class CassandraSessionAdapter:
         timeout: Union[float, object] = _NOT_SET,
         **kwargs: Any,
     ) -> ResponseFuture:
-        trace_name = "{}.{}".format(self.context_name, "execute")
+        trace_name = f"{self.context_name}.execute"
         span = self.server_span.make_child(trace_name)
         span.start()
         # TODO: include custom payload
@@ -321,7 +321,7 @@ class CassandraSessionAdapter:
             except KeyError:
                 pass
 
-        trace_name = "{}.{}".format(self.context_name, "prepare")
+        trace_name = f"{self.context_name}.prepare"
         with self.server_span.make_child(trace_name) as span:
             span.set_tag("statement", query)
             prepared = self.session.prepare(query)

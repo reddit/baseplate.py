@@ -237,7 +237,7 @@ class _KombuProducer:
         if self.serializer:
             kwargs.setdefault("serializer", self.serializer.name)
 
-        trace_name = "{}.{}".format(self.name, "publish")
+        trace_name = f"{self.name}.publish"
         child_span = self.span.make_child(trace_name)
 
         child_span.set_tag("kind", "producer")
