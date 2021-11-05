@@ -236,7 +236,7 @@ class ThriftConnectionPool:
                 raise TTransportException(
                     type=TTransportException.TIMED_OUT, message="timed out interacting with socket"
                 )
-            except socket.error as exc:
+            except OSError as exc:
                 raise TTransportException(type=TTransportException.UNKNOWN, message=str(exc))
         except (TApplicationException, TProtocolException, TTransportException):
             # these exceptions usually indicate something low-level went wrong,

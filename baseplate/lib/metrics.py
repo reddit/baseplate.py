@@ -124,7 +124,7 @@ class RawTransport(Transport):
     def send(self, serialized_metric: bytes) -> None:
         try:
             self.socket.sendall(serialized_metric)
-        except socket.error as exc:
+        except OSError as exc:
             if self.swallow_network_errors:
                 logger.exception("Failed to send to metrics collector")
                 return
