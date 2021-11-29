@@ -12,6 +12,8 @@ except ImportError:
     from redis.client import Pipeline
 
 from baseplate import Span
+from baseplate import SpanObserver
+from baseplate import _ExcInfo
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
@@ -109,7 +111,20 @@ class RedisContextFactory(ContextFactory):
         batch.gauge("pool.open_and_available").replace(open_connections - in_use)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
-        return MonitoredRedisConnection(name, span, self.connection_pool)
+        redis = MonitoredRedisConnection(name, span, self.connection_pool)
+        observer = RedisSpanObserver(redis)
+        span.register(observer)
+        return redis
+
+
+class RedisSpanObserver(SpanObserver):
+    """Return any checked-out connections to the pool at the end of each request."""
+
+    def __init__(self, redis: redis.StrictRedis):
+        self.redis = redis
+
+    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+        self.redis.close()
 
 
 # pylint: disable=too-many-public-methods
