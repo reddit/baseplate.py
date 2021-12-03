@@ -224,14 +224,17 @@ def publish_events() -> None:
 
         try:
             batcher.add(message)
+            continue
         except BatchFull:
-            serialized = batcher.serialize()
-            try:
-                publisher.publish(serialized)
-            except Exception:
-                logger.exception("Events publishing failed.")
-            batcher.reset()
-            batcher.add(message)
+            pass
+
+        serialized = batcher.serialize()
+        try:
+            publisher.publish(serialized)
+        except Exception:
+            logger.exception("Events publishing failed.")
+        batcher.reset()
+        batcher.add(message)
 
 
 if __name__ == "__main__":
