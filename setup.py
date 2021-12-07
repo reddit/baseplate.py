@@ -10,6 +10,7 @@ extras_require = {
     "cqlmapper": ["reddit-cqlmapper>=0.3.0,<1.0"],
     "kafka": ["confluent-kafka>=1.3,<2.0"],
     "memcache": ["pymemcache>=1.3.0,<1.4.4"],
+    "prometheus": ["prometheus>=0.12.0,<1.0"],
     "pyramid": ["pyramid>=1.9.0,<2.0"],
     "redis": ["redis>=2.10.0,<4.0.0"],
     "redis-py-cluster": ["redis-py-cluster>=2.1.2,<3.0.0"],

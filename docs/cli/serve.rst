@@ -186,6 +186,37 @@ Note that Einhorn will exit if you send it a ``SIGUSR1``. You can instead open u
 
 .. _runtime-metrics:
 
+Prometheus Exporter
+-------------------
+
+When enabled, ``baseplate-serve`` will start up a Prometheus exporter on HTTP
+port 6060. The exporter is designed for multiprocess use, like if running under
+Einhorn.  Each worker process writes its metrics to a file on disk and runs its
+own copy of the exporter, all listening on the same port. Any given worker can
+serve the metrics for all workers from the same pod. It doesn't matter which
+one is hit by the Prometheus collector.
+
+To enable the exporter, install the ``prometheus-client`` package from PyPI.
+
+.. code-block:: console
+
+   $ pip install prometheus-client
+
+The ``PROMETHEUS_MULTIPROC_DIR`` environment variable must be set to the path
+to an extant writeable directory. This is handled automatically in the official
+base Docker images.
+
+As long as the exporter is enabled, you can create Prometheus metrics in your
+application using the objects in ``prometheus-client`` and they will get
+exported without any extra configuration required.
+
+Note that for non-server jobs, like ``baseplate-script`` scripts, you will need
+to export metrics manually. See `exporting to a push gateway`_.
+
+.. _exporting to a push gateway: https://github.com/prometheus/client_python#exporting-to-a-pushgateway
+
+.. versionadded:: 2.3
+
 Process-level metrics
 ---------------------
 
