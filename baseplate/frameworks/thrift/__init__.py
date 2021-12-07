@@ -110,6 +110,7 @@ def baseplateify_processor(
                 context.deadline_budget = None
 
             span = baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
+            span.set_tag("protocol", "thrift")
 
             try:
                 service_name = headers[b"User-Agent"].decode()
