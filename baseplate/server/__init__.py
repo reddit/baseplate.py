@@ -475,20 +475,22 @@ def load_and_run_shell() -> None:
         start_ipython(argv=[], user_ns=env, config=ipython_config)
         raise SystemExit
     except ImportError:
-        newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
-        banner = newbanner + banner
+        pass
 
-        try:
-            import readline
+    newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
+    banner = newbanner + banner
 
-            readline.set_completer(Completer(env).complete)
-            readline.parse_and_bind("tab: complete")
+    try:
+        import readline
 
-        except ImportError:
-            pass
+        readline.set_completer(Completer(env).complete)
+        readline.parse_and_bind("tab: complete")
 
-        shell = LoggedInteractiveConsole(_locals=env, logpath=console_logpath)
-        shell.interact(banner)
+    except ImportError:
+        pass
+
+    shell = LoggedInteractiveConsole(_locals=env, logpath=console_logpath)
+    shell.interact(banner)
 
 
 def _get_shell_log_path() -> str:
