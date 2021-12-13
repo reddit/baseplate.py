@@ -362,14 +362,17 @@ class SecretsStore(ContextFactory):
            baseplate.add_to_context("secrets", secrets)
 
         """
-        return _CachingSecretsStore(self._filewatcher)
+        return _CachingSecretsStore(self._filewatcher, self.parser)
 
 
 class _CachingSecretsStore(SecretsStore):
     """Lazily load and cache the parsed data until the server span ends."""
 
-    def __init__(self, filewatcher: FileWatcher):  # pylint: disable=super-init-not-called
+    def __init__(
+        self, filewatcher: FileWatcher, parser: SecretParser
+    ):  # pylint: disable=super-init-not-called
         self._filewatcher = filewatcher
+        self.parser = parser
 
     @cached_property
     def _data(self) -> Tuple[Any, float]:
@@ -438,7 +441,7 @@ class DirectorySecretsStore(SecretsStore):
            secrets = SecretsStore("/var/local/secrets.json")
            baseplate.add_to_context("secrets", secrets)
         """
-        return _CachingDirectorySecretsStore(self._filewatchers)
+        return _CachingDirectorySecretsStore(self._filewatchers, self.parser)
 
 
 # pylint: disable=abstract-method
@@ -446,9 +449,10 @@ class _CachingDirectorySecretsStore(DirectorySecretsStore):
     """Lazily load and cache the parsed data until the server span ends."""
 
     def __init__(
-        self, filewatchers: Dict[str, FileWatcher]
+        self, filewatchers: Dict[str, FileWatcher], parser: SecretParser
     ):  # pylint: disable=super-init-not-called
         self._filewatchers = filewatchers
+        self.parser = parser
         self._cached_data: Dict[str, Tuple[Dict, float]] = {}
 
     def _get_file_data(self, filename: str) -> Tuple[Dict, float]:
