@@ -203,10 +203,14 @@ class ThriftConnectionPool:
         return False
 
     def _release(self, prot: Optional[TProtocolBase]) -> None:
-        if prot and prot.trans.isOpen():
-            self.pool.put(prot)
-        else:
+        try:
+            if prot and prot.trans.isOpen():
+                self.pool.put(prot)
+            else:
+                self.pool.put(None)
+        except:  # noqa: E722
             self.pool.put(None)
+            raise
 
     @contextlib.contextmanager
     def connection(self) -> Generator[TProtocolBase, None, None]:
