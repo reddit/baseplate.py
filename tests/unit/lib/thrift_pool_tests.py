@@ -277,6 +277,24 @@ class ThriftConnectionPoolTests(unittest.TestCase):
 
     @mock.patch("baseplate.lib.thrift_pool._make_transport")
     @mock.patch("time.time")
+    def test_context_server_timeout_in_release(self, mock_time, mock_make_transport):
+        mock_time.return_value = 123
+
+        self.mock_queue.get.return_value = None
+
+        fresh_trans = mock.Mock(spec=TSocket.TSocket)
+        fresh_trans.protocol_id = THeaderTransport.THeaderSubprotocolID.BINARY
+        fresh_trans.isOpen.side_effect = ServerTimeout("span", 10.0, False)
+        mock_make_transport.return_value = fresh_trans
+
+        with self.assertRaises(ServerTimeout):
+            self.pool._release(fresh_trans)
+
+        self.assertEqual(self.mock_queue.put.call_count, 1)
+        self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
+
+    @mock.patch("baseplate.lib.thrift_pool._make_transport")
+    @mock.patch("time.time")
     def test_context_t_transport_exception(self, mock_time, mock_make_transport):
         mock_time.return_value = 123
 
