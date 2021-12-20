@@ -29,6 +29,9 @@ Make sure your service calls
 By default, requests will not time out unless you configure them. The following
 configuration settings allow you to customize this.
 
+If your service has queue consumers, the `server_timeout.default` applies to
+them as well and determines how long they have to process each message.
+
 .. code-block:: ini
 
    [app:main]
