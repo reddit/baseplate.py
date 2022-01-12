@@ -36,6 +36,7 @@ from thrift.transport.TTransport import TTransportException
 
 from baseplate.lib import config
 from baseplate.lib.retry import RetryPolicy
+from baseplate.observers.timeout import ServerTimeout
 
 
 logger = logging.getLogger(__name__)
@@ -203,10 +204,16 @@ class ThriftConnectionPool:
         return False
 
     def _release(self, prot: Optional[TProtocolBase]) -> None:
-        if prot and prot.trans.isOpen():
-            self.pool.put(prot)
-        else:
+        try:
+            if prot and prot.trans.isOpen():
+                self.pool.put(prot)
+            else:
+                self.pool.put(None)
+        except ServerTimeout:
+            # If a timeout occurs while trying to release, ensure we don't
+            # leak connections.
             self.pool.put(None)
+            raise
 
     @contextlib.contextmanager
     def connection(self) -> Generator[TProtocolBase, None, None]:

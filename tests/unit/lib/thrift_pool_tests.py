@@ -200,6 +200,17 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertEqual(self.mock_queue.put.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
 
+    def test_release_server_timeout(self):
+        mock_prot = mock.Mock(spec=THeaderProtocol.THeaderProtocol)
+        mock_prot.trans = mock.Mock(spec=TSocket.TSocket)
+        mock_prot.trans.isOpen.side_effect = ServerTimeout("span", 10.0, False)
+
+        with self.assertRaises(ServerTimeout):
+            self.pool._release(mock_prot)
+
+        self.assertEqual(self.mock_queue.put.call_count, 1)
+        self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
+
     @mock.patch("time.time")
     def test_context_normal(self, mock_time):
         mock_time.return_value = 123
