@@ -59,7 +59,7 @@ def http_adapter_from_config(
 
     """
     assert prefix.endswith(".")
-    parser = config.SpecParser(
+    options = config.SpecParser(
         {
             "pool_connections": config.Optional(config.Integer, default=10),
             "pool_maxsize": config.Optional(config.Integer, default=10),
@@ -74,8 +74,7 @@ def http_adapter_from_config(
                 "allow_ipv6": config.Optional(config.Boolean, default=False),
             },
         }
-    )
-    options = parser.parse(prefix[:-1], app_config)
+    ).parse(prefix[:-1], app_config)
 
     if options.pool_connections is not None:
         kwargs.setdefault("pool_connections", options.pool_connections)
@@ -186,14 +185,14 @@ class BaseplateSession:
         See :py:func:`requests.request` for valid keyword arguments.
 
         """
-        send_kwargs = {
-            "timeout": kwargs.pop("timeout", None),
-            "allow_redirects": kwargs.pop("allow_redirects", None),
-            "verify": kwargs.pop("verify", True),
-        }
-        request = Request(method=method.upper(), url=url, **kwargs)
-        prepared = self.prepare_request(request)
-        return self.send(prepared, **send_kwargs)
+        return self.send(
+            self.prepare_request(Request(method=method.upper(), url=url, **kwargs)),
+            **{
+                "timeout": kwargs.pop("timeout", None),
+                "allow_redirects": kwargs.pop("allow_redirects", None),
+                "verify": kwargs.pop("verify", True),
+            },
+        )
 
     def _add_span_context(self, span: Span, request: PreparedRequest) -> None:
         pass
@@ -314,10 +313,12 @@ class InternalRequestsClient(config.Parser):
             allow_ipv6=False,
         )
 
-        adapter = http_adapter_from_config(
-            raw_config, prefix=f"{key_path}.", validator=validator, **self.kwargs
+        return RequestsContextFactory(
+            http_adapter_from_config(
+                raw_config, prefix=f"{key_path}.", validator=validator, **self.kwargs
+            ),
+            session_cls=InternalBaseplateSession,
         )
-        return RequestsContextFactory(adapter, session_cls=InternalBaseplateSession)
 
 
 class ExternalRequestsClient(config.Parser):
@@ -338,5 +339,7 @@ class ExternalRequestsClient(config.Parser):
         self.kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> RequestsContextFactory:
-        adapter = http_adapter_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return RequestsContextFactory(adapter, session_cls=BaseplateSession)
+        return RequestsContextFactory(
+            http_adapter_from_config(raw_config, f"{key_path}.", **self.kwargs),
+            session_cls=BaseplateSession,
+        )

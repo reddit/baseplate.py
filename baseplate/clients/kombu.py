@@ -80,10 +80,9 @@ def exchange_from_config(app_config: config.RawConfig, prefix: str, **kwargs: An
 
     """
     assert prefix.endswith(".")
-    parser = config.SpecParser(
+    options = config.SpecParser(
         {"exchange_name": config.Optional(config.String), "exchange_type": config.String}
-    )
-    options = parser.parse(prefix[:-1], app_config)
+    ).parse(prefix[:-1], app_config)
     return Exchange(name=options.exchange_name or "", type=options.exchange_type, **kwargs)
 
 
@@ -176,10 +175,11 @@ class KombuProducer(config.Parser):
         self.secrets = secrets
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "KombuProducerContextFactory":
-        connection = connection_from_config(raw_config, prefix=f"{key_path}.", secrets=self.secrets)
-        exchange = exchange_from_config(raw_config, prefix=f"{key_path}.")
         return KombuProducerContextFactory(
-            connection, exchange, max_connections=self.max_connections, serializer=self.serializer
+            connection_from_config(raw_config, prefix=f"{key_path}.", secrets=self.secrets),
+            exchange_from_config(raw_config, prefix=f"{key_path}."),
+            max_connections=self.max_connections,
+            serializer=self.serializer,
         )
 
 
@@ -237,16 +237,14 @@ class _KombuProducer:
         if self.serializer:
             kwargs.setdefault("serializer", self.serializer.name)
 
-        trace_name = f"{self.name}.publish"
-        child_span = self.span.make_child(trace_name)
+        child_span = self.span.make_child(f"{self.name}.publish")
 
         child_span.set_tag("kind", "producer")
         if routing_key:
             child_span.set_tag("message_bus.destination", routing_key)
 
         with child_span:
-            producer_pool = self.producers[self.connection]
-            with producer_pool.acquire(block=True) as producer:
+            with self.producers[self.connection].acquire(block=True) as producer:
                 return producer.publish(
                     body=body, routing_key=routing_key, exchange=self.exchange, **kwargs
                 )

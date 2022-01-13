@@ -41,8 +41,10 @@ class ThriftClient(config.Parser):
         self.kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
-        pool = thrift_pool_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
-        return ThriftContextFactory(pool, self.client_cls)
+        return ThriftContextFactory(
+            thrift_pool_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs),
+            self.client_cls,
+        )
 
 
 class ThriftContextFactory(ContextFactory):
@@ -186,9 +188,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     if edge_context:
                         prot.trans.set_header(b"Edge-Request", edge_context)
 
-                    client = self.client_cls(prot)
-                    method = getattr(client, name)
-                    result = method(*args, **kwargs)
+                    result = getattr(self.client_cls(prot), name)(*args, **kwargs)
             except TTransportException as exc:
                 # the connection failed for some reason, retry if able
                 span.finish(exc_info=sys.exc_info())

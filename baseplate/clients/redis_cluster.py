@@ -215,11 +215,7 @@ class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlocking
         If the command is a read command we'll try to return a random node.
         If there are no replicas or this isn't a read command we'll return the primary.
         """
-        if read_command:
-            return random.choice(self.nodes.slots[slot])
-
-        # This isn't a read command, so return the primary (first node)
-        return self.nodes.slots[slot][0]
+        return random.choice(self.nodes.slots[slot]) if read_command else self.nodes.slots[slot][0]
 
 
 def cluster_pool_from_config(
@@ -264,7 +260,7 @@ def cluster_pool_from_config(
     """
     assert prefix.endswith(".")
 
-    parser = config.SpecParser(
+    options = config.SpecParser(
         {
             "url": config.String,
             "max_connections": config.Optional(config.Integer, default=50),
@@ -279,9 +275,7 @@ def cluster_pool_from_config(
             "track_key_reads_sample_rate": config.Optional(config.Float, default=0),
             "track_key_writes_sample_rate": config.Optional(config.Float, default=0),
         }
-    )
-
-    options = parser.parse(prefix[:-1], app_config)
+    ).parse(prefix[:-1], app_config)
 
     # We're explicitly setting a default here because of https://github.com/Grokzen/redis-py-cluster/issues/435
     kwargs.setdefault("max_connections", options.max_connections)
@@ -302,12 +296,11 @@ def cluster_pool_from_config(
         kwargs.setdefault("socket_connect_timeout", options.timeout.total_seconds())
         kwargs.setdefault("socket_timeout", options.timeout.total_seconds())
 
-    if options.read_from_replicas:
-        connection_pool = ClusterWithReadReplicasBlockingConnectionPool.from_url(
-            options.url, **kwargs
-        )
-    else:
-        connection_pool = rediscluster.ClusterBlockingConnectionPool.from_url(options.url, **kwargs)
+    connection_pool = (
+        ClusterWithReadReplicasBlockingConnectionPool.from_url(options.url, **kwargs)
+        if options.read_from_replicas
+        else rediscluster.ClusterBlockingConnectionPool.from_url(options.url, **kwargs)
+    )
 
     connection_pool.track_key_reads_sample_rate = options.track_key_reads_sample_rate
     connection_pool.track_key_writes_sample_rate = options.track_key_writes_sample_rate
@@ -330,8 +323,9 @@ class ClusterRedisClient(config.Parser):
         self.kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "ClusterRedisContextFactory":
-        connection_pool = cluster_pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return ClusterRedisContextFactory(connection_pool)
+        return ClusterRedisContextFactory(
+            cluster_pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
+        )
 
 
 class ClusterRedisContextFactory(ContextFactory):
@@ -403,9 +397,8 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         command = args[0]
-        trace_name = f"{self.context_name}.{command}"
 
-        with self.server_span.make_child(trace_name):
+        with self.server_span.make_child(f"{self.context_name}.{command}"):
             res = super().execute_command(command, *args[1:], **kwargs)
 
         self.hot_key_tracker.maybe_track_key_usage(list(args))

@@ -40,15 +40,14 @@ def pool_from_config(
 
     """
     assert prefix.endswith(".")
-    parser = config.SpecParser(
+    options = config.SpecParser(
         {
             "url": config.String,
             "max_connections": config.Optional(config.Integer, default=None),
             "socket_connect_timeout": config.Optional(config.Timespan, default=None),
             "socket_timeout": config.Optional(config.Timespan, default=None),
         }
-    )
-    options = parser.parse(prefix[:-1], app_config)
+    ).parse(prefix[:-1], app_config)
 
     if options.max_connections is not None:
         kwargs.setdefault("max_connections", options.max_connections)
@@ -74,8 +73,7 @@ class RedisClient(config.Parser):
         self.kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "RedisContextFactory":
-        connection_pool = pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return RedisContextFactory(connection_pool)
+        return RedisContextFactory(pool_from_config(raw_config, f"{key_path}.", **self.kwargs))
 
 
 class RedisContextFactory(ContextFactory):
@@ -101,8 +99,7 @@ class RedisContextFactory(ContextFactory):
 
         size = self.connection_pool.max_connections
         open_connections = len(self.connection_pool._connections)  # type: ignore
-        available = self.connection_pool.pool.qsize()
-        in_use = size - available
+        in_use = size - self.connection_pool.pool.qsize()
 
         batch.gauge("pool.size").replace(size)
         batch.gauge("pool.in_use").replace(in_use)
@@ -133,9 +130,8 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         command = args[0]
-        trace_name = f"{self.context_name}.{command}"
 
-        with self.server_span.make_child(trace_name):
+        with self.server_span.make_child(f"{self.context_name}.{command}"):
             return super().execute_command(command, *args[1:], **kwargs)
 
     # pylint: disable=arguments-differ
@@ -201,10 +197,11 @@ class MessageQueue:
 
     def __init__(self, name: str, client: redis.ConnectionPool):
         self.queue = name
-        if isinstance(client, (redis.BlockingConnectionPool, redis.ConnectionPool)):
-            self.client = redis.Redis(connection_pool=client)
-        else:
-            self.client = client
+        self.client = (
+            redis.Redis(connection_pool=client)
+            if isinstance(client, (redis.BlockingConnectionPool, redis.ConnectionPool))
+            else client
+        )
 
     def get(self, timeout: Optional[float] = None) -> bytes:
         """Read a message from the queue.

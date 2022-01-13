@@ -149,9 +149,11 @@ class CQLMapperClient(config.Parser):
         self.kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "CQLMapperContextFactory":
-        cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
-        session = cluster.connect(keyspace=self.keyspace)
-        return CQLMapperContextFactory(session)
+        return CQLMapperContextFactory(
+            cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs).connect(
+                keyspace=self.keyspace
+            )
+        )
 
 
 class CQLMapperContextFactory(CassandraContextFactory):
@@ -174,8 +176,7 @@ class CQLMapperContextFactory(CassandraContextFactory):
         # pylint: disable=redefined-outer-name
         import cqlmapper.connection
 
-        session_adapter = super().make_object_for_context(name, span)
-        return cqlmapper.connection.Connection(session_adapter)
+        return cqlmapper.connection.Connection(super().make_object_for_context(name, span))
 
 
 def wrap_future(
@@ -213,8 +214,7 @@ def wrap_future(
             exc = e
 
         # wait for either _on_execute_complete or _on_execute_failed to run
-        wait_result = self._callback_event.wait(timeout=0.01)
-        if not wait_result:
+        if not self._callback_event.wait(timeout=0.01):
             logger.warning("Cassandra metrics callback took too long. Some metrics may be lost.")
 
         if exc:
@@ -223,11 +223,10 @@ def wrap_future(
         return result
 
     # call __get__ to turn wait_for_callbacks_result into a bound method
-    bound_method = wait_for_callbacks_result.__get__(  # type: ignore
+    # and then patch the ResponseFuture instance
+    response_future.result = wait_for_callbacks_result.__get__(  # type: ignore
         response_future, ResponseFuture
     )
-    # patch the ResponseFuture instance
-    response_future.result = bound_method
     return response_future
 
 
@@ -285,8 +284,7 @@ class CassandraSessionAdapter:
         timeout: Union[float, object] = _NOT_SET,
         **kwargs: Any,
     ) -> ResponseFuture:
-        trace_name = f"{self.context_name}.execute"
-        span = self.server_span.make_child(trace_name)
+        span = self.server_span.make_child(f"{self.context_name}.execute")
         span.start()
         # TODO: include custom payload
         if isinstance(query, str):
@@ -295,15 +293,15 @@ class CassandraSessionAdapter:
             span.set_tag("statement", query.query_string)
         elif isinstance(query, BoundStatement):
             span.set_tag("statement", query.prepared_statement.query_string)
-        future = self.session.execute_async(query, parameters=parameters, timeout=timeout, **kwargs)
-        future = wrap_future(
-            response_future=future,
+        return wrap_future(
+            response_future=self.session.execute_async(
+                query, parameters=parameters, timeout=timeout, **kwargs
+            ),
             callback_fn=_on_execute_complete,
             callback_args=span,
             errback_fn=_on_execute_failed,
             errback_args=span,
         )
-        return future
 
     def prepare(self, query: str, cache: bool = True) -> PreparedStatement:
         """Prepare a CQL statement.
@@ -321,8 +319,7 @@ class CassandraSessionAdapter:
             except KeyError:
                 pass
 
-        trace_name = f"{self.context_name}.prepare"
-        with self.server_span.make_child(trace_name) as span:
+        with self.server_span.make_child(f"{self.context_name}.prepare") as span:
             span.set_tag("statement", query)
             prepared = self.session.prepare(query)
             if cache:

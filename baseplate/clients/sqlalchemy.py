@@ -62,7 +62,7 @@ def engine_from_config(
 
     """
     assert prefix.endswith(".")
-    parser = config.SpecParser(
+    options = config.SpecParser(
         {
             "url": config.String,
             "credentials_secret": config.Optional(config.String),
@@ -71,8 +71,7 @@ def engine_from_config(
             "pool_size": config.Optional(config.Integer),
             "max_overflow": config.Optional(config.Integer),
         }
-    )
-    options = parser.parse(prefix[:-1], app_config)
+    ).parse(prefix[:-1], app_config)
     url = make_url(options.url)
 
     if options.pool_recycle is not None:
@@ -122,10 +121,11 @@ class SQLAlchemySession(config.Parser):
     def parse(
         self, key_path: str, raw_config: config.RawConfig
     ) -> "SQLAlchemySessionContextFactory":
-        engine = engine_from_config(
-            raw_config, secrets=self.secrets, prefix=f"{key_path}.", **self.kwargs
+        return SQLAlchemySessionContextFactory(
+            engine_from_config(
+                raw_config, secrets=self.secrets, prefix=f"{key_path}.", **self.kwargs
+            )
         )
-        return SQLAlchemySessionContextFactory(engine)
 
 
 Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
@@ -172,8 +172,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         batch.gauge("pool.overflow").replace(max(pool.overflow(), 0))
 
     def make_object_for_context(self, name: str, span: Span) -> Engine:
-        engine = self.engine.execution_options(context_name=name, server_span=span)
-        return engine
+        return self.engine.execution_options(context_name=name, server_span=span)
 
     # pylint: disable=unused-argument, too-many-arguments
     def on_before_execute(
@@ -187,10 +186,8 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     ) -> Tuple[str, Parameters]:
         """Handle the engine's before_cursor_execute event."""
         context_name = conn._execution_options["context_name"]
-        server_span = conn._execution_options["server_span"]
 
-        trace_name = f"{context_name}.execute"
-        span = server_span.make_child(trace_name)
+        span = conn._execution_options["server_span"].make_child(f"{context_name}.execute")
         span.set_tag("statement", statement[:1021] + "..." if len(statement) > 1024 else statement)
         span.start()
 
@@ -198,12 +195,12 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         # add a comment to the sql statement with the trace and span ids
         # this is useful for slow query logs and active query views
-        if SAFE_TRACE_ID.match(span.trace_id) and SAFE_TRACE_ID.match(span.id):
-            annotated_statement = f"{statement} -- trace:{span.trace_id},span:{span.id}"
-        else:
-            annotated_statement = f"{statement} -- invalid trace id"
-
-        return annotated_statement, parameters
+        return (
+            f"{statement} -- trace:{span.trace_id},span:{span.id}"
+            if SAFE_TRACE_ID.match(span.trace_id) and SAFE_TRACE_ID.match(span.id)
+            else f"{statement} -- invalid trace id",
+            parameters,
+        )
 
     # pylint: disable=unused-argument, too-many-arguments
     def on_after_execute(
@@ -221,8 +218,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     def on_error(self, context: ExceptionContext) -> None:
         """Handle the event which happens on exceptions during execution."""
-        exc_info = (type(context.original_exception), context.original_exception, None)
-        context.connection.info["span"].finish(exc_info=exc_info)
+        context.connection.info["span"].finish(
+            exc_info=(type(context.original_exception), context.original_exception, None)
+        )
         context.connection.info["span"] = None
 
 
@@ -249,8 +247,7 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
     """
 
     def make_object_for_context(self, name: str, span: Span) -> Session:
-        engine = super().make_object_for_context(name, span)
-        session = Session(bind=engine)
+        session = Session(bind=super().make_object_for_context(name, span))
         span.register(SQLAlchemySessionSpanObserver(session))
         return session
 
