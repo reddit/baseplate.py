@@ -46,8 +46,9 @@ def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") 
     registry = CollectorRegistry()
     multiprocess.MultiProcessCollector(registry)
     data = generate_latest(registry)
-    response_headers = [("Content-type", CONTENT_TYPE_LATEST), ("Content-Length", str(len(data)))]
-    start_response("200 OK", response_headers)
+    start_response(
+        "200 OK", [("Content-type", CONTENT_TYPE_LATEST), ("Content-Length", str(len(data)))]
+    )
     return [data]
 
 
@@ -60,11 +61,9 @@ def start_prometheus_exporter() -> None:
 
     atexit.register(multiprocess.mark_process_dead, os.getpid())
 
-    server_socket = bind_socket(PROMETHEUS_EXPORTER_ADDRESS)
-    server = WSGIServer(
-        server_socket,
+    WSGIServer(
+        bind_socket(PROMETHEUS_EXPORTER_ADDRESS),
         application=export_metrics,
         log=LoggingLogAdapter(logger, level=logging.DEBUG),
         error_log=LoggingLogAdapter(logger, level=logging.ERROR),
-    )
-    server.start()
+    ).start()

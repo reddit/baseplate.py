@@ -141,17 +141,19 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
     parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
     parser.read_file(config_file)
 
-    filename = config_file.name
-    server_config = dict(parser.items("server:" + server_name)) if server_name else None
-    app_config = dict(parser.items("app:" + app_name))
-    has_logging_config = parser.has_section("loggers")
     shell_config = None
     if parser.has_section("shell"):
         shell_config = dict(parser.items("shell"))
     elif parser.has_section("tshell"):
         shell_config = dict(parser.items("tshell"))
 
-    return Configuration(filename, server_config, app_config, has_logging_config, shell_config)
+    return Configuration(
+        config_file.name,
+        dict(parser.items("server:" + server_name)) if server_name else None,
+        dict(parser.items("app:" + app_name)),
+        parser.has_section("loggers"),
+        shell_config,
+    )
 
 
 def configure_logging(config: Configuration, debug: bool) -> None:
@@ -163,13 +165,13 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     else:
         logging_level = logging.INFO
 
-    formatter: logging.Formatter
-    if not sys.stdin.isatty():
-        formatter = CustomJsonFormatter(
+    formatter = (
+        CustomJsonFormatter(
             "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d %(threadName)s"
         )
-    else:
-        formatter = logging.Formatter("%(levelname)-8s %(message)s")
+        if sys.stdin.isatty()
+        else logging.Formatter("%(levelname)-8s %(message)s")
+    )
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -202,8 +204,9 @@ def bind_socket(endpoint: EndpointConfiguration) -> socket.socket:
     sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
 
     # configure the socket to be auto-closed if we exec() e.g. on reload
-    flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFD)
-    fcntl.fcntl(sock.fileno(), fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+    fcntl.fcntl(
+        sock.fileno(), fcntl.F_SETFD, fcntl.fcntl(sock.fileno(), fcntl.F_GETFD) | fcntl.FD_CLOEXEC
+    )
 
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
@@ -226,23 +229,19 @@ def _load_factory(url: str, default_name: Optional[str] = None) -> Callable:
         if not default_name:
             raise ValueError("no name and no default specified")
         func_name = default_name
-    module = importlib.import_module(module_name)
-    factory = getattr(module, func_name)
-    return factory
+    return getattr(importlib.import_module(module_name), func_name)
 
 
 def make_server(
     server_config: Dict[str, str], listener: socket.socket, app: Callable
 ) -> StreamServer:
-    server_url = server_config["factory"]
-    factory = _load_factory(server_url, default_name="make_server")
-    return factory(server_config, listener, app)
+    return _load_factory(server_config["factory"], default_name="make_server")(
+        server_config, listener, app
+    )
 
 
 def make_app(app_config: Dict[str, str]) -> Callable:
-    app_url = app_config["factory"]
-    factory = _load_factory(app_url, default_name="make_app")
-    return factory(app_config)
+    return _load_factory(app_config["factory"], default_name="make_app")(app_config)
 
 
 def register_signal_handlers() -> threading.Event:
@@ -440,9 +439,9 @@ def load_and_run_shell() -> None:
     configure_logging(config, args.debug)
 
     # generate banner text
-    banner = "Available Objects:\n"
-    for var in sorted(env_banner.keys()):
-        banner += f"\n  {var:<12} {env_banner[var]}"
+    banner = "Available Objects:\n" + "\n".join(
+        [f"  {var:<12} {env_banner[var]}" for var in sorted(env_banner.keys())]
+    )
 
     console_logpath = _get_shell_log_path()
 
@@ -489,8 +488,7 @@ def load_and_run_shell() -> None:
     except ImportError:
         pass
 
-    newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
-    banner = newbanner + banner
+    banner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n" + banner
 
     try:
         import readline
@@ -501,17 +499,14 @@ def load_and_run_shell() -> None:
     except ImportError:
         pass
 
-    shell = LoggedInteractiveConsole(_locals=env, logpath=console_logpath)
-    shell.interact(banner)
+    LoggedInteractiveConsole(_locals=env, logpath=console_logpath).interact(banner)
 
 
 def _get_shell_log_path() -> str:
     """Determine where to write shell audit logs."""
-    if _is_containerized():
-        # write to PID 1 stdout for log aggregation
-        return "/proc/1/fd/1"
+    # write to PID 1 stdout for log aggregation
     # otherwise write to a local file
-    return "/var/log/baseplate-shell.log"
+    return "/proc/1/fd/1" if _is_containerized() else "/var/log/baseplate-shell.log"
 
 
 def _is_containerized() -> bool:
@@ -521,11 +516,9 @@ def _is_containerized() -> bool:
 
     try:
         with open("/proc/self/cgroup", encoding="UTF-8") as my_cgroups_file:
-            my_cgroups = my_cgroups_file.read()
-
-            for hint in ["kubepods", "docker", "containerd"]:
-                if hint in my_cgroups:
-                    return True
+            return any(
+                hint in my_cgroups_file.read() for hint in ["kubepods", "docker", "containerd"]
+            )
     except OSError:
         pass
 
@@ -563,7 +556,6 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
     ) -> None:
         """Generate an RFC 5424 compliant syslog format."""
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
         with open(self.output_file, "w", encoding="UTF-8") as f:
-            print(prompt, file=f)
+            print(f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}", file=f)
             f.flush()

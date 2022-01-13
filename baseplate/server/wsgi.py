@@ -38,7 +38,6 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
         )
 
     pool = Pool()
-    log = LoggingLogAdapter(logger, level=logging.DEBUG)
 
     kwargs: Dict[str, Any] = {}
     if cfg.handler:
@@ -48,7 +47,7 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
         listener,
         application=app,
         spawn=pool,
-        log=log,
+        log=LoggingLogAdapter(logger, level=logging.DEBUG),
         error_log=LoggingLogAdapter(logger, level=logging.ERROR),
         **kwargs,
     )

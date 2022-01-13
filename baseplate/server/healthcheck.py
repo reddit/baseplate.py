@@ -23,8 +23,7 @@ TIMEOUT = 30  # seconds
 def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
     pool = ThriftConnectionPool(endpoint, size=1, timeout=TIMEOUT)
     with pool.connection() as protocol:
-        client = BaseplateServiceV2.Client(protocol)
-        assert client.is_healthy(
+        assert BaseplateServiceV2.Client(protocol).is_healthy(
             request=IsHealthyRequest(probe=probe),
         ), f"service indicated unhealthiness in probe {probe}"
 
@@ -77,8 +76,7 @@ def parse_args() -> argparse.Namespace:
 def run_healthchecks() -> None:
     args = parse_args()
 
-    checker = CHECKERS[args.type]
-    checker(args.endpoint, IsHealthyProbe._NAMES_TO_VALUES[args.probe.upper()])
+    CHECKERS[args.type](args.endpoint, IsHealthyProbe._NAMES_TO_VALUES[args.probe.upper()])
     print("OK!")
 
 

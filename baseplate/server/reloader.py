@@ -24,10 +24,8 @@ logger = logging.getLogger(__name__)
 def _get_loaded_modules() -> Iterator[str]:
     """Yield filenames for all loaded Python modules."""
     for module in sys.modules.values():
-        filename = getattr(module, "__file__", None)
-        if filename:
-            uncompiled = re.sub("py[co]$", "py", filename)
-            yield uncompiled
+        if getattr(module, "__file__", None):
+            yield re.sub("py[co]$", "py", filename)
 
 
 def _get_watched_files(extra_files: Sequence[str]) -> Iterator[str]:

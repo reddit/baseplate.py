@@ -42,9 +42,7 @@ class HealthcheckApp:
         self.callback = callback
 
     def __call__(self, environ: WSGIEnvironment, start_response: "StartResponse") -> List[bytes]:
-        ok = True
-        if self.callback:
-            ok = self.callback(environ)
+        ok = self.callback(environ) if self.callback else True
 
         if ok:
             start_response("200 OK", [("Content-Type", "application/json")])
@@ -234,17 +232,15 @@ class QueueConsumerServer:
         # We want to give some headroom on the queue so our handlers can grab
         # a new message right after they finish so we keep an extra
         # max_concurrency / 2 messages in the queue.
-        maxsize = max_concurrency + max_concurrency // 2
-        work_queue: queue.Queue = queue.Queue(maxsize=maxsize)
-        handlers = [
-            QueueConsumer(
-                work_queue=work_queue, message_handler=consumer_factory.build_message_handler()
-            )
-            for _ in range(max_concurrency)
-        ]
+        work_queue: queue.Queue = queue.Queue(maxsize=max_concurrency + max_concurrency // 2)
         return cls(
             pump=consumer_factory.build_pump_worker(work_queue),
-            handlers=handlers,
+            handlers=[
+                QueueConsumer(
+                    work_queue=work_queue, message_handler=consumer_factory.build_message_handler()
+                )
+                for _ in range(max_concurrency)
+            ],
             healthcheck_server=consumer_factory.build_health_checker(listener),
             stop_timeout=stop_timeout,
         )
@@ -300,9 +296,10 @@ class QueueConsumerServer:
         logger.debug("Stopping message handler threads.")
         for handler in self.handlers:
             handler.stop()
-        retry_policy = RetryPolicy.new(budget=self.stop_timeout.total_seconds())
         logger.debug("Waiting for message handler threads to drain.")
-        for time_remaining, thread in zip(retry_policy, self.threads):
+        for time_remaining, thread in zip(
+            RetryPolicy.new(budget=self.stop_timeout.total_seconds()), self.threads
+        ):
             thread.join(timeout=time_remaining)
         # Stop the healthcheck server last
         logger.debug("Stopping healthcheck server.")

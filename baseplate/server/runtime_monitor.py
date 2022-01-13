@@ -51,8 +51,7 @@ class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
         self.live_requests: Dict[str, float] = {}
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
-        observer = _ActiveRequestsServerSpanObserver(self, server_span.trace_id)
-        server_span.register(observer)
+        server_span.register(_ActiveRequestsServerSpanObserver(self, server_span.trace_id))
 
     def report(self, batch: metrics.Batch) -> None:
         threshold = time.time() - MAX_REQUEST_AGE
@@ -107,8 +106,7 @@ class _GCStatsReporter(_Reporter):
     def report(self, batch: metrics.Batch) -> None:
         for generation, stats in enumerate(gc.get_stats()):
             for name, value in stats.items():
-                gauge = batch.gauge(f"gc.{name}", tags={"generation": generation})
-                gauge.replace(value)
+                batch.gauge(f"gc.{name}", tags={"generation": generation}).replace(value)
 
 
 class _GCTimingReporter(_Reporter):
