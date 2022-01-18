@@ -22,20 +22,20 @@ from baseplate.lib.edgecontext import EdgeContextFactory
 
 class _ContextAwareHandler:
     def __init__(self, handler: Any, context: RequestContext, logger: Logger):
-        self.handler = handler
-        self.context = context
-        self.logger = logger
+        self._handler = handler
+        self._context = context
+        self._logger = logger
 
     def __getattr__(self, fn_name: str) -> Callable[..., Any]:
         def call_with_context(*args: Any, **kwargs: Any) -> Any:
-            self.logger.debug("Handling: %r", fn_name)
+            self._logger.debug("Handling: %r", fn_name)
 
-            handler_fn = getattr(self.handler, fn_name)
+            handler_fn = getattr(self._handler, fn_name)
 
-            span = self.context.span
+            span = self._context.span
             try:
                 span.start()
-                result = handler_fn(self.context, *args, **kwargs)
+                result = handler_fn(self._context, *args, **kwargs)
             except (TApplicationException, TProtocolException, TTransportException):
                 # these are subclasses of TException but aren't ones that
                 # should be expected in the protocol

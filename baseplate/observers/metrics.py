@@ -30,8 +30,8 @@ class MetricsBaseplateObserver(BaseplateObserver):
     """
 
     def __init__(self, client: metrics.Client, sample_rate: float = 1.0):
-        self.client = client
-        self.sample_rate = sample_rate
+        self._client = client
+        self._sample_rate = sample_rate
 
     @classmethod
     def from_config_and_client(
@@ -44,10 +44,12 @@ class MetricsBaseplateObserver(BaseplateObserver):
         return cls(client, sample_rate=cfg.metrics_observer.sample_rate)
 
     def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
-        batch = self.client.batch()
+        batch = self._client.batch()
         context.metrics = batch
-        if self.sample_rate == 1.0 or random() < self.sample_rate:
-            observer: SpanObserver = MetricsServerSpanObserver(batch, server_span, self.sample_rate)
+        if self._sample_rate == 1.0 or random() < self._sample_rate:
+            observer: SpanObserver = MetricsServerSpanObserver(
+                batch, server_span, self._sample_rate
+            )
         else:
             observer = MetricsServerSpanDummyObserver(batch)
         server_span.register(observer)
@@ -56,7 +58,7 @@ class MetricsBaseplateObserver(BaseplateObserver):
 class MetricsServerSpanDummyObserver(SpanObserver):
     # for requests that aren't sampled
     def __init__(self, batch: metrics.Batch):
-        self.batch = batch
+        self._batch = batch
 
     def on_start(self) -> None:
         pass
@@ -65,7 +67,7 @@ class MetricsServerSpanDummyObserver(SpanObserver):
         pass
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.batch.flush()
+        self._batch.flush()
 
     def on_child_span_created(self, span: Span) -> None:
         pass
@@ -73,89 +75,93 @@ class MetricsServerSpanDummyObserver(SpanObserver):
 
 class MetricsServerSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, server_span: Span, sample_rate: float = 1.0):
-        self.batch = batch
-        self.base_name = "server." + server_span.name
-        self.timer: Optional[metrics.Timer] = None
-        self.sample_rate = sample_rate
+        self._batch = batch
+        self._base_name = "server." + server_span.name
+        self._timer: Optional[metrics.Timer] = None
+        self._sample_rate = sample_rate
 
     def on_start(self) -> None:
-        self.timer = self.batch.timer(self.base_name)
-        self.timer.start(self.sample_rate)
+        self._timer = self._batch._timer(self._base_name)
+        self._timer.start(self.sample_rate)
 
     def on_incr_tag(self, key: str, delta: float) -> None:
-        self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
+        self._batch.counter(key).increment(delta, sample_rate=self._sample_rate)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         # the timer might not exist if another observer threw an exception
         # before we got our on_start() called
-        if self.timer:
-            self.timer.stop()
+        if self._timer:
+            self._timer.stop()
 
         if not exc_info:
-            self.batch.counter(f"{self.base_name}.success").increment(sample_rate=self.sample_rate)
+            self._batch.counter(f"{self._base_name}.success").increment(
+                sample_rate=self._sample_rate
+            )
         else:
-            self.batch.counter(f"{self.base_name}.failure").increment(sample_rate=self.sample_rate)
+            self._batch.counter(f"{self._base_name}.failure").increment(
+                sample_rate=self._sample_rate
+            )
 
             if exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):
-                self.batch.counter(f"{self.base_name}.timed_out").increment(
-                    sample_rate=self.sample_rate
+                self._batch.counter(f"{self._base_name}.timed_out").increment(
+                    sample_rate=self._sample_rate
                 )
 
-        self.batch.flush()
+        self._batch.flush()
 
     def on_child_span_created(self, span: Span) -> None:
         observer: SpanObserver
         if isinstance(span, LocalSpan):
-            observer = MetricsLocalSpanObserver(self.batch, span, self.sample_rate)
+            observer = MetricsLocalSpanObserver(self._batch, span, self._sample_rate)
         else:
-            observer = MetricsClientSpanObserver(self.batch, span, self.sample_rate)
+            observer = MetricsClientSpanObserver(self._batch, span, self._sample_rate)
         span.register(observer)
 
 
 class MetricsLocalSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span, sample_rate: float = 1.0):
-        self.batch = batch
-        self.timer = batch.timer(f"{span.component_name}.{span.name}")
-        self.sample_rate = sample_rate
+        self._batch = batch
+        self._timer = batch.timer(f"{span.component_name}.{span.name}")
+        self._sample_rate = sample_rate
 
     def on_start(self) -> None:
-        self.timer.start(self.sample_rate)
+        self._timer.start(self.sample_rate)
 
     def on_incr_tag(self, key: str, delta: float) -> None:
-        self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
+        self._batch.counter(key).increment(delta, sample_rate=self._sample_rate)
 
     def on_child_span_created(self, span: Span) -> None:
         observer: SpanObserver
         if isinstance(span, LocalSpan):
-            observer = MetricsLocalSpanObserver(self.batch, span, self.sample_rate)
+            observer = MetricsLocalSpanObserver(self._batch, span, self._sample_rate)
         else:
-            observer = MetricsClientSpanObserver(self.batch, span, self.sample_rate)
+            observer = MetricsClientSpanObserver(self._batch, span, self._sample_rate)
         span.register(observer)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.timer.stop()
+        self._timer.stop()
 
 
 class MetricsClientSpanObserver(SpanObserver):
     def __init__(self, batch: metrics.Batch, span: Span, sample_rate: float = 1.0):
-        self.batch = batch
-        self.base_name = f"clients.{span.name}"
-        self.timer = batch.timer(self.base_name)
-        self.sample_rate = sample_rate
+        self._batch = batch
+        self._base_name = f"clients.{span.name}"
+        self._timer = batch.timer(self.base_name)
+        self._sample_rate = sample_rate
 
     def on_start(self) -> None:
-        self.timer.start(self.sample_rate)
+        self._timer.start(self.sample_rate)
 
     def on_incr_tag(self, key: str, delta: float) -> None:
-        self.batch.counter(key).increment(delta, sample_rate=self.sample_rate)
+        self._batch.counter(key).increment(delta, sample_rate=self._sample_rate)
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.timer.stop()
+        self._timer.stop()
         suffix = "success" if not exc_info else "failure"
-        self.batch.counter(self.base_name + "." + suffix).increment(sample_rate=self.sample_rate)
+        self._batch.counter(self._base_name + "." + suffix).increment(sample_rate=self._sample_rate)
 
     def on_log(self, name: str, payload: Any) -> None:
         if name == "error.object":
-            self.batch.counter(f"errors.{payload.__class__.__name__}").increment(
-                sample_rate=self.sample_rate
+            self._batch.counter(f"errors.{payload.__class__.__name__}").increment(
+                sample_rate=self._sample_rate
             )

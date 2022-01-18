@@ -102,12 +102,12 @@ class CassandraClient(config.Parser):
     """
 
     def __init__(self, keyspace: str, **kwargs: Any):
-        self.keyspace = keyspace
-        self.kwargs = kwargs
+        self._keyspace = keyspace
+        self._kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "CassandraContextFactory":
-        cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
-        session = cluster.connect(keyspace=self.keyspace)
+        cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self._kwargs)
+        session = cluster.connect(keyspace=self._keyspace)
         return CassandraContextFactory(session)
 
 
@@ -125,11 +125,11 @@ class CassandraContextFactory(ContextFactory):
     """
 
     def __init__(self, session: Session):
-        self.session = session
-        self.prepared_statements: Dict[str, PreparedStatement] = {}
+        self._session = session
+        self._prepared_statements: Dict[str, PreparedStatement] = {}
 
     def make_object_for_context(self, name: str, span: Span) -> "CassandraSessionAdapter":
-        return CassandraSessionAdapter(name, span, self.session, self.prepared_statements)
+        return CassandraSessionAdapter(name, span, self._session, self._prepared_statements)
 
 
 class CQLMapperClient(config.Parser):
@@ -145,12 +145,12 @@ class CQLMapperClient(config.Parser):
     """
 
     def __init__(self, keyspace: str, **kwargs: Any):
-        self.keyspace = keyspace
-        self.kwargs = kwargs
+        self._keyspace = keyspace
+        self._kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "CQLMapperContextFactory":
-        cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
-        session = cluster.connect(keyspace=self.keyspace)
+        cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self._kwargs)
+        session = cluster.connect(keyspace=self._keyspace)
         return CQLMapperContextFactory(session)
 
 
@@ -261,13 +261,13 @@ class CassandraSessionAdapter:
         session: Session,
         prepared_statements: Dict[str, PreparedStatement],
     ):
-        self.context_name = context_name
-        self.server_span = server_span
-        self.session = session
-        self.prepared_statements = prepared_statements
+        self._context_name = context_name
+        self._server_span = server_span
+        self._session = session
+        self._prepared_statements = prepared_statements
 
     def __getattr__(self, name: str) -> Any:
-        return getattr(self.session, name)
+        return getattr(self._session, name)
 
     def execute(
         self,
@@ -285,8 +285,8 @@ class CassandraSessionAdapter:
         timeout: Union[float, object] = _NOT_SET,
         **kwargs: Any,
     ) -> ResponseFuture:
-        trace_name = f"{self.context_name}.execute"
-        span = self.server_span.make_child(trace_name)
+        trace_name = f"{self._context_name}.execute"
+        span = self._server_span.make_child(trace_name)
         span.start()
         # TODO: include custom payload
         if isinstance(query, str):
@@ -295,7 +295,9 @@ class CassandraSessionAdapter:
             span.set_tag("statement", query.query_string)
         elif isinstance(query, BoundStatement):
             span.set_tag("statement", query.prepared_statement.query_string)
-        future = self.session.execute_async(query, parameters=parameters, timeout=timeout, **kwargs)
+        future = self._session.execute_async(
+            query, parameters=parameters, timeout=timeout, **kwargs
+        )
         future = wrap_future(
             response_future=future,
             callback_fn=_on_execute_complete,
@@ -317,14 +319,14 @@ class CassandraSessionAdapter:
         """
         if cache:
             try:
-                return self.prepared_statements[query]
+                return self._prepared_statements[query]
             except KeyError:
                 pass
 
-        trace_name = f"{self.context_name}.prepare"
-        with self.server_span.make_child(trace_name) as span:
+        trace_name = f"{self._context_name}.prepare"
+        with self._server_span.make_child(trace_name) as span:
             span.set_tag("statement", query)
-            prepared = self.session.prepare(query)
+            prepared = self._session.prepare(query)
             if cache:
-                self.prepared_statements[query] = prepared
+                self._prepared_statements[query] = prepared
             return prepared

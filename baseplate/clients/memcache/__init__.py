@@ -102,15 +102,15 @@ class MemcacheClient(config.Parser):
     def __init__(
         self, serializer: Optional[Serializer] = None, deserializer: Optional[Deserializer] = None
     ):
-        self.serializer = serializer
-        self.deserializer = deserializer
+        self._serializer = serializer
+        self._deserializer = deserializer
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "MemcacheContextFactory":
         pool = pool_from_config(
             raw_config,
             prefix=f"{key_path}.",
-            serializer=self.serializer,
-            deserializer=self.deserializer,
+            serializer=self._serializer,
+            deserializer=self._deserializer,
         )
         return MemcacheContextFactory(pool)
 
@@ -130,16 +130,16 @@ class MemcacheContextFactory(ContextFactory):
     """
 
     def __init__(self, pooled_client: PooledClient):
-        self.pooled_client = pooled_client
+        self._pooled_client = pooled_client
 
     def report_memcache_runtime_metrics(self, batch: metrics.Client) -> None:
-        pool = self.pooled_client.client_pool
+        pool = self._pooled_client.client_pool
         batch.gauge("pool.in_use").replace(len(pool.used))
         batch.gauge("pool.open_and_available").replace(len(pool.free))
         batch.gauge("pool.size").replace(pool.max_size)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredMemcacheConnection":
-        return MonitoredMemcacheConnection(name, span, self.pooled_client)
+        return MonitoredMemcacheConnection(name, span, self._pooled_client)
 
 
 Key = Union[str, bytes]
@@ -157,20 +157,20 @@ class MonitoredMemcacheConnection:
     """
 
     def __init__(self, context_name: str, server_span: Span, pooled_client: PooledClient):
-        self.context_name = context_name
-        self.server_span = server_span
-        self.pooled_client = pooled_client
+        self._context_name = context_name
+        self._server_span = server_span
+        self._pooled_client = pooled_client
 
     def close(self) -> None:
         with self._make_span("close"):
-            return self.pooled_client.close()
+            return self._pooled_client.close()
 
     def set(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("set") as span:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.set(key, value, expire=expire, noreply=noreply)
+            return self._pooled_client.set(key, value, expire=expire, noreply=noreply)
 
     def set_many(
         self, values: Dict[Key, Any], expire: int = 0, noreply: Optional[bool] = None
@@ -180,7 +180,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("keys", make_keys_str(values.keys()))
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.set_many(values, expire=expire, noreply=noreply)
+            return self._pooled_client.set_many(values, expire=expire, noreply=noreply)
 
     def replace(
         self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None
@@ -189,14 +189,14 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.replace(key, value, expire=expire, noreply=noreply)
+            return self._pooled_client.replace(key, value, expire=expire, noreply=noreply)
 
     def append(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("append") as span:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.append(key, value, expire=expire, noreply=noreply)
+            return self._pooled_client.append(key, value, expire=expire, noreply=noreply)
 
     def prepend(
         self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None
@@ -205,7 +205,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.prepend(key, value, expire=expire, noreply=noreply)
+            return self._pooled_client.prepend(key, value, expire=expire, noreply=noreply)
 
     def cas(
         self, key: Key, value: Any, cas: int, expire: int = 0, noreply: Optional[bool] = None
@@ -215,7 +215,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("cas", cas)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.cas(key, value, cas, expire=expire, noreply=noreply)
+            return self._pooled_client.cas(key, value, cas, expire=expire, noreply=noreply)
 
     def get(self, key: Key, default: Any = None) -> Any:
         with self._make_span("get") as span:
@@ -223,79 +223,79 @@ class MonitoredMemcacheConnection:
             kwargs = {}
             if default is not None:
                 kwargs["default"] = default
-            return self.pooled_client.get(key, **kwargs)
+            return self._pooled_client.get(key, **kwargs)
 
     def get_many(self, keys: Sequence[Key]) -> Dict[Key, Any]:
         with self._make_span("get_many") as span:
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
-            return self.pooled_client.get_many(keys)
+            return self._pooled_client.get_many(keys)
 
     def gets(
         self, key: Key, default: Optional[Any] = None, cas_default: Optional[Any] = None
     ) -> Tuple[Any, Any]:
         with self._make_span("gets") as span:
             span.set_tag("key", key)
-            return self.pooled_client.gets(key, default=default, cas_default=cas_default)
+            return self._pooled_client.gets(key, default=default, cas_default=cas_default)
 
     def gets_many(self, keys: Sequence[Key]) -> Dict[Key, Tuple[Any, Any]]:
         with self._make_span("gets_many") as span:
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
-            return self.pooled_client.gets_many(keys)
+            return self._pooled_client.gets_many(keys)
 
     def delete(self, key: Key, noreply: Optional[bool] = None) -> bool:
         with self._make_span("delete") as span:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.delete(key, noreply=noreply)
+            return self._pooled_client.delete(key, noreply=noreply)
 
     def delete_many(self, keys: Sequence[Key], noreply: Optional[bool] = None) -> bool:
         with self._make_span("delete_many") as span:
             span.set_tag("key_count", len(keys))
             span.set_tag("noreply", noreply)
             span.set_tag("keys", make_keys_str(keys))
-            return self.pooled_client.delete_many(keys, noreply=noreply)
+            return self._pooled_client.delete_many(keys, noreply=noreply)
 
     def add(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("add") as span:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.add(key, value, expire=expire, noreply=noreply)
+            return self._pooled_client.add(key, value, expire=expire, noreply=noreply)
 
     def incr(self, key: Key, value: int, noreply: Optional[bool] = False) -> Optional[int]:
         with self._make_span("incr") as span:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.incr(key, value, noreply=noreply)
+            return self._pooled_client.incr(key, value, noreply=noreply)
 
     def decr(self, key: Key, value: int, noreply: Optional[bool] = False) -> Optional[int]:
         with self._make_span("decr") as span:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.decr(key, value, noreply=noreply)
+            return self._pooled_client.decr(key, value, noreply=noreply)
 
     def touch(self, key: Key, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("touch") as span:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.touch(key, expire=expire, noreply=noreply)
+            return self._pooled_client.touch(key, expire=expire, noreply=noreply)
 
     def stats(self, *args: str) -> Dict[str, Any]:
         with self._make_span("stats"):
-            return self.pooled_client.stats(*args)
+            return self._pooled_client.stats(*args)
 
     def flush_all(self, delay: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("flush_all") as span:
             span.set_tag("delay", delay)
             span.set_tag("noreply", noreply)
-            return self.pooled_client.flush_all(delay=delay, noreply=noreply)
+            return self._pooled_client.flush_all(delay=delay, noreply=noreply)
 
     def quit(self) -> None:
         with self._make_span("quit"):
-            return self.pooled_client.quit()
+            return self._pooled_client.quit()
 
     def _make_span(self, method_name: str) -> Span:
         """Get a child span of the current server span.
@@ -304,8 +304,8 @@ class MonitoredMemcacheConnection:
         that corresponds to the current context name and called method.
 
         """
-        trace_name = f"{self.context_name}.{method_name}"
-        span = self.server_span.make_child(trace_name)
+        trace_name = f"{self._context_name}.{method_name}"
+        span = self._server_span.make_child(trace_name)
         span.set_tag("method", method_name)
         return span
 

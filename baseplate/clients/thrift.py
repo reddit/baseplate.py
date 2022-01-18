@@ -37,12 +37,12 @@ class ThriftClient(config.Parser):
     """
 
     def __init__(self, client_cls: Any, **kwargs: Any):
-        self.client_cls = client_cls
-        self.kwargs = kwargs
+        self._client_cls = client_cls
+        self._kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> ContextFactory:
-        pool = thrift_pool_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
-        return ThriftContextFactory(pool, self.client_cls)
+        pool = thrift_pool_from_config(raw_config, prefix=f"{key_path}.", **self._kwargs)
+        return ThriftContextFactory(pool, self._client_cls)
 
 
 class ThriftContextFactory(ContextFactory):
@@ -70,27 +70,27 @@ class ThriftContextFactory(ContextFactory):
     """
 
     def __init__(self, pool: ThriftConnectionPool, client_cls: Any):
-        self.pool = pool
-        self.client_cls = client_cls
-        self.proxy_cls = type(
+        self._pool = pool
+        self._client_cls = client_cls
+        self._proxy_cls = type(
             "PooledClientProxy",
             (_PooledClientProxy,),
             {
                 fn_name: _build_thrift_proxy_method(fn_name)
-                for fn_name in _enumerate_service_methods(client_cls)
+                for fn_name in _enumerate_service_methods(_client_cls)
                 if not (fn_name.startswith("__") and fn_name.endswith("__"))
             },
         )
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
-        batch.gauge("pool.size").replace(self.pool.size)
-        batch.gauge("pool.in_use").replace(self.pool.checkedout)
+        batch.gauge("pool.size").replace(self._pool.size)
+        batch.gauge("pool.in_use").replace(self._pool.checkedout)
         # it's hard to report "open_and_available" currently because we can't
         # distinguish easily between available connection slots that aren't
         # instantiated and ones that have actual open connections.
 
     def make_object_for_context(self, name: str, span: Span) -> "_PooledClientProxy":
-        return self.proxy_cls(self.client_cls, self.pool, span, name)
+        return self._proxy_cls(self._client_cls, self._pool, span, name)
 
 
 def _enumerate_service_methods(client: Any) -> Iterator[str]:
@@ -124,20 +124,20 @@ class _PooledClientProxy:
         namespace: str,
         retry_policy: Optional[RetryPolicy] = None,
     ):
-        self.client_cls = client_cls
-        self.pool = pool
-        self.server_span = server_span
-        self.namespace = namespace
-        self.retry_policy = retry_policy or RetryPolicy.new(attempts=1)
+        self._client_cls = client_cls
+        self._pool = pool
+        self._server_span = server_span
+        self._namespace = namespace
+        self._retry_policy = retry_policy or RetryPolicy.new(attempts=1)
 
     @contextlib.contextmanager
     def retrying(self, **policy: Any) -> Iterator["_PooledClientProxy"]:
         yield self.__class__(
-            self.client_cls,
-            self.pool,
-            self.server_span,
-            self.namespace,
-            retry_policy=RetryPolicy.new(**policy),
+            self._client_cls,
+            self._pool,
+            self._server_span,
+            self._namespace,
+            retry_policy=_retry_policy.new(**policy),
         )
 
 

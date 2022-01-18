@@ -19,12 +19,12 @@ class NoDbQueryStringFormatChecker(BaseChecker):
 
     def __init__(self, linter: PyLinter = None):
         super().__init__(linter)
-        self.string_sub_queries: set = set()
-        self.query_verbs = {"select", "update", "delete", "insertinto", "truncate"}
+        self_.string_sub_queries: set = set()
+        self._query_verbs = {"select", "update", "delete", "insertinto", "truncate"}
 
     def check_string_is_query(self, string: str) -> bool:
         query = string.split(" ")
-        if query[0].lower() in self.query_verbs and ("{}" in query or "%s" in query):
+        if query[0].lower() in self._query_verbs and ("{}" in query or "%s" in query):
             return True
         return False
 
@@ -47,17 +47,17 @@ class NoDbQueryStringFormatChecker(BaseChecker):
         ):
             variable_is_query = True
 
-        if variable_is_query and node.targets[0].name not in self.string_sub_queries:
-            self.string_sub_queries.add(node.targets[0].name)
-        elif not variable_is_query and node.targets[0].name in self.string_sub_queries:
-            self.string_sub_queries.remove(node.targets[0].name)
+        if variable_is_query and node.targets[0].name not in self_.string_sub_queries:
+            self_.string_sub_queries.add(node.targets[0].name)
+        elif not variable_is_query and node.targets[0].name in self_.string_sub_queries:
+            self_.string_sub_queries.remove(node.targets[0].name)
 
     def visit_call(self, node: nodes) -> None:
         """Check whether execute calls have queries using string formatting."""
         if isinstance(node.func, nodes.Attribute) and node.func.attrname == "execute" and node.args:
             if (
                 isinstance(node.args[0], nodes.Name)
-                and node.args[0].name in self.string_sub_queries
+                and node.args[0].name in self_.string_sub_queries
             ):
                 self.add_message("database-query-string-format", node=node)
             elif (
@@ -76,13 +76,13 @@ class NoDbQueryStringFormatChecker(BaseChecker):
                 self.add_message("database-query-string-format", node=node)
 
     def leave_module(self, node: nodes) -> nodes:
-        self.string_sub_queries = set()
+        self_.string_sub_queries = set()
         return node
 
     def leave_classdef(self, node: nodes) -> nodes:
-        self.string_sub_queries = set()
+        self_.string_sub_queries = set()
         return node
 
     def leave_functiondef(self, node: nodes) -> nodes:
-        self.string_sub_queries = set()
+        self_.string_sub_queries = set()
         return node

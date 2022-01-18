@@ -93,15 +93,15 @@ class RedisContextFactory(ContextFactory):
     """
 
     def __init__(self, connection_pool: redis.ConnectionPool):
-        self.connection_pool = connection_pool
+        self._connection_pool = connection_pool
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
-        if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
+        if not isinstance(self._connection_pool, redis.BlockingConnectionPool):
             return
 
-        size = self.connection_pool.max_connections
-        open_connections = len(self.connection_pool._connections)  # type: ignore
-        available = self.connection_pool.pool.qsize()
+        size = self._connection_pool.max_connections
+        open_connections = len(self._connection_pool._connections)  # type: ignore
+        available = self._connection_pool.pool.qsize()
         in_use = size - available
 
         batch.gauge("pool.size").replace(size)
@@ -109,7 +109,7 @@ class RedisContextFactory(ContextFactory):
         batch.gauge("pool.open_and_available").replace(open_connections - in_use)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
-        return MonitoredRedisConnection(name, span, self.connection_pool)
+        return MonitoredRedisConnection(name, span, self._connection_pool)
 
 
 # pylint: disable=too-many-public-methods
@@ -126,16 +126,16 @@ class MonitoredRedisConnection(redis.StrictRedis):
     """
 
     def __init__(self, context_name: str, server_span: Span, connection_pool: redis.ConnectionPool):
-        self.context_name = context_name
-        self.server_span = server_span
+        self._context_name = context_name
+        self._server_span = server_span
 
         super().__init__(connection_pool=connection_pool)
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         command = args[0]
-        trace_name = f"{self.context_name}.{command}"
+        trace_name = f"{self._context_name}.{command}"
 
-        with self.server_span.make_child(trace_name):
+        with self._server_span.make_child(trace_name):
             return super().execute_command(command, *args[1:], **kwargs)
 
     # pylint: disable=arguments-differ
@@ -154,8 +154,8 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
         """
         return MonitoredRedisPipeline(
-            f"{self.context_name}.pipeline_{name}",
-            self.server_span,
+            f"{self._context_name}.pipeline_{name}",
+            self._server_span,
             self.connection_pool,
             self.response_callbacks,
             transaction=transaction,
@@ -177,13 +177,13 @@ class MonitoredRedisPipeline(Pipeline):
         response_callbacks: Dict,
         **kwargs: Any,
     ):
-        self.trace_name = trace_name
-        self.server_span = server_span
+        self._trace_name = trace_name
+        self._server_span = server_span
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
-        with self.server_span.make_child(self.trace_name):
+        with self._server_span.make_child(self._trace_name):
             return super().execute(**kwargs)
 
 
@@ -200,11 +200,12 @@ class MessageQueue:
     """
 
     def __init__(self, name: str, client: redis.ConnectionPool):
-        self.queue = name
-        if isinstance(client, (redis.BlockingConnectionPool, redis.ConnectionPool)):
-            self.client = redis.Redis(connection_pool=client)
-        else:
-            self.client = client
+        self._queue = name
+        self._client = (
+            redis.Redis(connection_pool=client)
+            if isinstance(client, (redis.BlockingConnectionPool, redis.ConnectionPool))
+            else client
+        )
 
     def get(self, timeout: Optional[float] = None) -> bytes:
         """Read a message from the queue.
@@ -220,9 +221,9 @@ class MessageQueue:
             timeout = int(ceil(timeout))
 
         if timeout == 0:
-            message = self.client.lpop(self.queue)
+            message = self._client.lpop(self._queue)
         else:
-            message = self.client.blpop(self.queue, timeout=timeout or 0)
+            message = self._client.blpop(self._queue, timeout=timeout or 0)
 
             if message:
                 message = message[1]
@@ -241,7 +242,7 @@ class MessageQueue:
                out of the queue as a string regardless of what type they are
                when passed into this method.
         """
-        self.client.rpush(self.queue, message)
+        self._client.rpush(self._queue, message)
 
     def unlink(self) -> None:
         """Not implemented for Redis variant."""
@@ -252,4 +253,4 @@ class MessageQueue:
         Will delete the queue from the Redis server (Note, can still enqueue
         and dequeue as the actions will recreate the queue)
         """
-        self.client.delete(self.queue)
+        self._client.delete(self._queue)

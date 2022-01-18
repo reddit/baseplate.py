@@ -61,7 +61,7 @@ class V2Batch(Batch):
     _end = b"]}}"
 
     def __init__(self, max_size: int = MAX_BATCH_SIZE):
-        self.max_size = max_size
+        self._max_size = max_size
         self.reset()
 
     def add(self, item: Optional[bytes]) -> None:
@@ -70,7 +70,7 @@ class V2Batch(Batch):
 
         serialized_size = len(item) + 1  # the comma at the end
 
-        if self._size + serialized_size > self.max_size:
+        if self._size + serialized_size > self._max_size:
             raise BatchFull
 
         self._items.append(item)
@@ -100,18 +100,18 @@ class V2JBatch(V2Batch):
 
 class BatchPublisher:
     def __init__(self, metrics_client: metrics.Client, cfg: Any):
-        self.metrics = metrics_client
-        self.url = f"{cfg.collector.scheme}://{cfg.collector.hostname}/v{cfg.collector.version}"
-        self.key_name = cfg.key.name
-        self.key_secret = cfg.key.secret
-        self.session = requests.Session()
-        self.session.headers[
+        self._metrics = metrics_client
+        self._url = f"{cfg.collector.scheme}://{cfg.collector.hostname}/v{cfg.collector.version}"
+        self._key_name = cfg.key.name
+        self._key_secret = cfg.key.secret
+        self._session = requests.Session()
+        self._session.headers[
             "User-Agent"
         ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
 
     def _sign_payload(self, payload: bytes) -> str:
-        digest = hmac.new(self.key_secret, payload, hashlib.sha256).hexdigest()
-        return f"key={self.key_name}, mac={digest}"
+        digest = hmac.new(self._key_secret, payload, hashlib.sha256).hexdigest()
+        return f"key={self._key_name}, mac={digest}"
 
     def publish(self, payload: SerializedBatch) -> None:
         if not payload.item_count:
@@ -129,9 +129,9 @@ class BatchPublisher:
 
         for _ in RetryPolicy.new(budget=MAX_RETRY_TIME, backoff=RETRY_BACKOFF):
             try:
-                with self.metrics.timer("post"):
-                    response = self.session.post(
-                        self.url,
+                with self._metrics.timer("post"):
+                    response = self._session.post(
+                        self._url,
                         headers=headers,
                         data=compressed_payload,
                         timeout=POST_TIMEOUT,
@@ -140,7 +140,7 @@ class BatchPublisher:
                     )
                 response.raise_for_status()
             except requests.HTTPError as exc:
-                self.metrics.counter("error.http").increment()
+                self._metrics.counter("error.http").increment()
 
                 # we should crash if it's our fault
                 response = getattr(exc, "response", None)
@@ -152,10 +152,10 @@ class BatchPublisher:
                 else:
                     logger.exception("HTTP Request failed.")
             except OSError:
-                self.metrics.counter("error.io").increment()
+                self._metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
-                self.metrics.counter("sent").increment(payload.item_count)
+                self._metrics.counter("sent").increment(payload.item_count)
                 return
 
         raise MaxRetriesError("could not sent batch")

@@ -547,10 +547,10 @@ def _has_PID1_parent() -> bool:
 class LoggedInteractiveConsole(code.InteractiveConsole):
     def __init__(self, _locals: Dict[str, Any], logpath: str) -> None:
         code.InteractiveConsole.__init__(self, _locals)
-        self.output_file = logpath
-        self.pid = os.getpid()
-        self.pri = syslog.LOG_USER | syslog.LOG_NOTICE
-        self.hostname = os.uname().nodename
+        self._output_file = logpath
+        self._pid = os.getpid()
+        self._pri = syslog.LOG_USER | syslog.LOG_NOTICE
+        self._hostname = os.uname().nodename
         self.log_event(message="Start InteractiveConsole logging", message_id="CSTR")
 
     def raw_input(self, prompt: Optional[str] = "") -> str:
@@ -563,7 +563,7 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
     ) -> None:
         """Generate an RFC 5424 compliant syslog format."""
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
-        with open(self.output_file, "w", encoding="UTF-8") as f:
+        prompt = f"<{self._pri}>1 {timestamp} {self._hostname} baseplate-shell {self._pid} {message_id} {structured} {message}"
+        with open(self._output_file, "w", encoding="UTF-8") as f:
             print(prompt, file=f)
             f.flush()

@@ -150,12 +150,12 @@ class VaultClientFactory:
     """Factory that makes authenticated clients."""
 
     def __init__(self, base_url: str, role: str, auth_type: Authenticator, mount_point: str):
-        self.base_url = base_url
+        self._base_url = base_url
         self.role = role
         self.auth_type = auth_type
         self.mount_point = mount_point
-        self.session = requests.Session()
-        self.session.headers[
+        self._session = requests.Session()
+        self._session.headers[
             "User-Agent"
         ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
         self.client: Optional["VaultClient"] = None
@@ -164,7 +164,7 @@ class VaultClientFactory:
         """Obtain a client token from an auth backend and return a Vault client with it."""
         client_token, lease_duration = self.auth_type(self)
 
-        return VaultClient(self.session, self.base_url, client_token, lease_duration)
+        return VaultClient(self._session, self._base_url, client_token, lease_duration)
 
     def _vault_kubernetes_auth(self) -> Tuple[str, datetime.datetime]:
         r"""Get a client token from Vault through the Kubernetes auth backend.
@@ -199,8 +199,8 @@ class VaultClientFactory:
         login_data = {"jwt": token, "role": self.role}
 
         logger.debug("Obtaining Vault token via kubernetes auth.")
-        response = self.session.post(
-            urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
+        response = self._session.post(
+            urllib.parse.urljoin(self._base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
             timeout=5,  # seconds
         )
@@ -244,8 +244,8 @@ class VaultClientFactory:
         login_data = {"role": self.role, "pkcs7": identity_document, "nonce": nonce}
 
         logger.debug("Obtaining Vault token via aws auth.")
-        response = self.session.post(
-            urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
+        response = self._session.post(
+            urllib.parse.urljoin(self._base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
             timeout=5,  # seconds
         )
@@ -285,24 +285,24 @@ class VaultClient:
         token: str,
         token_expiration: datetime.datetime,
     ):
-        self.session = session
-        self.base_url = base_url
-        self.token = token
-        self.token_expiration = token_expiration
+        self._session = session
+        self._base_url = base_url
+        self._token = token
+        self._token_expiration = token_expiration
 
     @property
     def is_about_to_expire(self) -> bool:
         """Return if the token is near expiration and in need of regeneration."""
-        expiration = self.token_expiration - VAULT_TOKEN_PREFETCH_TIME
+        expiration = self._token_expiration - VAULT_TOKEN_PREFETCH_TIME
         return expiration < datetime.datetime.utcnow()
 
     def get_secret(self, secret_name: str) -> Tuple[Any, datetime.datetime]:
         """Get the value and expiration time of a named secret."""
         logger.debug("Fetching secret %r.", secret_name)
         try:
-            response = self.session.get(
-                urllib.parse.urljoin(self.base_url, posixpath.join("v1", secret_name)),
-                headers={"X-Vault-Token": self.token},
+            response = self._session.get(
+                urllib.parse.urljoin(self._base_url, posixpath.join("v1", secret_name)),
+                headers={"X-Vault-Token": self._token},
                 timeout=5,  # seconds
             )
             response.raise_for_status()

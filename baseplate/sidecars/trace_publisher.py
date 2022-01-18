@@ -61,15 +61,15 @@ class ZipkinPublisher:
 
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         parsed_url = urllib.parse.urlparse(zipkin_api_url)
-        self.session = requests.Session()
-        self.session.headers[
+        self._session = requests.Session()
+        self._session.headers[
             "User-Agent"
         ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
-        self.session.mount(f"{parsed_url.scheme}://", adapter)
-        self.endpoint = f"{zipkin_api_url}/spans"
-        self.metrics = metrics_client
-        self.post_timeout = post_timeout
-        self.retry_limit = retry_limit
+        self._session.mount(f"{parsed_url.scheme}://", adapter)
+        self._endpoint = f"{zipkin_api_url}/spans"
+        self._metrics = metrics_client
+        self._post_timeout = post_timeout
+        self._retry_limit = retry_limit
 
     def publish(self, payload: SerializedBatch) -> None:
         """Publish spans to Zipkin API.
@@ -84,37 +84,37 @@ class ZipkinPublisher:
             "User-Agent": "baseplate-trace-publisher/1.0",
             "Content-Type": "application/json",
         }
-        for _ in RetryPolicy.new(attempts=self.retry_limit):
+        for _ in RetryPolicy.new(attempts=self._retry_limit):
             try:
-                with self.metrics.timer("post"):
-                    response = self.session.post(
-                        self.endpoint,
+                with self._metrics.timer("post"):
+                    response = self._session.post(
+                        self._endpoint,
                         data=payload.serialized,
                         headers=headers,
-                        timeout=self.post_timeout,
+                        timeout=self._post_timeout,
                         stream=False,
                     )
                 response.raise_for_status()
             except requests.HTTPError as exc:
-                self.metrics.counter("error.http").increment()
+                self._metrics.counter("error.http").increment()
                 response = getattr(exc, "response", None)
                 if response is not None:
                     logger.exception("HTTP Request failed. Error: %s", response.text)
                     # If client error, skip retries
                     if response.status_code < 500:
-                        self.metrics.counter("error.http.client").increment()
+                        self._metrics.counter("error.http.client").increment()
                         return
                 else:
                     logger.exception("HTTP Request failed. Response not available")
             except OSError:
-                self.metrics.counter("error.io").increment()
+                self._metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
-                self.metrics.counter("sent").increment(payload.item_count)
+                self._metrics.counter("sent").increment(payload.item_count)
                 return
 
         raise MaxRetriesError(
-            f"ZipkinPublisher exhausted allowance of {self.retry_limit:d} retries."
+            f"ZipkinPublisher exhausted allowance of {self._retry_limit:d} retries."
         )
 
 

@@ -29,9 +29,9 @@ Address = Union[Tuple[str, int], str]
 # pylint: disable=too-many-public-methods
 class GeventServer(StreamServer):
     def __init__(self, processor: TProcessor, *args: Any, **kwargs: Any):
-        self.processor = processor
-        self.transport_factory = TBufferedTransportFactory()
-        self.protocol_factory = THeaderProtocolFactory(
+        self._processor = processor
+        self._transport_factory = TBufferedTransportFactory()
+        self._protocol_factory = THeaderProtocolFactory(
             # allow non-headerprotocol clients to talk with us
             allowed_client_types=[
                 THeaderClientType.HEADERS,
@@ -46,12 +46,12 @@ class GeventServer(StreamServer):
         client = TSocket()
         client.setHandle(client_socket)
 
-        trans = self.transport_factory.getTransport(client)
-        prot = self.protocol_factory.getProtocol(trans)
+        trans = self._transport_factory.getTransport(client)
+        prot = self._protocol_factory.getProtocol(trans)
 
         try:
             while self.started:
-                self.processor.process(prot, prot)
+                self._processor.process(prot, prot)
         except TTransportException:
             pass
         finally:

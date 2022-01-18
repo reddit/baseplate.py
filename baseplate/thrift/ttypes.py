@@ -165,7 +165,7 @@ class IsHealthyRequest(object):
         self,
         probe=None,
     ):
-        self.probe = probe
+        self._probe = probe
 
     def read(self, iprot):
         if (
@@ -182,7 +182,7 @@ class IsHealthyRequest(object):
                 break
             if fid == 1:
                 if ftype == TType.I32:
-                    self.probe = iprot.readI32()
+                    self._probe = iprot.readI32()
                 else:
                     iprot.skip(ftype)
             else:
@@ -195,9 +195,9 @@ class IsHealthyRequest(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin("IsHealthyRequest")
-        if self.probe is not None:
+        if self._probe is not None:
             oprot.writeFieldBegin("probe", TType.I32, 1)
-            oprot.writeI32(self.probe)
+            oprot.writeI32(self._probe)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()

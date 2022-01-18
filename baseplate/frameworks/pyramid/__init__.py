@@ -47,25 +47,25 @@ class SpanFinishingAppIterWrapper:
     """
 
     def __init__(self, span: Span, app_iter: Iterable[bytes]) -> None:
-        self.span = span
-        self.app_iter = iter(app_iter)
+        self._span = span
+        self._app_iter = iter(app_iter)
 
     def __iter__(self) -> Iterator[bytes]:
         return self
 
     def __next__(self) -> bytes:
         try:
-            return next(self.app_iter)
+            return next(self._app_iter)
         except StopIteration:
-            self.span.finish()
+            self._span.finish()
             raise
         except:  # noqa: E722
-            self.span.finish(exc_info=sys.exc_info())
+            self._span.finish(exc_info=sys.exc_info())
             raise
 
     def close(self) -> None:
-        if hasattr(self.app_iter, "close"):
-            self.app_iter.close()  # type: ignore
+        if hasattr(self._app_iter, "close"):
+            self._app_iter.close()  # type: ignore
 
 
 def _make_baseplate_tween(
@@ -151,13 +151,13 @@ class StaticTrustHandler(HeaderTrustHandler):
     """
 
     def __init__(self, trust_headers: bool = False):
-        self.trust_headers = trust_headers
+        self._trust_headers = trust_headers
 
     def should_trust_trace_headers(self, request: Request) -> bool:
-        return self.trust_headers
+        return self._trust_headers
 
     def should_trust_edge_context_payload(self, request: Request) -> bool:
-        return self.trust_headers
+        return self._trust_headers
 
 
 # pylint: disable=too-many-ancestors
@@ -170,14 +170,14 @@ class BaseplateRequest(RequestContext, pyramid.request.Request):
 
 class RequestFactory:
     def __init__(self, baseplate: Baseplate):
-        self.baseplate = baseplate
+        self._baseplate = baseplate
 
     def __call__(self, environ: Dict[str, str]) -> BaseplateRequest:
-        return BaseplateRequest(environ, context_config=self.baseplate._context_config)
+        return BaseplateRequest(environ, context_config=self._baseplate._context_config)
 
     def blank(self, path: str) -> BaseplateRequest:
         environ = webob.request.environ_from_url(path)
-        return BaseplateRequest(environ, context_config=self.baseplate._context_config)
+        return BaseplateRequest(environ, context_config=self._baseplate._context_config)
 
 
 class BaseplateConfigurator:
@@ -197,13 +197,13 @@ class BaseplateConfigurator:
         edge_context_factory: Optional[EdgeContextFactory] = None,
         header_trust_handler: Optional[HeaderTrustHandler] = None,
     ):
-        self.baseplate = baseplate
-        self.edge_context_factory = edge_context_factory
-        self.header_trust_handler = header_trust_handler or StaticTrustHandler(trust_headers=False)
+        self._baseplate = baseplate
+        self._edge_context_factory = edge_context_factory
+        self._header_trust_handler = header_trust_handler or StaticTrustHandler(trust_headers=False)
 
     def _on_application_created(self, event: pyramid.events.ApplicationCreated) -> None:
         # attach the baseplate object to the application the server gets
-        event.app.baseplate = self.baseplate
+        event.app.baseplate = self._baseplate
 
     def _on_new_request(self, event: pyramid.events.ContextFound) -> None:
         request = event.request
@@ -214,13 +214,13 @@ class BaseplateConfigurator:
             return
 
         trace_info = None
-        if self.header_trust_handler.should_trust_trace_headers(request):
+        if self._header_trust_handler.should_trust_trace_headers(request):
             try:
                 trace_info = self._get_trace_info(request.headers)
             except (KeyError, ValueError):
                 pass
 
-        if self.header_trust_handler.should_trust_edge_context_payload(request):
+        if self._header_trust_handler.should_trust_edge_context_payload(request):
             edge_payload: Optional[bytes]
             try:
                 edge_payload_str = request.headers["X-Edge-Request"]
@@ -229,10 +229,10 @@ class BaseplateConfigurator:
                 edge_payload = None
 
             request.raw_edge_context = edge_payload
-            if self.edge_context_factory:
-                request.edge_context = self.edge_context_factory.from_upstream(edge_payload)
+            if self._edge_context_factory:
+                request.edge_context = self._edge_context_factory.from_upstream(edge_payload)
 
-        span = self.baseplate.make_server_span(
+        span = self._baseplate.make_server_span(
             request,
             name=request.matched_route.name,
             trace_info=trace_info,
@@ -256,7 +256,7 @@ class BaseplateConfigurator:
         )
 
     def includeme(self, config: Configurator) -> None:
-        config.set_request_factory(RequestFactory(self.baseplate))
+        config.set_request_factory(RequestFactory(self._baseplate))
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
         config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
 

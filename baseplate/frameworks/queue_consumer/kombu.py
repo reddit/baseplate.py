@@ -66,16 +66,16 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
         serializer: Optional[KombuSerializer] = None,
         **kwargs: Any,
     ):
-        self.connection = connection
-        self.queues = queues
-        self.work_queue = work_queue
-        self.serializer = serializer
-        self.kwargs = kwargs
+        self._connection = connection
+        self._queues = queues
+        self._work_queue = work_queue
+        self._serializer = serializer
+        self._kwargs = kwargs
 
     def get_consumers(self, Consumer: kombu.Consumer, channel: Channel) -> Sequence[kombu.Consumer]:
-        args = dict(queues=self.queues, on_message=self.work_queue.put, **self.kwargs)
-        if self.serializer:
-            args["accept"] = [self.serializer.name]
+        args = dict(queues=self._queues, on_message=self._work_queue.put, **self._kwargs)
+        if self._serializer:
+            args["accept"] = [self._serializer.name]
         return [Consumer(**args)]
 
     def stop(self) -> None:
@@ -92,18 +92,18 @@ class KombuMessageHandler(MessageHandler):
         handler_fn: Handler,
         error_handler_fn: Optional[ErrorHandler] = None,
     ):
-        self.baseplate = baseplate
-        self.name = name
-        self.handler_fn = handler_fn
-        self.error_handler_fn = error_handler_fn
+        self._baseplate = baseplate
+        self._name = name
+        self._handler_fn = handler_fn
+        self._error_handler_fn = error_handler_fn
 
     def handle(self, message: kombu.Message) -> None:
-        context = self.baseplate.make_context_object()
+        context = self._baseplate.make_context_object()
         try:
             # We place the call to ``baseplate.make_server_span`` inside the
             # try/except block because we still want Baseplate to see and
             # handle the error (publish it to error reporting)
-            with self.baseplate.make_server_span(context, self.name) as span:
+            with self._baseplate.make_server_span(context, self._name) as span:
                 delivery_info = message.delivery_info
                 message_body = None
                 message_body = message.decode()
@@ -112,14 +112,14 @@ class KombuMessageHandler(MessageHandler):
                 span.set_tag("amqp.consumer_tag", delivery_info.get("consumer_tag", ""))
                 span.set_tag("amqp.delivery_tag", delivery_info.get("delivery_tag", ""))
                 span.set_tag("amqp.exchange", delivery_info.get("exchange", ""))
-                self.handler_fn(context, message_body, message)
+                self._handler_fn(context, message_body, message)
         except Exception as exc:
             logger.exception(
                 "Unhandled error while trying to process a message.  The message "
                 "has been returned to the queue broker."
             )
-            if self.error_handler_fn:
-                self.error_handler_fn(context, message_body, message, exc)
+            if self._error_handler_fn:
+                self._error_handler_fn(context, message_body, message, exc)
             else:
                 message.requeue()
 
@@ -172,15 +172,15 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             be used to decode the messages you are consuming.
         :param worker_kwargs: A dictionary of keyword arguments used to create queue consumers.
         """
-        self.baseplate = baseplate
-        self.connection = connection
-        self.queues = queues
-        self.name = name
-        self.handler_fn = handler_fn
-        self.error_handler_fn = error_handler_fn
-        self.health_check_fn = health_check_fn
-        self.serializer = serializer
-        self.worker_kwargs = worker_kwargs
+        self._baseplate = baseplate
+        self._connection = connection
+        self._queues = queues
+        self._name = name
+        self._handler_fn = handler_fn
+        self._error_handler_fn = error_handler_fn
+        self._health_check_fn = health_check_fn
+        self._serializer = serializer
+        self._worker_kwargs = worker_kwargs
 
     @classmethod
     def new(
@@ -237,19 +237,19 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         )
 
     def build_pump_worker(self, work_queue: WorkQueue) -> KombuConsumerWorker:
-        kwargs = self.worker_kwargs or {}
+        kwargs = self._worker_kwargs or {}
         return KombuConsumerWorker(
-            connection=self.connection,
-            queues=self.queues,
+            connection=self._connection,
+            queues=self._queues,
             work_queue=work_queue,
-            serializer=self.serializer,
+            serializer=self._serializer,
             **kwargs,
         )
 
     def build_message_handler(self) -> KombuMessageHandler:
         return KombuMessageHandler(
-            self.baseplate, self.name, self.handler_fn, self.error_handler_fn
+            self._baseplate, self._name, self._handler_fn, self._error_handler_fn
         )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
-        return make_simple_healthchecker(listener, callback=self.health_check_fn)
+        return make_simple_healthchecker(listener, callback=self._health_check_fn)

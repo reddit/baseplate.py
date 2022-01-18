@@ -16,9 +16,9 @@ from baseplate.lib import config
 class ServerTimeout(BaseException):
     def __init__(self, span_name: str, timeout_seconds: float, debug: bool):
         super().__init__()
-        self.span_name = span_name
-        self.timeout_seconds = timeout_seconds
-        self.debug = debug
+        self._span_name = span_name
+        self._timeout_seconds = timeout_seconds
+        self._debug = debug
 
 
 class TimeoutBaseplateObserver(BaseplateObserver):
@@ -40,10 +40,10 @@ class TimeoutBaseplateObserver(BaseplateObserver):
         return cls(cfg.server_timeout)
 
     def __init__(self, timeout_config: config.ConfigNamespace):
-        self.config = timeout_config
+        self._config = timeout_config
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
-        timeout = self.config.by_endpoint.get(server_span.name, self.config.default)
+        timeout = self._config.by_endpoint.get(server_span.name, self._config.default)
 
         min_timeout = None
         if timeout is not config.InfiniteTimespan:
@@ -59,17 +59,17 @@ class TimeoutBaseplateObserver(BaseplateObserver):
             pass
 
         if min_timeout:
-            observer = TimeoutServerSpanObserver(server_span, min_timeout, self.config.debug)
+            observer = TimeoutServerSpanObserver(server_span, min_timeout, self._config.debug)
             server_span.register(observer)
 
 
 class TimeoutServerSpanObserver(SpanObserver):
     def __init__(self, span: ServerSpan, timeout_seconds: float, debug: bool):
         exception = ServerTimeout(span.name, timeout_seconds, debug)
-        self.timeout = gevent.Timeout(timeout_seconds, exception)
+        self._timeout = gevent.Timeout(timeout_seconds, exception)
 
     def on_start(self) -> None:
-        self.timeout.start()
+        self._timeout.start()
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.timeout.close()
+        self._timeout.close()

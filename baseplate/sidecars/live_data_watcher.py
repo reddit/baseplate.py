@@ -27,32 +27,32 @@ HEARTBEAT_INTERVAL = 300
 
 class NodeWatcher:
     def __init__(self, dest: str, owner: int, group: int, mode: int):
-        self.dest = dest
-        self.owner = owner
-        self.group = group
-        self.mode = mode
+        self._dest = dest
+        self._owner = owner
+        self._group = group
+        self._mode = mode
 
     def on_change(self, data: bytes, _znode_stat: ZnodeStat) -> None:
         if data is None:
             # the data node does not exist
             try:
-                logger.info("Removing %r; watched node deleted.", self.dest)
-                os.unlink(self.dest)
+                logger.info("Removing %r; watched node deleted.", self._dest)
+                os.unlink(self._dest)
             except OSError as exc:
-                logger.debug("%s: couldn't unlink: %s", self.dest, exc)
+                logger.debug("%s: couldn't unlink: %s", self._dest, exc)
             return
 
         # swap out the file atomically so clients watching the file never catch
         # us mid-write.
-        logger.info("Updating %r", self.dest)
-        Path(self.dest).parent.mkdir(parents=True, exist_ok=True)
-        with open(self.dest + ".tmp", "wb") as tmpfile:
-            if self.owner and self.group:
-                os.fchown(tmpfile.fileno(), self.owner, self.group)
-            os.fchmod(tmpfile.fileno(), self.mode)
+        logger.info("Updating %r", self._dest)
+        Path(self._dest).parent.mkdir(parents=True, exist_ok=True)
+        with open(self._dest + ".tmp", "wb") as tmpfile:
+            if self._owner and self._group:
+                os.fchown(tmpfile.fileno(), self._owner, self._group)
+            os.fchmod(tmpfile.fileno(), self._mode)
 
             tmpfile.write(data)
-        os.rename(self.dest + ".tmp", self.dest)
+        os.rename(self._dest + ".tmp", self._dest)
 
 
 def watch_zookeeper_nodes(zookeeper: KazooClient, nodes: Any) -> NoReturn:

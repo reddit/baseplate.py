@@ -39,12 +39,12 @@ HealthcheckCallback = Callable[[WSGIEnvironment], bool]
 
 class HealthcheckApp:
     def __init__(self, callback: Optional[HealthcheckCallback] = None) -> None:
-        self.callback = callback
+        self._callback = callback
 
     def __call__(self, environ: WSGIEnvironment, start_response: "StartResponse") -> List[bytes]:
         ok = True
-        if self.callback:
-            ok = self.callback(environ)
+        if self._callback:
+            ok = self._callback(environ)
 
         if ok:
             start_response("200 OK", [("Content-Type", "application/json")])
@@ -147,26 +147,26 @@ class QueueConsumer:
     """
 
     def __init__(self, work_queue: queue.Queue, message_handler: MessageHandler):
-        self.id = uuid.uuid4()
-        self.work_queue = work_queue
-        self.message_handler = message_handler
-        self.started = False
-        self.stopped = False
+        self._id = uuid.uuid4()
+        self._work_queue = work_queue
+        self._message_handler = message_handler
+        self._started = False
+        self._stopped = False
         self._queue_timeout = 5
 
     def stop(self) -> None:
         """Signal the QueueConsumer to stop processing."""
-        assert self.started
-        assert not self.stopped
-        self.stopped = True
+        assert self._started
+        assert not self._stopped
+        self._stopped = True
 
     def run(self) -> None:
         """Run the queue consumer until stopped or hit an unhandled Exception."""
-        assert not self.started
-        assert not self.stopped
-        logger.debug("Consumer <%s> starting.", self.id)
-        self.started = True
-        while not self.stopped:
+        assert not self._started
+        assert not self._stopped
+        logger.debug("Consumer <%s> starting.", self._id)
+        self._started = True
+        while not self._stopped:
             try:
                 # We set a timeout so we can periodically check if we should
                 # stop, this way we will actually return if we have recieved a
@@ -174,15 +174,15 @@ class QueueConsumer:
                 # new message.  If we did not do this, we would not be able to
                 # wait for all of our workers to finish before stopping the
                 # server.
-                message = self.work_queue.get(timeout=self._queue_timeout)
+                message = self._work_queue.get(timeout=self._queue_timeout)
             except queue.Empty:
                 pass
             else:
-                # Ensure that if self.message_handler.handle throws a `queue.Empty`
-                # error, that bubbles up and is not treated as though `self.work_queue`
+                # Ensure that if self._message_handler.handle throws a `queue.Empty`
+                # error, that bubbles up and is not treated as though `self._work_queue`
                 # is empty
-                self.message_handler.handle(message)
-        logger.debug("Consumer <%s> stopping.", self.id)
+                self._message_handler.handle(message)
+        logger.debug("Consumer <%s> stopping.", self._id)
 
 
 class QueueConsumerServer:
@@ -195,10 +195,10 @@ class QueueConsumerServer:
         healthcheck_server: StreamServer,
         stop_timeout: datetime.timedelta,
     ):
-        self.pump = pump
-        self.handlers = handlers
-        self.healthcheck_server = healthcheck_server
-        self.stop_timeout = stop_timeout
+        self._pump = pump
+        self._handlers = handlers
+        self._healthcheck_server = healthcheck_server
+        self._stop_timeout = stop_timeout
 
         def watcher(fn: Callable) -> Callable:
             """Terminates the server (gracefully) if `fn` raises an Exception.
@@ -217,10 +217,10 @@ class QueueConsumerServer:
 
             return _run_and_terminate
 
-        self.pump_thread = Thread(target=watcher(self.pump.run), daemon=True)
-        self.threads = [Thread(target=watcher(handler.run)) for handler in self.handlers]
-        self.started = False
-        self.stopped = False
+        self._pump_thread = Thread(target=watcher(self._pump.run), daemon=True)
+        self._threads = [Thread(target=watcher(handler.run)) for handler in self._handlers]
+        self._started = False
+        self._stopped = False
 
     @classmethod
     def new(
@@ -251,8 +251,8 @@ class QueueConsumerServer:
 
     def _terminate(self) -> None:
         """Send a SIGTERM signal to ourselves so baseplate can call `stop`."""
-        assert self.started
-        if not self.stopped:
+        assert self._started
+        if not self._stopped:
             os.kill(os.getpid(), signal.SIGTERM)
 
     def start(self) -> None:
@@ -263,17 +263,17 @@ class QueueConsumerServer:
         Should only be called once and should not be called after the server is
         stopped, will raise an AssertionError in either of those cases.
         """
-        assert not self.started
-        assert not self.stopped
+        assert not self._started
+        assert not self._stopped
         logger.debug("Starting server.")
-        self.started = True
+        self._started = True
         logger.debug("Starting pump thread.")
-        self.pump_thread.start()
+        self._pump_thread.start()
         logger.debug("Starting message handler threads.")
-        for thread in self.threads:
+        for thread in self._threads:
             thread.start()
         logger.debug("Starting healthcheck server.")
-        self.healthcheck_server.start()
+        self._healthcheck_server.start()
         logger.debug("Server started.")
 
     def stop(self) -> None:
@@ -286,27 +286,27 @@ class QueueConsumerServer:
         Should only be called once and should not be before the server is
         started, will raise an AssertionError in either of those cases.
         """
-        assert self.started
-        assert not self.stopped
+        assert self._started
+        assert not self._stopped
         logger.debug("Stopping server.")
-        self.stopped = True
+        self._stopped = True
         # Stop the pump first so we stop consuming messages from the message
         # queue
         logger.debug("Stopping pump thread.")
-        self.pump.stop()
+        self._pump.stop()
         # It's important to call `handler.stop()` before calling `join` on the
         # handler threads, otherwise we'll be waiting for threads that have not
         # been instructed to stop.
         logger.debug("Stopping message handler threads.")
-        for handler in self.handlers:
+        for handler in self._handlers:
             handler.stop()
-        retry_policy = RetryPolicy.new(budget=self.stop_timeout.total_seconds())
+        retry_policy = RetryPolicy.new(budget=self._stop_timeout.total_seconds())
         logger.debug("Waiting for message handler threads to drain.")
-        for time_remaining, thread in zip(retry_policy, self.threads):
+        for time_remaining, thread in zip(retry_policy, self._threads):
             thread.join(timeout=time_remaining)
         # Stop the healthcheck server last
         logger.debug("Stopping healthcheck server.")
-        self.healthcheck_server.stop()
+        self._healthcheck_server.stop()
         logger.debug("Server stopped.")
 
 

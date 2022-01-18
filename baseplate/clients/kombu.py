@@ -118,20 +118,20 @@ class KombuThriftSerializer(KombuSerializer[T]):  # pylint: disable=unsubscripta
         thrift_class: Type[T],
         protocol_factory: TProtocolFactory = TBinaryProtocolAcceleratedFactory(),
     ):
-        self.thrift_class = thrift_class
-        self.factory = protocol_factory
+        self._thrift_class = thrift_class
+        self._factory = protocol_factory
 
     @property
     def name(self) -> str:
-        return f"thrift-{self.thrift_class.__name__}"
+        return f"thrift-{self._thrift_class.__name__}"
 
     def serialize(self, obj: T) -> bytes:
-        if not isinstance(obj, self.thrift_class):
-            raise TypeError(f"object to serialize must be of {self.thrift_class.__name__} type")
-        return TSerialization.serialize(obj, self.factory)
+        if not isinstance(obj, self._thrift_class):
+            raise TypeError(f"object to serialize must be of {self._thrift_class.__name__} type")
+        return TSerialization.serialize(obj, self._factory)
 
     def deserialize(self, message: bytes) -> T:
-        return TSerialization.deserialize(self.thrift_class(), message, self.factory)
+        return TSerialization.deserialize(self._thrift_class(), message, self._factory)
 
 
 def register_serializer(serializer: KombuSerializer) -> None:
@@ -171,15 +171,17 @@ class KombuProducer(config.Parser):
         serializer: Optional[KombuSerializer] = None,
         secrets: Optional[SecretsStore] = None,
     ):
-        self.max_connections = max_connections
-        self.serializer = serializer
-        self.secrets = secrets
+        self._max_connections = max_connections
+        self._serializer = serializer
+        self._secrets = secrets
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "KombuProducerContextFactory":
-        connection = connection_from_config(raw_config, prefix=f"{key_path}.", secrets=self.secrets)
+        connection = connection_from_config(
+            raw_config, prefix=f"{key_path}.", secrets=self._secrets
+        )
         exchange = exchange_from_config(raw_config, prefix=f"{key_path}.")
         return KombuProducerContextFactory(
-            connection, exchange, max_connections=self.max_connections, serializer=self.serializer
+            connection, exchange, max_connections=self._max_connections, serializer=self._serializer
         )
 
 
@@ -205,14 +207,19 @@ class KombuProducerContextFactory(ContextFactory):
         max_connections: Optional[int] = None,
         serializer: Optional[KombuSerializer] = None,
     ):
-        self.connection = connection
-        self.exchange = exchange
-        self.producers = Producers(limit=max_connections)
-        self.serializer = serializer
+        self._connection = connection
+        self._exchange = exchange
+        self._producers = Producers(limit=max_connections)
+        self._serializer = serializer
 
     def make_object_for_context(self, name: str, span: Span) -> "_KombuProducer":
         return _KombuProducer(
-            name, span, self.connection, self.exchange, self.producers, serializer=self.serializer
+            name,
+            span,
+            self._connection,
+            self._exchange,
+            self._producers,
+            serializer=self._serializer,
         )
 
 
@@ -226,27 +233,27 @@ class _KombuProducer:
         producers: Producers,
         serializer: Optional[KombuSerializer] = None,
     ):
-        self.name = name
-        self.span = span
-        self.connection = connection
-        self.exchange = exchange
-        self.producers = producers
-        self.serializer = serializer
+        self._name = name
+        self._span = span
+        self._connection = connection
+        self._exchange = exchange
+        self._producers = producers
+        self._serializer = serializer
 
     def publish(self, body: Any, routing_key: Optional[str] = None, **kwargs: Any) -> Any:
-        if self.serializer:
-            kwargs.setdefault("serializer", self.serializer.name)
+        if self._serializer:
+            kwargs.setdefault("serializer", self._serializer.name)
 
-        trace_name = f"{self.name}.publish"
-        child_span = self.span.make_child(trace_name)
+        trace_name = f"{self._name}.publish"
+        child_span = self._span.make_child(trace_name)
 
         child_span.set_tag("kind", "producer")
         if routing_key:
             child_span.set_tag("message_bus.destination", routing_key)
 
         with child_span:
-            producer_pool = self.producers[self.connection]
+            producer_pool = self._producers[self._connection]
             with producer_pool.acquire(block=True) as producer:
                 return producer.publish(
-                    body=body, routing_key=routing_key, exchange=self.exchange, **kwargs
+                    body=body, routing_key=routing_key, exchange=self._exchange, **kwargs
                 )

@@ -135,26 +135,26 @@ class HotKeyTracker:
         track_reads_sample_rate: float,
         track_writes_sample_rate: float,
     ):
-        self.redis_client = redis_client
-        self.track_reads_sample_rate = track_reads_sample_rate
-        self.track_writes_sample_rate = track_writes_sample_rate
+        self._redis_client = redis_client
+        self._track_reads_sample_rate = track_reads_sample_rate
+        self._track_writes_sample_rate = track_writes_sample_rate
 
-        self.reads_sorted_set_name = "baseplate-hot-key-tracker-reads"
-        self.writes_sorted_set_name = "baseplate-hot-key-tracker-writes"
+        self._reads_sorted_set_name = "baseplate-hot-key-tracker-reads"
+        self._writes_sorted_set_name = "baseplate-hot-key-tracker-writes"
 
     def should_track_key_reads(self) -> bool:
-        return randomizer.random() < self.track_reads_sample_rate
+        return randomizer.random() < self._track_reads_sample_rate
 
     def should_track_key_writes(self) -> bool:
-        return randomizer.random() < self.track_writes_sample_rate
+        return randomizer.random() < self._track_writes_sample_rate
 
     def increment_keys_read_counter(self, key_list: List[str], ignore_errors: bool = True) -> None:
-        self._increment_hot_key_counter(key_list, self.reads_sorted_set_name, ignore_errors)
+        self._increment_hot_key_counter(key_list, self._reads_sorted_set_name, ignore_errors)
 
     def increment_keys_written_counter(
         self, key_list: List[str], ignore_errors: bool = True
     ) -> None:
-        self._increment_hot_key_counter(key_list, self.writes_sorted_set_name, ignore_errors)
+        self._increment_hot_key_counter(key_list, self._writes_sorted_set_name, ignore_errors)
 
     def _increment_hot_key_counter(
         self, key_list: List[str], set_name: str, ignore_errors: bool = True
@@ -163,7 +163,7 @@ class HotKeyTracker:
             return
 
         try:
-            with self.redis_client.pipeline(set_name) as pipe:
+            with self._redis_client.pipeline(set_name) as pipe:
                 for key in key_list:
                     pipe.zincrby(set_name, 1, key)
                 # Reset the TTL for the sorted set
@@ -327,10 +327,10 @@ class ClusterRedisClient(config.Parser):
     """
 
     def __init__(self, **kwargs: Any):
-        self.kwargs = kwargs
+        self._kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "ClusterRedisContextFactory":
-        connection_pool = cluster_pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
+        connection_pool = cluster_pool_from_config(raw_config, f"{key_path}.", **self._kwargs)
         return ClusterRedisContextFactory(connection_pool)
 
 
@@ -347,14 +347,14 @@ class ClusterRedisContextFactory(ContextFactory):
     """
 
     def __init__(self, connection_pool: rediscluster.ClusterConnectionPool):
-        self.connection_pool = connection_pool
+        self._connection_pool = connection_pool
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
-        if not isinstance(self.connection_pool, rediscluster.ClusterBlockingConnectionPool):
+        if not isinstance(self._connection_pool, rediscluster.ClusterBlockingConnectionPool):
             return
 
-        size = self.connection_pool.max_connections
-        open_connections = len(self.connection_pool._connections)
+        size = self._connection_pool.max_connections
+        open_connections = len(self._connection_pool._connections)
 
         batch.gauge("pool.size").replace(size)
         batch.gauge("pool.open_connections").replace(open_connections)
@@ -363,9 +363,9 @@ class ClusterRedisContextFactory(ContextFactory):
         return MonitoredClusterRedisConnection(
             name,
             span,
-            self.connection_pool,
-            getattr(self.connection_pool, "track_key_reads_sample_rate", 0),
-            getattr(self.connection_pool, "track_key_writes_sample_rate", 0),
+            self._connection_pool,
+            getattr(self._connection_pool, "track_key_reads_sample_rate", 0),
+            getattr(self._connection_pool, "track_key_writes_sample_rate", 0),
         )
 
 
@@ -387,12 +387,10 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         track_key_reads_sample_rate: float = 0,
         track_key_writes_sample_rate: float = 0,
     ):
-        self.context_name = context_name
-        self.server_span = server_span
-        self.track_key_reads_sample_rate = track_key_reads_sample_rate
-        self.track_key_writes_sample_rate = track_key_writes_sample_rate
+        self._context_name = context_name
+        self._server_span = server_span
         self.hot_key_tracker = HotKeyTracker(
-            self, self.track_key_reads_sample_rate, self.track_key_writes_sample_rate
+            self, track_key_reads_sample_rate, track_key_writes_sample_rate
         )
 
         super().__init__(
@@ -403,9 +401,9 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         command = args[0]
-        trace_name = f"{self.context_name}.{command}"
+        trace_name = f"{self._context_name}.{command}"
 
-        with self.server_span.make_child(trace_name):
+        with self._server_span.make_child(trace_name):
             res = super().execute_command(command, *args[1:], **kwargs)
 
         self.hot_key_tracker.maybe_track_key_usage(list(args))
@@ -422,8 +420,8 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         :param name: The name to attach to diagnostics for this pipeline.
         """
         return MonitoredClusterRedisPipeline(
-            f"{self.context_name}.pipeline_{name}",
-            self.server_span,
+            f"{self._context_name}.pipeline_{name}",
+            self._server_span,
             self.connection_pool,
             self.response_callbacks,
             read_from_replicas=self.read_from_replicas,
@@ -447,20 +445,20 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
         hot_key_tracker: Optional[HotKeyTracker],
         **kwargs: Any,
     ):
-        self.trace_name = trace_name
-        self.server_span = server_span
-        self.hot_key_tracker = hot_key_tracker
+        self._trace_name = trace_name
+        self._server_span = server_span
+        self._hot_key_tracker = hot_key_tracker
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         res = super().execute_command(*args, **kwargs)
 
-        if self.hot_key_tracker is not None:
-            self.hot_key_tracker.maybe_track_key_usage(list(args))
+        if self._hot_key_tracker is not None:
+            self._hot_key_tracker.maybe_track_key_usage(list(args))
 
         return res
 
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
-        with self.server_span.make_child(self.trace_name):
+        with self._server_span.make_child(self._trace_name):
             return super().execute(**kwargs)

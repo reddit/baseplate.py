@@ -110,24 +110,24 @@ class SentryBaseplateObserver(BaseplateObserver):
 
 class _SentryServerSpanObserver(ServerSpanObserver):
     def __init__(self, sentry_hub: sentry_sdk.Hub, server_span: Span):
-        self.sentry_hub = sentry_hub
-        self.scope_manager = self.sentry_hub.push_scope()
-        self.scope = self.scope_manager.__enter__()
-        self.server_span = server_span
+        self._sentry_hub = sentry_hub
+        self._scope_manager = self._sentry_hub.push_scope()
+        self._scope = self._scope_manager.__enter__()
+        self._server_span = server_span
 
     def on_start(self) -> None:
-        self.scope.set_tag("trace_id", self.server_span.trace_id)
+        self._scope.set_tag("trace_id", self._server_span.trace_id)
 
     def on_set_tag(self, key: str, value: Any) -> None:
-        self.scope.set_tag(key, value)
+        self._scope.set_tag(key, value)
 
     def on_log(self, name: str, payload: Any) -> None:
-        self.sentry_hub.add_breadcrumb({"category": name, "message": str(payload)})
+        self._sentry_hub.add_breadcrumb({"category": name, "message": str(payload)})
 
     def on_finish(self, exc_info: Optional[_ExcInfo] = None) -> None:
         if exc_info is not None:
-            self.sentry_hub.capture_exception(error=exc_info)
-        self.scope_manager.__exit__(None, None, None)
+            self._sentry_hub.capture_exception(error=exc_info)
+        self._scope_manager.__exit__(None, None, None)
 
 
 class _SentryUnhandledErrorReporter:
@@ -149,8 +149,8 @@ class _SentryUnhandledErrorReporter:
         gevent_hub.print_exception = gevent_hub.print_exception.original_print_exception
 
     def __init__(self, hub: GeventHub):
-        self.original_print_exception = getattr(hub, "print_exception")
-        self.logger = logging.getLogger(__name__)
+        self._original_print_exception = getattr(hub, "print_exception")
+        self._logger = logging.getLogger(__name__)
 
     def __call__(
         self,
@@ -162,11 +162,11 @@ class _SentryUnhandledErrorReporter:
         sentry_sdk.capture_exception((exc_type, value, tb))
 
         if value and isinstance(value, ServerTimeout):
-            self.logger.warning(
+            self._logger.warning(
                 "Server timed out processing for %r after %0.2f seconds",
                 value.span_name,
                 value.timeout_seconds,
                 exc_info=(exc_type, value, tb) if value.debug else None,  # type: ignore
             )
         else:
-            self.original_print_exception(context, exc_type, value, tb)
+            self._original_print_exception(context, exc_type, value, tb)

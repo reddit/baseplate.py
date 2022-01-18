@@ -116,14 +116,14 @@ class SQLAlchemySession(config.Parser):
     """
 
     def __init__(self, secrets: Optional[SecretsStore] = None, **kwargs: Any):
-        self.secrets = secrets
-        self.kwargs = kwargs
+        self._secrets = secrets
+        self._kwargs = kwargs
 
     def parse(
         self, key_path: str, raw_config: config.RawConfig
     ) -> "SQLAlchemySessionContextFactory":
         engine = engine_from_config(
-            raw_config, secrets=self.secrets, prefix=f"{key_path}.", **self.kwargs
+            raw_config, secrets=self._secrets, prefix=f"{key_path}.", **self._kwargs
         )
         return SQLAlchemySessionContextFactory(engine)
 
@@ -156,13 +156,13 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     """
 
     def __init__(self, engine: Engine):
-        self.engine = engine.execution_options()
-        event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
-        event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
-        event.listen(self.engine, "handle_error", self.on_error)
+        self._engine = engine.execution_options()
+        event.listen(self._engine, "before_cursor_execute", self.on_before_execute, retval=True)
+        event.listen(self._engine, "after_cursor_execute", self.on_after_execute)
+        event.listen(self._engine, "handle_error", self.on_error)
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
-        pool = self.engine.pool
+        pool = self._engine.pool
         if not isinstance(pool, QueuePool):
             return
 
@@ -172,8 +172,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         batch.gauge("pool.overflow").replace(max(pool.overflow(), 0))
 
     def make_object_for_context(self, name: str, span: Span) -> Engine:
-        engine = self.engine.execution_options(context_name=name, server_span=span)
-        return engine
+        return self._engine.execution_options(context_name=name, server_span=span)
 
     # pylint: disable=unused-argument, too-many-arguments
     def on_before_execute(
@@ -259,7 +258,7 @@ class SQLAlchemySessionSpanObserver(SpanObserver):
     """Automatically close the session at the end of each request."""
 
     def __init__(self, session: Session):
-        self.session = session
+        self._session = session
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.session.close()
+        self._session.close()

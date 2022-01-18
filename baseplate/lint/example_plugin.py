@@ -37,7 +37,7 @@ class NoReassignmentChecker(BaseChecker):
 
     def __init__(self, linter: PyLinter = None):
         super().__init__(linter)
-        self.variables: set = set()
+        self._variables: set = set()
 
     # The following two methods are called for us by pylint/astroid
     # The linter walks through the tree, visiting and leaving desired nodes
@@ -47,12 +47,12 @@ class NoReassignmentChecker(BaseChecker):
     # Visit the Assign node: https://astroid.readthedocs.io/en/latest/api/astroid.nodes.html#astroid.nodes.Assign
     def visit_assign(self, node: nodes) -> None:
         for variable in node.targets:
-            if variable.name not in self.variables:
-                self.variables.add(variable.name)
+            if variable.name not in self._variables:
+                self._variables.add(variable.name)
             else:
                 self.add_message("non-unique-variable", node=node)
 
     # Leave the FunctionDef node: https://astroid.readthedocs.io/en/latest/api/astroid.nodes.html#astroid.nodes.FunctionDef
     def leave_functiondef(self, node: nodes) -> nodes:
-        self.variables = set()
+        self._variables = set()
         return node

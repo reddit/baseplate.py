@@ -40,15 +40,15 @@ class _Reporter:
 
 class _OpenConnectionsReporter(_Reporter):
     def __init__(self, pool: Pool):
-        self.pool = pool
+        self._pool = pool
 
     def report(self, batch: metrics.Batch) -> None:
-        batch.gauge("open_connections").replace(len(self.pool.greenlets))
+        batch.gauge("open_connections").replace(len(self._pool.greenlets))
 
 
 class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
     def __init__(self) -> None:
-        self.live_requests: Dict[str, float] = {}
+        self._live_requests: Dict[str, float] = {}
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         observer = _ActiveRequestsServerSpanObserver(self, server_span.trace_id)
@@ -58,25 +58,25 @@ class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
         threshold = time.time() - MAX_REQUEST_AGE
         stale_requests = [
             trace_id
-            for trace_id, start_time in self.live_requests.items()
+            for trace_id, start_time in self._live_requests.items()
             if start_time < threshold
         ]
         for stale_request_id in stale_requests:
-            self.live_requests.pop(stale_request_id, None)
+            self._live_requests.pop(stale_request_id, None)
 
-        batch.gauge("active_requests").replace(len(self.live_requests))
+        batch.gauge("active_requests").replace(len(self._live_requests))
 
 
 class _ActiveRequestsServerSpanObserver(ServerSpanObserver):
     def __init__(self, reporter: _ActiveRequestsObserver, trace_id: str):
-        self.reporter = reporter
-        self.trace_id = trace_id
+        self._reporter = reporter
+        self._trace_id = trace_id
 
     def on_start(self) -> None:
-        self.reporter.live_requests[self.trace_id] = time.time()
+        self._reporter.live_requests[self._trace_id] = time.time()
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.reporter.live_requests.pop(self.trace_id, None)
+        self._reporter.live_requests.pop(self._trace_id, None)
 
 
 class _BlockedGeventHubReporter(_Reporter):
@@ -86,18 +86,18 @@ class _BlockedGeventHubReporter(_Reporter):
         gevent.config.max_blocking_time = max_blocking_time
         gevent.get_hub().start_periodic_monitoring_thread()
 
-        self.times_blocked: List[int] = []
+        self._times_blocked: List[int] = []
 
     def _on_gevent_event(self, event: Any) -> None:
         if isinstance(event, gevent.events.EventLoopBlocked):
-            self.times_blocked.append(event.blocking_time)
+            self._times_blocked.append(event.blocking_time)
 
     def report(self, batch: metrics.Batch) -> None:
         # gevent events come in on another thread. we're relying on the GIL to
         # keep us from shenanigans here and we swap things out semi-safely to
         # ensure minimal lost data.
-        times_blocked = self.times_blocked
-        self.times_blocked = []
+        times_blocked = self._times_blocked
+        self._times_blocked = []
 
         for time_blocked in times_blocked:
             batch.timer("hub_blocked").send(time_blocked)
@@ -115,21 +115,21 @@ class _GCTimingReporter(_Reporter):
     def __init__(self) -> None:
         gc.callbacks.append(self._on_gc_event)
 
-        self.gc_durations: List[float] = []
-        self.current_gc_start: Optional[float] = None
+        self._gc_durations: List[float] = []
+        self._current_gc_start: Optional[float] = None
 
     def _on_gc_event(self, phase: str, _info: Dict[str, Any]) -> None:
         if phase == "start":
-            self.current_gc_start = time.time()
+            self._current_gc_start = time.time()
         elif phase == "stop":
-            if self.current_gc_start:
-                elapsed = time.time() - self.current_gc_start
-                self.current_gc_start = None
-                self.gc_durations.append(elapsed)
+            if self._current_gc_start:
+                elapsed = time.time() - self._current_gc_start
+                self._current_gc_start = None
+                self._gc_durations.append(elapsed)
 
     def report(self, batch: metrics.Batch) -> None:
-        gc_durations = self.gc_durations
-        self.gc_durations = []
+        gc_durations = self._gc_durations
+        self._gc_durations = []
 
         for gc_duration in gc_durations:
             batch.timer("gc.elapsed").send(gc_duration)
@@ -137,10 +137,10 @@ class _GCTimingReporter(_Reporter):
 
 class _BaseplateReporter(_Reporter):
     def __init__(self, reporters: Dict[str, Callable[[Any], None]]):
-        self.reporters = reporters
+        self._reporters = reporters
 
     def report(self, batch: metrics.Batch) -> None:
-        for name, reporter in self.reporters.items():
+        for name, reporter in self._reporters.items():
             try:
                 batch.base_tags["client"] = name
                 reporter(batch)
@@ -153,7 +153,7 @@ class _BaseplateReporter(_Reporter):
 class _RefCycleReporter(_Reporter):
     def __init__(self, root: str):
         assert os.path.isdir(root), f"{root} is not a directory"
-        self.root = root
+        self._root = root
 
         # test that this is available up front
         import objgraph
@@ -173,7 +173,7 @@ class _RefCycleReporter(_Reporter):
 
             logger.warning("%d objects garbage collected. Writing objgraph...", len(gc.garbage))
             objgraph.show_backrefs(
-                gc.garbage, filename=f"{self.root}/backrefs-{int(time.time())}.png"
+                gc.garbage, filename=f"{self._root}/backrefs-{int(time.time())}.png"
             )
 
             # clean out the garbage altogether

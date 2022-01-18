@@ -36,10 +36,10 @@ class FakeFileWatcher(FileWatcher):
 
     # pylint: disable=super-init-not-called
     def __init__(self, data: Union[T, Type[_NOT_LOADED]] = _NOT_LOADED, mtime: float = 1234):
-        self.data = data
-        self.mtime = mtime
+        self._data = data
+        self._mtime = mtime
 
     def get_data_and_mtime(self) -> Tuple[T, float]:
-        if self.data is _NOT_LOADED:
+        if self._data is _NOT_LOADED:
             raise WatchedFileNotAvailableError("/fake-file-watcher", Exception("no value set"))
-        return typing.cast(T, self.data), self.mtime
+        return typing.cast(T, self._data), self._mtime

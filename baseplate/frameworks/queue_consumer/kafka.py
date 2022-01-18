@@ -49,23 +49,23 @@ class KafkaConsumerWorker(PumpWorker):
         work_queue: WorkQueue,
         batch_size: int = 1,
     ):
-        self.baseplate = baseplate
-        self.name = name
-        self.consumer = consumer
-        self.work_queue = work_queue
-        self.batch_size = batch_size
+        self._baseplate = baseplate
+        self._name = name
+        self._consumer = consumer
+        self._work_queue = work_queue
+        self._batch_size = batch_size
 
-        self.started = False
-        self.stopped = False
+        self._started = False
+        self._stopped = False
 
     def run(self) -> None:
         logger.debug("Starting KafkaConsumerWorker.")
-        self.started = True
-        while not self.stopped:
-            context = self.baseplate.make_context_object()
-            with self.baseplate.make_server_span(context, f"{self.name}.pump") as span:
+        self._started = True
+        while not self._stopped:
+            context = self._baseplate.make_context_object()
+            with self._baseplate.make_server_span(context, f"{self._name}.pump") as span:
                 with span.make_child("kafka.consume"):
-                    messages = self.consumer.consume(num_messages=self.batch_size, timeout=0)
+                    messages = self._consumer.consume(num_messages=self._batch_size, timeout=0)
 
                 if not messages:
                     logger.debug("waited 1s and received no messages, waiting again")
@@ -79,14 +79,14 @@ class KafkaConsumerWorker(PumpWorker):
 
                 with span.make_child("kafka.work_queue_put"):
                     for message in messages:
-                        self.work_queue.put(message)
+                        self._work_queue.put(message)
 
     def stop(self) -> None:
         # stop consuming, but leave the consumer instance intact. if we
         # close the consumer before the message handler is done it won't be able
         # to commit offsets
         logger.debug("Stopping KafkaConsumerWorker.")
-        self.stopped = True
+        self._stopped = True
 
 
 class KafkaMessageHandler(MessageHandler):
@@ -100,19 +100,19 @@ class KafkaMessageHandler(MessageHandler):
         message_unpack_fn: KafkaMessageDeserializer,
         on_success_fn: Optional[Handler] = None,
     ):
-        self.baseplate = baseplate
-        self.name = name
-        self.handler_fn = handler_fn
-        self.message_unpack_fn = message_unpack_fn
-        self.on_success_fn = on_success_fn
+        self._baseplate = baseplate
+        self._name = name
+        self._handler_fn = handler_fn
+        self._message_unpack_fn = message_unpack_fn
+        self._on_success_fn = on_success_fn
 
     def handle(self, message: confluent_kafka.Message) -> None:
-        context = self.baseplate.make_context_object()
+        context = self._baseplate.make_context_object()
         try:
             # We place the call to ``baseplate.make_server_span`` inside the
             # try/except block because we still want Baseplate to see and
             # handle the error (publish it to error reporting)
-            with self.baseplate.make_server_span(context, f"{self.name}.handler") as span:
+            with self._baseplate.make_server_span(context, f"{self._name}.handler") as span:
                 error = message.error()
                 if error:
                     # this isn't a real message, but is an error from Kafka
@@ -132,10 +132,10 @@ class KafkaMessageHandler(MessageHandler):
                 blob: bytes = message.value()
 
                 try:
-                    data = self.message_unpack_fn(blob)
+                    data = self._message_unpack_fn(blob)
                 except Exception:
                     logger.error("skipping invalid message")
-                    context.span.incr_tag(f"{self.name}.{topic}.invalid_message")
+                    context.span.incr_tag(f"{self._name}.{topic}.invalid_message")
                     return
 
                 try:
@@ -148,15 +148,15 @@ class KafkaMessageHandler(MessageHandler):
                     # kafka publishers may not
                     message_latency = None
 
-                self.handler_fn(context, data, message)
+                self._handler_fn(context, data, message)
 
-                if self.on_success_fn:
-                    self.on_success_fn(context, data, message)
+                if self._on_success_fn:
+                    self._on_success_fn(context, data, message)
 
                 if message_latency is not None:
-                    context.metrics.timer(f"{self.name}.{topic}.latency").send(message_latency)
+                    context.metrics.timer(f"{self._name}.{topic}.latency").send(message_latency)
 
-                context.metrics.gauge(f"{self.name}.{topic}.offset.{partition}").replace(offset)
+                context.metrics.gauge(f"{self._name}.{topic}.offset.{partition}").replace(offset)
         except Exception:
             # let this exception crash the server so we'll stop processing messages
             # and won't commit offsets. when the server restarts it will get
@@ -193,13 +193,13 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             function that can be used to customize your health check.
 
         """
-        self.name = name
-        self.baseplate = baseplate
-        self.consumer = consumer
-        self.handler_fn = handler_fn
-        self.kafka_consume_batch_size = kafka_consume_batch_size
-        self.message_unpack_fn = message_unpack_fn
-        self.health_check_fn = health_check_fn
+        self._name = name
+        self._baseplate = baseplate
+        self._consumer = consumer
+        self._handler_fn = handler_fn
+        self._kafka_consume_batch_size = kafka_consume_batch_size
+        self._message_unpack_fn = message_unpack_fn
+        self._health_check_fn = health_check_fn
 
     @classmethod
     def new(
@@ -307,20 +307,20 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
 
     def build_pump_worker(self, work_queue: WorkQueue) -> KafkaConsumerWorker:
         return KafkaConsumerWorker(
-            baseplate=self.baseplate,
-            name=self.name,
-            consumer=self.consumer,
+            baseplate=self._baseplate,
+            name=self._name,
+            consumer=self._consumer,
             work_queue=work_queue,
-            batch_size=self.kafka_consume_batch_size,
+            batch_size=self._kafka_consume_batch_size,
         )
 
     def build_message_handler(self) -> KafkaMessageHandler:
         return KafkaMessageHandler(
-            self.baseplate, self.name, self.handler_fn, self.message_unpack_fn
+            self._baseplate, self._name, self._handler_fn, self._message_unpack_fn
         )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
-        return make_simple_healthchecker(listener, callback=self.health_check_fn)
+        return make_simple_healthchecker(listener, callback=self._health_check_fn)
 
 
 class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):

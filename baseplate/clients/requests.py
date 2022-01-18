@@ -108,9 +108,9 @@ class BaseplateSession:
     """
 
     def __init__(self, adapter: HTTPAdapter, name: str, span: Span) -> None:
-        self.adapter = adapter
-        self.name = name
-        self.span = span
+        self._adapter = adapter
+        self._name = name
+        self._span = span
 
     def delete(self, url: str, **kwargs: Any) -> Response:
         """Send a DELETE request.
@@ -200,7 +200,7 @@ class BaseplateSession:
 
     def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
         """Send a :py:class:`~requests.PreparedRequest`."""
-        with self.span.make_child(f"{self.name}.request") as span:
+        with self._span.make_child(f"{self._name}.request") as span:
             span.set_tag("http.method", request.method)
             span.set_tag("http.url", request.url)
 
@@ -212,8 +212,8 @@ class BaseplateSession:
             #
             # note: we're still getting connection pooling because we're re-using the adapter.
             session = Session()
-            session.mount("http://", self.adapter)
-            session.mount("https://", self.adapter)
+            session.mount("http://", self._adapter)
+            session.mount("https://", self._adapter)
             response = session.send(request, **kwargs)
 
             span.set_tag("http.status_code", response.status_code)
@@ -261,11 +261,11 @@ class RequestsContextFactory(ContextFactory):
     """
 
     def __init__(self, adapter: HTTPAdapter, session_cls: Type[BaseplateSession]) -> None:
-        self.adapter = adapter
-        self.session_cls = session_cls
+        self._adapter = adapter
+        self._session_cls = session_cls
 
     def make_object_for_context(self, name: str, span: Span) -> BaseplateSession:
-        return self.session_cls(self.adapter, name, span)
+        return self._session_cls(self._adapter, name, span)
 
 
 class InternalRequestsClient(config.Parser):
@@ -291,9 +291,9 @@ class InternalRequestsClient(config.Parser):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        self.kwargs = kwargs
+        self._kwargs = kwargs
 
-        if "validator" in kwargs:
+        if "validator" in _kwargs:
             raise Exception("validator is hard-coded for internal clients")
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> RequestsContextFactory:
@@ -315,7 +315,7 @@ class InternalRequestsClient(config.Parser):
         )
 
         adapter = http_adapter_from_config(
-            raw_config, prefix=f"{key_path}.", validator=validator, **self.kwargs
+            raw_config, prefix=f"{key_path}.", validator=validator, **self._kwargs
         )
         return RequestsContextFactory(adapter, session_cls=InternalBaseplateSession)
 
@@ -335,8 +335,8 @@ class ExternalRequestsClient(config.Parser):
     """
 
     def __init__(self, **kwargs: Any) -> None:
-        self.kwargs = kwargs
+        self._kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> RequestsContextFactory:
-        adapter = http_adapter_from_config(raw_config, f"{key_path}.", **self.kwargs)
+        adapter = http_adapter_from_config(raw_config, f"{key_path}.", **self._kwargs)
         return RequestsContextFactory(adapter, session_cls=BaseplateSession)

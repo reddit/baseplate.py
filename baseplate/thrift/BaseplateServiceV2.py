@@ -180,7 +180,7 @@ class is_healthy_args(object):
         self,
         request=None,
     ):
-        self.request = request
+        self._request = request
 
     def read(self, iprot):
         if (
@@ -197,8 +197,8 @@ class is_healthy_args(object):
                 break
             if fid == 1:
                 if ftype == TType.STRUCT:
-                    self.request = IsHealthyRequest()
-                    self.request.read(iprot)
+                    self._request = IsHealthyRequest()
+                    self._request.read(iprot)
                 else:
                     iprot.skip(ftype)
             else:
@@ -211,9 +211,9 @@ class is_healthy_args(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin("is_healthy_args")
-        if self.request is not None:
+        if self._request is not None:
             oprot.writeFieldBegin("request", TType.STRUCT, 1)
-            self.request.write(oprot)
+            self._request.write(oprot)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -265,7 +265,7 @@ class is_healthy_result(object):
         self,
         success=None,
     ):
-        self.success = success
+        self._success = success
 
     def read(self, iprot):
         if (
@@ -282,7 +282,7 @@ class is_healthy_result(object):
                 break
             if fid == 0:
                 if ftype == TType.BOOL:
-                    self.success = iprot.readBool()
+                    self._success = iprot.readBool()
                 else:
                     iprot.skip(ftype)
             else:
@@ -295,9 +295,9 @@ class is_healthy_result(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin("is_healthy_result")
-        if self.success is not None:
+        if self._success is not None:
             oprot.writeFieldBegin("success", TType.BOOL, 0)
-            oprot.writeBool(self.success)
+            oprot.writeBool(self._success)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
