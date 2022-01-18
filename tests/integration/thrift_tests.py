@@ -8,6 +8,8 @@ from unittest import mock
 import gevent.monkey
 import pytest
 
+from gevent.util import _FailedToSwitch
+from gevent.util import assert_switches
 from thrift.Thrift import TApplicationException
 
 from baseplate import Baseplate
@@ -121,11 +123,14 @@ def baseplate_thrift_client(
 class GeventPatchedTestCase(unittest.TestCase):
     def setUp(self):
         gevent.monkey.patch_socket()
+        gevent.monkey.patch_thread()
 
     def tearDown(self):
         import socket
+        import threading
 
         reload(socket)
+        reload(threading)
 
 
 class ThriftTraceHeaderTests(GeventPatchedTestCase):
@@ -579,3 +584,23 @@ class ThriftHealthcheck(GeventPatchedTestCase):
                 )
                 self.assertTrue(healthy)
                 self.assertEqual(handler.probe, IsHealthyProbe.LIVENESS)
+
+
+class ThriftContextSwitchTests(GeventPatchedTestCase):
+    def test_release_does_not_context_switch(self):
+        # If a context switch happens when releasing from the connection pool
+        # we may raise a ServerTimeout and leak connections. This test ensures
+        # that does not happen.
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService, span_observer) as server:
+            pool = ThriftConnectionPool(server.endpoint)
+            prot = pool._get_from_pool()
+            with self.assertRaises(_FailedToSwitch):
+                with assert_switches():
+                    pool._release(prot)
