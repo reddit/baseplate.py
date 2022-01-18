@@ -42,7 +42,8 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    ProtocolPool = queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
+    import queue as std_lib_queue
+    ProtocolPool = std_lib_queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
 else:
     ProtocolPool = queue.Queue
 
