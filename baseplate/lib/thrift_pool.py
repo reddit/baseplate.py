@@ -24,8 +24,7 @@ from typing import Generator
 from typing import Optional
 from typing import TYPE_CHECKING
 
-import gevent.queue as queue
-
+from gevent import queue
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
