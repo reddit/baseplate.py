@@ -24,6 +24,7 @@ from typing import Generator
 from typing import Optional
 from typing import TYPE_CHECKING
 
+from gevent import queue
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
@@ -33,8 +34,6 @@ from thrift.Thrift import TException
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TTransportException
 
-import gevent.queue as queue
-
 from baseplate.lib import config
 from baseplate.lib.retry import RetryPolicy
 
@@ -43,7 +42,9 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    ProtocolPool = queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
+    import queue as std_lib_queue
+
+    ProtocolPool = std_lib_queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
 else:
     ProtocolPool = queue.Queue
 
