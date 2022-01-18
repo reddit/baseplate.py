@@ -16,7 +16,6 @@ A basic example of usage::
 """
 import contextlib
 import logging
-import queue
 import socket
 import time
 
@@ -33,6 +32,8 @@ from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TTransportException
+
+import gevent.queue as queue
 
 from baseplate.lib import config
 from baseplate.lib.retry import RetryPolicy
