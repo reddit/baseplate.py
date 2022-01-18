@@ -24,6 +24,8 @@ from typing import Generator
 from typing import Optional
 from typing import TYPE_CHECKING
 
+import gevent.queue as queue
+
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
@@ -32,8 +34,6 @@ from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TTransportException
-
-import gevent.queue as queue
 
 from baseplate.lib import config
 from baseplate.lib.retry import RetryPolicy

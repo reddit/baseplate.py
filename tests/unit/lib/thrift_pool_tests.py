@@ -4,14 +4,14 @@ import unittest
 
 from unittest import mock
 
+import gevent.queue
+
 from thrift.protocol import TBinaryProtocol
 from thrift.protocol import THeaderProtocol
 from thrift.Thrift import TException
 from thrift.transport import THeaderTransport
 from thrift.transport import TSocket
 from thrift.transport import TTransport
-
-import gevent.queue
 
 from baseplate.lib import config
 from baseplate.lib import thrift_pool
