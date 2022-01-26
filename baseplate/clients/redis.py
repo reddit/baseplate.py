@@ -11,6 +11,8 @@ try:
 except ImportError:
     from redis.client import Pipeline
 
+from gevent import queue
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
@@ -56,6 +58,9 @@ def pool_from_config(
         kwargs.setdefault("socket_connect_timeout", options.socket_connect_timeout.total_seconds())
     if options.socket_timeout is not None:
         kwargs.setdefault("socket_timeout", options.socket_timeout.total_seconds())
+
+    if "queue_class" not in kwargs:
+        kwargs["queue_class"] = queue.LifoQueue
 
     return redis.BlockingConnectionPool.from_url(options.url, **kwargs)
 
