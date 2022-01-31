@@ -189,11 +189,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         context_name = conn._execution_options["context_name"]
         server_span = conn._execution_options["server_span"]
 
-        trace_name = "{}.{}".format(context_name, "execute")
+        trace_name = f"{context_name}.execute"
         span = server_span.make_child(trace_name)
-        if len(statement) > 1024:
-            statement = statement[:1024] + "..."
-        span.set_tag("statement", statement)
+        span.set_tag("statement", statement[:1021] + "..." if len(statement) > 1024 else statement)
         span.start()
 
         conn.info["span"] = span

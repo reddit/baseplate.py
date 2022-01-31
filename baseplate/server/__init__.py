@@ -442,7 +442,7 @@ def load_and_run_shell() -> None:
     # generate banner text
     banner = "Available Objects:\n"
     for var in sorted(env_banner.keys()):
-        banner += "\n  {:<12} {}".format(var, env_banner[var])
+        banner += f"\n  {var:<12} {env_banner[var]}"
 
     console_logpath = _get_shell_log_path()
 
@@ -487,20 +487,22 @@ def load_and_run_shell() -> None:
         start_ipython(argv=[], user_ns=env, config=ipython_config)
         raise SystemExit
     except ImportError:
-        newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
-        banner = newbanner + banner
+        pass
 
-        try:
-            import readline
+    newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
+    banner = newbanner + banner
 
-            readline.set_completer(Completer(env).complete)
-            readline.parse_and_bind("tab: complete")
+    try:
+        import readline
 
-        except ImportError:
-            pass
+        readline.set_completer(Completer(env).complete)
+        readline.parse_and_bind("tab: complete")
 
-        shell = LoggedInteractiveConsole(_locals=env, logpath=console_logpath)
-        shell.interact(banner)
+    except ImportError:
+        pass
+
+    shell = LoggedInteractiveConsole(_locals=env, logpath=console_logpath)
+    shell.interact(banner)
 
 
 def _get_shell_log_path() -> str:
@@ -518,13 +520,13 @@ def _is_containerized() -> bool:
         return True
 
     try:
-        with open("/proc/self/cgroup") as my_cgroups_file:
+        with open("/proc/self/cgroup", encoding="UTF-8") as my_cgroups_file:
             my_cgroups = my_cgroups_file.read()
 
             for hint in ["kubepods", "docker", "containerd"]:
                 if hint in my_cgroups:
                     return True
-    except IOError:
+    except OSError:
         pass
 
     return False
@@ -534,10 +536,10 @@ def _has_PID1_parent() -> bool:
     """Determine parent PIDs up the tree until PID 1 or 0 is reached, do this natively"""
     parent_pid = os.getppid()
     while parent_pid > 1:
-        with open(f"/proc/{parent_pid}/status", "r") as proc_status:
+        with open(f"/proc/{parent_pid}/status", encoding="UTF-8") as proc_status:
             for line in proc_status.readlines():
                 if line.startswith("PPid:"):
-                    parent_pid = int((line.replace("PPid:", "")))
+                    parent_pid = int(line.replace("PPid:", ""))
                     break
     return bool(parent_pid)
 
@@ -562,6 +564,6 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
         """Generate an RFC 5424 compliant syslog format."""
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
-        with open(self.output_file, "w") as f:
+        with open(self.output_file, "w", encoding="UTF-8") as f:
             print(prompt, file=f)
             f.flush()

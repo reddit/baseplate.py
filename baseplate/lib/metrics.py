@@ -113,7 +113,9 @@ class RawTransport(Transport):
     """A transport which sends messages on a socket."""
 
     def __init__(
-        self, endpoint: config.EndpointConfiguration, swallow_network_errors: bool = False,
+        self,
+        endpoint: config.EndpointConfiguration,
+        swallow_network_errors: bool = False,
     ):
         self.swallow_network_errors = swallow_network_errors
         self.socket = socket.socket(endpoint.family, socket.SOCK_DGRAM)
@@ -122,7 +124,7 @@ class RawTransport(Transport):
     def send(self, serialized_metric: bytes) -> None:
         try:
             self.socket.sendall(serialized_metric)
-        except socket.error as exc:
+        except OSError as exc:
             if self.swallow_network_errors:
                 logger.exception("Failed to send to metrics collector")
                 return
@@ -290,7 +292,10 @@ class Timer:
     """
 
     def __init__(
-        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
+        self,
+        transport: Transport,
+        name: bytes,
+        tags: Optional[Dict[str, Any]] = None,
     ):
         self.transport = transport
         self.name = name
@@ -462,7 +467,10 @@ class Histogram:
     """
 
     def __init__(
-        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
+        self,
+        transport: Transport,
+        name: bytes,
+        tags: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.transport = transport
         self.name = name
@@ -494,7 +502,10 @@ class Gauge:
     """
 
     def __init__(
-        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
+        self,
+        transport: Transport,
+        name: bytes,
+        tags: Optional[Dict[str, Any]] = None,
     ):
         self.transport = transport
         self.name = name

@@ -182,7 +182,8 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
         self.timer.stop()
 
         self.batch.counter(
-            f"{self.base_name}.rate", {**filtered_tags, "success": not exc_info},
+            f"{self.base_name}.rate",
+            {**filtered_tags, "success": not exc_info},
         ).increment(sample_rate=self.sample_rate)
 
         self.batch.flush()
@@ -221,7 +222,8 @@ class TaggedMetricsClientSpanObserver(SpanObserver):
         self.timer.stop()
 
         self.batch.counter(
-            f"{self.base_name}.rate", {**filtered_tags, "success": not exc_info},
+            f"{self.base_name}.rate",
+            {**filtered_tags, "success": not exc_info},
         ).increment(sample_rate=self.sample_rate)
 
         self.batch.flush()

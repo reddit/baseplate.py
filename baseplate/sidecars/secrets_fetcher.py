@@ -123,7 +123,7 @@ def load_nonce() -> Optional[str]:
     """Load the nonce from disk."""
     try:
         logger.debug("Loading nonce.")
-        with open(NONCE_FILENAME, "r") as f:
+        with open(NONCE_FILENAME, encoding="UTF-8") as f:
             return f.read()
     except OSError as exc:
         logger.debug("Nonce not found: %s.", exc)
@@ -188,7 +188,7 @@ class VaultClientFactory:
 
         """
         try:
-            with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE, "r") as f:
+            with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE, encoding="UTF-8") as f:
                 token = f.read()
         except OSError:
             logger.error(
@@ -325,7 +325,7 @@ def fetch_secrets(
         secrets[secret_name], expiration = client.get_secret(secret_name)
         soonest_expiration = min(soonest_expiration, expiration)
 
-    with open(cfg.output.path + ".tmp", "w") as f:
+    with open(cfg.output.path + ".tmp", "w", encoding="UTF-8") as f:
         os.fchown(f.fileno(), cfg.output.owner, cfg.output.group)
         os.fchmod(f.fileno(), cfg.output.mode)
 

@@ -4,6 +4,8 @@ import unittest
 
 from unittest import mock
 
+import gevent.queue
+
 from thrift.protocol import TBinaryProtocol
 from thrift.protocol import THeaderProtocol
 from thrift.Thrift import TException
@@ -295,13 +297,17 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertEqual(self.mock_queue.put.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
 
-    def test_pool_checkout_exception(self):
+    @mock.patch("baseplate.lib.thrift_pool.queue")
+    def test_pool_checkout_exception(self, mock_queue_module):
+        # We can't patch gevent queue methods directly as they are implemented in C.
+        # Instead we patch the whole queue class.
+        class PatchedLifoQueue(gevent.queue.LifoQueue):
+            def get(self, *args, **kwargs):
+                raise Exception
+
+        mock_queue_module.LifoQueue = PatchedLifoQueue
+
         pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT)
-
-        def mock_get():
-            raise Exception
-
-        pool.pool.get = mock_get
 
         with self.assertRaises(Exception):
             with pool.connection() as _:

@@ -80,7 +80,10 @@ def raw_thrift_client(endpoint, client_spec):
 
 @contextlib.contextmanager
 def baseplate_thrift_client(
-    endpoint, client_spec, client_span_observer=None, timeout=None,
+    endpoint,
+    client_spec,
+    client_span_observer=None,
+    timeout=None,
 ):
     app_config = {
         "baseplate.service_name": "fancy test client",

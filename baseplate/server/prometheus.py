@@ -39,14 +39,13 @@ PROMETHEUS_EXPORTER_ADDRESS = Endpoint("0.0.0.0:6060")
 
 
 def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") -> Iterable[bytes]:
-    registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
-    data = generate_latest(registry)
-
     if environ["PATH_INFO"] != "/metrics":
         start_response("404 Not Found", [("Content-Type", "text/plain")])
         return [b"Not Found"]
 
+    registry = CollectorRegistry()
+    multiprocess.MultiProcessCollector(registry)
+    data = generate_latest(registry)
     response_headers = [("Content-type", CONTENT_TYPE_LATEST), ("Content-Length", str(len(data)))]
     start_response("200 OK", response_headers)
     return [data]

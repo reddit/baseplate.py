@@ -97,7 +97,9 @@ class ExampleStruct(object):
     )
 
     def __init__(
-        self, string_field=None, int_field=None,
+        self,
+        string_field=None,
+        int_field=None,
     ):
         self.string_field = string_field
         self.int_field = int_field
@@ -178,8 +180,20 @@ ExpectedException.thrift_spec = ()
 all_structs.append(ExampleStruct)
 ExampleStruct.thrift_spec = (
     None,  # 0
-    (1, TType.STRING, "string_field", "UTF8", None,),  # 1
-    (2, TType.I64, "int_field", None, None,),  # 2
+    (
+        1,
+        TType.STRING,
+        "string_field",
+        "UTF8",
+        None,
+    ),  # 1
+    (
+        2,
+        TType.I64,
+        "int_field",
+        None,
+        None,
+    ),  # 2
 )
 fix_spec(all_structs)
 del all_structs

@@ -16,7 +16,6 @@ A basic example of usage::
 """
 import contextlib
 import logging
-import queue
 import socket
 import time
 
@@ -25,6 +24,7 @@ from typing import Generator
 from typing import Optional
 from typing import TYPE_CHECKING
 
+from gevent import queue
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
@@ -42,7 +42,9 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    ProtocolPool = queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
+    import queue as std_lib_queue
+
+    ProtocolPool = std_lib_queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
 else:
     ProtocolPool = queue.Queue
 
@@ -236,7 +238,7 @@ class ThriftConnectionPool:
                 raise TTransportException(
                     type=TTransportException.TIMED_OUT, message="timed out interacting with socket"
                 )
-            except socket.error as exc:
+            except OSError as exc:
                 raise TTransportException(type=TTransportException.UNKNOWN, message=str(exc))
         except (TApplicationException, TProtocolException, TTransportException):
             # these exceptions usually indicate something low-level went wrong,
