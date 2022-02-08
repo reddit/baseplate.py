@@ -41,6 +41,9 @@ the Sentry observer.
    # classes to not report.
    sentry.ignore_errors = my_service.UninterestingException
 
+   # optional: whether or not local variables are sent along with stackframes. this
+   # could expose PII.
+   sentry.with_locals = true
    ...
 
 

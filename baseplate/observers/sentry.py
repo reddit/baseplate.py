@@ -71,6 +71,7 @@ def init_sentry_client_from_config(raw_config: config.RawConfig, **kwargs: Any) 
                 "environment": config.Optional(config.String, default=None),
                 "sample_rate": config.Optional(config.Percent, default=1),
                 "ignore_errors": config.Optional(config.TupleOf(config.String), default=()),
+                "with_locals": config.Optional(config.Boolean, default=False),
             }
         },
     )
@@ -88,7 +89,7 @@ def init_sentry_client_from_config(raw_config: config.RawConfig, **kwargs: Any) 
     ignore_errors.extend(cfg.sentry.ignore_errors)
     kwargs.setdefault("ignore_errors", ignore_errors)
 
-    kwargs.setdefault("with_locals", False)
+    kwargs.setdefault("with_locals", cfg.sentry.with_locals)
 
     client = sentry_sdk.Client(**kwargs)
     sentry_sdk.Hub.current.bind_client(client)
