@@ -232,6 +232,25 @@ class MessageQueue:
 
         return message
 
+    def contains(
+        self, message: bytes
+    ) -> bool:
+        """Scan the queue for an instance of the message, returns True if found
+        False otherwise.
+
+        NOTE: THIS SCANS. IT IS NOT O(1). ONLY USE THIS WITH QUEUE SIZES YOU
+        EXPECT A SCAN TO BE OKAY ON.
+
+        ref: https://redis.io/commands/lpos
+
+        :param message: will be typecast to a string upon storage and will come
+               out of the queue as a string regardless of what type they are
+               when passed into this method.
+        """
+        # TODO using execute_command because our python lib for redis is out of date.
+        # When that gets upgraded (larger scope, change to use lpos directly)
+        return self.client.execute_command('LPOS', self.queue, message) is not None
+
     def put(  # pylint: disable=unused-argument
         self, message: bytes, timeout: Optional[float] = None
     ) -> None:
