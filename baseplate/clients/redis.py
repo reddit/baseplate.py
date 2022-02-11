@@ -249,7 +249,7 @@ class MessageQueue:
         """
         # TODO using execute_command because our python lib for redis is out of date.
         # When that gets upgraded (larger scope, change to use lpos directly)
-        return self.client.execute_command('LPOS', self.queue, message) is not None
+        return self.client.execute_command("LPOS", self.queue, message) is not None
 
     def put(  # pylint: disable=unused-argument
         self, message: bytes, timeout: Optional[float] = None
