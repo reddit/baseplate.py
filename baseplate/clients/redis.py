@@ -232,9 +232,7 @@ class MessageQueue:
 
         return message
 
-    def contains(
-        self, message: bytes
-    ) -> bool:
+    def contains(self, message: bytes) -> bool:
         """Scan the queue for an instance of the message, returns True if found
         False otherwise.
 
