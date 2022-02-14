@@ -246,7 +246,7 @@ class MessageQueue:
                when passed into this method.
         """
         # TODO using execute_command because our python lib for redis is out of date.
-        # When that gets upgraded (larger scope, change to use lpos directly)
+        # When that gets upgraded (larger scope) change to use lpos directly
         return self.client.execute_command("LPOS", self.queue, message) is not None
 
     def put(  # pylint: disable=unused-argument
