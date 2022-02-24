@@ -256,8 +256,11 @@ class TestInOrderConsumerFactory:
             topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
         )
         kafka_consumer.return_value = mock_consumer
+        extra_config = {"queued.max.messages.kbytes": 10000}
 
-        _consumer = InOrderConsumerFactory.make_kafka_consumer(bootstrap_servers, group_id, topics)
+        _consumer = InOrderConsumerFactory.make_kafka_consumer(
+            bootstrap_servers, group_id, topics, extra_config
+        )
 
         assert _consumer == mock_consumer
 
@@ -270,6 +273,7 @@ class TestInOrderConsumerFactory:
                 "session.timeout.ms": 10000,
                 "max.poll.interval.ms": 300000,
                 "enable.auto.commit": "false",
+                "queued.max.messages.kbytes": 10000,
             }
         )
         mock_consumer.subscribe.assert_called_once()
@@ -284,9 +288,12 @@ class TestInOrderConsumerFactory:
             topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
         )
         kafka_consumer.return_value = mock_consumer
+        extra_config = {"queued.max.messages.kbytes": 100}
 
         with pytest.raises(AssertionError):
-            InOrderConsumerFactory.make_kafka_consumer(bootstrap_servers, group_id, ["topic_4"])
+            InOrderConsumerFactory.make_kafka_consumer(
+                bootstrap_servers, group_id, ["topic_4"], extra_config
+            )
 
         kafka_consumer.assert_called_once_with(
             {
@@ -297,6 +304,7 @@ class TestInOrderConsumerFactory:
                 "session.timeout.ms": 10000,
                 "max.poll.interval.ms": 300000,
                 "enable.auto.commit": "false",
+                "queued.max.messages.kbytes": 100,
             }
         )
         mock_consumer.subscribe.assert_not_called()
