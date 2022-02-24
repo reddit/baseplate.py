@@ -43,7 +43,7 @@ class TokenCSRFStoragePolicy:
 
     This policy relies on Pyramid's built in Authentication Policies since it
     uses `request.authenticated_userid`.  For a simple, intranet app, you can
-    rely on the HTTP "Authorized-User" header to pass you this value and you
+    rely on the HTTP "Authenticated-User" header to pass you this value and you
     can configure Pyramid to use that with the following snippet:
 
         authn_policy = RemoteUserAuthenticationPolicy(environ_key="HTTP_AUTHENTICATED_USER")
