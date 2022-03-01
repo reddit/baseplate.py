@@ -213,6 +213,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         kafka_consume_batch_size: int = 1,
         message_unpack_fn: KafkaMessageDeserializer = json.loads,
         health_check_fn: Optional[HealthcheckCallback] = None,
+        kafka_config: Optional[Dict[str, Any]] = None,
     ) -> "_BaseKafkaQueueConsumerFactory":
         """Return a new `_BaseKafkaQueueConsumerFactory`.
 
@@ -237,13 +238,14 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             and returns the message in the format the handler expects. Defaults to `json.loads`.
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
+        :param kafka_config: An optional config for confluent_kafka.Consumer
 
         """
         service_name, _, group_name = group_id.partition(".")
         assert service_name and group_name, "group_id must start with 'SERVICENAME.'"
         assert name == f"kafka_consumer.{group_name}"
 
-        consumer = cls.make_kafka_consumer(bootstrap_servers, group_id, topics)
+        consumer = cls.make_kafka_consumer(bootstrap_servers, group_id, topics, kafka_config)
 
         return cls(
             name=name,
@@ -261,7 +263,11 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
 
     @classmethod
     def make_kafka_consumer(
-        cls, bootstrap_servers: str, group_id: str, topics: Sequence[str]
+        cls,
+        bootstrap_servers: str,
+        group_id: str,
+        topics: Sequence[str],
+        kafka_config: Optional[Dict[str, Any]] = None,
     ) -> confluent_kafka.Consumer:
         consumer_config = {
             "bootstrap.servers": bootstrap_servers,
@@ -272,6 +278,8 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             "auto.offset.reset": "latest",
         }
         consumer_config.update(cls._consumer_config())
+        if kafka_config:
+            consumer_config.update(kafka_config)
         consumer = confluent_kafka.Consumer(consumer_config)
 
         try:
