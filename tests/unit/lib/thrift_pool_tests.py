@@ -297,17 +297,12 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertEqual(self.mock_queue.put.call_count, 1)
         self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
 
-    @mock.patch("baseplate.lib.thrift_pool.queue")
-    def test_pool_checkout_exception(self, mock_queue_module):
-        # We can't patch gevent queue methods directly as they are implemented in C.
-        # Instead we patch the whole queue class.
+    def test_pool_checkout_exception(self):
         class PatchedLifoQueue(gevent.queue.LifoQueue):
             def get(self, *args, **kwargs):
                 raise Exception
 
-        mock_queue_module.LifoQueue = PatchedLifoQueue
-
-        pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT)
+        pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT, queue_cls=PatchedLifoQueue())
 
         with self.assertRaises(Exception):
             with pool.connection() as _:

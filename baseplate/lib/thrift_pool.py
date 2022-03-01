@@ -24,7 +24,7 @@ from typing import Generator
 from typing import Optional
 from typing import TYPE_CHECKING
 
-from gevent import queue
+from gevent import queue as gevent_queue
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 
     ProtocolPool = std_lib_queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
 else:
-    ProtocolPool = queue.Queue
+    ProtocolPool = gevent_queue.Queue
 
 
 def _make_transport(endpoint: config.EndpointConfiguration) -> TSocket:
@@ -139,6 +139,7 @@ class ThriftConnectionPool:
     :param protocol_factory: The factory to use for creating protocols from
         transports. This is useful for talking to services that don't support
         THeaderProtocol.
+    :param queue_cls: A stdlib compatible queue class.
 
     All exceptions raised by this class derive from
     :py:exc:`~thrift.transport.TTransport.TTransportException`.
@@ -157,6 +158,7 @@ class ThriftConnectionPool:
         timeout: float = 1,
         max_connection_attempts: int = 3,
         protocol_factory: TProtocolFactory = _DEFAULT_PROTOCOL_FACTORY,
+        queue_cls: ProtocolPool = gevent_queue.LifoQueue(),
     ):
         self.endpoint = endpoint
         self.max_age = max_age
@@ -165,14 +167,15 @@ class ThriftConnectionPool:
         self.protocol_factory = protocol_factory
 
         self.size = size
-        self.pool: ProtocolPool = queue.LifoQueue()
+
+        self.pool = queue_cls
         for _ in range(size):
             self.pool.put(None)
 
     def _get_from_pool(self) -> Optional[TProtocolBase]:
         try:
             return self.pool.get(block=True, timeout=self.timeout)
-        except queue.Empty:
+        except gevent_queue.Empty:
             raise TTransportException(
                 type=TTransportException.NOT_OPEN, message="timed out waiting for a connection slot"
             )
