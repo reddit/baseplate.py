@@ -7,6 +7,7 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from prometheus_client import Gauge
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
@@ -125,7 +126,7 @@ class SQLAlchemySession(config.Parser):
         engine = engine_from_config(
             raw_config, secrets=self.secrets, prefix=f"{key_path}.", **self.kwargs
         )
-        return SQLAlchemySessionContextFactory(engine)
+        return SQLAlchemySessionContextFactory(engine, key_path)
 
 
 Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
@@ -155,11 +156,45 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, engine: Engine):
+    PROM_PREFIX = "sqlalchemy_pool"
+    PROM_LABELS = ["pool"]
+
+    promTotalConnections = Gauge(
+        f"{PROM_PREFIX}_size",
+        "Total number of connections in this pool",
+        PROM_LABELS,
+    )
+
+    promCheckedInConnections = Gauge(
+        f"{PROM_PREFIX}_checked_in",
+        "Number of available, checked in, connections in this pool",
+        PROM_LABELS,
+    )
+
+    promCheckedOutConnections = Gauge(
+        f"{PROM_PREFIX}_checked_out",
+        "Number of connections in use, or checked out, in this pool",
+        PROM_LABELS,
+    )
+
+    promOverflowConnections = Gauge(
+        f"{PROM_PREFIX}_overflow_connections",
+        "Number of connections over the desired size of this pool",
+        PROM_LABELS,
+    )
+
+    def __init__(self, engine: Engine, name: str = "sqlalchemy"):
         self.engine = engine.execution_options()
         event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
         event.listen(self.engine, "handle_error", self.on_error)
+
+        pool = self.engine.pool
+        if isinstance(pool, QueuePool):
+            self.promTotalConnections.labels(name).set_function(pool.size)
+            self.promCheckedInConnections.labels(name).set_function(pool.checkedin)
+            self.promCheckedOutConnections.labels(name).set_function(pool.checkedout)
+            self.promOverflowConnections.labels(name).set_function(pool.overflow)
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.engine.pool

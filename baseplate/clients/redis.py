@@ -5,6 +5,8 @@ from typing import Optional
 
 import redis
 
+from prometheus_client import Gauge
+
 # redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
 try:
     from redis.client import StrictPipeline as Pipeline  # type: ignore
@@ -75,7 +77,7 @@ class RedisClient(config.Parser):
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "RedisContextFactory":
         connection_pool = pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return RedisContextFactory(connection_pool)
+        return RedisContextFactory(connection_pool, key_path)
 
 
 class RedisContextFactory(ContextFactory):
@@ -92,8 +94,34 @@ class RedisContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, connection_pool: redis.ConnectionPool):
+    PROM_PREFIX = "bp_redis_pool"
+    PROM_LABELS = ["pool"]
+
+    totalConnections = Gauge(
+        f"{PROM_PREFIX}_connections",
+        "Number of connections in this redisbp pool",
+        PROM_LABELS,
+    )
+    idleConnections = Gauge(
+        f"{PROM_PREFIX}_idle_connections",
+        "Number of idle connections in this redisbp pool",
+        PROM_LABELS,
+    )
+    openConnections = Gauge(
+        f"{PROM_PREFIX}_open_connections",
+        "Number of open connections in this redisbp pool",
+        PROM_LABELS,
+    )
+
+    def __init__(self, connection_pool: redis.ConnectionPool, name: str = "redis"):
         self.connection_pool = connection_pool
+
+        if isinstance(connection_pool, redis.BlockingConnectionPool):
+            self.totalConnections.labels(name).set_function(lambda: connection_pool.max_connections)
+            self.idleConnections.labels(name).set_function(connection_pool.pool.qsize)
+            self.openConnections.labels(name).set_function(
+                lambda: len(connection_pool._connections)  # type: ignore
+            )
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
