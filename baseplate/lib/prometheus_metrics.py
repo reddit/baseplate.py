@@ -67,30 +67,28 @@ class PrometheusHTTPServerMetrics():
         return http_server_latency_seconds.labels(
             http_method = tags.get("http.method", ""),
             http_endpoint = tags.get("http.url", ""),
-            http_success = tags.get("success", ""),
+            http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
         )
 
     def request_size_bytes_metric(self, tags):
         return http_server_request_size_bytes.labels(
             http_method = tags.get("http.method", ""),
             http_endpoint = tags.get("http.url", ""),
-            http_success = tags.get("success", ""),
+            http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
         )
 
     def response_size_bytes_metric(self, tags):
         return http_server_response_size_bytes.labels(
             http_method = tags.get("http.method", ""),
             http_endpoint = tags.get("http.url", ""),
-            http_success = tags.get("success", ""),
+            http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
         )
 
     def requests_total_metric(self, tags):
-        # todo: set the success tag somewhere? in baseplate_tween?
-        # method, endpoint, success, status
         return http_server_requests_total.labels(
             http_method = tags.get("http.method", ""),
             http_endpoint = tags.get("http.url", ""),
-            http_success = tags.get("success", ""),
+            http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
             http_response_code = tags.get("http.status_code", ""),
         )
 
@@ -147,16 +145,15 @@ class PrometheusHTTPClientMetrics():
         return http_client_latency_seconds.labels(
             http_method = tags.get("http.method", ""),
             http_endpoint = tags.get("http.url", ""),
-            http_success = tags.get("success", ""),
+            http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
             http_slug = tags.get("http.slug", ""),
         )
 
     def requests_total_metric(self, tags):
-        # todo: set the success tag somewhere? in baseplate_tween?
         return http_client_requests_total.labels(
             http_method = tags.get("http.method", ""),
             http_endpoint = tags.get("http.url", ""),
-            http_success = tags.get("success", ""),
+            http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
             http_response_code = tags.get("http.status_code", ""),
             http_slug = tags.get("http.slug", ""),
         )
@@ -287,3 +284,9 @@ class PrometheusThriftClientMetrics():
             thrift_method = tags.get("thrift.method", ""),
             thrift_slug = tags.get("thrift.slug", ""),
         )
+
+def getHTTPSuccessLabel(httpStatusCode: int) -> bool:
+    """
+    The HTTP success label is "true" if the status code is 2xx or 3xx, "false" otherwise.
+    """
+    return httpStatusCode >= 200 and httpStatusCode < 400

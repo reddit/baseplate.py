@@ -354,7 +354,7 @@ class Baseplate:
                 )
             )
         else:
-                skipped.append("metrics")
+            skipped.append("metrics")
 
         if "tracing.service_name" in self._app_config:
             from baseplate.observers.tracing import tracing_client_from_config

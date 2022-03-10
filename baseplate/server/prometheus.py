@@ -67,4 +67,5 @@ def start_prometheus_exporter() -> None:
         log=LoggingLogAdapter(logger, level=logging.DEBUG),
         error_log=LoggingLogAdapter(logger, level=logging.ERROR),
     )
+    logger.info("Admin server listening on %s", PROMETHEUS_EXPORTER_ADDRESS)
     server.start()

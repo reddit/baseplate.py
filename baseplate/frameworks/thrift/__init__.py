@@ -20,7 +20,6 @@ from baseplate import TraceInfo
 from baseplate.lib.edgecontext import EdgeContextFactory
 
 
-
 class _ContextAwareHandler:
     def __init__(self, handler: Any, context: RequestContext, logger: Logger):
         self.handler = handler

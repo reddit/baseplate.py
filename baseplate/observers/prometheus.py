@@ -1,4 +1,5 @@
 import time
+import logging
 
 from typing import Any
 from typing import Optional
@@ -16,6 +17,8 @@ from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 
 
 NANOSECONDS_PER_SECOND = 1e9
+
+logger = logging.getLogger(__name__)
 
 
 class PrometheusBaseplateObserver(BaseplateObserver):
@@ -57,13 +60,13 @@ class PrometheusServerSpanObserver(SpanObserver):
         elif self.protocol == "thrift":
             self.metrics = PrometheusThriftServerMetrics()
         else:
-            # todo: error or warning
+            logger.warning("No valid protocol set for Prometheus metric collection. Expected 'http' or 'thrift' protocol. Actual protocol: %s", self.protocol)
             return
 
     def on_start(self) -> None:
         self.set_metrics_by_protocol()
         if self.metrics is None:
-            # todo: error or warning
+            logger.warning("No metrics set for Prometheus metric collection. Metrics will not be exported correctly.")
             return
         self.start_time = time.perf_counter_ns()
         self.metrics.active_requests_metric(self.tags).inc()
@@ -73,7 +76,6 @@ class PrometheusServerSpanObserver(SpanObserver):
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         if exc_info is not None:
-            self.tags["success"] = not exc_info
             self.tags["exception_type"] = exc_info[0]
 
         self.metrics.active_requests_metric(self.tags).dec()
@@ -132,7 +134,6 @@ class PrometheusClientSpanObserver(SpanObserver):
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         if exc_info is not None:
-            self.tags["success"] = not exc_info
             self.tags["exception_type"] = exc_info[0]
 
         self.metrics.active_requests_metric(self.tags).dec()
