@@ -66,28 +66,28 @@ class PrometheusHTTPServerMetrics():
     def latency_seconds_metric(self, tags):
         return http_server_latency_seconds.labels(
             http_method = tags.get("http.method", ""),
-            http_endpoint = tags.get("http.url", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
             http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
         )
 
     def request_size_bytes_metric(self, tags):
         return http_server_request_size_bytes.labels(
             http_method = tags.get("http.method", ""),
-            http_endpoint = tags.get("http.url", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
             http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
         )
 
     def response_size_bytes_metric(self, tags):
         return http_server_response_size_bytes.labels(
             http_method = tags.get("http.method", ""),
-            http_endpoint = tags.get("http.url", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
             http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
         )
 
     def requests_total_metric(self, tags):
         return http_server_requests_total.labels(
             http_method = tags.get("http.method", ""),
-            http_endpoint = tags.get("http.url", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
             http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
             http_response_code = tags.get("http.status_code", ""),
         )
@@ -95,7 +95,7 @@ class PrometheusHTTPServerMetrics():
     def active_requests_metric(self, tags):
         return http_server_active_requests.labels(
             http_method = tags.get("http.method", ""),
-            http_endpoint = tags.get("http.url", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
         )
 
 
@@ -144,7 +144,7 @@ class PrometheusHTTPClientMetrics():
     def latency_seconds_metric(self, tags):
         return http_client_latency_seconds.labels(
             http_method = tags.get("http.method", ""),
-            http_endpoint = tags.get("http.url", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
             http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
             http_slug = tags.get("http.slug", ""),
         )
@@ -152,7 +152,7 @@ class PrometheusHTTPClientMetrics():
     def requests_total_metric(self, tags):
         return http_client_requests_total.labels(
             http_method = tags.get("http.method", ""),
-            http_endpoint = tags.get("http.url", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
             http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
             http_response_code = tags.get("http.status_code", ""),
             http_slug = tags.get("http.slug", ""),
@@ -161,8 +161,34 @@ class PrometheusHTTPClientMetrics():
     def active_requests_metric(self, tags):
         return http_client_active_requests.labels(
             http_method = tags.get("http.method", ""),
-            http_endpoint = tags.get("http.url", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
             http_slug = tags.get("http.slug", ""),
+        )
+
+
+class PrometheusHTTPLocalMetrics():
+    def __init__(self):
+        pass
+
+    def latency_seconds_metric(self, tags):
+        return http_client_latency_seconds.labels(
+            http_method = tags.get("http.method", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
+            http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+        )
+
+    def requests_total_metric(self, tags):
+        return http_client_requests_total.labels(
+            http_method = tags.get("http.method", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
+            http_success = getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+            http_response_code = tags.get("http.status_code", ""),
+        )
+
+    def active_requests_metric(self, tags):
+        return http_client_active_requests.labels(
+            http_method = tags.get("http.method", ""),
+            http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
         )
 
 
@@ -285,8 +311,45 @@ class PrometheusThriftClientMetrics():
             thrift_slug = tags.get("thrift.slug", ""),
         )
 
-def getHTTPSuccessLabel(httpStatusCode: int) -> bool:
+# TODO: what metrics do we want to track for local metrics
+class PrometheusThriftLocalMetrics():
+    def __init__(self):
+        pass
+
+    def latency_seconds_metric(self, tags):
+        return thrift_client_latency_seconds.labels(
+            thrift_method = tags.get("thrift.method", ""),
+            thrift_success = tags.get("success", ""),
+        )
+
+    def requests_total_metric(self, tags):
+        return thrift_client_requests_total.labels(
+            thrift_method = tags.get("thrift.method", ""),
+            thrift_success = tags.get("success", ""),
+            thrift_exception_type = tags.get("thrift_exception_type", ""),
+            thrift_baseplate_status = tags.get("thrift_baseplate_status", ""),
+            thrift_baseplate_status_code = tags.get("thrift_baseplate_status_code", ""),
+        )
+
+    def active_requests_metric(self, tags):
+        return thrift_client_active_requests.labels(
+            thrift_method = tags.get("thrift.method", ""),
+        )
+
+def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     """
     The HTTP success label is "true" if the status code is 2xx or 3xx, "false" otherwise.
     """
-    return httpStatusCode >= 200 and httpStatusCode < 400
+    return str(httpStatusCode >= 200 and httpStatusCode < 400).lower()
+
+def getHTTPEndpointHandler(httpURL: str) -> str:
+    """
+    Path to identify the endpoint handler, may be empty.
+    Ref: https://github.snooguts.net/reddit/baseplate.spec/blob/master/component-apis/prom-metrics.md#http
+    MUST NOT include the per-request value of "request fields":
+    For example, /subreddits/{subreddit_id}/posts/{post_id}, not /subreddits/1234/posts/5678.
+    """
+    from urllib3.util import parse_url
+    _, _, _, _, path, _, _ = parse_url(httpURL)
+    # TODO: remove request fields. Whats the best way to do this.
+    return path
