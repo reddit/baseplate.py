@@ -156,7 +156,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     """
 
-    PROM_PREFIX = "sqlalchemy_pool"
+    PROM_PREFIX = "bp_sqlalchemy_pool"
     PROM_LABELS = ["pool"]
 
     promTotalConnections = Gauge(

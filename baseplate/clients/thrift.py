@@ -71,7 +71,7 @@ class ThriftContextFactory(ContextFactory):
 
     """
 
-    PROM_PREFIX = "thrift_pool"
+    PROM_PREFIX = "bp_thrift_pool"
     PROM_LABELS = ["client_cls"]
 
     promTotalConnections = Gauge(
