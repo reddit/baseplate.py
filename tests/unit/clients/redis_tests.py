@@ -8,7 +8,7 @@ else:
     del redis
 
 from baseplate.lib.config import ConfigurationError
-from baseplate.clients.redis import pool_from_config
+from baseplate.clients.redis import pool_from_config, RedisContextFactory
 
 
 class PoolFromConfigTests(unittest.TestCase):
@@ -22,6 +22,16 @@ class PoolFromConfigTests(unittest.TestCase):
         self.assertEqual(pool.connection_kwargs["host"], "localhost")
         self.assertEqual(pool.connection_kwargs["port"], 1234)
         self.assertEqual(pool.connection_kwargs["db"], 0)
+
+    def test_metrics(self):
+        max_connections = "123"
+        ctx = RedisContextFactory(
+            pool_from_config(
+                {"redis.url": "redis://localhost:1234/0", "redis.max_connections": max_connections}
+            )
+        )
+        metric = ctx.totalConnections.collect()
+        self.assertEqual(metric[0].samples[0].value, float(max_connections))
 
     def test_timeouts(self):
         pool = pool_from_config(
