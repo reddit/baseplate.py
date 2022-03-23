@@ -75,6 +75,7 @@ def thrift_pool_from_config(
 
     * ``endpoint`` (required): A ``host:port`` pair, e.g. ``localhost:2014``,
         where the Thrift server can be found.
+    * ``fifo_queue``: True will enable use of a FIFO queue instead of the default LIFO queue.
     * ``size``: The size of the connection pool.
     * ``max_age``: The oldest a connection can be before it's recycled and
         replaced with a new one. Written as a
@@ -93,6 +94,7 @@ def thrift_pool_from_config(
     parser = config.SpecParser(
         {
             "endpoint": config.Endpoint,
+            "fifo_queue": config.Optional(config.Boolean, default=False),
             "size": config.Optional(config.Integer, default=10),
             "max_age": config.Optional(config.Timespan, default=config.Timespan("1 minute")),
             "timeout": config.Optional(config.Timespan, default=config.Timespan("1 second")),
@@ -102,6 +104,8 @@ def thrift_pool_from_config(
     )
     options = parser.parse(prefix[:-1], app_config)
 
+    if options.fifo_queue:
+        kwargs.setdefault("queue_cls", queue.Queue())
     if options.size is not None:
         kwargs.setdefault("size", options.size)
     if options.max_age is not None:

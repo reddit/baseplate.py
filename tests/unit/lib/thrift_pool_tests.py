@@ -68,6 +68,16 @@ class MaxRetriesRenameTests(unittest.TestCase):
         new_retry_policy.assert_called_with(attempts=5)
 
 
+class ThriftFIFOPoolTests(unittest.TestCase):
+    def test_fifo_queue_config(self):
+        config = {
+            "fifo-test.endpoint": "127.0.0.1:1234",
+            "fifo-test.fifo_queue": "true",
+        }
+        pool = thrift_pool.thrift_pool_from_config(config, prefix="fifo-test.")
+        self.assertTrue(isinstance(pool.pool, queue.Queue))
+
+
 class ThriftConnectionPoolTests(unittest.TestCase):
     def setUp(self):
         self.mock_queue = mock.Mock(spec=queue.Queue)
