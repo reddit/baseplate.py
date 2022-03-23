@@ -52,7 +52,7 @@ class _ContextAwareHandler:
                 raise
             except Error as exc:
                 # mark 5xx errors as failures since those are still "unexpected"
-                if exc.code / 100 == 5:
+                if exc.code // 100 == 5:
                     span.finish(exc_info=sys.exc_info())
                 else:
                     span.finish()

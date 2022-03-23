@@ -203,7 +203,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
             except Error as exc:
                 # a 5xx error is an unexpected exception but not 5xx are
                 # not.
-                if exc.code / 100 == 5:
+                if exc.code // 100 == 5:
                     span.finish(exc_info=sys.exc_info())
                 else:
                     span.finish()
