@@ -61,6 +61,8 @@ class Client(Iface):
             return result.success
         if result.exc is not None:
             raise result.exc
+        if result.err is not None:
+            raise result.err
         raise TApplicationException(
             TApplicationException.MISSING_RESULT, "example failed: unknown result"
         )
@@ -108,6 +110,9 @@ class Processor(Iface, TProcessor):
         except ExpectedException as exc:
             msg_type = TMessageType.REPLY
             result.exc = exc
+        except baseplate.thrift.ttypes.Error as err:
+            msg_type = TMessageType.REPLY
+            result.err = err
         except TApplicationException as ex:
             logging.exception("TApplication exception in handler")
             msg_type = TMessageType.EXCEPTION
@@ -185,21 +190,25 @@ class example_result(object):
     Attributes:
      - success
      - exc
+     - err
 
     """
 
     __slots__ = (
         "success",
         "exc",
+        "err",
     )
 
     def __init__(
         self,
         success=None,
         exc=None,
+        err=None,
     ):
         self.success = success
         self.exc = exc
+        self.err = err
 
     def read(self, iprot):
         if (
@@ -224,6 +233,11 @@ class example_result(object):
                     self.exc = ExpectedException.read(iprot)
                 else:
                     iprot.skip(ftype)
+            elif fid == 2:
+                if ftype == TType.STRUCT:
+                    self.err = baseplate.thrift.ttypes.Error.read(iprot)
+                else:
+                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -241,6 +255,10 @@ class example_result(object):
         if self.exc is not None:
             oprot.writeFieldBegin("exc", TType.STRUCT, 1)
             self.exc.write(oprot)
+            oprot.writeFieldEnd()
+        if self.err is not None:
+            oprot.writeFieldBegin("err", TType.STRUCT, 2)
+            self.err.write(oprot)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -282,6 +300,13 @@ example_result.thrift_spec = (
         [ExpectedException, None],
         None,
     ),  # 1
+    (
+        2,
+        TType.STRUCT,
+        "err",
+        [baseplate.thrift.ttypes.Error, None],
+        None,
+    ),  # 2
 )
 fix_spec(all_structs)
 del all_structs

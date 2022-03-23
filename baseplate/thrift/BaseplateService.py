@@ -298,7 +298,7 @@ is_healthy_result.thrift_spec = (
         "success",
         None,
         None,
-    ),
-)  # 0
+    ),  # 0
+)
 fix_spec(all_structs)
 del all_structs

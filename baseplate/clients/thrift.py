@@ -20,6 +20,7 @@ from baseplate.lib import metrics
 from baseplate.lib.retry import RetryPolicy
 from baseplate.lib.thrift_pool import thrift_pool_from_config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
+from baseplate.thrift.ttypes import Error
 
 
 class ThriftClient(config.Parser):
@@ -198,6 +199,14 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                 # these are subclasses of TException but aren't ones that
                 # should be expected in the protocol. this is an error!
                 span.finish(exc_info=sys.exc_info())
+                raise
+            except Error as exc:
+                # a 5xx error is an unexpected exception but not 5xx are
+                # not.
+                if exc.code / 100 == 5:
+                    span.finish(exc_info=sys.exc_info())
+                else:
+                    span.finish()
                 raise
             except TException:
                 # this is an expected exception, as defined in the IDL

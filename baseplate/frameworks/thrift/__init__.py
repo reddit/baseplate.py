@@ -18,13 +18,22 @@ from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import TraceInfo
 from baseplate.lib.edgecontext import EdgeContextFactory
+from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
 
 
 class _ContextAwareHandler:
-    def __init__(self, handler: Any, context: RequestContext, logger: Logger):
+    def __init__(
+        self,
+        handler: Any,
+        context: RequestContext,
+        logger: Logger,
+        convert_to_baseplate_error: bool,
+    ):
         self.handler = handler
         self.context = context
         self.logger = logger
+        self.convert_to_baseplate_error = convert_to_baseplate_error
 
     def __getattr__(self, fn_name: str) -> Callable[..., Any]:
         def call_with_context(*args: Any, **kwargs: Any) -> Any:
@@ -41,6 +50,13 @@ class _ContextAwareHandler:
                 # should be expected in the protocol
                 span.finish(exc_info=sys.exc_info())
                 raise
+            except Error as exc:
+                # mark 5xx errors as failures since those are still "unexpected"
+                if exc.code / 100 == 5:
+                    span.finish(exc_info=sys.exc_info())
+                else:
+                    span.finish()
+                raise
             except TException:
                 # this is an expected exception, as defined in the IDL
                 span.finish()
@@ -48,6 +64,11 @@ class _ContextAwareHandler:
             except:  # noqa: E722
                 # the handler crashed (or timed out)!
                 span.finish(exc_info=sys.exc_info())
+                if self.convert_to_baseplate_error:
+                    raise Error(
+                        code=ErrorCode.INTERNAL_SERVER_ERROR,
+                        message="Internal server error",
+                    )
                 raise
             else:
                 # a normal result
@@ -62,6 +83,7 @@ def baseplateify_processor(
     logger: Logger,
     baseplate: Baseplate,
     edge_context_factory: Optional[EdgeContextFactory] = None,
+    convert_to_baseplate_error: bool = False,
 ) -> TProcessor:
     """Wrap a Thrift Processor with Baseplate's span lifecycle.
 
@@ -70,6 +92,12 @@ def baseplateify_processor(
     :param baseplate: The baseplate instance for your application.
     :param edge_context_factory: A configured factory for handling edge request
         context.
+    :param convert_to_baseplate_error: If True, the server will automatically
+        convert unhandled exceptions to:
+            baseplate.Error(
+                code=ErrorCode.INTERNAL_SERVER_ERROR,
+                message="Internal server error",
+            )
 
     """
 
@@ -121,7 +149,9 @@ def baseplateify_processor(
             context.headers = headers
 
             handler = processor._handler
-            context_aware_handler = _ContextAwareHandler(handler, context, logger)
+            context_aware_handler = _ContextAwareHandler(
+                handler, context, logger, convert_to_baseplate_error
+            )
             context_aware_processor = processor.__class__(context_aware_handler)
             return processor_fn(context_aware_processor, seqid, iprot, oprot)
 
