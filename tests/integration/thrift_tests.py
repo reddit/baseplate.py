@@ -8,8 +8,6 @@ from unittest import mock
 import gevent.monkey
 import pytest
 
-from thrift.Thrift import TApplicationException
-
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
@@ -25,6 +23,8 @@ from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 from baseplate.thrift import BaseplateService
 from baseplate.thrift import BaseplateServiceV2
+from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
 
@@ -52,7 +52,9 @@ def serve_thrift(handler, server_spec, server_span_observer=None, baseplate_obse
     logger = mock.Mock(spec=logging.Logger)
     edge_context_factory = FakeEdgeContextFactory()
     processor = server_spec.Processor(handler)
-    processor = baseplateify_processor(processor, logger, baseplate, edge_context_factory)
+    processor = baseplateify_processor(
+        processor, logger, baseplate, edge_context_factory, convert_to_baseplate_error=True
+    )
 
     # bind a server socket on an available port
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
@@ -349,7 +351,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
         with serve_thrift(handler, TestService, server_span_observer) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
-                with self.assertRaises(TApplicationException):
+                with self.assertRaises(Error):
                     client.example()
 
         server_span_observer.on_start.assert_called_once_with()
@@ -415,13 +417,13 @@ class ThriftClientSpanTests(GeventPatchedTestCase):
             with baseplate_thrift_client(
                 server.endpoint, TestService, client_span_observer
             ) as context:
-                with self.assertRaises(TApplicationException):
+                with self.assertRaises(Error):
                     context.example_service.example()
 
         client_span_observer.on_start.assert_called_once_with()
         self.assertEqual(client_span_observer.on_finish.call_count, 1)
         _, captured_exc, _ = client_span_observer.on_finish.call_args[0][0]
-        self.assertIsInstance(captured_exc, TApplicationException)
+        self.assertIsInstance(captured_exc, Error)
 
 
 class ThriftEndToEndTests(GeventPatchedTestCase):
@@ -582,3 +584,21 @@ class ThriftHealthcheck(GeventPatchedTestCase):
                 )
                 self.assertTrue(healthy)
                 self.assertEqual(handler.probe, IsHealthyProbe.LIVENESS)
+
+
+class ThriftErrorReplacementTests(GeventPatchedTestCase):
+    def test_server_replaces_unhandled_errors(self):
+        """The server span should start/stop appropriately."""
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise Exception("foo")
+
+        handler = Handler()
+
+        server_span_observer = mock.Mock(spec=ServerSpanObserver)
+        with serve_thrift(handler, TestService, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                with self.assertRaises(Error) as exc_info:
+                    client.example()
+        self.assertEqual(exc_info.exception.code, ErrorCode.INTERNAL_SERVER_ERROR)

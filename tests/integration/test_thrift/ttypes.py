@@ -16,6 +16,8 @@ from thrift.Thrift import TType
 from thrift.transport import TTransport
 from thrift.TRecursive import fix_spec
 
+import baseplate.thrift.ttypes
+
 all_structs = []
 
 
