@@ -4,8 +4,6 @@ import unittest
 
 from unittest import mock
 
-import gevent.queue
-
 from thrift.protocol import TBinaryProtocol
 from thrift.protocol import THeaderProtocol
 from thrift.Thrift import TException
@@ -298,7 +296,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
         self.assertEqual(self.mock_queue.put.call_args, mock.call(None))
 
     def test_pool_checkout_exception(self):
-        class PatchedLifoQueue(gevent.queue.LifoQueue):
+        class PatchedLifoQueue(queue.LifoQueue):
             def get(self, *args, **kwargs):
                 raise Exception
 
