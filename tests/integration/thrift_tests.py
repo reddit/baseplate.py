@@ -20,17 +20,16 @@ from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
-from baseplate.observers.prometheus import PrometheusClientSpanObserver
 from baseplate.observers.timeout import ServerTimeout
 from baseplate.observers.timeout import TimeoutBaseplateObserver
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 from baseplate.thrift import BaseplateService
 from baseplate.thrift import BaseplateServiceV2
+from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
-from baseplate.thrift.ttypes import Error as bp_error
-from baseplate.thrift.ttypes import ErrorCode
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
@@ -56,7 +55,9 @@ def serve_thrift(handler, server_spec, server_span_observer=None, baseplate_obse
     logger = mock.Mock(spec=logging.Logger)
     edge_context_factory = FakeEdgeContextFactory()
     processor = server_spec.Processor(handler)
-    processor = baseplateify_processor(processor, logger, baseplate, edge_context_factory)
+    processor = baseplateify_processor(
+        processor, logger, baseplate, edge_context_factory, convert_to_baseplate_error=True
+    )
 
     # bind a server socket on an available port
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
@@ -353,7 +354,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
         with serve_thrift(handler, TestService, server_span_observer) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
-                with self.assertRaises(TApplicationException):
+                with self.assertRaises(Error):
                     client.example()
 
         server_span_observer.on_start.assert_called_once_with()
@@ -419,13 +420,13 @@ class ThriftClientSpanTests(GeventPatchedTestCase):
             with baseplate_thrift_client(
                 server.endpoint, TestService, client_span_observer
             ) as context:
-                with self.assertRaises(TApplicationException):
+                with self.assertRaises(Error):
                     context.example_service.example()
 
         client_span_observer.on_start.assert_called_once_with()
         self.assertEqual(client_span_observer.on_finish.call_count, 1)
         _, captured_exc, _ = client_span_observer.on_finish.call_args[0][0]
-        self.assertIsInstance(captured_exc, TApplicationException)
+        self.assertIsInstance(captured_exc, Error)
 
 
 class ThriftEndToEndTests(GeventPatchedTestCase):
@@ -588,6 +589,24 @@ class ThriftHealthcheck(GeventPatchedTestCase):
                 self.assertEqual(handler.probe, IsHealthyProbe.LIVENESS)
 
 
+class ThriftErrorReplacementTests(GeventPatchedTestCase):
+    def test_server_replaces_unhandled_errors(self):
+        """The server span should start/stop appropriately."""
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise Exception("foo")
+
+        handler = Handler()
+
+        server_span_observer = mock.Mock(spec=ServerSpanObserver)
+        with serve_thrift(handler, TestService, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                with self.assertRaises(Error) as exc_info:
+                    client.example()
+        self.assertEqual(exc_info.exception.code, ErrorCode.INTERNAL_SERVER_ERROR)
+
+
 class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
     def reset_metrics(self, metrics):
         if not metrics:
@@ -665,7 +684,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
                     client.example()
 
         got_labels = prom_observer.get_labels()
-        want_labels = {'protocol':'thrift', 'thrift.method':'example', 'exception_type': 'ExpectedException', 'thrift.status_code':'', 'thrift.status':'', 'success':'false'}
+        want_labels = {'protocol':'thrift', 'thrift.method':'example', 'exception_type': 'ExpectedException', 'success':'false'}
         self.assertEqual(got_labels, want_labels)
 
         m = prom_observer.metrics
@@ -742,7 +761,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
 
         class Handler(TestService.Iface):
             def example(self, context):
-                raise bp_error(
+                raise Error(
                     ErrorCode.NOT_FOUND,
                     "foo is not found"
                 )
@@ -750,7 +769,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
         prom_observer = PrometheusServerSpanObserver()
         with serve_thrift(Handler(), TestService, prom_observer) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
-                with self.assertRaises(bp_error):
+                with self.assertRaises(Error):
                     client.example()
 
         got_labels = prom_observer.get_labels()
