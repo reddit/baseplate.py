@@ -1,9 +1,11 @@
+include "baseplate.thrift"
+
 exception ExpectedException {
 
 }
 
 service TestService {
-    bool example() throws (1: ExpectedException exc),
+    bool example() throws (1: ExpectedException exc, 2: baseplate.Error err),
 }
 
 struct ExampleStruct {
