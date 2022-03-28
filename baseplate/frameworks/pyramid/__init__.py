@@ -237,6 +237,7 @@ class BaseplateConfigurator:
             name=request.matched_route.name,
             trace_info=trace_info,
         )
+        span.set_tag("protocol", "http")
         span.set_tag("http.url", request.url)
         span.set_tag("http.method", request.method)
         span.set_tag("peer.ipv4", request.remote_addr)

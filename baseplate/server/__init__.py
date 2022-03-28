@@ -296,13 +296,8 @@ def load_app_and_run_server() -> None:
     if einhorn.is_worker():
         einhorn.ack_startup()
 
-    try:
-        # pylint: disable=cyclic-import
-        from baseplate.server.prometheus import start_prometheus_exporter
-    except ImportError:
-        logger.debug("Prometheus exporter not available. pip install prometheus-client to enable.")
-    else:
-        start_prometheus_exporter()
+    from baseplate.server.prometheus import start_prometheus_exporter
+    start_prometheus_exporter()
 
     if args.reload:
         reloader.start_reload_watcher(extra_files=[args.config_file.name])

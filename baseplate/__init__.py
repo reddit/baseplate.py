@@ -338,6 +338,11 @@ class Baseplate:
                     self._app_config, self._metrics_client
                 )
             )
+
+            from baseplate.observers.prometheus import PrometheusBaseplateObserver
+            observer = PrometheusBaseplateObserver()
+            self.register(observer)
+
         elif "metrics.namespace" in self._app_config:
             from baseplate.lib.metrics import metrics_client_from_config
             from baseplate.observers.metrics import MetricsBaseplateObserver
