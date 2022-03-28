@@ -84,7 +84,11 @@ class PrometheusServerSpanObserver(SpanObserver):
             return
 
         if exc_info is not None:
-            self.tags["exception_type"] = exc_info[0]
+            self.tags["exception_type"] = exc_info[0].__name__
+            self.tags["success"] = "false"
+
+        if self.tags.get("exception_type", "") == "":
+            self.tags["success"] = "true"
 
         self.metrics.active_requests_metric(self.tags).dec()
         self.metrics.requests_total_metric(self.tags).inc()
@@ -98,6 +102,7 @@ class PrometheusServerSpanObserver(SpanObserver):
         else:
             observer = PrometheusClientSpanObserver()
 
+        observer.on_set_tag("protocol", self.protocol)
         span.register(observer)
 
 
@@ -145,8 +150,10 @@ class PrometheusClientSpanObserver(SpanObserver):
             logger.warning("No metrics set for Prometheus metric collection. Metrics will not be exported correctly.")
             return
 
+        self.tags["success"] = "true"
         if exc_info is not None:
-            self.tags["exception_type"] = exc_info[0]
+            self.tags["exception_type"] = exc_info[0].__name__
+            self.tags["success"] = "false"
 
         self.metrics.active_requests_metric(self.tags).dec()
         self.metrics.requests_total_metric(self.tags).inc()
@@ -160,6 +167,7 @@ class PrometheusClientSpanObserver(SpanObserver):
         else:
             observer = PrometheusClientSpanObserver()
 
+        observer.on_set_tag("protocol", self.protocol)
         span.register(observer)
 
 
@@ -207,8 +215,10 @@ class PrometheusLocalSpanObserver(SpanObserver):
             logger.warning("No metrics set for Prometheus metric collection. Metrics will not be exported correctly.")
             return
 
+        self.tags["success"] = "true"
         if exc_info is not None:
-            self.tags["exception_type"] = exc_info[0]
+            self.tags["exception_type"] = exc_info[0].__name__
+            self.tags["success"] = "false"
 
         self.metrics.active_requests_metric(self.tags).dec()
         self.metrics.requests_total_metric(self.tags).inc()
@@ -222,4 +232,5 @@ class PrometheusLocalSpanObserver(SpanObserver):
         else:
             observer = PrometheusClientSpanObserver()
 
+        observer.on_set_tag("protocol", self.protocol)
         span.register(observer)

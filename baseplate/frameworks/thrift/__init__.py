@@ -18,6 +18,8 @@ from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import TraceInfo
 from baseplate.lib.edgecontext import EdgeContextFactory
+from baseplate.thrift.ttypes import Error as bp_error
+from baseplate.thrift.ttypes import ErrorCode
 
 
 class _ContextAwareHandler:
@@ -33,6 +35,7 @@ class _ContextAwareHandler:
             handler_fn = getattr(self.handler, fn_name)
 
             span = self.context.span
+            span.set_tag("thrift.method", fn_name)
             try:
                 span.start()
                 result = handler_fn(self.context, *args, **kwargs)
@@ -42,6 +45,12 @@ class _ContextAwareHandler:
                 span.finish(exc_info=sys.exc_info())
                 raise
             except TException:
+                name, code, status = processException(sys.exc_info())
+                span.set_tag("exception_type", name)
+                span.set_tag("thrift.status_code", code)
+                span.set_tag("thrift.status", status)
+                span.set_tag("success", "false")
+
                 # this is an expected exception, as defined in the IDL
                 span.finish()
                 raise
@@ -55,6 +64,27 @@ class _ContextAwareHandler:
                 return result
 
         return call_with_context
+
+def processException(exc_info):
+    """
+    processException attempts to get additional information from the
+    exception info. If the exception is a baseplate thrift Error type
+    then the status code and status is also returned.
+
+    The code is the numeric value from a baseplate.Error, for example: "404".
+    The status is the human-readable status, for example: "NOT_FOUND".
+    """
+    exc_class = exc_info[0]
+    exc = exc_info[1]
+    code, status = "", ""
+    name = exc_class.__name__
+
+    if issubclass(exc_class, bp_error):
+        code = exc.code
+        c = ErrorCode()
+        status = c._VALUES_TO_NAMES.get(code, "")
+
+    return name, code, status
 
 
 def baseplateify_processor(

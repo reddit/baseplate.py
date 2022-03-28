@@ -98,6 +98,15 @@ class PrometheusHTTPServerMetrics():
             http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
         )
 
+    def get_latency_seconds_metric(self):
+        return http_server_latency_seconds
+
+    def get_requests_total_metric(self):
+        return http_server_requests_total
+
+    def get_active_requests_metric(self):
+        return http_server_active_requests
+
 
 # http client labels and metrics
 http_client_latency_labels = [
@@ -165,6 +174,16 @@ class PrometheusHTTPClientMetrics():
             http_slug = tags.get("http.slug", ""),
         )
 
+    def get_latency_seconds_metric(self):
+        return http_client_latency_seconds
+
+    def get_requests_total_metric(self):
+        return http_client_requests_total
+
+    def get_active_requests_metric(self):
+        return http_client_active_requests
+
+
 
 class PrometheusHTTPLocalMetrics():
     def __init__(self):
@@ -190,6 +209,16 @@ class PrometheusHTTPLocalMetrics():
             http_method = tags.get("http.method", ""),
             http_endpoint = getHTTPEndpointHandler(tags.get("http.url", "")),
         )
+
+    def get_latency_seconds_metric(self):
+        return http_server_latency_seconds
+
+    def get_requests_total_metric(self):
+        return http_server_requests_total
+
+    def get_active_requests_metric(self):
+        return http_server_active_requests
+
 
 
 # thrift server labels and metrics
@@ -237,15 +266,25 @@ class PrometheusThriftServerMetrics():
         return thrift_server_requests_total.labels(
             thrift_method = tags.get("thrift.method", ""),
             thrift_success = tags.get("success", ""),
-            thrift_exception_type = tags.get("thrift_exception_type", ""),
-            thrift_baseplate_status = tags.get("thrift_baseplate_status", ""),
-            thrift_baseplate_status_code = tags.get("thrift_baseplate_status_code", ""),
+            thrift_exception_type = tags.get("exception_type", ""),
+            thrift_baseplate_status = tags.get("thrift.status", ""),
+            thrift_baseplate_status_code = tags.get("thrift.status_code", ""),
         )
 
     def active_requests_metric(self, tags):
         return thrift_server_active_requests.labels(
             thrift_method = tags.get("thrift.method", ""),
         )
+
+    def get_latency_seconds_metric(self):
+        return thrift_server_latency_seconds
+
+    def get_requests_total_metric(self):
+        return thrift_server_requests_total
+
+    def get_active_requests_metric(self):
+        return thrift_server_active_requests
+
 
 
 # thrift client labels and metrics
@@ -292,24 +331,34 @@ class PrometheusThriftClientMetrics():
         return thrift_client_latency_seconds.labels(
             thrift_method = tags.get("thrift.method", ""),
             thrift_success = tags.get("success", ""),
-            thrift_slug = tags.get("thrift.slug", ""),
+            thrift_slug = tags.get("peer.service", ""),
         )
 
     def requests_total_metric(self, tags):
         return thrift_client_requests_total.labels(
             thrift_method = tags.get("thrift.method", ""),
             thrift_success = tags.get("success", ""),
-            thrift_exception_type = tags.get("thrift_exception_type", ""),
-            thrift_baseplate_status = tags.get("thrift_baseplate_status", ""),
-            thrift_baseplate_status_code = tags.get("thrift_baseplate_status_code", ""),
-            thrift_slug = tags.get("thrift.slug", ""),
+            thrift_exception_type = tags.get("exception_type", ""),
+            thrift_baseplate_status = tags.get("thrift.status", ""),
+            thrift_baseplate_status_code = tags.get("thrift.status_code", ""),
+            thrift_slug = tags.get("peer.service", ""),
         )
 
     def active_requests_metric(self, tags):
         return thrift_client_active_requests.labels(
             thrift_method = tags.get("thrift.method", ""),
-            thrift_slug = tags.get("thrift.slug", ""),
+            thrift_slug = tags.get("peer.service", ""),
         )
+
+    def get_latency_seconds_metric(self):
+        return thrift_client_latency_seconds
+
+    def get_requests_total_metric(self):
+        return thrift_client_requests_total
+
+    def get_active_requests_metric(self):
+        return thrift_client_active_requests
+
 
 # TODO: what metrics do we want to track for local metrics
 class PrometheusThriftLocalMetrics():
@@ -326,9 +375,9 @@ class PrometheusThriftLocalMetrics():
         return thrift_client_requests_total.labels(
             thrift_method = tags.get("thrift.method", ""),
             thrift_success = tags.get("success", ""),
-            thrift_exception_type = tags.get("thrift_exception_type", ""),
-            thrift_baseplate_status = tags.get("thrift_baseplate_status", ""),
-            thrift_baseplate_status_code = tags.get("thrift_baseplate_status_code", ""),
+            thrift_exception_type = tags.get("exception_type", ""),
+            thrift_baseplate_status = tags.get("thrift.status", ""),
+            thrift_baseplate_status_code = tags.get("thrift.status_code", ""),
         )
 
     def active_requests_metric(self, tags):
@@ -344,6 +393,7 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
 
 def getHTTPEndpointHandler(httpURL: str) -> str:
     """
+    hhtp://localhost:9090/user/123
     Path to identify the endpoint handler, may be empty.
     Ref: https://github.snooguts.net/reddit/baseplate.spec/blob/master/component-apis/prom-metrics.md#http
     MUST NOT include the per-request value of "request fields":
@@ -352,4 +402,6 @@ def getHTTPEndpointHandler(httpURL: str) -> str:
     from urllib3.util import parse_url
     _, _, _, _, path, _, _ = parse_url(httpURL)
     # TODO: remove request fields. Whats the best way to do this.
+    # there is a way to get this representation from pyramid
+    # ref: https://docs.pylonsproject.org/projects/pyramid/en/latest/api/request.html#pyramid.request.Request.url
     return path

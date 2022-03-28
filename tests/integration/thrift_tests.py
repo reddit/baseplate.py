@@ -19,6 +19,8 @@ from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
+from baseplate.observers.prometheus import PrometheusServerSpanObserver
+from baseplate.observers.prometheus import PrometheusClientSpanObserver
 from baseplate.observers.timeout import ServerTimeout
 from baseplate.observers.timeout import TimeoutBaseplateObserver
 from baseplate.server import make_listener
@@ -27,10 +29,11 @@ from baseplate.thrift import BaseplateService
 from baseplate.thrift import BaseplateServiceV2
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
+from baseplate.thrift.ttypes import Error as bp_error
+from baseplate.thrift.ttypes import ErrorCode
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
-
 
 @contextlib.contextmanager
 def serve_thrift(handler, server_spec, server_span_observer=None, baseplate_observer=None):
@@ -38,7 +41,6 @@ def serve_thrift(handler, server_spec, server_span_observer=None, baseplate_obse
     baseplate = Baseplate()
 
     if server_span_observer:
-
         class TestBaseplateObserver(BaseplateObserver):
             def on_server_span_created(self, context, server_span):
                 server_span.register(server_span_observer)
@@ -582,3 +584,176 @@ class ThriftHealthcheck(GeventPatchedTestCase):
                 )
                 self.assertTrue(healthy)
                 self.assertEqual(handler.probe, IsHealthyProbe.LIVENESS)
+
+
+class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
+
+    def reset_metrics(self, metrics):
+        if not metrics:
+            return
+
+        try:
+            metrics.get_active_requests_metric().clear()
+            metrics.get_latency_seconds_metric().clear()
+            metrics.get_requests_total_metric().clear()
+        except:
+            pass
+
+    def assert_correct_metric(self, metric, want_count, want_sample, want_name, want_labels, want_value):
+        m = metric.collect()
+        self.assertEqual(len(m), 1)
+        self.assertEqual(len(m[0].samples), want_count)
+        sample = m[0].samples[want_sample]
+        got_name = sample[0]
+        self.assertEqual(got_name, want_name)
+        got_labels = sample[1]
+        self.assertEqual(got_labels, want_labels)
+        got_value = sample[2]
+        self.assertEqual(got_value, want_value)
+
+    def test_prom_observer_metrics_success(self):
+        """The PrometheusServerSpanObserver should set labels and metrics correctly for successful requests."""
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+
+        prom_observer = PrometheusServerSpanObserver()
+        with serve_thrift(Handler(), TestService, prom_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                client.example()
+
+        prom_labels = prom_observer.get_labels()
+        self.assertEqual(prom_labels, {'protocol':'thrift',  'success':'true', 'thrift.method':'example',})
+
+        m = prom_observer.metrics
+        self.assert_correct_metric(m.get_active_requests_metric(),
+            1,
+            0,
+            'thrift_server_active_requests',
+            {'thrift_method':'example'},
+            0.0,
+        )
+        self.assert_correct_metric(m.get_latency_seconds_metric(),
+            18,
+            3,
+            'thrift_server_latency_seconds_bucket',
+            {'thrift_method': 'example', 'thrift_success': 'true', 'le': '0.0015625'},
+            1.0,
+        )
+        self.assert_correct_metric(m.get_requests_total_metric(),
+            2,
+            0,
+            'thrift_server_requests_total',
+            {'thrift_baseplate_status': '', 'thrift_baseplate_status_code': '', 'thrift_exception_type': '', 'thrift_method': 'example', 'thrift_success': 'true'},
+            1.0,
+        )
+        self.reset_metrics(prom_observer.metrics)
+
+    def test_prom_observer_metrics_app_exc(self):
+        """The PrometheusServerSpanObserver should set labels and metrics correctly for requests that throw an exception defined by the service."""
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise TestService.ExpectedException()
+
+        prom_observer = PrometheusServerSpanObserver()
+        with serve_thrift(Handler(), TestService, prom_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                with self.assertRaises(TestService.ExpectedException):
+                    client.example()
+
+        got_labels = prom_observer.get_labels()
+        want_labels = {'protocol':'thrift', 'thrift.method':'example', 'exception_type': 'ExpectedException', 'thrift.status_code':'', 'thrift.status':'', 'success':'false'}
+        self.assertEqual(got_labels, want_labels)
+
+        m = prom_observer.metrics
+        self.assert_correct_metric(m.get_active_requests_metric(),
+            1,
+            0,
+            'thrift_server_active_requests',
+            {'thrift_method':'example'},
+            0.0,
+        )
+        self.assert_correct_metric(m.get_latency_seconds_metric(),
+            18,
+            3,
+            'thrift_server_latency_seconds_bucket',
+            {'thrift_method': 'example', 'thrift_success': 'false', 'le': '0.0015625'},
+            1.0,
+        )
+        self.assert_correct_metric(m.get_requests_total_metric(),
+            2,
+            0,
+            'thrift_server_requests_total',
+            {'thrift_baseplate_status': '', 'thrift_baseplate_status_code': '', 'thrift_exception_type': 'ExpectedException', 'thrift_method': 'example', 'thrift_success': 'false'},
+            1.0,
+        )
+        self.reset_metrics(prom_observer.metrics)
+
+
+    def test_prom_observer_metrics_thrift_exc(self):
+        """The PrometheusServerSpanObserver should set labels and metrics correctly for requests that throw a thrift exception."""
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise TApplicationException
+
+        prom_observer = PrometheusServerSpanObserver()
+        with serve_thrift(Handler(), TestService, prom_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                with self.assertRaises(TApplicationException):
+                    client.example()
+
+        got_labels = prom_observer.get_labels()
+        want_labels = {'protocol':'thrift', 'thrift.method':'example', 'exception_type': 'TApplicationException', 'success':'false'}
+        self.assertEqual(got_labels, want_labels)
+
+        m = prom_observer.metrics
+        self.assert_correct_metric(m.get_active_requests_metric(),
+            1,
+            0,
+            'thrift_server_active_requests',
+            {'thrift_method':'example'},
+            0.0,
+        )
+        self.assert_correct_metric(m.get_latency_seconds_metric(),
+            18,
+            3,
+            'thrift_server_latency_seconds_bucket',
+            {'thrift_method': 'example', 'thrift_success': 'false', 'le': '0.0015625'},
+            1.0,
+        )
+        self.assert_correct_metric(m.get_requests_total_metric(),
+            2,
+            0,
+            'thrift_server_requests_total',
+            {'thrift_baseplate_status': '', 'thrift_baseplate_status_code': '', 'thrift_exception_type': 'TApplicationException', 'thrift_method': 'example', 'thrift_success': 'false'},
+            1.0,
+        )
+        self.reset_metrics(prom_observer.metrics)
+
+
+    # TODO add tests that checks if handler returns baseplate thrift Error
+    # def test_expected_exception_not_passed_to_server_span_finish(self):
+    #     """
+    #     If the server returns an baseplate thrift Error, the thrift.status_code label and
+    #     thrift.status label should be set.
+    #     """
+
+    #     class Handler(TestService.Iface):
+    #         def example(self, context):
+    #             raise bp_error.Error(
+    #                 ErrorCode.NOT_FOUND,
+    #                 "foo is not found"
+    #             )
+
+    #     prom_observer = PrometheusServerSpanObserver()
+    #     with serve_thrift(Handler(), TestService, prom_observer) as server:
+    #         with raw_thrift_client(server.endpoint, TestService) as client:                
+    #             with self.assertRaises(bp_error.Error):
+    #                 client.example()
+
+    #     got_labels = prom_observer.get_labels()
+    #     want_labels = {'protocol':'thrift', 'thrift.method':'example', 'exception_type': 'Error', 'thrift.status_code':'404', 'thrift.status':'NOT_FOUND', 'success':'false'}
+    #     self.assertEqual(got_labels, want_labels)
