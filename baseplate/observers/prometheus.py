@@ -2,9 +2,8 @@ import logging
 import time
 
 from typing import Any
-from typing import Optional
 from typing import Dict
-from typing import Callable
+from typing import Optional
 
 from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
