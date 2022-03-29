@@ -40,15 +40,16 @@ def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
     before_start = REGISTRY.get_sample_value(
         f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
     )
-    assert before_start == None
+
+    assert before_start is None
     before_start = REGISTRY.get_sample_value(
         f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
     )
-    assert before_start == None
+    assert before_start is None
     before_start = REGISTRY.get_sample_value(
         f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
     )
-    assert before_start == None
+    assert before_start is None
 
     observer = observer_cls()
     observer.on_set_tag("protocol", protocol)
@@ -58,11 +59,11 @@ def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
     after_start = REGISTRY.get_sample_value(
         f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
     )
-    assert after_start == None
+    assert after_start is None
     after_start = REGISTRY.get_sample_value(
         f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
     )
-    assert after_start == None
+    assert after_start is None
     after_start = REGISTRY.get_sample_value(
         f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
     )

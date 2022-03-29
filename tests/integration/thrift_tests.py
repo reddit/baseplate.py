@@ -616,7 +616,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
             metrics.get_active_requests_metric().clear()
             metrics.get_latency_seconds_metric().clear()
             metrics.get_requests_total_metric().clear()
-        except:
+        except Exception:
             pass
 
     def assert_correct_metric(
