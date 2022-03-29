@@ -56,7 +56,7 @@ class NodeWatcher:
         #    "md5_hashed_data": str
         # }
         # If the load type is 'http', this format is an indication that we support
-        # downloading the contents of files uploaded to S3, GCP, etc when provided
+        # downloading the contents of files uploaded to S3, GCS, etc when provided
         # with an accessible URL.
         if json_data.get("live_data_watcher_load_type") == "http":
             # Only write the data if we actually managed to fetch its contents.
