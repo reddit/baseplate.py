@@ -1,18 +1,18 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
 import argparse
 import configparser
+import json
 import logging
 import os
 import sys
 import time
-import json
-from tkinter import E
-import requests
 
 from pathlib import Path
 from typing import Any
 from typing import NoReturn
 from typing import Optional
+
+import requests
 
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
@@ -56,7 +56,7 @@ class NodeWatcher:
         #    "md5_hashed_data": str
         # }
         # If the load type is 'http', this format is an indication that we support
-        # downloading the contents of files uploaded to S3, GCP, etc when provided 
+        # downloading the contents of files uploaded to S3, GCP, etc when provided
         # with an accessible URL.
         if json_data.get("live_data_watcher_load_type") == "http":
             # Only write the data if we actually managed to fetch its contents.
@@ -90,7 +90,7 @@ class NodeWatcher:
                 os.fchown(tmpfile.fileno(), self.owner, self.group)
             os.fchmod(tmpfile.fileno(), self.mode)
             try:
-                json_data = json.loads(data.decode('UTF-8'))
+                json_data = json.loads(data.decode("UTF-8"))
             except json.decoder.JSONDecodeError:
                 # If JSON fails to decode, still write the bytes data since
                 # we don't necessarily know if the the contents of the znode
