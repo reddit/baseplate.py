@@ -297,6 +297,7 @@ def load_app_and_run_server() -> None:
         einhorn.ack_startup()
 
     from baseplate.server.prometheus import start_prometheus_exporter
+
     start_prometheus_exporter()
 
     if args.reload:
