@@ -5,10 +5,14 @@ import logging
 import os
 import sys
 import time
+import json
+from tkinter import E
+import requests
 
 from pathlib import Path
 from typing import Any
 from typing import NoReturn
+from typing import Optional
 
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
@@ -32,6 +36,41 @@ class NodeWatcher:
         self.group = group
         self.mode = mode
 
+    @staticmethod
+    def fetch_data_from_url(url: str) -> Optional[str]:
+        data = None
+        try:
+            # Fetch the data from the url as bytes.
+            data = requests.get(url).content
+        except requests.exceptions.RequestException as e:
+            logger.exception(e)
+            return None
+        return data
+
+    @staticmethod
+    def get_data_to_write(json_data: dict, data: bytes) -> Optional[bytes]:
+        # Check if we have a JSON in this special format:
+        # data = {
+        #    "live_data_watcher_load_type": str
+        #    "data": str
+        #    "md5_hashed_data": str
+        # }
+        # If the load type is 'http', this format is an indication that we support
+        # downloading the contents of files uploaded to S3, GCP, etc when provided 
+        # with an accessible URL.
+        if json_data.get("live_data_watcher_load_type") == "http":
+            # Only write the data if we actually managed to fetch its contents.
+            url = json_data.get("data")
+            if url is None:
+                logger.exception("No url found in zk source JSON node.")
+                return None
+            url_data = NodeWatcher.fetch_data_from_url(url)
+            if url_data is None:
+                return None
+            return url_data
+        else:
+            return data
+
     def on_change(self, data: bytes, _znode_stat: ZnodeStat) -> None:
         if data is None:
             # the data node does not exist
@@ -50,8 +89,20 @@ class NodeWatcher:
             if self.owner and self.group:
                 os.fchown(tmpfile.fileno(), self.owner, self.group)
             os.fchmod(tmpfile.fileno(), self.mode)
-
-            tmpfile.write(data)
+            try:
+                json_data = json.loads(data.decode('UTF-8'))
+            except json.decoder.JSONDecodeError:
+                # If JSON fails to decode, still write the bytes data since
+                # we don't necessarily know if the the contents of the znode
+                # had to be valid JSON anyways.
+                tmpfile.write(data)
+            else:
+                # If no exceptions, we have valid JSON, and can parse accordingly.
+                data_to_write = NodeWatcher.get_data_to_write(json_data, data)
+                if data_to_write is not None:
+                    tmpfile.write(data_to_write)
+                else:
+                    logger.warning("No data written to destination node.")
         os.rename(self.dest + ".tmp", self.dest)
 
 
