@@ -1,4 +1,5 @@
 import unittest
+
 from unittest import mock
 
 import pytest
@@ -22,19 +23,31 @@ class TestException(Exception):
             "server",
             PrometheusServerSpanObserver,
             {
-                "latency_labels": {"thrift_method": "", "thrift_success":"true"},
-                "requests_labels": {"thrift_method": "", "thrift_success":"true",  "thrift_exception_type":"", "thrift_baseplate_status":"", "thrift_baseplate_status_code":""},
-                "active_labels": { "thrift_method": ""},
+                "latency_labels": {"thrift_method": "", "thrift_success": "true"},
+                "requests_labels": {
+                    "thrift_method": "",
+                    "thrift_success": "true",
+                    "thrift_exception_type": "",
+                    "thrift_baseplate_status": "",
+                    "thrift_baseplate_status_code": "",
+                },
+                "active_labels": {"thrift_method": ""},
             },
         ),
     ),
 )
 def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
-    before_start =  REGISTRY.get_sample_value(f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", ""))
+    before_start = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
+    )
     assert before_start == None
-    before_start =  REGISTRY.get_sample_value(f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", ""))
+    before_start = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
+    )
     assert before_start == None
-    before_start =  REGISTRY.get_sample_value(f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", ""))
+    before_start = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
+    )
     assert before_start == None
 
     observer = observer_cls()
@@ -42,19 +55,31 @@ def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
     assert observer.get_prefix() == f"{protocol}_{client_or_server}"
 
     observer.on_start()
-    after_start =  REGISTRY.get_sample_value(f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", ""))
+    after_start = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
+    )
     assert after_start == None
-    after_start =  REGISTRY.get_sample_value(f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", ""))
+    after_start = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
+    )
     assert after_start == None
-    after_start = REGISTRY.get_sample_value(f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", ""))
+    after_start = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
+    )
     assert after_start == 1.0
 
     observer.on_finish(None)
-    after_done =  REGISTRY.get_sample_value(f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", ""))
+    after_done = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
+    )
     assert after_done == 1.0
-    after_done =  REGISTRY.get_sample_value(f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", ""))
+    after_done = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
+    )
     assert after_done == 1.0
-    after_done = REGISTRY.get_sample_value(f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", ""))
+    after_done = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
+    )
     assert after_done == 0.0
 
 

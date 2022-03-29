@@ -619,7 +619,9 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
         except:
             pass
 
-    def assert_correct_metric(self, metric, want_count, want_sample, want_name, want_labels, want_value):
+    def assert_correct_metric(
+        self, metric, want_count, want_sample, want_name, want_labels, want_value
+    ):
         m = metric.collect()
         self.assertEqual(len(m), 1)
         self.assertEqual(len(m[0].samples), want_count)
@@ -644,28 +646,44 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
                 client.example()
 
         prom_labels = prom_observer.get_labels()
-        self.assertEqual(prom_labels, {'protocol':'thrift',  'success':'true', 'thrift.method':'example',})
+        self.assertEqual(
+            prom_labels,
+            {
+                "protocol": "thrift",
+                "success": "true",
+                "thrift.method": "example",
+            },
+        )
 
         m = prom_observer.metrics
-        self.assert_correct_metric(m.get_active_requests_metric(),
+        self.assert_correct_metric(
+            m.get_active_requests_metric(),
             1,
             0,
-            'thrift_server_active_requests',
-            {'thrift_method':'example'},
+            "thrift_server_active_requests",
+            {"thrift_method": "example"},
             0.0,
         )
-        self.assert_correct_metric(m.get_latency_seconds_metric(),
+        self.assert_correct_metric(
+            m.get_latency_seconds_metric(),
             18,
             3,
-            'thrift_server_latency_seconds_bucket',
-            {'thrift_method': 'example', 'thrift_success': 'true', 'le': '0.0015625'},
+            "thrift_server_latency_seconds_bucket",
+            {"thrift_method": "example", "thrift_success": "true", "le": "0.0015625"},
             1.0,
         )
-        self.assert_correct_metric(m.get_requests_total_metric(),
+        self.assert_correct_metric(
+            m.get_requests_total_metric(),
             2,
             0,
-            'thrift_server_requests_total',
-            {'thrift_baseplate_status': '', 'thrift_baseplate_status_code': '', 'thrift_exception_type': '', 'thrift_method': 'example', 'thrift_success': 'true'},
+            "thrift_server_requests_total",
+            {
+                "thrift_baseplate_status": "",
+                "thrift_baseplate_status_code": "",
+                "thrift_exception_type": "",
+                "thrift_method": "example",
+                "thrift_success": "true",
+            },
             1.0,
         )
         self.reset_metrics(prom_observer.metrics)
@@ -684,33 +702,46 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
                     client.example()
 
         got_labels = prom_observer.get_labels()
-        want_labels = {'protocol':'thrift', 'thrift.method':'example', 'exception_type': 'ExpectedException', 'success':'false'}
+        want_labels = {
+            "protocol": "thrift",
+            "thrift.method": "example",
+            "exception_type": "ExpectedException",
+            "success": "false",
+        }
         self.assertEqual(got_labels, want_labels)
 
         m = prom_observer.metrics
-        self.assert_correct_metric(m.get_active_requests_metric(),
+        self.assert_correct_metric(
+            m.get_active_requests_metric(),
             1,
             0,
-            'thrift_server_active_requests',
-            {'thrift_method':'example'},
+            "thrift_server_active_requests",
+            {"thrift_method": "example"},
             0.0,
         )
-        self.assert_correct_metric(m.get_latency_seconds_metric(),
+        self.assert_correct_metric(
+            m.get_latency_seconds_metric(),
             18,
             3,
-            'thrift_server_latency_seconds_bucket',
-            {'thrift_method': 'example', 'thrift_success': 'false', 'le': '0.0015625'},
+            "thrift_server_latency_seconds_bucket",
+            {"thrift_method": "example", "thrift_success": "false", "le": "0.0015625"},
             1.0,
         )
-        self.assert_correct_metric(m.get_requests_total_metric(),
+        self.assert_correct_metric(
+            m.get_requests_total_metric(),
             2,
             0,
-            'thrift_server_requests_total',
-            {'thrift_baseplate_status': '', 'thrift_baseplate_status_code': '', 'thrift_exception_type': 'ExpectedException', 'thrift_method': 'example', 'thrift_success': 'false'},
+            "thrift_server_requests_total",
+            {
+                "thrift_baseplate_status": "",
+                "thrift_baseplate_status_code": "",
+                "thrift_exception_type": "ExpectedException",
+                "thrift_method": "example",
+                "thrift_success": "false",
+            },
             1.0,
         )
         self.reset_metrics(prom_observer.metrics)
-
 
     def test_prom_observer_metrics_thrift_exc(self):
         """The PrometheusServerSpanObserver should set labels and metrics correctly for requests that throw a thrift exception."""
@@ -726,29 +757,43 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
                     client.example()
 
         got_labels = prom_observer.get_labels()
-        want_labels = {'protocol':'thrift', 'thrift.method':'example', 'exception_type': 'TApplicationException', 'success':'false'}
+        want_labels = {
+            "protocol": "thrift",
+            "thrift.method": "example",
+            "exception_type": "TApplicationException",
+            "success": "false",
+        }
         self.assertEqual(got_labels, want_labels)
 
         m = prom_observer.metrics
-        self.assert_correct_metric(m.get_active_requests_metric(),
+        self.assert_correct_metric(
+            m.get_active_requests_metric(),
             1,
             0,
-            'thrift_server_active_requests',
-            {'thrift_method':'example'},
+            "thrift_server_active_requests",
+            {"thrift_method": "example"},
             0.0,
         )
-        self.assert_correct_metric(m.get_latency_seconds_metric(),
+        self.assert_correct_metric(
+            m.get_latency_seconds_metric(),
             18,
             3,
-            'thrift_server_latency_seconds_bucket',
-            {'thrift_method': 'example', 'thrift_success': 'false', 'le': '0.0015625'},
+            "thrift_server_latency_seconds_bucket",
+            {"thrift_method": "example", "thrift_success": "false", "le": "0.0015625"},
             1.0,
         )
-        self.assert_correct_metric(m.get_requests_total_metric(),
+        self.assert_correct_metric(
+            m.get_requests_total_metric(),
             2,
             0,
-            'thrift_server_requests_total',
-            {'thrift_baseplate_status': '', 'thrift_baseplate_status_code': '', 'thrift_exception_type': 'TApplicationException', 'thrift_method': 'example', 'thrift_success': 'false'},
+            "thrift_server_requests_total",
+            {
+                "thrift_baseplate_status": "",
+                "thrift_baseplate_status_code": "",
+                "thrift_exception_type": "TApplicationException",
+                "thrift_method": "example",
+                "thrift_success": "false",
+            },
             1.0,
         )
         self.reset_metrics(prom_observer.metrics)
@@ -761,10 +806,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
 
         class Handler(TestService.Iface):
             def example(self, context):
-                raise Error(
-                    ErrorCode.NOT_FOUND,
-                    "foo is not found"
-                )
+                raise Error(ErrorCode.NOT_FOUND, "foo is not found")
 
         prom_observer = PrometheusServerSpanObserver()
         with serve_thrift(Handler(), TestService, prom_observer) as server:
@@ -773,29 +815,45 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
                     client.example()
 
         got_labels = prom_observer.get_labels()
-        want_labels = {'protocol':'thrift', 'thrift.method':'example', 'exception_type': 'Error', 'thrift.status_code':404, 'thrift.status':'NOT_FOUND', 'success':'false'}
+        want_labels = {
+            "protocol": "thrift",
+            "thrift.method": "example",
+            "exception_type": "Error",
+            "thrift.status_code": 404,
+            "thrift.status": "NOT_FOUND",
+            "success": "false",
+        }
         self.assertEqual(got_labels, want_labels)
 
         m = prom_observer.metrics
-        self.assert_correct_metric(m.get_active_requests_metric(),
+        self.assert_correct_metric(
+            m.get_active_requests_metric(),
             1,
             0,
-            'thrift_server_active_requests',
-            {'thrift_method':'example'},
+            "thrift_server_active_requests",
+            {"thrift_method": "example"},
             0.0,
         )
-        self.assert_correct_metric(m.get_latency_seconds_metric(),
+        self.assert_correct_metric(
+            m.get_latency_seconds_metric(),
             18,
             3,
-            'thrift_server_latency_seconds_bucket',
-            {'thrift_method': 'example', 'thrift_success': 'false', 'le': '0.0015625'},
+            "thrift_server_latency_seconds_bucket",
+            {"thrift_method": "example", "thrift_success": "false", "le": "0.0015625"},
             1.0,
         )
-        self.assert_correct_metric(m.get_requests_total_metric(),
+        self.assert_correct_metric(
+            m.get_requests_total_metric(),
             2,
             0,
-            'thrift_server_requests_total',
-            {'thrift_baseplate_status': 'NOT_FOUND', 'thrift_baseplate_status_code': '404', 'thrift_exception_type': 'Error', 'thrift_method': 'example', 'thrift_success': 'false'},
+            "thrift_server_requests_total",
+            {
+                "thrift_baseplate_status": "NOT_FOUND",
+                "thrift_baseplate_status_code": "404",
+                "thrift_exception_type": "Error",
+                "thrift_method": "example",
+                "thrift_success": "false",
+            },
             1.0,
         )
         self.reset_metrics(prom_observer.metrics)

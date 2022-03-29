@@ -340,6 +340,7 @@ class Baseplate:
             )
 
             from baseplate.observers.prometheus import PrometheusBaseplateObserver
+
             observer = PrometheusBaseplateObserver()
             self.register(observer)
 

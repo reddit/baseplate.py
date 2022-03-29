@@ -1,8 +1,10 @@
-import time
 import logging
+import time
 
 from typing import Any
 from typing import Optional
+from typing import Dict
+from typing import Callable
 
 from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
@@ -27,7 +29,8 @@ class PrometheusBaseplateObserver(BaseplateObserver):
     i.e. `span.set_tag("protocol", "http")` or `span.set_tag("protocol", "thrift")`.
 
     """
-    def __init__(self):
+
+    def __init__(self) -> None:
         pass
 
     def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
@@ -36,10 +39,10 @@ class PrometheusBaseplateObserver(BaseplateObserver):
 
 
 class PrometheusServerSpanObserver(SpanObserver):
-    def __init__(self):
-        self.tags = {}
-        self.start_time = None
-        self.metrics = None
+    def __init__(self) -> None:
+        self.tags: Dict[str, Any] = {}
+        self.start_time: Any = None
+        self.metrics: Any = None
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
@@ -51,21 +54,26 @@ class PrometheusServerSpanObserver(SpanObserver):
         return self.tags
 
     @property
-    def protocol(self):
+    def protocol(self) -> str:
         return self.tags.get("protocol", "unknown")
 
-    def set_metrics_by_protocol(self):
+    def set_metrics_by_protocol(self) -> None:
         if self.protocol == "thrift":
             self.metrics = PrometheusThriftServerMetrics()
         elif self.protocol == "http":
             logger.warning("HTTP Prometheus metrics not implemented")
         else:
-            logger.warning("No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s", self.protocol)
+            logger.warning(
+                "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
+                self.protocol,
+            )
 
     def on_start(self) -> None:
         self.set_metrics_by_protocol()
         if self.metrics is None:
-            logger.warning("No metrics set for Prometheus metric collection. Metrics will not be exported correctly.")
+            logger.warning(
+                "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
+            )
             return
         self.start_time = time.perf_counter_ns()
         self.metrics.active_requests_metric(self.tags).inc()
@@ -75,11 +83,13 @@ class PrometheusServerSpanObserver(SpanObserver):
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         if self.metrics is None:
-            logger.warning("No metrics set for Prometheus metric collection. Metrics will not be exported correctly.")
+            logger.warning(
+                "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
+            )
             return
 
         if exc_info is not None:
-            self.tags["exception_type"] = exc_info[0].__name__
+            self.tags["exception_type"] = exc_info[1].__class__.__name__
             self.tags["success"] = "false"
 
         if self.tags.get("exception_type", "") == "":
@@ -89,9 +99,12 @@ class PrometheusServerSpanObserver(SpanObserver):
         self.metrics.requests_total_metric(self.tags).inc()
         if self.start_time is not None:
             elapsed_ns = time.perf_counter_ns() - self.start_time
-            self.metrics.latency_seconds_metric(self.tags).observe(elapsed_ns / NANOSECONDS_PER_SECOND)
+            self.metrics.latency_seconds_metric(self.tags).observe(
+                elapsed_ns / NANOSECONDS_PER_SECOND
+            )
 
     def on_child_span_created(self, span: Span) -> None:
+        observer: Any = None
         if isinstance(span, LocalSpan):
             observer = PrometheusLocalSpanObserver()
         else:
@@ -102,10 +115,10 @@ class PrometheusServerSpanObserver(SpanObserver):
 
 
 class PrometheusClientSpanObserver(SpanObserver):
-    def __init__(self):
+    def __init__(self) -> None:
         logger.warning("PrometheusClientSpanObserver not implemented")
 
 
 class PrometheusLocalSpanObserver(SpanObserver):
-    def __init__(self):
+    def __init__(self) -> None:
         logger.warning("PrometheusLocalSpanObserver not implemented")

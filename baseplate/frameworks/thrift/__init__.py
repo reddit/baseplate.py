@@ -52,23 +52,21 @@ class _ContextAwareHandler:
                 span.finish(exc_info=sys.exc_info())
                 raise
             except Error as exc:
-                exc_info = sys.exc_info()
-                code = exc_info[1].code
                 c = ErrorCode()
-                status = c._VALUES_TO_NAMES.get(code, "")
-                span.set_tag("exception_type", exc_info[0].__name__)
-                span.set_tag("thrift.status_code", code)
+                status = c._VALUES_TO_NAMES.get(exc.code, "")
+                span.set_tag("exception_type", "Error")
+                span.set_tag("thrift.status_code", exc.code)
                 span.set_tag("thrift.status", status)
                 span.set_tag("success", "false")
                 # mark 5xx errors as failures since those are still "unexpected"
-                if exc.code // 100 == 5:
+                if 500 <= exc.code < 600:
                     span.finish(exc_info=sys.exc_info())
                 else:
                     span.finish()
                 raise
             except TException:
                 exc_info = sys.exc_info()
-                span.set_tag("exception_type", exc_info[0].__name__)
+                span.set_tag("exception_type", exc_info[1].__class__.__name__)
                 span.set_tag("success", "false")
                 # this is an expected exception, as defined in the IDL
                 span.finish()
@@ -77,12 +75,6 @@ class _ContextAwareHandler:
                 # the handler crashed (or timed out)!
                 span.finish(exc_info=sys.exc_info())
                 if self.convert_to_baseplate_error:
-                    c = ErrorCode()
-                    status = c._VALUES_TO_NAMES.get(ErrorCode.INTERNAL_SERVER_ERROR, "")
-                    span.set_tag("exception_type", "Error")
-                    span.set_tag("thrift.status_code", ErrorCode.INTERNAL_SERVER_ERROR)
-                    span.set_tag("thrift.status", status)
-                    span.set_tag("success", "false")
                     raise Error(
                         code=ErrorCode.INTERNAL_SERVER_ERROR,
                         message="Internal server error",
@@ -94,27 +86,6 @@ class _ContextAwareHandler:
                 return result
 
         return call_with_context
-
-
-def processException(exc_info):
-    """
-    processException attempts to get additional information from the
-    exception info. If the exception is a baseplate thrift Error type
-    then the status code and status is also returned.
-    The code is the numeric value from a baseplate.Error, for example: "404".
-    The status is the human-readable status, for example: "NOT_FOUND".
-    """
-    exc_class = exc_info[0]
-    exc = exc_info[1]
-    code, status = "", ""
-    name = exc_class.__name__
-
-    if issubclass(exc_class, Error):
-        code = exc.code
-        c = ErrorCode()
-        status = c._VALUES_TO_NAMES.get(code, "")
-
-    return name, code, status
 
 
 def baseplateify_processor(

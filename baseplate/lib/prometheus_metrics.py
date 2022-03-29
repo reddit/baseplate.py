@@ -1,4 +1,8 @@
-from prometheus_client import Counter, Histogram, Gauge
+from typing import Any
+
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 
 
 # default_buckets creates the default bucket values for histogram metrics.
@@ -10,7 +14,7 @@ start = 0.0001
 factor = 2.5
 count = 14
 # creates 14 buckets from 100us ~ 14.9s.
-default_buckets = [start*factor**i for i in range(count)]
+default_buckets = [start * factor ** i for i in range(count)]
 
 
 # thrift server labels
@@ -46,35 +50,41 @@ thrift_server_active_requests = Gauge(
 )
 
 
-class PrometheusThriftServerMetrics():
-    def __init__(self):
+class PrometheusThriftServerMetrics:
+    def __init__(self) -> None:
         pass
 
-    def latency_seconds_metric(self, tags):
+    def latency_seconds_metric(self, tags: dict) -> Any:
+        """Return the latency_seconds metrics with labels set"""
         return thrift_server_latency_seconds.labels(
-            thrift_method = tags.get("thrift.method", ""),
-            thrift_success = tags.get("success", ""),
+            thrift_method=tags.get("thrift.method", ""),
+            thrift_success=tags.get("success", ""),
         )
 
-    def requests_total_metric(self, tags):
+    def requests_total_metric(self, tags: dict) -> Any:
+        """Return the requests_total metrics with labels set"""
         return thrift_server_requests_total.labels(
-            thrift_method = tags.get("thrift.method", ""),
-            thrift_success = tags.get("success", ""),
-            thrift_exception_type = tags.get("exception_type", ""),
-            thrift_baseplate_status = tags.get("thrift.status", ""),
-            thrift_baseplate_status_code = tags.get("thrift.status_code", ""),
+            thrift_method=tags.get("thrift.method", ""),
+            thrift_success=tags.get("success", ""),
+            thrift_exception_type=tags.get("exception_type", ""),
+            thrift_baseplate_status=tags.get("thrift.status", ""),
+            thrift_baseplate_status_code=tags.get("thrift.status_code", ""),
         )
 
-    def active_requests_metric(self, tags):
+    def active_requests_metric(self, tags: dict) -> Any:
+        """Return the active_requests metrics with labels set"""
         return thrift_server_active_requests.labels(
-            thrift_method = tags.get("thrift.method", ""),
+            thrift_method=tags.get("thrift.method", ""),
         )
 
-    def get_latency_seconds_metric(self):
+    def get_latency_seconds_metric(self) -> Histogram:
+        """Return the latency_seconds metrics"""
         return thrift_server_latency_seconds
 
-    def get_requests_total_metric(self):
+    def get_requests_total_metric(self) -> Counter:
+        """Return the requests_total metrics"""
         return thrift_server_requests_total
 
-    def get_active_requests_metric(self):
+    def get_active_requests_metric(self) -> Gauge:
+        """Return the active_requests metrics"""
         return thrift_server_active_requests
