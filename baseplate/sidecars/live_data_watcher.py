@@ -62,7 +62,7 @@ class NodeWatcher:
             # Only write the data if we actually managed to fetch its contents.
             url = json_data.get("data")
             if url is None:
-                logger.exception("No url found in zk source JSON node.")
+                logger.debug("No url found in zk source JSON node.")
                 return None
             url_data = NodeWatcher.fetch_data_from_url(url)
             if url_data is None:
