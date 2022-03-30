@@ -26,7 +26,7 @@ from prometheus_client import generate_latest
 from prometheus_client import multiprocess
 
 from baseplate.lib.config import Endpoint
-from baseplate.server import bind_socket
+from baseplate.server.net import bind_socket
 
 
 if TYPE_CHECKING:

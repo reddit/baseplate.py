@@ -49,7 +49,7 @@ class PrometheusServerSpanObserver(SpanObserver):
     def get_prefix(self) -> str:
         return f"{self.protocol}_server"
 
-    def get_labels(self) -> dict[str, str]:
+    def get_labels(self) -> Dict[str, str]:
         return self.tags
 
     @property
