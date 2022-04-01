@@ -64,9 +64,8 @@ class _ContextAwareHandler:
                 else:
                     span.finish()
                 raise
-            except TException:
-                exc_info = sys.exc_info()
-                span.set_tag("exception_type", exc_info[1].__class__.__name__)
+            except TException as e:
+                span.set_tag("exception_type", type(e).__name__)
                 span.set_tag("success", "false")
                 # this is an expected exception, as defined in the IDL
                 span.finish()

@@ -275,9 +275,12 @@ def load_app_and_run_server() -> None:
     if einhorn.is_worker():
         einhorn.ack_startup()
 
-    from baseplate.server.prometheus import start_prometheus_exporter
+    if "metrics.tagging" in config.app or "metrics.namespace" in config.app:
+        from baseplate.server.prometheus import start_prometheus_exporter
 
-    start_prometheus_exporter()
+        start_prometheus_exporter()
+    else:
+        logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     if args.reload:
         reloader.start_reload_watcher(extra_files=[args.config_file.name])
