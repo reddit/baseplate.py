@@ -41,7 +41,7 @@ class NodeWatcher:
     @staticmethod
     def get_encrypted_json_from_s3(
         self, bucket_name:str, file_key: str, region_name:str, sse_key: str
-    ) -> tuple[Optional[dict], dict]:
+    ) -> Optional[dict]:
         s3_client = boto3.client(
             "s3",
             region_name=region_name,
