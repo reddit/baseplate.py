@@ -80,7 +80,7 @@ class NodeWatcher:
         if json_data.get("live_data_watcher_load_type") == "S3":
             # Only write the data if we actually managed to fetch its contents.
             bucket_name = json_data.get("bucket_name")
-            file_key = (json_data.get("file_key"),)
+            file_key = json_data.get("file_key")
             sse_key = json_data.get("sse_key")
             region_name = json_data.get("region_name")
             # We require all of these keys to properly read from S3.
