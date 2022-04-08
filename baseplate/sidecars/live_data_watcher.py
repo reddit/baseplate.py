@@ -88,10 +88,10 @@ class NodeWatcher:
                 logger.debug("Missing data in live data watch zk node to read from S3.")
                 return None
             # If we have all the correct keys, attempt to read the config from S3.
-            json_data = NodeWatcher.get_encrypted_json_from_s3(
+            s3_data = NodeWatcher.get_encrypted_json_from_s3(
                 bucket_name=bucket_name, file_key=file_key, region_name=region_name, sse_key=sse_key
             )
-            return json_data
+            return s3_data
         else:
             return data
 
