@@ -73,18 +73,7 @@ class NodeWatcher:
             logger.exception(error)
             return None
         return json_data
-
-    @staticmethod
-    def fetch_data_from_url(url: str) -> Optional[str]:
-        data = None
-        try:
-            # Fetch the data from the url as bytes.
-            data = requests.get(url).content
-        except requests.exceptions.RequestException as e:
-            logger.exception(e)
-            return None
-        return data
-
+        
     @staticmethod
     def get_data_to_write(json_data: dict, data: bytes) -> Optional[bytes]:
         # Check if we have a JSON in a special format containing:
