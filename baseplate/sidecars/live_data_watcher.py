@@ -38,7 +38,8 @@ class NodeWatcher:
         self.mode = mode
 
     @staticmethod
-    def get_encrypted_json_from_s3(bucket_name: str, file_key: str, region_name: str, sse_key: str
+    def get_encrypted_json_from_s3(
+        bucket_name: str, file_key: str, region_name: str, sse_key: str
     ) -> Optional[dict]:
         s3_client = boto3.client(
             "s3",
