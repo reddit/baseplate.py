@@ -38,7 +38,8 @@ class NodeWatcher:
         self.owner = owner
         self.group = group
         self.mode = mode
-
+        
+    @staticmethod
     def get_encrypted_json_from_s3(
         self, bucket_name:str, file_key: str, region_name:str, sse_key: str
     ) -> tuple[Optional[dict], dict]:
@@ -73,7 +74,7 @@ class NodeWatcher:
             logger.exception(error)
             return None
         return json_data
-        
+
     @staticmethod
     def get_data_to_write(json_data: dict, data: bytes) -> Optional[bytes]:
         # Check if we have a JSON in a special format containing:
