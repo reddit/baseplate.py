@@ -13,7 +13,6 @@ from typing import Any
 from typing import NoReturn
 from typing import Optional
 
-import requests
 
 from botocore.client import ClientError
 
@@ -38,7 +37,7 @@ class NodeWatcher:
         self.owner = owner
         self.group = group
         self.mode = mode
-        
+
     @staticmethod
     def get_encrypted_json_from_s3(
         self, bucket_name:str, file_key: str, region_name:str, sse_key: str
