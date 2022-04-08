@@ -55,6 +55,7 @@ class NodeWatcher:
         }
         try:
             s3_object = s3_client.get_object(**kwargs)
+            # Returns bytes.
             data = s3_object["Body"].read()
         except ClientError as error:
             logger.exception(
