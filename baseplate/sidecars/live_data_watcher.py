@@ -12,9 +12,9 @@ from typing import Any
 from typing import NoReturn
 from typing import Optional
 
-import boto3
+import boto3  # type: ignore
 
-from botocore.client import ClientError
+from botocore.client import ClientError  # type: ignore
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
 
@@ -45,7 +45,7 @@ class NodeWatcher:
             "s3",
             region_name=region_name,
         )
-        data: Optional[bytes] = None
+        data = None
         # The S3 data must be Server Side Encrypted and we should have the decryption key.
         kwargs = {
             "Bucket": bucket_name,
