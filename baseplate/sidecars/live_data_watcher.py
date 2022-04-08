@@ -85,7 +85,7 @@ class NodeWatcher:
             region_name = json_data.get("region_name")
             # We require all of these keys to properly read from S3.
             if bucket_name is None or file_key is None or sse_key is None or region_name is None:
-                logger.debug("Missing data in live data watch zk node to read from S3.")
+                logger.error("Missing data in live data watch zk node to read from S3.")
                 return None
             # If we have all the correct keys, attempt to read the config from S3.
             s3_data = NodeWatcher.get_encrypted_json_from_s3(
