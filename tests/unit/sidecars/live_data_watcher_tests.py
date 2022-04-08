@@ -64,7 +64,7 @@ class NodeWatcherTests(unittest.TestCase):
         self.assertEqual(dest.owner(), pwd.getpwuid(os.getuid()).pw_name)
         self.assertEqual(dest.group(), grp.getgrgid(os.getgid()).gr_name)
         self.assertIn(
-            "WARNING:%s:No data written to destination node. Something is likely misconfigured."
+            "WARNING:%s:No data written to destination file. Something is likely misconfigured."
             % (logger.name),
             lc.output,
         )
