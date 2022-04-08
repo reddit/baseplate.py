@@ -70,7 +70,7 @@ class NodeWatcher:
         return data
 
     @staticmethod
-    def get_data_to_write(json_data: dict, data: bytes) -> Optional[bytes]:
+    def get_data_to_write(json_data: dict, data: Optional[bytes]) -> Optional[bytes]:
         # Check if we have a JSON in a special format containing:
         # data = {
         #    "live_data_watcher_load_type": str
