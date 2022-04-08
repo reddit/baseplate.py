@@ -46,7 +46,7 @@ class NodeWatcher:
             "s3",
             region_name=region_name,
         )
-        json_data = None
+        data: Optional[bytes] = None
         # The S3 data must be Server Side Encrypted and we should have the decryption key.
         kwargs = {
             "Bucket": bucket_name,
@@ -57,8 +57,7 @@ class NodeWatcher:
         try:
             s3_object = s3_client.get_object(**kwargs)
             data = s3_object["Body"].read()
-            if data:
-                json_data = json.loads(data.decode("utf-8"))
+
         except ClientError as error:
             logger.exception(
                 "Failed to load from S3. Received error code %s: %s",
@@ -69,10 +68,7 @@ class NodeWatcher:
         except ValueError as error:
             logger.exception(error)
             return None
-        except json.decoder.JSONDecodeError as error:
-            logger.exception(error)
-            return None
-        return json_data
+        return data
 
     @staticmethod
     def get_data_to_write(json_data: dict, data: bytes) -> Optional[bytes]:
