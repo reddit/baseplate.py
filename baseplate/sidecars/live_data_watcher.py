@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import time
+import boto3
 
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,8 @@ from typing import NoReturn
 from typing import Optional
 
 import requests
+
+from botocore.client import ClientError
 
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
@@ -36,6 +39,41 @@ class NodeWatcher:
         self.group = group
         self.mode = mode
 
+    def get_encrypted_json_from_s3(
+        self, bucket_name:str, file_key: str, region_name:str, sse_key: str
+    ) -> tuple[Optional[dict], dict]:
+        s3_client = boto3.client(
+            "s3",
+            region_name=region_name,
+        )
+        json_data = None
+        # The S3 data must be Server Side Encrypted and we should have the decryption key.
+        kwargs = {
+            "Bucket": bucket_name,
+            "Key": file_key,
+            "SSECustomerKey": sse_key,
+            "SSECustomerAlgorithm": "AES256",
+        }
+        try:
+            s3_object = s3_client.get_object(**kwargs)
+            data = s3_object["Body"].read()
+            if data:
+                json_data = json.loads(data.decode("utf-8"))
+        except ClientError as error:
+            logger.exception(
+                "Failed to load from S3. Received error code %s: %s",
+                error.response["Error"]["Code"],
+                error.response["Error"]["Message"],
+            )
+            return None
+        except ValueError as error:
+            logger.exception(error)
+            return None
+        except json.decoder.JSONDecodeError as error:
+            logger.exception(error)
+            return None
+        return json_data
+
     @staticmethod
     def fetch_data_from_url(url: str) -> Optional[str]:
         data = None
@@ -49,25 +87,25 @@ class NodeWatcher:
 
     @staticmethod
     def get_data_to_write(json_data: dict, data: bytes) -> Optional[bytes]:
-        # Check if we have a JSON in this special format:
+        # Check if we have a JSON in a special format containing:
         # data = {
         #    "live_data_watcher_load_type": str
-        #    "data": str
-        #    "md5_hashed_data": str
         # }
-        # If the load type is 'http', this format is an indication that we support
-        # downloading the contents of files uploaded to S3, GCS, etc when provided
-        # with an accessible URL.
-        if json_data.get("live_data_watcher_load_type") == "http":
+        # If the load type is 'S3', this format is an indication that we support
+        # downloading the contents of encrypted files uploaded to S3.
+        if json_data.get("live_data_watcher_load_type") == "S3":
             # Only write the data if we actually managed to fetch its contents.
-            url = json_data.get("data")
-            if url is None:
-                logger.debug("No url found in zk source JSON node.")
+            bucket_name=json_data.get("bucket_name")
+            file_key=json_data.get("file_key"),
+            sse_key=json_data.get("sse_key")
+            region_name = json_data.get("region_name")
+            # We require all of these keys to properly read from S3.
+            if bucket_name is None or file_key is None or sse_key is None or region_name is None:
+                logger.debug("Missing data in live data watch zk node to read from S3.")
                 return None
-            url_data = NodeWatcher.fetch_data_from_url(url)
-            if url_data is None:
-                return None
-            return url_data
+            # If we have all the correct keys, attempt to read the config from S3.
+            json_data = NodeWatcher.get_encrypted_json_from_s3(bucket_name=bucket_name, file_key=file_key, region_name=region_name, sse_key=sse_key)
+            return json_data
         else:
             return data
 
@@ -102,7 +140,7 @@ class NodeWatcher:
                 if data_to_write is not None:
                     tmpfile.write(data_to_write)
                 else:
-                    logger.warning("No data written to destination node.")
+                    logger.warning("No data written to destination node. Something is likely misconfigured.")
         os.rename(self.dest + ".tmp", self.dest)
 
 
