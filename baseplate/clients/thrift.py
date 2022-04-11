@@ -193,7 +193,9 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
             except TTransportException as exc:
                 # the connection failed for some reason, retry if able
                 span.finish(exc_info=sys.exc_info())
-                last_error = exc
+                last_error = str(exc)
+                if exc.inner is not None:
+                    last_error += f" ({exc.inner})"
                 continue
             except (TApplicationException, TProtocolException):
                 # these are subclasses of TException but aren't ones that
