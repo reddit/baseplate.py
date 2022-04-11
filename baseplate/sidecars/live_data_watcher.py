@@ -95,16 +95,23 @@ class NodeWatcher:
             )
         return data
 
+    def handle_empty_data(self):
+        # the data node does not exist
+        try:
+            logger.info("Removing %r; watched node deleted.", self.dest)
+            logger.warning(
+                "No data written to destination file. Something is likely misconfigured."
+            )
+            os.unlink(self.dest)
+        except OSError as exc:
+            logger.debug("%s: couldn't unlink: %s", self.dest, exc)
+
+
     def on_change(self, data: bytes, _znode_stat: ZnodeStat) -> None:
         if data is None:
-            # the data node does not exist
-            try:
-                logger.info("Removing %r; watched node deleted.", self.dest)
-                os.unlink(self.dest)
-            except OSError as exc:
-                logger.debug("%s: couldn't unlink: %s", self.dest, exc)
+            self.handle_empty_data()
             return
-
+            
         # swap out the file atomically so clients watching the file never catch
         # us mid-write.
         logger.info("Updating %r", self.dest)
@@ -122,13 +129,11 @@ class NodeWatcher:
                 tmpfile.write(data)
             else:
                 # If no exceptions, we have valid JSON, and can parse accordingly.
-                data_to_write = NodeWatcher.get_data_to_write(json_data, data)
-                if data_to_write is not None:
-                    tmpfile.write(data_to_write)
-                else:
-                    logger.warning(
-                        "No data written to destination file. Something is likely misconfigured."
-                    )
+                data = NodeWatcher.get_data_to_write(json_data, data)
+                if data is None:
+                    self.handle_empty_data()
+                    return
+                tmpfile.write(data)
         os.rename(self.dest + ".tmp", self.dest)
 
 
