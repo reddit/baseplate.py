@@ -59,13 +59,16 @@ class NodeWatcher:
             data = s3_object["Body"].read()
         except ClientError as error:
             logger.exception(
-                "Failed to load from S3. Received error code %s: %s",
+                "Failed to update live config: failed to load data from S3. Received error code %s: %s",
                 error.response["Error"]["Code"],
                 error.response["Error"]["Message"],
             )
             return None
         except ValueError as error:
-            logger.exception(error)
+            logger.exception(
+                "Failed to update live config: params for loading from S3 are incorrect. Received error: %s",
+                error,
+            )
             return None
         return data
 
@@ -86,7 +89,7 @@ class NodeWatcher:
             except KeyError:
                 # We require all of these keys to properly read from S3.
                 logger.exception(
-                    "Improper configuration found while attempting to load live data from S3."
+                    "Failed to update live config: unble to fetch content from s3: source config has invalid or missing keys."
                 )
                 return None
             # If we have all the correct keys, attempt to read the config from S3.
@@ -106,12 +109,11 @@ class NodeWatcher:
         except OSError as exc:
             logger.debug("%s: couldn't unlink: %s", self.dest, exc)
 
-
     def on_change(self, data: bytes, _znode_stat: ZnodeStat) -> None:
         if data is None:
             self.handle_empty_data()
             return
-            
+
         # swap out the file atomically so clients watching the file never catch
         # us mid-write.
         logger.info("Updating %r", self.dest)
