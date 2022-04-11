@@ -95,7 +95,7 @@ class NodeWatcher:
             )
         return data
 
-    def handle_empty_data(self):
+    def handle_empty_data(self) -> None:
         # the data node does not exist
         try:
             logger.info("Removing %r; watched node deleted.", self.dest)
