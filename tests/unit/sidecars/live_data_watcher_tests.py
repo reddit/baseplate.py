@@ -68,11 +68,6 @@ class NodeWatcherTests(unittest.TestCase):
             % (logger.name),
             lc.output,
         )
-        self.assertIn(
-            "EXCEPTION:%s:Improper configuration found while attempting to load live data from S3."
-            % (logger.name),
-            lc.output,
-        )
 
     def test_on_change(self):
         dest = self.output_dir.joinpath("data.txt")
