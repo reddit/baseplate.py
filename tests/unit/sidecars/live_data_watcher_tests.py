@@ -53,7 +53,7 @@ class NodeWatcherTests(unittest.TestCase):
         self.assertEqual(dest.owner(), pwd.getpwuid(os.getuid()).pw_name)
         self.assertEqual(dest.group(), grp.getgrgid(os.getgid()).gr_name)
 
-    def test_s3_load_type_missing_keys_on_change(self):
+    def test_s3_load_type_missing_sse_key_on_change(self):
         with self.assertLogs(logger.name, level="DEBUG") as lc:
             dest = self.output_dir.joinpath("data.txt")
             inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
@@ -65,6 +65,11 @@ class NodeWatcherTests(unittest.TestCase):
         self.assertEqual(dest.group(), grp.getgrgid(os.getgid()).gr_name)
         self.assertIn(
             "WARNING:%s:No data written to destination file. Something is likely misconfigured."
+            % (logger.name),
+            lc.output,
+        )
+        self.assertIn(
+            "EXCEPTION:%s:Improper configuration found while attempting to load live data from S3."
             % (logger.name),
             lc.output,
         )
