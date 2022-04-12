@@ -6,6 +6,7 @@
 -r requirements-transitive.txt
 astroid==2.8.4
 black==21.10b0
+boto3==1.21.20
 flake8==3.8.4
 lxml==4.6.5
 mypy==0.910
