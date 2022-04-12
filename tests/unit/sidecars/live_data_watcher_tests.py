@@ -78,12 +78,11 @@ class NodeWatcherTests(unittest.TestCase):
         self.assertEqual(dest.group(), grp.getgrgid(os.getgid()).gr_name)
 
     def test_on_change_no_data(self):
-        with self.assertLogs(logger.name, level="DEBUG") as lc:
-            dest = self.output_dir.joinpath("data.txt")
-            inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
+        dest = self.output_dir.joinpath("data.txt")
+        inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
 
-            new_content = None
-            inst.on_change(new_content, None)
+        new_content = None
+        inst.on_change(new_content, None)
         self.assertEqual(False, os.path.exists(dest))
 
     def test_on_change_new_dir(self):
