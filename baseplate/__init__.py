@@ -338,6 +338,14 @@ class Baseplate:
                     self._app_config, self._metrics_client
                 )
             )
+
+            # If statsd metrics are currently configured, then enable Prometheus metrics simultaneous.
+            # Once the migration to Prometheus is complete, then only enable Prometheus metrics.
+            from baseplate.observers.prometheus import PrometheusBaseplateObserver
+
+            observer = PrometheusBaseplateObserver()
+            self.register(observer)
+
         elif "metrics.namespace" in self._app_config:
             from baseplate.lib.metrics import metrics_client_from_config
             from baseplate.observers.metrics import MetricsBaseplateObserver
@@ -348,6 +356,14 @@ class Baseplate:
                     self._app_config, self._metrics_client
                 )
             )
+
+            # If statsd metrics are currently configured, then enable Prometheus metrics simultaneous.
+            # Once the migration to Prometheus is complete, then only enable Prometheus metrics.
+            from baseplate.observers.prometheus import PrometheusBaseplateObserver
+
+            observer = PrometheusBaseplateObserver()
+            self.register(observer)
+
         else:
             skipped.append("metrics")
 

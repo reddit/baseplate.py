@@ -42,6 +42,7 @@ class _ContextAwareHandler:
             handler_fn = getattr(self.handler, fn_name)
 
             span = self.context.span
+            span.set_tag("thrift.method", fn_name)
             try:
                 span.start()
                 result = handler_fn(self.context, *args, **kwargs)
@@ -51,13 +52,21 @@ class _ContextAwareHandler:
                 span.finish(exc_info=sys.exc_info())
                 raise
             except Error as exc:
+                c = ErrorCode()
+                status = c._VALUES_TO_NAMES.get(exc.code, "")
+                span.set_tag("exception_type", "Error")
+                span.set_tag("thrift.status_code", exc.code)
+                span.set_tag("thrift.status", status)
+                span.set_tag("success", "false")
                 # mark 5xx errors as failures since those are still "unexpected"
-                if exc.code // 100 == 5:
+                if 500 <= exc.code < 600:
                     span.finish(exc_info=sys.exc_info())
                 else:
                     span.finish()
                 raise
-            except TException:
+            except TException as e:
+                span.set_tag("exception_type", type(e).__name__)
+                span.set_tag("success", "false")
                 # this is an expected exception, as defined in the IDL
                 span.finish()
                 raise
@@ -138,7 +147,7 @@ def baseplateify_processor(
                 context.deadline_budget = None
 
             span = baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
-
+            span.set_tag("protocol", "thrift")
             try:
                 service_name = headers[b"User-Agent"].decode()
             except (KeyError, UnicodeDecodeError):

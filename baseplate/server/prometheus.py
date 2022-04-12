@@ -26,7 +26,7 @@ from prometheus_client import generate_latest
 from prometheus_client import multiprocess
 
 from baseplate.lib.config import Endpoint
-from baseplate.server import bind_socket
+from baseplate.server.net import bind_socket
 
 
 if TYPE_CHECKING:
@@ -36,10 +36,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 PROMETHEUS_EXPORTER_ADDRESS = Endpoint("0.0.0.0:6060")
+METRICS_ENDPOINT = "/metrics"
 
 
 def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") -> Iterable[bytes]:
-    if environ["PATH_INFO"] != "/metrics":
+    if environ["PATH_INFO"] != METRICS_ENDPOINT:
         start_response("404 Not Found", [("Content-Type", "text/plain")])
         return [b"Not Found"]
 
@@ -66,5 +67,10 @@ def start_prometheus_exporter() -> None:
         application=export_metrics,
         log=LoggingLogAdapter(logger, level=logging.DEBUG),
         error_log=LoggingLogAdapter(logger, level=logging.ERROR),
+    )
+    logger.info(
+        "Prometheus metrics exported on server listening on %s%s",
+        PROMETHEUS_EXPORTER_ADDRESS,
+        METRICS_ENDPOINT,
     )
     server.start()
