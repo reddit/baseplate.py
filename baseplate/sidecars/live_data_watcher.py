@@ -102,9 +102,6 @@ class NodeWatcher:
         # the data node does not exist
         try:
             logger.info("Removing %r; watched node deleted.", self.dest)
-            logger.warning(
-                "No data written to destination file. Something is likely misconfigured."
-            )
             os.unlink(self.dest)
         except OSError as exc:
             logger.debug("%s: couldn't unlink: %s", self.dest, exc)
@@ -133,7 +130,9 @@ class NodeWatcher:
                 # If no exceptions, we have valid JSON, and can parse accordingly.
                 data = NodeWatcher.get_data_to_write(json_data, data)
                 if data is None:
-                    self.handle_empty_data()
+                    logger.warning(
+                        "No data written to destination file. Something is likely misconfigured."
+                    )
                     return
                 tmpfile.write(data)
         os.rename(self.dest + ".tmp", self.dest)
