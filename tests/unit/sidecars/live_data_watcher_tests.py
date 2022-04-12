@@ -61,7 +61,6 @@ class NodeWatcherTests(unittest.TestCase):
 
             new_content = b'{"live_data_watcher_load_type":"S3","bucket_name":"test_bucket","file_key":"test_file_key","region_name":"us-east-1"}'
             inst.on_change(new_content, None)
-        self.assertEqual(False, os.path.exists(dest))
         self.assertIn(
             "WARNING:%s:No data written to destination file. Something is likely misconfigured."
             % (logger.name),
@@ -86,11 +85,6 @@ class NodeWatcherTests(unittest.TestCase):
             new_content = None
             inst.on_change(new_content, None)
         self.assertEqual(False, os.path.exists(dest))
-        self.assertIn(
-            "WARNING:%s:No data written to destination file. Something is likely misconfigured."
-            % (logger.name),
-            lc.output,
-        )
 
     def test_on_change_new_dir(self):
         dest = self.output_dir.joinpath("data/output.json")
