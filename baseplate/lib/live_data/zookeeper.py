@@ -2,6 +2,7 @@
 from typing import Optional
 
 from kazoo.client import KazooClient
+from kazoo.handlers.gevent import SequentialGeventHandler
 
 from baseplate.lib import config
 from baseplate.lib.secrets import SecretsStore
@@ -58,6 +59,7 @@ def zookeeper_client_from_config(
         timeout=cfg.timeout.total_seconds(),
         auth_data=auth_data,
         read_only=read_only,
+        handler=SequentialGeventHandler(),
         # this retry policy tells Kazoo how often it should attempt connections
         # to ZooKeeper from its worker thread/greenlet. when the connection is
         # lost during normal operation (i.e. after it was first established)
