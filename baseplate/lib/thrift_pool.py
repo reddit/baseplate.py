@@ -16,7 +16,6 @@ A basic example of usage::
 """
 import contextlib
 import logging
-import queue
 import socket
 import time
 
@@ -25,6 +24,7 @@ from typing import Generator
 from typing import Optional
 from typing import TYPE_CHECKING
 
+from gevent import queue as gevent_queue
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
@@ -42,9 +42,11 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    ProtocolPool = queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
+    import queue as std_lib_queue
+
+    ProtocolPool = std_lib_queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
 else:
-    ProtocolPool = queue.Queue
+    ProtocolPool = gevent_queue.Queue
 
 
 def _make_transport(endpoint: config.EndpointConfiguration) -> TSocket:
@@ -160,7 +162,7 @@ class ThriftConnectionPool:
         timeout: float = 1,
         max_connection_attempts: int = 3,
         protocol_factory: TProtocolFactory = _DEFAULT_PROTOCOL_FACTORY,
-        queue_cls: ProtocolPool = queue.LifoQueue(),
+        queue_cls: ProtocolPool = gevent_queue.LifoQueue(),
     ):
         self.endpoint = endpoint
         self.max_age = max_age
@@ -177,7 +179,7 @@ class ThriftConnectionPool:
     def _get_from_pool(self) -> Optional[TProtocolBase]:
         try:
             return self.pool.get(block=True, timeout=self.timeout)
-        except queue.Empty:
+        except gevent_queue.Empty:
             raise TTransportException(
                 type=TTransportException.NOT_OPEN, message="timed out waiting for a connection slot"
             )

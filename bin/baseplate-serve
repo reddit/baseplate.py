@@ -7,10 +7,7 @@
 
 from gevent.monkey import patch_all
 
-from baseplate.server.monkey import patch_stdlib_queues
-
 patch_all()
-patch_stdlib_queues()
 
 from baseplate.server import load_app_and_run_server
 
