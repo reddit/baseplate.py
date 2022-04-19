@@ -115,9 +115,9 @@ class PrometheusServerSpanObserver(SpanObserver):
 
 class PrometheusClientSpanObserver(SpanObserver):
     def __init__(self) -> None:
-        logger.warning("PrometheusClientSpanObserver not implemented")
+        logger.debug("PrometheusClientSpanObserver not implemented")
 
 
 class PrometheusLocalSpanObserver(SpanObserver):
     def __init__(self) -> None:
-        logger.warning("PrometheusLocalSpanObserver not implemented")
+        logger.debug("PrometheusLocalSpanObserver not implemented")
