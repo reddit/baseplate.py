@@ -133,31 +133,31 @@ class MemcacheContextFactory(ContextFactory):
     PROM_PREFIX = "bp_memcached_pool"
     PROM_LABELS = ["pool"]
 
-    promTotalConnections = Gauge(
+    prom_total_connections = Gauge(
         f"{PROM_PREFIX}_size",
         "Maximum size of this pool",
         PROM_LABELS,
     )
 
-    promUsedConnections = Gauge(
+    prom_used_connections = Gauge(
         f"{PROM_PREFIX}_in_use",
         "Number of connections in this pool currently in use",
         PROM_LABELS,
     )
 
-    promFreeConnections = Gauge(
+    prom_free_connections = Gauge(
         f"{PROM_PREFIX}_free",
         "Number of free connections in this pool",
         PROM_LABELS,
     )
 
-    def __init__(self, pooled_client: PooledClient, name: str = "memcache"):
+    def __init__(self, pooled_client: PooledClient, name: str = "default"):
         self.pooled_client = pooled_client
 
         pool = self.pooled_client.client_pool
-        self.promTotalConnections.labels(name).set_function(lambda: pool.max_size)
-        self.promFreeConnections.labels(name).set_function(lambda: len(pool.free))
-        self.promUsedConnections.labels(name).set_function(lambda: len(pool.used))
+        self.prom_total_connections.labels(name).set_function(lambda: pool.max_size)
+        self.prom_free_connections.labels(name).set_function(lambda: len(pool.free))
+        self.prom_used_connections.labels(name).set_function(lambda: len(pool.used))
 
     def report_memcache_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.pooled_client.client_pool

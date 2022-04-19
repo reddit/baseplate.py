@@ -97,18 +97,18 @@ class RedisContextFactory(ContextFactory):
     PROM_PREFIX = "bp_redis_pool"
     PROM_LABELS = ["pool"]
 
-    totalConnections = Gauge(
+    total_connections = Gauge(
         f"{PROM_PREFIX}_connections",
         "Number of connections in this redisbp pool",
         PROM_LABELS,
     )
-    idleConnections = Gauge(
-        f"{PROM_PREFIX}_idle_connections",
+    idle_connections = Gauge(
+        f"{PROM_PREFIX}_connections_idle",
         "Number of idle connections in this redisbp pool",
         PROM_LABELS,
     )
-    openConnections = Gauge(
-        f"{PROM_PREFIX}_open_connections",
+    open_connections = Gauge(
+        f"{PROM_PREFIX}_connections_open",
         "Number of open connections in this redisbp pool",
         PROM_LABELS,
     )
@@ -117,9 +117,11 @@ class RedisContextFactory(ContextFactory):
         self.connection_pool = connection_pool
 
         if isinstance(connection_pool, redis.BlockingConnectionPool):
-            self.totalConnections.labels(name).set_function(lambda: connection_pool.max_connections)
-            self.idleConnections.labels(name).set_function(connection_pool.pool.qsize)
-            self.openConnections.labels(name).set_function(
+            self.total_connections.labels(name).set_function(
+                lambda: connection_pool.max_connections
+            )
+            self.idle_connections.labels(name).set_function(connection_pool.pool.qsize)
+            self.open_connections.labels(name).set_function(
                 lambda: len(connection_pool._connections)  # type: ignore
             )
 
