@@ -65,12 +65,16 @@ def http_server(gevent_socket):
 
 
 @pytest.mark.parametrize("client_cls", [InternalRequestsClient, ExternalRequestsClient])
+@pytest.mark.parametrize("client_name", [None, "", "complex.client$name"])
 @pytest.mark.parametrize("method", ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "PUT", "POST"])
-def test_client_makes_client_span(client_cls, method, http_server):
+def test_client_makes_client_span(client_cls, client_name, method, http_server):
     baseplate = Baseplate(
         {"myclient.filter.ip_allowlist": "127.0.0.0/8", "myclient.filter.port_denylist": "0"}
     )
-    baseplate.configure_context({"myclient": client_cls()})
+    if client_name is None:
+        baseplate.configure_context({"myclient": client_cls()})
+    else:
+        baseplate.configure_context({"myclient": client_cls(client_name=client_name)})
 
     observer = TestBaseplateObserver()
     baseplate.register(observer)
@@ -92,6 +96,10 @@ def test_client_makes_client_span(client_cls, method, http_server):
     assert client_span_observer.tags["http.url"] == http_server.url
     assert client_span_observer.tags["http.method"] == method
     assert client_span_observer.tags["http.status_code"] == 204
+    assert client_span_observer.tags["http.success"] == "true"
+    assert client_span_observer.tags["http.slug"] == (
+        client_name if client_name is not None else "myclient"
+    )
 
 
 @pytest.mark.parametrize("client_cls", [InternalRequestsClient, ExternalRequestsClient])

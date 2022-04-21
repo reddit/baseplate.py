@@ -26,6 +26,146 @@ default_size_buckets = [
     default_size_start * default_size_factor ** i for i in range(default_size_count)
 ]
 
+# http server labels and metrics
+http_server_histogram_labels = [
+    "http_method",
+    "http_endpoint",
+    "http_success",
+]
+http_server_requests_total_labels = [
+    "http_method",
+    "http_endpoint",
+    "http_success",
+    "http_response_code",
+]
+http_server_active_requests_labels = [
+    "http_method",
+    "http_endpoint",
+]
+
+http_server_latency_seconds = Histogram(
+    "http_server_latency_seconds",
+    "Description of histogram",
+    http_server_histogram_labels,
+    buckets=default_buckets,
+)
+http_server_request_size_bytes = Histogram(
+    "http_server_request_size_bytes",
+    "Description of histogram",
+    http_server_histogram_labels,
+    buckets=default_buckets,
+)
+http_server_response_size_bytes = Histogram(
+    "http_server_response_size_bytes",
+    "Description of histogram",
+    http_server_histogram_labels,
+    buckets=default_buckets,
+)
+http_server_requests_total = Counter(
+    "http_server_requests_total",
+    "Description of counter",
+    http_server_requests_total_labels,
+)
+http_server_active_requests = Gauge(
+    "http_server_active_requests",
+    "Description of gauge",
+    http_server_active_requests_labels,
+)
+
+
+# http client labels and metrics
+http_client_latency_labels = [
+    "http_method",
+    "http_success",
+    "http_endpoint",
+    "http_slug",
+]
+http_client_requests_total_labels = [
+    "http_method",
+    "http_success",
+    "http_endpoint",
+    "http_response_code",
+    "http_slug",
+]
+http_client_active_requests_labels = [
+    "http_method",
+    "http_endpoint",
+    "http_slug",
+]
+
+http_client_latency_seconds = Histogram(
+    "http_client_latency_seconds",
+    "Description of histogram",
+    http_client_latency_labels,
+    buckets=default_buckets,
+)
+http_client_requests_total = Counter(
+    "http_client_requests_total",
+    "Description of counter",
+    http_client_requests_total_labels,
+)
+http_client_active_requests = Gauge(
+    "http_client_active_requests",
+    "Description of gauge",
+    http_client_active_requests_labels,
+)
+
+
+class PrometheusHTTPClientMetrics:
+    def __init__(self) -> None:
+        pass
+
+    def latency_seconds_metric(self, tags: Dict) -> Histogram:
+        return http_client_latency_seconds.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=getHTTPEndpointHandler(tags.get("http.url", "")),
+            http_success=tags.get("http.success", ""),
+            http_slug=tags.get("http.slug", ""),
+        )
+
+    def requests_total_metric(self, tags: Dict) -> Counter:
+        return http_client_requests_total.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=getHTTPEndpointHandler(tags.get("http.url", "")),
+            http_success=tags.get("http.success", ""),
+            http_response_code=tags.get("http.status_code", ""),
+            http_slug=tags.get("http.slug", ""),
+        )
+
+    def active_requests_metric(self, tags: Dict) -> Gauge:
+        return http_client_active_requests.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=getHTTPEndpointHandler(tags.get("http.url", "")),
+            http_slug=tags.get("http.slug", ""),
+        )
+
+    def get_latency_seconds_metric(self) -> Histogram:
+        return http_client_latency_seconds
+
+    def get_requests_total_metric(self) -> Counter:
+        return http_client_requests_total
+
+    def get_active_requests_metric(self) -> Gauge:
+        return http_client_active_requests
+
+
+def getHTTPEndpointHandler(httpURL: str) -> str:
+    """
+    hhtp://localhost:9090/user/123
+    Path to identify the endpoint handler, may be empty.
+    Ref: https://github.snooguts.net/reddit/baseplate.spec/blob/master/component-apis/prom-metrics.md#http
+    MUST NOT include the per-request value of "request fields":
+    For example, /subreddits/{subreddit_id}/posts/{post_id}, not /subreddits/1234/posts/5678.
+    """
+    from urllib3.util import parse_url
+
+    _, _, _, _, path, _, _ = parse_url(httpURL)
+    # TODO: remove request fields. Whats the best way to do this.
+    # there is a way to get this representation from pyramid
+    # ref: https://docs.pylonsproject.org/projects/pyramid/en/latest/api/request.html#pyramid.request.Request.url
+    return path if path is not None else ""
+
+
 # thrift server labels
 thrift_server_latency_labels = [
     "thrift_method",

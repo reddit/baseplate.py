@@ -31,6 +31,11 @@ declaration to your context configuration::
       }
    )
 
+You can specify an optional `client_name` in any requests client. When
+prometheus metrics are emitted, this name will be used for the label
+`http_slug`. If `client_name` is not manually specified, we default back
+to the name of the client within the context (in this case, `foo` and `bar`).
+
 configure it in your application's configuration file:
 
 .. code-block:: ini
