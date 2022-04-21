@@ -11,7 +11,9 @@ from baseplate import LocalSpan
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
-from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
+from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
+from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
+from baseplate.lib.prometheus_metrics import PrometheusHTTPLocalMetrics
 
 
 NANOSECONDS_PER_SECOND = 1e9
@@ -60,7 +62,7 @@ class PrometheusServerSpanObserver(SpanObserver):
         if self.protocol == "thrift":
             self.metrics = PrometheusThriftServerMetrics()
         elif self.protocol == "http":
-            logger.warning("HTTP Prometheus metrics not implemented")
+            self.metrics = PrometheusHTTPServerMetrics()
         else:
             logger.warning(
                 "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
@@ -114,10 +116,148 @@ class PrometheusServerSpanObserver(SpanObserver):
 
 
 class PrometheusClientSpanObserver(SpanObserver):
-    def __init__(self) -> None:
-        logger.debug("PrometheusClientSpanObserver not implemented")
+    def __init__(self):
+        self.tags = {}
+        self.start_time = None
+        self.metrics = None
+
+    def on_set_tag(self, key: str, value: Any) -> None:
+        self.tags[key] = value
+
+    def get_prefix(self) -> str:
+        return f"{self.protocol}_client"
+
+    def get_labels(self) -> dict[str, str]:
+        return self.tags
+
+    @property
+    def protocol(self):
+        return self.tags.get("protocol", "unknown")
+
+    def set_metrics_by_protocol(self):
+        if self.protocol == "http":
+            self.metrics = PrometheusHTTPClientMetrics()
+        elif self.protocol == "thrift":
+            logger.debug("Thrift PrometheusLocalSpanObserver not implemented")
+        else:
+            logger.warning(
+                "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
+                self.protocol,
+            )
+        return
+
+    def on_start(self) -> None:
+        self.set_metrics_by_protocol()
+        if self.metrics is None:
+            logger.warning(
+                "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
+            )
+            return
+        self.start_time = time.perf_counter_ns()
+        self.metrics.active_requests_metric(self.tags).inc()
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        pass
+
+    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+        if self.metrics is None:
+            logger.warning(
+                "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
+            )
+            return
+
+        self.tags["success"] = "true"
+        if exc_info is not None:
+            self.tags["exception_type"] = exc_info[0].__name__
+            self.tags["success"] = "false"
+
+        self.metrics.active_requests_metric(self.tags).dec()
+        self.metrics.requests_total_metric(self.tags).inc()
+        if self.start_time is not None:
+            elapsed_ns = time.perf_counter_ns() - self.start_time
+            self.metrics.latency_seconds_metric(self.tags).observe(
+                elapsed_ns / NANOSECONDS_PER_SECOND
+            )
+
+    def on_child_span_created(self, span: Span) -> None:
+        if isinstance(span, LocalSpan):
+            observer = PrometheusLocalSpanObserver()
+        else:
+            observer = PrometheusClientSpanObserver()
+
+        observer.on_set_tag("protocol", self.protocol)
+        span.register(observer)
 
 
 class PrometheusLocalSpanObserver(SpanObserver):
-    def __init__(self) -> None:
-        logger.debug("PrometheusLocalSpanObserver not implemented")
+    def __init__(self):
+        self.tags = {}
+        self.start_time = None
+        self.metrics = None
+
+    def on_set_tag(self, key: str, value: Any) -> None:
+        self.tags[key] = value
+
+    def get_prefix(self) -> str:
+        return f"{self.protocol}_local"
+
+    def get_labels(self) -> dict[str, str]:
+        return self.tags
+
+    @property
+    def protocol(self):
+        return self.tags.get("protocol", "unknown")
+
+    def set_metrics_by_protocol(self):
+        if self.protocol == "http":
+            self.metrics = PrometheusHTTPLocalMetrics()
+        elif self.protocol == "thrift":
+            logger.debug("Thrift PrometheusLocalSpanObserver not implemented")
+        else:
+            logger.warning(
+                "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
+                self.protocol,
+            )
+        return
+
+    def on_start(self) -> None:
+        self.set_metrics_by_protocol()
+        if self.metrics is None:
+            logger.warning(
+                "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
+            )
+            return
+        self.start_time = time.perf_counter_ns()
+        self.metrics.active_requests_metric(self.tags).inc()
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        pass
+
+    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+        if self.metrics is None:
+            logger.warning(
+                "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
+            )
+            return
+
+        self.tags["success"] = "true"
+        if exc_info is not None:
+            self.tags["exception_type"] = exc_info[0].__name__
+            self.tags["success"] = "false"
+
+        self.metrics.active_requests_metric(self.tags).dec()
+        self.metrics.requests_total_metric(self.tags).inc()
+        if self.start_time is not None:
+            elapsed_ns = time.perf_counter_ns() - self.start_time
+            self.metrics.latency_seconds_metric(self.tags).observe(
+                elapsed_ns / NANOSECONDS_PER_SECOND
+            )
+
+    def on_child_span_created(self, span: Span) -> None:
+        if isinstance(span, LocalSpan):
+            observer = PrometheusLocalSpanObserver()
+        else:
+            observer = PrometheusClientSpanObserver()
+
+        observer.on_set_tag("protocol", self.protocol)
+        span.register(observer)

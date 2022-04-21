@@ -9,6 +9,8 @@ from prometheus_client import REGISTRY
 from baseplate import ServerSpan
 from baseplate.observers.prometheus import PrometheusBaseplateObserver
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
+from baseplate.observers.prometheus import PrometheusClientSpanObserver
+from baseplate.observers.prometheus import PrometheusLocalSpanObserver
 
 
 class TestException(Exception):
@@ -18,6 +20,57 @@ class TestException(Exception):
 @pytest.mark.parametrize(
     "protocol,client_or_server,observer_cls,labels",
     (
+        (
+            "http",
+            "server",
+            PrometheusServerSpanObserver,
+            {
+                "latency_labels": {"http_method": "", "http_endpoint": "", "http_success": ""},
+                "requests_labels": {
+                    "http_method": "",
+                    "http_endpoint": "",
+                    "http_success": "",
+                    "http_response_code": "",
+                },
+                "active_labels": {"http_method": "", "http_endpoint": ""},
+            },
+        ),
+        (
+            "http",
+            "client",
+            PrometheusClientSpanObserver,
+            {
+                "latency_labels": {
+                    "http_method": "",
+                    "http_endpoint": "",
+                    "http_success": "",
+                    "http_slug": "",
+                },
+                "requests_labels": {
+                    "http_method": "",
+                    "http_endpoint": "",
+                    "http_success": "",
+                    "http_response_code": "",
+                    "http_slug": "",
+                },
+                "active_labels": {"http_method": "", "http_endpoint": "", "http_slug": ""},
+            },
+        ),
+        (
+            "http",
+            "local",
+            PrometheusLocalSpanObserver,
+            {
+                "latency_labels": {"http_method": "", "http_endpoint": "", "http_success": ""},
+                "requests_labels": {
+                    "http_method": "",
+                    "http_endpoint": "",
+                    "http_success": "",
+                    "http_response_code": "",
+                },
+                "active_labels": {"http_method": "", "http_endpoint": ""},
+            },
+        ),
         (
             "thrift",
             "server",

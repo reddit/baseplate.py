@@ -30,6 +30,8 @@ from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
+from baseplate.thrift.ttypes import Error as bp_error
+from baseplate.thrift.ttypes import ErrorCode
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService

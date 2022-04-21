@@ -14,7 +14,7 @@ start = 0.0001
 factor = 2.5
 count = 14
 # creates 14 buckets from 100us ~ 14.9s.
-default_buckets = [start * factor ** i for i in range(count)]
+default_buckets = [start * factor**i for i in range(count)]
 
 
 # thrift server labels
