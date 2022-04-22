@@ -159,25 +159,25 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     PROM_PREFIX = "bp_sqlalchemy_pool"
     PROM_LABELS = ["pool"]
 
-    prom_total_connections = Gauge(
+    total_connections_gauge = Gauge(
         f"{PROM_PREFIX}_connections",
         "Total number of connections in this pool",
         PROM_LABELS,
     )
 
-    prom_checked_in_connections = Gauge(
-        f"{PROM_PREFIX}_idle",
+    checked_in_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_idle_connections",
         "Number of available, checked in, connections in this pool",
         PROM_LABELS,
     )
 
-    prom_checked_out_connections = Gauge(
-        f"{PROM_PREFIX}_active",
+    checked_out_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_active_connections",
         "Number of connections in use, or checked out, in this pool",
         PROM_LABELS,
     )
 
-    prom_overflow_connections = Gauge(
+    overflow_connections_gauge = Gauge(
         f"{PROM_PREFIX}_overflow_connections",
         "Number of connections over the desired size of this pool",
         PROM_LABELS,
@@ -191,10 +191,10 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         pool = self.engine.pool
         if isinstance(pool, QueuePool):
-            self.prom_total_connections.labels(name).set_function(pool.size)
-            self.prom_checked_in_connections.labels(name).set_function(pool.checkedin)
-            self.prom_checked_out_connections.labels(name).set_function(pool.checkedout)
-            self.prom_overflow_connections.labels(name).set_function(pool.overflow)
+            self.total_connections_gauge.labels(name).set_function(pool.size)
+            self.checked_in_connections_gauge.labels(name).set_function(pool.checkedin)
+            self.checked_out_connections_gauge.labels(name).set_function(pool.checkedout)
+            self.overflow_connections_gauge.labels(name).set_function(pool.overflow)
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.engine.pool
