@@ -103,12 +103,12 @@ class RedisContextFactory(ContextFactory):
         PROM_LABELS,
     )
     idle_connections = Gauge(
-        f"{PROM_PREFIX}_connections_idle",
+        f"{PROM_PREFIX}_idle_connections",
         "Number of idle connections in this redisbp pool",
         PROM_LABELS,
     )
     open_connections = Gauge(
-        f"{PROM_PREFIX}_connections_open",
+        f"{PROM_PREFIX}_active_connections",
         "Number of open connections in this redisbp pool",
         PROM_LABELS,
     )
