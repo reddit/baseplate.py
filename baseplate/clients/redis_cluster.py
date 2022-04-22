@@ -350,12 +350,12 @@ class ClusterRedisContextFactory(ContextFactory):
     PROM_PREFIX = "bp_redis_cluster_pool"
     PROM_LABELS = ["pool"]
 
-    promTotalConnections = Gauge(
+    total_connections_gauge = Gauge(
         f"{PROM_PREFIX}_connections",
         "Number of connections in this redis cluster pool",
         PROM_LABELS,
     )
-    promOpenConnections = Gauge(
+    open_connections_gauge = Gauge(
         f"{PROM_PREFIX}_open_connections",
         "Number of open connections in this redis cluster pool",
         PROM_LABELS,
@@ -367,10 +367,10 @@ class ClusterRedisContextFactory(ContextFactory):
         self.connection_pool = connection_pool
 
         if isinstance(connection_pool, rediscluster.ClusterBlockingConnectionPool):
-            self.promTotalConnections.labels(name).set_function(
+            self.total_connections_gauge.labels(name).set_function(
                 lambda: connection_pool.max_connections
             )
-            self.promOpenConnections.labels(name).set_function(
+            self.open_connections_gauge.labels(name).set_function(
                 lambda: len(connection_pool._connections)
             )
 
