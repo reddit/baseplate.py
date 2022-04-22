@@ -97,8 +97,8 @@ class RedisContextFactory(ContextFactory):
     PROM_PREFIX = "bp_redis_pool"
     PROM_LABELS = ["pool"]
 
-    total_connections = Gauge(
-        f"{PROM_PREFIX}_size",
+    max_connections = Gauge(
+        f"{PROM_PREFIX}_max_size",
         "Maximum number of connections allowed in this redisbp pool",
         PROM_LABELS,
     )
@@ -117,9 +117,7 @@ class RedisContextFactory(ContextFactory):
         self.connection_pool = connection_pool
 
         if isinstance(connection_pool, redis.BlockingConnectionPool):
-            self.total_connections.labels(name).set_function(
-                lambda: connection_pool.max_connections
-            )
+            self.max_connections.labels(name).set_function(lambda: connection_pool.max_connections)
             self.idle_connections.labels(name).set_function(connection_pool.pool.qsize)
             self.open_connections.labels(name).set_function(
                 lambda: len(connection_pool._connections)  # type: ignore
