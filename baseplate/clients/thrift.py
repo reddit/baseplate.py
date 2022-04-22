@@ -74,9 +74,9 @@ class ThriftContextFactory(ContextFactory):
     PROM_PREFIX = "bp_thrift_pool"
     PROM_LABELS = ["client_cls"]
 
-    total_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_connections",
-        "Number of connections in this thrift pool",
+    max_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_max_size",
+        "Maximum number of connections in this thrift pool before blocking",
         PROM_LABELS,
     )
 
@@ -100,7 +100,7 @@ class ThriftContextFactory(ContextFactory):
         )
 
         pool_name = type(self.client_cls).__name__
-        self.total_connections_gauge.labels(pool_name).set_function(lambda: self.pool.size)
+        self.max_connections_gauge.labels(pool_name).set_function(lambda: self.pool.size)
         self.active_connections_gauge.labels(pool_name).set_function(lambda: self.pool.checkedout)
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:

@@ -99,7 +99,7 @@ class RedisContextFactory(ContextFactory):
 
     total_connections = Gauge(
         f"{PROM_PREFIX}_size",
-        "Maximum number of connections in this redisbp pool",
+        "Maximum number of connections allowed in this redisbp pool",
         PROM_LABELS,
     )
     idle_connections = Gauge(
