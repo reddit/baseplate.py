@@ -159,9 +159,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     PROM_PREFIX = "bp_sqlalchemy_pool"
     PROM_LABELS = ["pool"]
 
-    total_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_connections",
-        "Total number of connections in this pool",
+    max_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_max_size",
+        "Maximum number of connections allowed in this pool",
         PROM_LABELS,
     )
 
@@ -191,7 +191,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         pool = self.engine.pool
         if isinstance(pool, QueuePool):
-            self.total_connections_gauge.labels(name).set_function(pool.size)
+            self.max_connections_gauge.labels(name).set_function(pool.size)
             self.checked_in_connections_gauge.labels(name).set_function(pool.checkedin)
             self.checked_out_connections_gauge.labels(name).set_function(pool.checkedout)
             self.overflow_connections_gauge.labels(name).set_function(pool.overflow)
