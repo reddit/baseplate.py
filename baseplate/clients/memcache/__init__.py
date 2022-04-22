@@ -134,8 +134,8 @@ class MemcacheContextFactory(ContextFactory):
     PROM_LABELS = ["pool"]
 
     pool_size_gauge = Gauge(
-        f"{PROM_PREFIX}_size",
-        "Maximum size of this pool",
+        f"{PROM_PREFIX}_max_size",
+        "Maximum number of connections allowed in this pool",
         PROM_LABELS,
     )
 
