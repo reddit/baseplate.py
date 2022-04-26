@@ -66,7 +66,6 @@ class TimeLimitedBatch(Batch):
 
     def add(self, item: Optional[bytes]) -> None:
         if self.age >= self.max_age:
-            print("Raising BatchFull")
             raise BatchFull
 
         self.batch.add(item)
