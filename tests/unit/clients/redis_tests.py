@@ -30,7 +30,7 @@ class PoolFromConfigTests(unittest.TestCase):
                 {"redis.url": "redis://localhost:1234/0", "redis.max_connections": max_connections}
             )
         )
-        metric = ctx.total_connections.collect()
+        metric = ctx.max_connections.collect()
         self.assertEqual(metric[0].samples[0].value, float(max_connections))
 
     def test_timeouts(self):

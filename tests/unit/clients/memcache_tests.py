@@ -61,7 +61,7 @@ class PoolFromConfigTests(unittest.TestCase):
                 {"memcache.endpoint": "localhost:1234", "memcache.max_pool_size": max_pool_size}
             )
         )
-        metric = ctx.promTotalConnections.collect()
+        metric = ctx.total_connections_gauge.collect()
         self.assertEqual(metric[0].samples[0].value, float(max_pool_size))
 
 
