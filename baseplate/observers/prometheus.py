@@ -11,6 +11,7 @@ from baseplate import LocalSpan
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
+from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPLocalMetrics
