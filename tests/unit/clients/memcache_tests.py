@@ -61,8 +61,9 @@ class PoolFromConfigTests(unittest.TestCase):
                 {"memcache.endpoint": "localhost:1234", "memcache.max_pool_size": max_pool_size}
             )
         )
-        metric = ctx.pool_size_gauge.collect()
-        self.assertEqual(metric[0].samples[0].value, float(max_pool_size))
+        metric = ctx.pool_size_gauge.collect()[0]
+        sample = [sample for sample in metric.samples if sample.labels["pool"] == "default"][0]
+        self.assertEqual(sample.value, float(max_pool_size))
 
 
 class SerdeTests(unittest.TestCase):
