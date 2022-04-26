@@ -244,7 +244,9 @@ class RequestContext:
 
 class ReusedContextObjectError(Exception):
     def __init__(self) -> None:
-        super().__init__("Context objects cannot be re-used. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-context-objects-cannot-be-re-used")
+        super().__init__(
+            "Context objects cannot be re-used. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-context-objects-cannot-be-re-used"
+        )
 
 
 class Baseplate:
