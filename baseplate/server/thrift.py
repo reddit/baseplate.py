@@ -72,7 +72,7 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
 
     if cfg.max_concurrency is not None:
         raise Exception(
-            "The max_concurrency setting is not allowed for Thrift servers. See https://git.io/Jeywc."
+            "The max_concurrency setting is not allowed for Thrift servers. See https://github.com/reddit/baseplate.py-upgrader/wiki/v1.2#max_concurrency-is-deprecated."
         )
 
     pool = Pool()

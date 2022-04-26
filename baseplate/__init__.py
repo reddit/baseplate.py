@@ -244,7 +244,7 @@ class RequestContext:
 
 class ReusedContextObjectError(Exception):
     def __init__(self) -> None:
-        super().__init__("Context objects cannot be re-used. See https://git.io/JtEKq")
+        super().__init__("Context objects cannot be re-used. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-context-objects-cannot-be-re-used")
 
 
 class Baseplate:
@@ -672,7 +672,7 @@ class Span:
 class ParentSpanAlreadyFinishedError(Exception):
     def __init__(self) -> None:
         super().__init__(
-            "Cannot make child span of parent that already finished. See https://git.io/JTeqT"
+            "Cannot make child span of parent that already finished. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-cannot-make-child-span-of-parent-that-already-finished"
         )
 
 
