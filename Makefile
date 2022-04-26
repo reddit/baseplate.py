@@ -48,7 +48,7 @@ test: doctest
 .PHONY: fmt
 fmt:
 	@if [ ! -f /baseplate-py-dev-docker-image ]; then \
-		echo "Please use the docker-compose environment for consistency. See https://git.io/Jtdzy."; \
+		echo "Please use the docker-compose environment for consistency. See https://github.com/reddit/baseplate.py/blob/develop/CONTRIBUTING.md."; \
 		exit 1; \
 	fi
 	$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
