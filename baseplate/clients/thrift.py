@@ -8,6 +8,7 @@ from typing import Callable
 from typing import Iterator
 from typing import Optional
 
+from prometheus_client import Gauge
 from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
@@ -70,6 +71,21 @@ class ThriftContextFactory(ContextFactory):
 
     """
 
+    PROM_PREFIX = "bp_thrift_pool"
+    PROM_LABELS = ["client_cls"]
+
+    max_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_max_size",
+        "Maximum number of connections in this thrift pool before blocking",
+        PROM_LABELS,
+    )
+
+    active_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_active_connections",
+        "Number of connections currently in use in this thrift pool",
+        PROM_LABELS,
+    )
+
     def __init__(self, pool: ThriftConnectionPool, client_cls: Any):
         self.pool = pool
         self.client_cls = client_cls
@@ -82,6 +98,10 @@ class ThriftContextFactory(ContextFactory):
                 if not (fn_name.startswith("__") and fn_name.endswith("__"))
             },
         )
+
+        pool_name = type(self.client_cls).__name__
+        self.max_connections_gauge.labels(pool_name).set_function(lambda: self.pool.size)
+        self.active_connections_gauge.labels(pool_name).set_function(lambda: self.pool.checkedout)
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         batch.gauge("pool.size").replace(self.pool.size)

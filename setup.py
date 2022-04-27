@@ -43,6 +43,7 @@ setup(
         "requests>=2.21.0,<3.0",
         "thrift-unofficial>=0.14.1,<1.0",
         "gevent>=20.5.0",
+        "prometheus-client>=0.12.0",
     ],
     extras_require=extras_require,
     scripts=[

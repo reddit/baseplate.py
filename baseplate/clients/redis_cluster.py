@@ -9,6 +9,7 @@ from typing import Optional
 
 import rediscluster
 
+from prometheus_client import Gauge
 from rediscluster.pipeline import ClusterPipeline
 
 from baseplate import Span
@@ -331,7 +332,7 @@ class ClusterRedisClient(config.Parser):
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "ClusterRedisContextFactory":
         connection_pool = cluster_pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return ClusterRedisContextFactory(connection_pool)
+        return ClusterRedisContextFactory(connection_pool, key_path)
 
 
 class ClusterRedisContextFactory(ContextFactory):
@@ -346,8 +347,32 @@ class ClusterRedisContextFactory(ContextFactory):
     :param connection_pool: A connection pool.
     """
 
-    def __init__(self, connection_pool: rediscluster.ClusterConnectionPool):
+    PROM_PREFIX = "bp_redis_cluster_pool"
+    PROM_LABELS = ["pool"]
+
+    max_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_max_size",
+        "Maximum number of connections allowed in this redis cluster pool",
+        PROM_LABELS,
+    )
+    open_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_open_connections",
+        "Number of open connections in this redis cluster pool",
+        PROM_LABELS,
+    )
+
+    def __init__(
+        self, connection_pool: rediscluster.ClusterConnectionPool, name: str = "redis_cluster"
+    ):
         self.connection_pool = connection_pool
+
+        if isinstance(connection_pool, rediscluster.ClusterBlockingConnectionPool):
+            self.max_connections_gauge.labels(name).set_function(
+                lambda: connection_pool.max_connections
+            )
+            self.open_connections_gauge.labels(name).set_function(
+                lambda: len(connection_pool._connections)
+            )
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         if not isinstance(self.connection_pool, rediscluster.ClusterBlockingConnectionPool):

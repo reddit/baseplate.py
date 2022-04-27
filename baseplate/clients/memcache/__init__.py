@@ -8,6 +8,7 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from prometheus_client import Gauge
 from pymemcache.client.base import PooledClient
 
 from baseplate import Span
@@ -112,7 +113,7 @@ class MemcacheClient(config.Parser):
             serializer=self.serializer,
             deserializer=self.deserializer,
         )
-        return MemcacheContextFactory(pool)
+        return MemcacheContextFactory(pool, key_path)
 
 
 class MemcacheContextFactory(ContextFactory):
@@ -129,8 +130,34 @@ class MemcacheContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, pooled_client: PooledClient):
+    PROM_PREFIX = "bp_memcached_pool"
+    PROM_LABELS = ["pool"]
+
+    pool_size_gauge = Gauge(
+        f"{PROM_PREFIX}_max_size",
+        "Maximum number of connections allowed in this pool",
+        PROM_LABELS,
+    )
+
+    used_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_active_connections",
+        "Number of connections in this pool currently in use",
+        PROM_LABELS,
+    )
+
+    free_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_free_connections",
+        "Number of free connections in this pool",
+        PROM_LABELS,
+    )
+
+    def __init__(self, pooled_client: PooledClient, name: str = "default"):
         self.pooled_client = pooled_client
+
+        pool = self.pooled_client.client_pool
+        self.pool_size_gauge.labels(name).set_function(lambda: pool.max_size)
+        self.free_connections_gauge.labels(name).set_function(lambda: len(pool.free))
+        self.used_connections_gauge.labels(name).set_function(lambda: len(pool.used))
 
     def report_memcache_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.pooled_client.client_pool

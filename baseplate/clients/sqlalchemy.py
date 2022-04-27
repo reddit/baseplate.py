@@ -7,6 +7,7 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from prometheus_client import Gauge
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
@@ -125,7 +126,7 @@ class SQLAlchemySession(config.Parser):
         engine = engine_from_config(
             raw_config, secrets=self.secrets, prefix=f"{key_path}.", **self.kwargs
         )
-        return SQLAlchemySessionContextFactory(engine)
+        return SQLAlchemySessionContextFactory(engine, key_path)
 
 
 Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
@@ -155,11 +156,45 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, engine: Engine):
+    PROM_PREFIX = "bp_sqlalchemy_pool"
+    PROM_LABELS = ["pool"]
+
+    max_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_max_size",
+        "Maximum number of connections allowed in this pool",
+        PROM_LABELS,
+    )
+
+    checked_in_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_idle_connections",
+        "Number of available, checked in, connections in this pool",
+        PROM_LABELS,
+    )
+
+    checked_out_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_active_connections",
+        "Number of connections in use, or checked out, in this pool",
+        PROM_LABELS,
+    )
+
+    overflow_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_overflow_connections",
+        "Number of connections over the desired size of this pool",
+        PROM_LABELS,
+    )
+
+    def __init__(self, engine: Engine, name: str = "sqlalchemy"):
         self.engine = engine.execution_options()
         event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
         event.listen(self.engine, "handle_error", self.on_error)
+
+        pool = self.engine.pool
+        if isinstance(pool, QueuePool):
+            self.max_connections_gauge.labels(name).set_function(pool.size)
+            self.checked_in_connections_gauge.labels(name).set_function(pool.checkedin)
+            self.checked_out_connections_gauge.labels(name).set_function(pool.checkedout)
+            self.overflow_connections_gauge.labels(name).set_function(pool.overflow)
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.engine.pool

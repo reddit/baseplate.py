@@ -11,7 +11,7 @@ else:
     del pymemcache
 
 from baseplate.lib.config import ConfigurationError
-from baseplate.clients.memcache import pool_from_config
+from baseplate.clients.memcache import pool_from_config, MemcacheContextFactory
 from baseplate.clients.memcache import lib as memcache_lib
 
 
@@ -53,6 +53,17 @@ class PoolFromConfigTests(unittest.TestCase):
             {"memcache.endpoint": "localhost:1234", "memcache.no_delay": "False"}
         )
         self.assertEqual(pool.no_delay, False)
+
+    def test_metrics(self):
+        max_pool_size = "123"
+        ctx = MemcacheContextFactory(
+            pool_from_config(
+                {"memcache.endpoint": "localhost:1234", "memcache.max_pool_size": max_pool_size}
+            )
+        )
+        metric = ctx.pool_size_gauge.collect()[0]
+        sample = [sample for sample in metric.samples if sample.labels["pool"] == "default"][0]
+        self.assertEqual(sample.value, float(max_pool_size))
 
 
 class SerdeTests(unittest.TestCase):
