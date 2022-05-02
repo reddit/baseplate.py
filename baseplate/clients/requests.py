@@ -1,5 +1,6 @@
 import base64
 import ipaddress
+import sys
 
 from typing import Any
 from typing import Optional
@@ -204,7 +205,14 @@ class BaseplateSession:
 
     def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
         """Send a :py:class:`~requests.PreparedRequest`."""
-        with self.span.make_child(f"{self.name}.request") as span:
+        # we cannot use a context manager anymore to create the span here as we need all the tags
+        # to be set properly before the span can start for prometheus to pick them up
+        # this is why we need to call `self.span.make_child(...)` manually and subsequently:
+        # - span.start()
+        # - span.finish()
+        span = self.span.make_child(f"{self.name}.request")
+        try:
+            span.set_tag("protocol", "http")
             span.set_tag("http.method", request.method)
             span.set_tag("http.url", request.url)
             # if a client_name was specified, use that for the prometheus http_slug otherwise
@@ -212,6 +220,7 @@ class BaseplateSession:
             span.set_tag(
                 "http.slug", self.client_name if self.client_name is not None else self.name
             )
+            span.start()
 
             self._add_span_context(span, request)
 
@@ -228,7 +237,11 @@ class BaseplateSession:
             http_status_code = response.status_code
             span.set_tag("http.status_code", http_status_code)
             span.set_tag("http.success", str(200 <= http_status_code < 400).lower())
-        return response
+            span.finish()
+            return response
+        except Exception as e:
+            span.finish(exc_info=sys.exc_info())
+            raise e
 
 
 class InternalBaseplateSession(BaseplateSession):

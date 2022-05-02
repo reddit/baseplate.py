@@ -1,9 +1,11 @@
 import importlib
+import logging
 
 import gevent
 import pytest
 import requests
 
+from prometheus_client import REGISTRY
 from pyramid.config import Configurator
 from pyramid.httpexceptions import HTTPNoContent
 
@@ -13,10 +15,13 @@ from baseplate.clients.requests import InternalRequestsClient
 from baseplate.frameworks.pyramid import BaseplateConfigurator
 from baseplate.frameworks.pyramid import StaticTrustHandler
 from baseplate.lib import config
+from baseplate.observers.prometheus import PrometheusBaseplateObserver
 from baseplate.server import make_listener
 from baseplate.server.wsgi import make_server
 
 from . import TestBaseplateObserver
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -166,3 +171,91 @@ def test_external_client_doesnt_send_headers(http_server):
         assert "X-Parent" not in http_server.requests[0].headers
         assert "X-Span" not in http_server.requests[0].headers
         assert "X-Edge-Request" not in http_server.requests[0].headers
+
+
+@pytest.mark.parametrize("client_cls", [InternalRequestsClient, ExternalRequestsClient])
+@pytest.mark.parametrize("client_name", [None, "", "complex.client$name"])
+@pytest.mark.parametrize("method", ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "PUT", "POST"])
+def test_prom(client_cls, client_name, method, http_server):
+    baseplate = Baseplate(
+        {"myclient.filter.ip_allowlist": "127.0.0.0/8", "myclient.filter.port_denylist": "0"}
+    )
+    logger.info("Created baseplate.")
+    if client_name is None:
+        baseplate.configure_context({"myclient": client_cls()})
+    else:
+        baseplate.configure_context({"myclient": client_cls(client_name=client_name)})
+    logger.info(
+        f"Configured baseplate context with requests client. [type={client_cls.__name__}, client_name={client_name}]"
+    )
+
+    # observer = TestBaseplateObserver()
+    # observer = TestPrometheusBaseplateObserver()
+    observer = PrometheusBaseplateObserver()
+    logger.info(f"Created observer. [type={observer.__class__.__name__}]")
+    baseplate.register(observer)
+    logger.info("Registered observer with baseplate.")
+
+    # we need to clear metrics between test runs from the parametrize annotations
+    REGISTRY._names_to_collectors["http_client_requests_total"].clear()
+    REGISTRY._names_to_collectors["http_client_latency_seconds"].clear()
+    REGISTRY._names_to_collectors["http_client_active_requests"].clear()
+
+    with baseplate.server_context("test") as context:
+        logger.debug("Created server context.")
+        fn = getattr(context.myclient, method.lower())
+        logger.debug(f"Making HTTP call. [method={method}, endpoint={http_server.url}]")
+        response = fn(http_server.url)
+        logger.debug(f"Made HTTP call. [method={method}, endpoint={http_server.url}]")
+
+    assert response.status_code == 204
+
+    http_client_requests_total = REGISTRY._names_to_collectors[
+        "http_client_requests_total"
+    ].collect()
+    assert len(http_client_requests_total) == 1
+    assert len(http_client_requests_total[0].samples) == 2  # _total and _created
+    http_client_requests_total_total = http_client_requests_total[0].samples[0]
+    assert http_client_requests_total_total.name == "http_client_requests_total"
+    assert http_client_requests_total_total.labels.get("http_method") == method
+    assert http_client_requests_total_total.labels.get("http_response_code") == "204"
+    assert http_client_requests_total_total.labels.get("http_success") == "true"
+    assert http_client_requests_total_total.labels.get("http_endpoint") == "/"
+    assert http_client_requests_total_total.labels.get("http_slug") == (
+        client_name if client_name is not None else "myclient"
+    )
+    assert http_client_requests_total_total.value == 1
+
+    http_client_latency_seconds = REGISTRY._names_to_collectors[
+        "http_client_latency_seconds"
+    ].collect()
+    assert len(http_client_latency_seconds) == 1
+    assert (
+        len(http_client_latency_seconds[0].samples) == 18
+    )  # 15 time buckets (inc. inf), _count, _sum and _created
+    http_client_latency_seconds_inf = http_client_latency_seconds[0].samples[14]
+    assert http_client_latency_seconds_inf.labels.get("le") == "+Inf"
+    assert http_client_latency_seconds_inf.labels.get("http_method") == method
+    assert http_client_latency_seconds_inf.labels.get("http_success") == "true"
+    assert http_client_latency_seconds_inf.labels.get("http_endpoint") == "/"
+    assert http_client_latency_seconds_inf.labels.get("http_slug") == (
+        client_name if client_name is not None else "myclient"
+    )
+    assert http_client_latency_seconds_inf.value == 1
+    http_client_latency_seconds_count = http_client_latency_seconds[0].samples[
+        15
+    ]  # no need to test the tags again since they all in the same sample
+    assert http_client_latency_seconds_count.value == 1
+
+    http_client_active_requests = REGISTRY._names_to_collectors[
+        "http_client_active_requests"
+    ].collect()
+    assert len(http_client_active_requests) == 1
+    assert len(http_client_active_requests[0].samples) == 1
+    http_client_active_requests_samples = http_client_active_requests[0].samples[0]
+    assert http_client_active_requests_samples.labels.get("http_method") == method
+    assert http_client_active_requests_samples.labels.get("http_endpoint") == "/"
+    assert http_client_active_requests_samples.labels.get("http_slug") == (
+        client_name if client_name is not None else "myclient"
+    )
+    assert http_client_active_requests_samples.value == 0
