@@ -12,7 +12,7 @@ start = 0.0001
 factor = 2.5
 count = 14
 # creates 14 buckets from 100us ~ 14.9s.
-default_buckets = [start * factor**i for i in range(count)]
+default_buckets = [start * factor ** i for i in range(count)]
 
 
 # thrift server labels
@@ -143,28 +143,28 @@ class PrometheusHTTPServerMetrics:
         return http_server_latency_seconds.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
     def request_size_bytes_metric(self, tags):
         return http_server_request_size_bytes.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
     def response_size_bytes_metric(self, tags):
         return http_server_response_size_bytes.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
     def requests_total_metric(self, tags):
         return http_server_requests_total.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
             http_response_code=tags.get("http.status_code", ""),
         )
 
@@ -230,7 +230,7 @@ class PrometheusHTTPClientMetrics:
         return http_client_latency_seconds.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
             http_slug=tags.get("http.slug", ""),
         )
 
@@ -238,7 +238,7 @@ class PrometheusHTTPClientMetrics:
         return http_client_requests_total.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
             http_response_code=tags.get("http.status_code", ""),
             http_slug=tags.get("http.slug", ""),
         )
@@ -268,14 +268,14 @@ class PrometheusHTTPLocalMetrics:
         return http_client_latency_seconds.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
     def requests_total_metric(self, tags):
         return http_client_requests_total.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", ""))),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
             http_response_code=tags.get("http.status_code", ""),
         )
 
