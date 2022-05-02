@@ -8,9 +8,9 @@ from prometheus_client import REGISTRY
 
 from baseplate import ServerSpan
 from baseplate.observers.prometheus import PrometheusBaseplateObserver
-from baseplate.observers.prometheus import PrometheusServerSpanObserver
 from baseplate.observers.prometheus import PrometheusClientSpanObserver
 from baseplate.observers.prometheus import PrometheusLocalSpanObserver
+from baseplate.observers.prometheus import PrometheusServerSpanObserver
 
 
 class TestException(Exception):

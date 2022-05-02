@@ -1,6 +1,8 @@
 from typing import Any
 
-from prometheus_client import Counter, Histogram, Gauge
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 
 
 # default_buckets creates the default bucket values for histogram metrics.
