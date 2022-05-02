@@ -1,4 +1,5 @@
 from typing import Any
+from typing import Dict
 
 from prometheus_client import Counter
 from prometheus_client import Gauge
@@ -54,14 +55,14 @@ class PrometheusThriftServerMetrics:
     def __init__(self) -> None:
         pass
 
-    def latency_seconds_metric(self, tags: dict) -> Any:
+    def latency_seconds_metric(self, tags: Dict[str, str]) -> Any:
         """Return the latency_seconds metrics with labels set"""
         return thrift_server_latency_seconds.labels(
             thrift_method=tags.get("thrift.method", ""),
             thrift_success=tags.get("success", ""),
         )
 
-    def requests_total_metric(self, tags: dict) -> Any:
+    def requests_total_metric(self, tags: Dict[str, str]) -> Any:
         """Return the requests_total metrics with labels set"""
         return thrift_server_requests_total.labels(
             thrift_method=tags.get("thrift.method", ""),
@@ -71,7 +72,7 @@ class PrometheusThriftServerMetrics:
             thrift_baseplate_status_code=tags.get("thrift.status_code", ""),
         )
 
-    def active_requests_metric(self, tags: dict) -> Any:
+    def active_requests_metric(self, tags: Dict[str, str]) -> Any:
         """Return the active_requests metrics with labels set"""
         return thrift_server_active_requests.labels(
             thrift_method=tags.get("thrift.method", ""),
@@ -138,31 +139,31 @@ http_server_active_requests = Gauge(
 
 
 class PrometheusHTTPServerMetrics:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def latency_seconds_metric(self, tags):
+    def latency_seconds_metric(self, tags: Dict[str, str]) -> Any:
         return http_server_latency_seconds.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
             http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
-    def request_size_bytes_metric(self, tags):
+    def request_size_bytes_metric(self, tags: Dict[str, str]) -> Any:
         return http_server_request_size_bytes.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
             http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
-    def response_size_bytes_metric(self, tags):
+    def response_size_bytes_metric(self, tags: Dict[str, str]) -> Any:
         return http_server_response_size_bytes.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
             http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
-    def requests_total_metric(self, tags):
+    def requests_total_metric(self, tags: Dict[str, str]) -> Any:
         return http_server_requests_total.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
@@ -170,19 +171,19 @@ class PrometheusHTTPServerMetrics:
             http_response_code=tags.get("http.status_code", ""),
         )
 
-    def active_requests_metric(self, tags):
+    def active_requests_metric(self, tags: Dict[str, str]) -> Any:
         return http_server_active_requests.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
         )
 
-    def get_latency_seconds_metric(self):
+    def get_latency_seconds_metric(self) -> Any:
         return http_server_latency_seconds
 
-    def get_requests_total_metric(self):
+    def get_requests_total_metric(self) -> Any:
         return http_server_requests_total
 
-    def get_active_requests_metric(self):
+    def get_active_requests_metric(self) -> Any:
         return http_server_active_requests
 
 
@@ -225,10 +226,10 @@ http_client_active_requests = Gauge(
 
 
 class PrometheusHTTPClientMetrics:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def latency_seconds_metric(self, tags):
+    def latency_seconds_metric(self, tags: Dict[str, str]) -> Any:
         return http_client_latency_seconds.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
@@ -236,7 +237,7 @@ class PrometheusHTTPClientMetrics:
             http_slug=tags.get("http.slug", ""),
         )
 
-    def requests_total_metric(self, tags):
+    def requests_total_metric(self, tags: Dict[str, str]) -> Any:
         return http_client_requests_total.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
@@ -245,35 +246,35 @@ class PrometheusHTTPClientMetrics:
             http_slug=tags.get("http.slug", ""),
         )
 
-    def active_requests_metric(self, tags):
+    def active_requests_metric(self, tags: Dict[str, str]) -> Any:
         return http_client_active_requests.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
             http_slug=tags.get("http.slug", ""),
         )
 
-    def get_latency_seconds_metric(self):
+    def get_latency_seconds_metric(self) -> Any:
         return http_client_latency_seconds
 
-    def get_requests_total_metric(self):
+    def get_requests_total_metric(self) -> Any:
         return http_client_requests_total
 
-    def get_active_requests_metric(self):
+    def get_active_requests_metric(self) -> Any:
         return http_client_active_requests
 
 
 class PrometheusHTTPLocalMetrics:
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def latency_seconds_metric(self, tags):
+    def latency_seconds_metric(self, tags: Dict[str, str]) -> Any:
         return http_client_latency_seconds.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
             http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
-    def requests_total_metric(self, tags):
+    def requests_total_metric(self, tags: Dict[str, str]) -> Any:
         return http_client_requests_total.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
@@ -281,19 +282,19 @@ class PrometheusHTTPLocalMetrics:
             http_response_code=tags.get("http.status_code", ""),
         )
 
-    def active_requests_metric(self, tags):
+    def active_requests_metric(self, tags: Dict[str, str]) -> Any:
         return http_client_active_requests.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
         )
 
-    def get_latency_seconds_metric(self):
+    def get_latency_seconds_metric(self) -> Any:
         return http_server_latency_seconds
 
-    def get_requests_total_metric(self):
+    def get_requests_total_metric(self) -> Any:
         return http_server_requests_total
 
-    def get_active_requests_metric(self):
+    def get_active_requests_metric(self) -> Any:
         return http_server_active_requests
 
 
@@ -301,4 +302,4 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     """
     The HTTP success label is "true" if the status code is 2xx or 3xx, "false" otherwise.
     """
-    return str(httpStatusCode >= 200 and httpStatusCode < 400).lower()
+    return str(httpStatusCode >= 200 < 400).lower()
