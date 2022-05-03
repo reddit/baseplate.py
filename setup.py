@@ -16,6 +16,7 @@ extras_require = {
     "redis-py-cluster": ["redis-py-cluster>=2.1.2,<3.0.0"],
     "refcycle": ["objgraph>=3.0,<4.0"],
     "requests": ["advocate>=1.0.0,<2.0"],
+    "s3fetcher": ["boto3>=1.18"],
     "sentry": ["sentry-sdk>=0.19,<1.0"],
     "sql": ["sqlalchemy>=1.1.0,<2.0"],
     "zookeeper": ["kazoo>=2.5.0,<3.0"],

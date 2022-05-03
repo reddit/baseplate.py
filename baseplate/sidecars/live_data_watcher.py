@@ -12,9 +12,7 @@ from typing import Any
 from typing import NoReturn
 from typing import Optional
 
-import boto3  # type: ignore
 
-from botocore.client import ClientError  # type: ignore
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
 
@@ -22,6 +20,13 @@ from baseplate.lib import config
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.server import EnvironmentInterpolation
+
+try:
+    import boto3  # type: ignore
+    from botocore.client import ClientError  # type: ignore
+    S3_FETCHER_ENABLED = True
+except ImportError:
+    S3_FETCHER_ENABLED = False
 
 
 logger = logging.getLogger(__name__)
@@ -81,6 +86,10 @@ class NodeWatcher:
         # If the load type is 'S3', this format is an indication that we support
         # downloading the contents of encrypted files uploaded to S3.
         if json_data.get("live_data_watcher_load_type") == "S3":
+            if not S3_FETCHER_ENABLED:
+                logger.error("Attempted to use s3 fetcher but packages are missing")
+                return None
+
             try:
                 bucket_name = json_data["bucket_name"]
                 file_key = json_data["file_key"]
