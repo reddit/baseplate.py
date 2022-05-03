@@ -46,17 +46,23 @@ http_client_active_requests_labels = [
     "http_slug",
 ]
 
+# Latency histogram of HTTP calls made by clients
+# buckets are defined above (from 100µs to ~14.9s)
 http_client_latency_seconds = Histogram(
     "http_client_latency_seconds",
     "Description of histogram",
     http_client_latency_labels,
     buckets=default_buckets,
 )
+
+# Counter counting total HTTP requests started by a given client
 http_client_requests_total = Counter(
     "http_client_requests_total",
     "Description of counter",
     http_client_requests_total_labels,
 )
+
+# Gauge showing current number of active requests by a given client
 http_client_active_requests = Gauge(
     "http_client_active_requests",
     "Description of gauge",
@@ -104,18 +110,13 @@ class PrometheusHTTPClientMetrics:
 
 def getHTTPEndpointHandler(httpURL: str) -> str:
     """
-    hhtp://localhost:9090/user/123
+    http://localhost:9090/user/123
     Path to identify the endpoint handler, may be empty.
     Ref: https://github.snooguts.net/reddit/baseplate.spec/blob/master/component-apis/prom-metrics.md#http
-    MUST NOT include the per-request value of "request fields":
-    For example, /subreddits/{subreddit_id}/posts/{post_id}, not /subreddits/1234/posts/5678.
     """
     from urllib3.util import parse_url
 
     _, _, _, _, path, _, _ = parse_url(httpURL)
-    # TODO: remove request fields. Whats the best way to do this.
-    # there is a way to get this representation from pyramid
-    # ref: https://docs.pylonsproject.org/projects/pyramid/en/latest/api/request.html#pyramid.request.Request.url
     return path if path is not None else ""
 
 

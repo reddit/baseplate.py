@@ -125,7 +125,6 @@ class PrometheusServerSpanObserver(SpanObserver):
         else:
             observer = PrometheusClientSpanObserver()
 
-        observer.on_set_tag("protocol", self.protocol)
         span.register(observer)
 
 
@@ -203,7 +202,6 @@ class PrometheusClientSpanObserver(SpanObserver):
         else:
             observer = PrometheusClientSpanObserver()
 
-        observer.on_set_tag("protocol", self.protocol)
         span.register(observer)
 
 
