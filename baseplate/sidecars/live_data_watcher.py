@@ -12,7 +12,6 @@ from typing import Any
 from typing import NoReturn
 from typing import Optional
 
-
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
 
