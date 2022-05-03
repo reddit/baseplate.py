@@ -670,6 +670,20 @@ class Span:
         """Return a child Span whose parent is this Span."""
         raise NotImplementedError
 
+    def with_tags(self, tags: Dict[str, Any]) -> "Span":
+        """Declare a set of tags to be added to a span before starting it in the context manager.
+
+        Can be used as follow:
+        tags = {...}
+        with self.span.make_child("...").with_tags(tags) as span:
+            ...
+
+        :param tags: Dict of tags to be set on the span at creation time.
+        `"""
+        for k, v in tags.items():
+            self.set_tag(k, v)
+        return self
+
 
 class ParentSpanAlreadyFinishedError(Exception):
     def __init__(self) -> None:
