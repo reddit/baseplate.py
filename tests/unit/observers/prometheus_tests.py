@@ -8,8 +8,6 @@ from prometheus_client import REGISTRY
 
 from baseplate import ServerSpan
 from baseplate.observers.prometheus import PrometheusBaseplateObserver
-from baseplate.observers.prometheus import PrometheusClientSpanObserver
-from baseplate.observers.prometheus import PrometheusLocalSpanObserver
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
 
 
@@ -20,57 +18,6 @@ class TestException(Exception):
 @pytest.mark.parametrize(
     "protocol,client_or_server,observer_cls,labels",
     (
-        (
-            "http",
-            "server",
-            PrometheusServerSpanObserver,
-            {
-                "latency_labels": {"http_method": "", "http_endpoint": "", "http_success": ""},
-                "requests_labels": {
-                    "http_method": "",
-                    "http_endpoint": "",
-                    "http_success": "",
-                    "http_response_code": "",
-                },
-                "active_labels": {"http_method": "", "http_endpoint": ""},
-            },
-        ),
-        (
-            "http",
-            "client",
-            PrometheusClientSpanObserver,
-            {
-                "latency_labels": {
-                    "http_method": "",
-                    "http_endpoint": "",
-                    "http_success": "",
-                    "http_slug": "",
-                },
-                "requests_labels": {
-                    "http_method": "",
-                    "http_endpoint": "",
-                    "http_success": "",
-                    "http_response_code": "",
-                    "http_slug": "",
-                },
-                "active_labels": {"http_method": "", "http_endpoint": "", "http_slug": ""},
-            },
-        ),
-        (
-            "http",
-            "local",
-            PrometheusLocalSpanObserver,
-            {
-                "latency_labels": {"http_method": "", "http_endpoint": "", "http_success": ""},
-                "requests_labels": {
-                    "http_method": "",
-                    "http_endpoint": "",
-                    "http_success": "",
-                    "http_response_code": "",
-                },
-                "active_labels": {"http_method": "", "http_endpoint": ""},
-            },
-        ),
         (
             "thrift",
             "server",
@@ -108,7 +55,7 @@ def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
     observer.on_set_tag("protocol", protocol)
     assert observer.get_prefix() == f"{protocol}_{client_or_server}"
 
-    # observer.on_start()
+    observer.on_start()
     after_start = REGISTRY.get_sample_value(
         f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
     )
@@ -117,24 +64,24 @@ def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
         f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
     )
     assert after_start is None
-    # after_start = REGISTRY.get_sample_value(
-    #    f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
-    #    )
-    # assert after_start == 1.0
+    after_start = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
+    )
+    assert after_start == 1.0
 
-    # observer.on_finish(None)
-    #    after_done = REGISTRY.get_sample_value(
-    #        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
-    #    )
-    #    assert after_done == 1.0
-    # after_done = REGISTRY.get_sample_value(
-    #    f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
-    # )
-    # assert after_done == 1.0
-    # after_done = REGISTRY.get_sample_value(
-    #    f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
-    # )
-    # assert after_done == 0.0
+    observer.on_finish(None)
+    after_done = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
+    )
+    assert after_done == 1.0
+    after_done = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
+    )
+    assert after_done == 1.0
+    after_done = REGISTRY.get_sample_value(
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
+    )
+    assert after_done == 0.0
 
 
 class ObserverTests(unittest.TestCase):
