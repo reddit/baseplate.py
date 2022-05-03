@@ -26,53 +26,6 @@ default_size_buckets = [
     default_size_start * default_size_factor ** i for i in range(default_size_count)
 ]
 
-# http server labels and metrics
-http_server_histogram_labels = [
-    "http_method",
-    "http_endpoint",
-    "http_success",
-]
-http_server_requests_total_labels = [
-    "http_method",
-    "http_endpoint",
-    "http_success",
-    "http_response_code",
-]
-http_server_active_requests_labels = [
-    "http_method",
-    "http_endpoint",
-]
-
-http_server_latency_seconds = Histogram(
-    "http_server_latency_seconds",
-    "Description of histogram",
-    http_server_histogram_labels,
-    buckets=default_buckets,
-)
-http_server_request_size_bytes = Histogram(
-    "http_server_request_size_bytes",
-    "Description of histogram",
-    http_server_histogram_labels,
-    buckets=default_buckets,
-)
-http_server_response_size_bytes = Histogram(
-    "http_server_response_size_bytes",
-    "Description of histogram",
-    http_server_histogram_labels,
-    buckets=default_buckets,
-)
-http_server_requests_total = Counter(
-    "http_server_requests_total",
-    "Description of counter",
-    http_server_requests_total_labels,
-)
-http_server_active_requests = Gauge(
-    "http_server_active_requests",
-    "Description of gauge",
-    http_server_active_requests_labels,
-)
-
-
 # http client labels and metrics
 http_client_latency_labels = [
     "http_method",
