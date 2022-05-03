@@ -23,6 +23,7 @@ from baseplate.server import EnvironmentInterpolation
 try:
     import boto3  # type: ignore
     from botocore.client import ClientError  # type: ignore
+
     S3_FETCHER_ENABLED = True
 except ImportError:
     S3_FETCHER_ENABLED = False
