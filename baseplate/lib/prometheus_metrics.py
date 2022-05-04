@@ -30,19 +30,16 @@ default_size_buckets = [
 http_client_latency_labels = [
     "http_method",
     "http_success",
-    "http_endpoint",
     "http_slug",
 ]
 http_client_requests_total_labels = [
     "http_method",
     "http_success",
-    "http_endpoint",
     "http_response_code",
     "http_slug",
 ]
 http_client_active_requests_labels = [
     "http_method",
-    "http_endpoint",
     "http_slug",
 ]
 
@@ -77,7 +74,6 @@ class PrometheusHTTPClientMetrics:
     def latency_seconds_metric(self, tags: Dict) -> Histogram:
         return http_client_latency_seconds.labels(
             http_method=tags.get("http.method", ""),
-            http_endpoint=getHTTPEndpointHandler(tags.get("http.url", "")),
             http_success=tags.get("http.success", ""),
             http_slug=tags.get("http.slug", ""),
         )
@@ -85,7 +81,6 @@ class PrometheusHTTPClientMetrics:
     def requests_total_metric(self, tags: Dict) -> Counter:
         return http_client_requests_total.labels(
             http_method=tags.get("http.method", ""),
-            http_endpoint=getHTTPEndpointHandler(tags.get("http.url", "")),
             http_success=tags.get("http.success", ""),
             http_response_code=tags.get("http.status_code", ""),
             http_slug=tags.get("http.slug", ""),
@@ -94,7 +89,6 @@ class PrometheusHTTPClientMetrics:
     def active_requests_metric(self, tags: Dict) -> Gauge:
         return http_client_active_requests.labels(
             http_method=tags.get("http.method", ""),
-            http_endpoint=getHTTPEndpointHandler(tags.get("http.url", "")),
             http_slug=tags.get("http.slug", ""),
         )
 
@@ -106,18 +100,6 @@ class PrometheusHTTPClientMetrics:
 
     def get_active_requests_metric(self) -> Gauge:
         return http_client_active_requests
-
-
-def getHTTPEndpointHandler(httpURL: str) -> str:
-    """
-    http://localhost:9090/user/123
-    Path to identify the endpoint handler, may be empty.
-    Ref: https://github.snooguts.net/reddit/baseplate.spec/blob/master/component-apis/prom-metrics.md#http
-    """
-    from urllib3.util import parse_url
-
-    _, _, _, _, path, _, _ = parse_url(httpURL)
-    return path if path is not None else ""
 
 
 # thrift server labels

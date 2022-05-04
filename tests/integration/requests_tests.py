@@ -220,7 +220,6 @@ def test_prom(client_cls, client_name, method, http_server):
     assert http_client_requests_total_total.labels.get("http_method") == method
     assert http_client_requests_total_total.labels.get("http_response_code") == "204"
     assert http_client_requests_total_total.labels.get("http_success") == "true"
-    assert http_client_requests_total_total.labels.get("http_endpoint") == "/"
     assert http_client_requests_total_total.labels.get("http_slug") == (
         client_name if client_name is not None else "myclient"
     )
@@ -237,7 +236,6 @@ def test_prom(client_cls, client_name, method, http_server):
     assert http_client_latency_seconds_inf.labels.get("le") == "+Inf"
     assert http_client_latency_seconds_inf.labels.get("http_method") == method
     assert http_client_latency_seconds_inf.labels.get("http_success") == "true"
-    assert http_client_latency_seconds_inf.labels.get("http_endpoint") == "/"
     assert http_client_latency_seconds_inf.labels.get("http_slug") == (
         client_name if client_name is not None else "myclient"
     )
@@ -254,7 +252,6 @@ def test_prom(client_cls, client_name, method, http_server):
     assert len(http_client_active_requests[0].samples) == 1
     http_client_active_requests_samples = http_client_active_requests[0].samples[0]
     assert http_client_active_requests_samples.labels.get("http_method") == method
-    assert http_client_active_requests_samples.labels.get("http_endpoint") == "/"
     assert http_client_active_requests_samples.labels.get("http_slug") == (
         client_name if client_name is not None else "myclient"
     )

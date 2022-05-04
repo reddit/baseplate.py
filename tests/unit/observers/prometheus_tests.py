@@ -59,19 +59,16 @@ class TestException(Exception):
                 "latency_labels": {
                     "http_method": "",
                     "http_success": "",
-                    "http_endpoint": "",
                     "http_slug": "",
                 },
                 "requests_labels": {
                     "http_method": "",
                     "http_success": "",
-                    "http_endpoint": "",
                     "http_response_code": "",
                     "http_slug": "",
                 },
                 "active_labels": {
                     "http_method": "",
-                    "http_endpoint": "",
                     "http_slug": "",
                 },
 >>>>>>> 7c2d8b9 (feat(prometheus) Implement HTTP client metrics)
