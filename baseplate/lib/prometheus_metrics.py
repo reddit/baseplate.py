@@ -15,7 +15,7 @@ start = 0.0001
 factor = 2.5
 count = 14
 # creates 14 buckets from 100us ~ 14.9s.
-default_buckets = [start * factor ** i for i in range(count)]
+default_buckets = [start * factor**i for i in range(count)]
 
 
 # thrift server labels
@@ -110,30 +110,30 @@ http_server_active_requests_labels = [
 
 http_server_latency_seconds = Histogram(
     "http_server_latency_seconds",
-    "Description of histogram",
+    "Time spent processing requests",
     http_server_histogram_labels,
     buckets=default_buckets,
 )
 http_server_request_size_bytes = Histogram(
     "http_server_request_size_bytes",
-    "Description of histogram",
+    "Size of incoming requests in bytes",
     http_server_histogram_labels,
     buckets=default_buckets,
 )
 http_server_response_size_bytes = Histogram(
     "http_server_response_size_bytes",
-    "Description of histogram",
+    "Size of outgoing responses in bytes",
     http_server_histogram_labels,
     buckets=default_buckets,
 )
 http_server_requests_total = Counter(
     "http_server_requests_total",
-    "Description of counter",
+    "Total number of request handled",
     http_server_requests_total_labels,
 )
 http_server_active_requests = Gauge(
     "http_server_active_requests",
-    "Description of gauge",
+    "Current requests in flight",
     http_server_active_requests_labels,
 )
 
