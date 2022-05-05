@@ -105,7 +105,7 @@ def thrift_pool_from_config(
     options = parser.parse(prefix[:-1], app_config)
 
     if options.fifo_queue:
-        kwargs.setdefault("queue_cls", queue.Queue())
+        kwargs.setdefault("queue_cls", queue.Queue)
     if options.size is not None:
         kwargs.setdefault("size", options.size)
     if options.max_age is not None:
@@ -160,7 +160,7 @@ class ThriftConnectionPool:
         timeout: float = 1,
         max_connection_attempts: int = 3,
         protocol_factory: TProtocolFactory = _DEFAULT_PROTOCOL_FACTORY,
-        queue_cls: ProtocolPool = queue.LifoQueue(),
+        queue_cls: ProtocolPool = queue.LifoQueue,
     ):
         self.endpoint = endpoint
         self.max_age = max_age
@@ -170,7 +170,7 @@ class ThriftConnectionPool:
 
         self.size = size
 
-        self.pool = queue_cls
+        self.pool = queue_cls()
         for _ in range(size):
             self.pool.put(None)
 
