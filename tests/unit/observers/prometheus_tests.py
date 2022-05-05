@@ -34,6 +34,21 @@ class TestException(Exception):
                 "active_labels": {"thrift_method": ""},
             },
         ),
+        (
+            "http",
+            "server",
+            PrometheusServerSpanObserver,
+            {
+                "requests_labels": {
+                    "http_response_code": "",
+                    "http_method": "",
+                    "http_endpoint": "",
+                    "http_success": "false",
+                },
+                "latency_labels": {"http_method": "", "http_endpoint": "", "http_success": "false"},
+                "active_labels": {"http_method": "", "http_endpoint": ""},
+            },
+        ),
     ),
 )
 def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
