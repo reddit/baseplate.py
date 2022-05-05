@@ -1,4 +1,5 @@
 """Helpers for interacting with ZooKeeper."""
+import time
 from typing import Optional
 
 import gevent
@@ -8,6 +9,7 @@ from kazoo.handlers.gevent import SequentialGeventHandler
 
 from baseplate.lib import config
 from baseplate.lib.secrets import SecretsStore
+from baseplate.server.monkey import is_gevent_patched
 
 
 def zookeeper_client_from_config(
@@ -56,12 +58,22 @@ def zookeeper_client_from_config(
         credentials = secrets.get_simple(path)
         auth_data.append(("digest", credentials.decode("utf8")))
 
+    # Kazoo requires different parameters depending on whether
+    # we are using gevent or not.
+    if is_gevent_patched():
+        handler = SequentialGeventHandler()
+        sleep_func = gevent.sleep
+    else:
+        handler = None
+        sleep_func = time.sleep
+
+
     return KazooClient(
         cfg.hosts,
         timeout=cfg.timeout.total_seconds(),
         auth_data=auth_data,
         read_only=read_only,
-        handler=SequentialGeventHandler(),
+        handler=handler,
         # this retry policy tells Kazoo how often it should attempt connections
         # to ZooKeeper from its worker thread/greenlet. when the connection is
         # lost during normal operation (i.e. after it was first established)
@@ -83,6 +95,6 @@ def zookeeper_client_from_config(
             backoff=2,  # exponential backoff
             max_jitter=1,  # maximum amount to jitter sleeptimes
             max_delay=60,  # never wait longer than this
-            sleep_func=gevent.sleep,
+            sleep_func=sleep_func,
         ),
     )
