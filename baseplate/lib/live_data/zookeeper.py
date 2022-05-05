@@ -1,5 +1,6 @@
 """Helpers for interacting with ZooKeeper."""
 import time
+
 from typing import Optional
 
 import gevent
@@ -66,7 +67,6 @@ def zookeeper_client_from_config(
     else:
         handler = None
         sleep_func = time.sleep
-
 
     return KazooClient(
         cfg.hosts,

@@ -13,7 +13,6 @@ def patch_stdlib_queues() -> None:
     monkey.patch_module(queue, gevent.queue, items=["Queue", "LifoQueue", "PriorityQueue"])
 
 
-def is_gevent_patched():
-    """Has any gevent patching has occurred?
-    """
+def is_gevent_patched() -> bool:
+    """Has any gevent patching has occurred?"""
     return monkey.saved
