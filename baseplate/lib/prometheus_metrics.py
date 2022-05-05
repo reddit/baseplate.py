@@ -6,7 +6,7 @@ from prometheus_client import Gauge
 from prometheus_client import Histogram
 
 
-# default_buckets creates the default bucket values for histogram metrics.
+# default_latency_buckets creates the default bucket values for time based histogram metrics.
 # we want this to match the baseplate.go default_buckets, ref: https://github.com/reddit/baseplate.go/blob/master/prometheusbp/metrics.go.
 # start is the value of the lowest bucket.
 # factor is amount to multiply the previous bucket by to get the value for the next bucket.
@@ -15,8 +15,15 @@ start = 0.0001
 factor = 2.5
 count = 14
 # creates 14 buckets from 100us ~ 14.9s.
-default_buckets = [start * factor ** i for i in range(count)]
+default_latency_buckets = [start * factor**i for i in range(count)]
 
+
+default_size_start = 8
+default_size_factor = 2
+default_size_count = 20
+default_size_buckets = [
+    default_size_start * default_size_factor**i for i in range(default_size_count)
+]
 
 # thrift server labels
 thrift_server_latency_labels = [
@@ -37,7 +44,7 @@ thrift_server_latency_seconds = Histogram(
     "thrift_server_latency_seconds",
     "RPC latencies",
     thrift_server_latency_labels,
-    buckets=default_buckets,
+    buckets=default_latency_buckets,
 )
 thrift_server_requests_total = Counter(
     "thrift_server_requests_total",
@@ -97,12 +104,14 @@ http_server_histogram_labels = [
     "http_endpoint",
     "http_success",
 ]
+
 http_server_requests_total_labels = [
     "http_method",
     "http_endpoint",
     "http_success",
     "http_response_code",
 ]
+
 http_server_active_requests_labels = [
     "http_method",
     "http_endpoint",
@@ -112,7 +121,21 @@ http_server_latency_seconds = Histogram(
     "http_server_latency_seconds",
     "Time spent processing requests",
     http_server_histogram_labels,
-    buckets=default_buckets,
+    buckets=default_latency_buckets,
+)
+
+http_server_request_size_bytes = Histogram(
+    "http_server_request_size_bytes",
+    "Size of incoming requests in bytes",
+    http_server_histogram_labels,
+    buckets=default_size_buckets,
+)
+
+http_server_response_size_bytes = Histogram(
+    "http_server_response_size_bytes",
+    "Size of outgoing responses in bytes",
+    http_server_histogram_labels,
+    buckets=default_size_buckets,
 )
 
 http_server_requests_total = Counter(

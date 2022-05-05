@@ -97,10 +97,21 @@ class PrometheusServerSpanObserver(SpanObserver):
 
         self.metrics.active_requests_metric(self.tags).dec()
         self.metrics.requests_total_metric(self.tags).inc()
+
         if self.start_time is not None:
             elapsed_ns = time.perf_counter_ns() - self.start_time
             self.metrics.latency_seconds_metric(self.tags).observe(
                 elapsed_ns / NANOSECONDS_PER_SECOND
+            )
+
+        if hasattr(self.metrics, "response_size_bytes_metric"):
+            self.metrics.response_size_bytes_metric(self.tags).observe(
+                self.tags.get("http.response_length", 0)
+            )
+
+        if hasattr(self.metrics, "request_size_bytes_metric"):
+            self.metrics.request_size_bytes_metric(self.tags).observe(
+                self.tags.get("http.request_length", 0)
             )
 
     def on_child_span_created(self, span: Span) -> None:
