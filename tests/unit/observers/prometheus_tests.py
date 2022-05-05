@@ -7,6 +7,7 @@ import pytest
 from prometheus_client import REGISTRY
 
 from baseplate import ServerSpan
+from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.observers.prometheus import PrometheusBaseplateObserver
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
 
@@ -110,3 +111,8 @@ class ObserverTests(unittest.TestCase):
         mock_server_span.set_tag("protocol", "thrift")
 
         self.assertEqual(mock_server_span.register.call_count, 1)
+
+    def test_http_success_label(self):
+        self.assertEqual("true", getHTTPSuccessLabel(222))
+        self.assertEqual("false", getHTTPSuccessLabel(111))
+        self.assertEqual("false", getHTTPSuccessLabel(418))

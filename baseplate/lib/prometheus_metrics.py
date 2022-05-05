@@ -15,14 +15,14 @@ start = 0.0001
 factor = 2.5
 count = 14
 # creates 14 buckets from 100us ~ 14.9s.
-default_latency_buckets = [start * factor**i for i in range(count)]
+default_latency_buckets = [start * factor ** i for i in range(count)]
 
 
 default_size_start = 8
 default_size_factor = 2
 default_size_count = 20
 default_size_buckets = [
-    default_size_start * default_size_factor**i for i in range(default_size_count)
+    default_size_start * default_size_factor ** i for i in range(default_size_count)
 ]
 
 # thrift server labels
@@ -175,6 +175,20 @@ class PrometheusHTTPServerMetrics:
             http_endpoint=tags.get("http.route", ""),
         )
 
+    def request_size_bytes_metric(self, tags: Dict[str, str]) -> Any:
+        return http_server_request_size_bytes.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=tags.get("http.route", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
+        )
+
+    def response_size_bytes_metric(self, tags: Dict[str, str]) -> Any:
+        return http_server_response_size_bytes.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=tags.get("http.route", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
+        )
+
     def get_latency_seconds_metric(self) -> Any:
         return http_server_latency_seconds
 
@@ -189,4 +203,4 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     """
     The HTTP success label is "true" if the status code is 2xx or 3xx, "false" otherwise.
     """
-    return str(httpStatusCode >= 200 < 400).lower()
+    return str(200 <= httpStatusCode < 400).lower()
