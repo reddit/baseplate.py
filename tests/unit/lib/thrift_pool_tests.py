@@ -310,7 +310,7 @@ class ThriftConnectionPoolTests(unittest.TestCase):
             def get(self, *args, **kwargs):
                 raise Exception
 
-        pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT, queue_cls=PatchedLifoQueue())
+        pool = thrift_pool.ThriftConnectionPool(EXAMPLE_ENDPOINT, queue_cls=PatchedLifoQueue)
 
         with self.assertRaises(Exception):
             with pool.connection() as _:
