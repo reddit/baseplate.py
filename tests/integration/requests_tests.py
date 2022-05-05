@@ -28,6 +28,7 @@ def gevent_socket():
         import socket
 
         importlib.reload(socket)
+        gevent.monkey.saved.clear()
 
 
 @pytest.fixture
