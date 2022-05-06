@@ -3,7 +3,7 @@ Baseplate.py
 
 :Supported Versions: `v2.4.7 <https://github.com/reddit/baseplate.py/releases/tag/v2.4.7>`_, `v2.3.3 <https://github.com/reddit/baseplate.py/releases/tag/v2.3.3>`_
 
-*If you are not on one of these versions, please upgrade. See `baseplate.py-upgrader <https://github.com/reddit/baseplate.py-upgrader>`_ for more info*
+*If you are not on one of these versions, please upgrade. See `baseplate.py-upgrader <https://github.com/reddit/baseplate.py-upgrader/>`_ for more info*
 
 
 It's much easier to manage a bunch of services when they all have the same
