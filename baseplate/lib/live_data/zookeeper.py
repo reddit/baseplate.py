@@ -10,7 +10,7 @@ from kazoo.handlers.gevent import SequentialGeventHandler
 
 from baseplate.lib import config
 from baseplate.lib.secrets import SecretsStore
-from baseplate.server.monkey import is_gevent_patched
+from baseplate.server.monkey import gevent_is_patched
 
 
 def zookeeper_client_from_config(
@@ -61,7 +61,7 @@ def zookeeper_client_from_config(
 
     # Kazoo requires different parameters depending on whether
     # we are using gevent or not.
-    if is_gevent_patched():
+    if gevent_is_patched():
         handler = SequentialGeventHandler()
         sleep_func = gevent.sleep
     else:

@@ -5,7 +5,7 @@ import unittest
 import gevent.monkey
 import gevent.queue
 
-from baseplate.server.monkey import is_gevent_patched
+from baseplate.server.monkey import gevent_is_patched
 from baseplate.server.monkey import patch_stdlib_queues
 
 
@@ -19,9 +19,9 @@ class MonkeyPatchTests(unittest.TestCase):
         assert queue.LifoQueue is not gevent.queue.LifoQueue
 
     def test_is_gevent_patched(self):
-        assert not is_gevent_patched()
+        assert not gevent_is_patched()
         patch_stdlib_queues()
-        assert is_gevent_patched()
+        assert gevent_is_patched()
         importlib.reload(queue)
         gevent.monkey.saved.clear()
-        assert not is_gevent_patched()
+        assert not gevent_is_patched()
