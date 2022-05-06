@@ -1,6 +1,11 @@
 Baseplate.py
 ============
 
+:Supported Versions: [v2.4.7](https://github.com/reddit/baseplate.py/releases/tag/v2.4.7) [v2.3.3](https://github.com/reddit/baseplate.py/releases/tag/v2.3.3)
+
+*If you are not on one of these versions, please upgrade. See `baseplate.py-upgrader <https://github.com/reddit/baseplate.py-upgrader>`_ for more info*
+
+
 It's much easier to manage a bunch of services when they all have the same
 shape: the way they're developed, the way they interact with the infrastructure
 they run on, and the way they interact with each other. Baseplate is reddit's
