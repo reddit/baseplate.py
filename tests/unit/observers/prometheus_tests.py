@@ -114,5 +114,9 @@ class ObserverTests(unittest.TestCase):
 
     def test_http_success_label(self):
         self.assertEqual("true", getHTTPSuccessLabel(222))
+        self.assertEqual("true", getHTTPSuccessLabel(200))
+        self.assertEqual("true", getHTTPSuccessLabel(399))
+        self.assertEqual("false", getHTTPSuccessLabel(199))
+        self.assertEqual("false", getHTTPSuccessLabel(400))
         self.assertEqual("false", getHTTPSuccessLabel(111))
         self.assertEqual("false", getHTTPSuccessLabel(418))

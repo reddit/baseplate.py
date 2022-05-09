@@ -106,12 +106,12 @@ class PrometheusServerSpanObserver(SpanObserver):
 
         if hasattr(self.metrics, "response_size_bytes_metric"):
             self.metrics.response_size_bytes_metric(self.tags).observe(
-                self.tags.get("http.response_length", 0)
+                self.tags.get("http.response_length") or 0
             )
 
         if hasattr(self.metrics, "request_size_bytes_metric"):
             self.metrics.request_size_bytes_metric(self.tags).observe(
-                self.tags.get("http.request_length", 0)
+                self.tags.get("http.request_length") or 0
             )
 
     def on_child_span_created(self, span: Span) -> None:

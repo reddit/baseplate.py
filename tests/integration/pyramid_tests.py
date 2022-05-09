@@ -322,7 +322,7 @@ class ConfiguratorTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            0.0,
+            1.0,
             REGISTRY.get_sample_value(
                 "http_server_request_size_bytes_bucket",
                 {
