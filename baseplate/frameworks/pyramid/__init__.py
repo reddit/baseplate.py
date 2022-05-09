@@ -74,6 +74,8 @@ def _make_baseplate_tween(
     def baseplate_tween(request: Request) -> Response:
         try:
             response = handler(request)
+            if request.span:
+                request.span.set_tag("http.response_length", response.content_length)
         except:  # noqa: E722
             if hasattr(request, "span") and request.span:
                 request.span.finish(exc_info=sys.exc_info())
@@ -239,8 +241,10 @@ class BaseplateConfigurator:
         )
         span.set_tag("protocol", "http")
         span.set_tag("http.url", request.url)
+        span.set_tag("http.route", request.matched_route.pattern)
         span.set_tag("http.method", request.method)
         span.set_tag("peer.ipv4", request.remote_addr)
+        span.set_tag("http.request_length", request.content_length)
         span.start()
 
         request.registry.notify(ServerSpanInitialized(request))

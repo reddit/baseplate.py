@@ -7,6 +7,7 @@ import pytest
 from prometheus_client import REGISTRY
 
 from baseplate import ServerSpan
+from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.observers.prometheus import PrometheusBaseplateObserver
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
 
@@ -32,6 +33,21 @@ class TestException(Exception):
                     "thrift_baseplate_status_code": "",
                 },
                 "active_labels": {"thrift_method": ""},
+            },
+        ),
+        (
+            "http",
+            "server",
+            PrometheusServerSpanObserver,
+            {
+                "requests_labels": {
+                    "http_response_code": "",
+                    "http_method": "",
+                    "http_endpoint": "",
+                    "http_success": "false",
+                },
+                "latency_labels": {"http_method": "", "http_endpoint": "", "http_success": "false"},
+                "active_labels": {"http_method": "", "http_endpoint": ""},
             },
         ),
     ),
@@ -95,3 +111,12 @@ class ObserverTests(unittest.TestCase):
         mock_server_span.set_tag("protocol", "thrift")
 
         self.assertEqual(mock_server_span.register.call_count, 1)
+
+    def test_http_success_label(self):
+        self.assertEqual("true", getHTTPSuccessLabel(222))
+        self.assertEqual("true", getHTTPSuccessLabel(200))
+        self.assertEqual("true", getHTTPSuccessLabel(399))
+        self.assertEqual("false", getHTTPSuccessLabel(199))
+        self.assertEqual("false", getHTTPSuccessLabel(400))
+        self.assertEqual("false", getHTTPSuccessLabel(111))
+        self.assertEqual("false", getHTTPSuccessLabel(418))
