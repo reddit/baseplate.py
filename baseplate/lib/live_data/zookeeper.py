@@ -1,6 +1,4 @@
 """Helpers for interacting with ZooKeeper."""
-import time
-
 from typing import Optional
 
 from kazoo.client import KazooClient
@@ -90,6 +88,5 @@ def zookeeper_client_from_config(
             backoff=2,  # exponential backoff
             max_jitter=1,  # maximum amount to jitter sleeptimes
             max_delay=60,  # never wait longer than this
-            sleep_func=time.sleep,
         ),
     )

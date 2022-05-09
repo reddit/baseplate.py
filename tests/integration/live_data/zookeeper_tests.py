@@ -68,7 +68,10 @@ class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
         )
         assert isinstance(client.handler, SequentialThreadingHandler)
 
-    @mock.patch("time.sleep", gevent.sleep)
+    @mock.patch(
+        "kazoo.retry.KazooRetry.__init__.__defaults__",
+        (1, 0.1, 2, 0.4, 60.0, True, gevent.sleep, None, None),
+    )
     def test_create_client_uses_gevent_handler_when_gevent_patched(self):
         # We patch `socket` just to make sure that the gevent handler is chosen,
         # nothing is special about `socket` in particular. We don't just use
