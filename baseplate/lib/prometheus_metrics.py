@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Dict
 
 from prometheus_client import Counter
 from prometheus_client import Gauge
@@ -14,7 +14,7 @@ start = 0.0001
 factor = 2.5
 count = 14
 # creates 14 buckets from 100us ~ 14.9s.
-default_buckets = [start * factor ** i for i in range(count)]
+default_buckets = [start * factor**i for i in range(count)]
 
 
 # thrift server labels
@@ -88,3 +88,43 @@ class PrometheusThriftServerMetrics:
     def get_active_requests_metric(self) -> Gauge:
         """Return the active_requests metrics"""
         return thrift_server_active_requests
+
+
+thrift_client_active_gauge = Gauge(
+    "thrift_client_active_requests", "Current in-flight requests", ["thrift_slug", "thrift_method"]
+)
+
+thrift_client_latency_historygram = Histogram(
+    "thrift_client_latency_seconds",
+    "Latency of thrift client requests",
+    ["thrift_slug", "thrift_success"],
+    buckets=default_buckets,
+)
+
+thrift_client_requests_counter = Counter(
+    "thrift_client_requests_total",
+    "Total number of outgoing requests",
+    [
+        "thrift_slug",
+        "thrift_success",
+        "thrift_exception_type",
+        "thrift_baseplate_status",
+        "thfit_status_code",
+    ],
+)
+
+
+class PrometheusThriftClientMetrics:
+    def __init__(self) -> None:
+        pass
+
+    # TODO tags. labels is variadic
+
+    def active_requests_metric(self, tags: Dict) -> Gauge:
+        return thrift_client_active_gauge.labels(thrift_slug=None, thrift_method=None)
+
+    def requests_total_metric(self, tags: Dict) -> Counter:
+        return thrift_client_requests_counter.labels(tags)
+
+    def latency_seconds_metric(self, tags: Dict) -> Histogram:
+        return thrift_client_latency_historygram.labels(tags)
