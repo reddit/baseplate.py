@@ -176,7 +176,7 @@ def test_external_client_doesnt_send_headers(http_server):
 @pytest.mark.parametrize("client_cls", [InternalRequestsClient, ExternalRequestsClient])
 @pytest.mark.parametrize("client_name", [None, "", "complex.client$name"])
 @pytest.mark.parametrize("method", ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "PUT", "POST"])
-def test_prom(client_cls, client_name, method, http_server):
+def test_prometheus_http_client_metrics(client_cls, client_name, method, http_server):
     baseplate = Baseplate(
         {"myclient.filter.ip_allowlist": "127.0.0.0/8", "myclient.filter.port_denylist": "0"}
     )
