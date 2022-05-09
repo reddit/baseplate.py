@@ -17,7 +17,8 @@ count = 14
 # creates 14 buckets from 100us ~ 14.9s.
 default_latency_buckets = [start * factor ** i for i in range(count)]
 
-
+# Default buckets for size base histograms, from <=8 bytes to 4mB in 20
+# increments (8*2^i).  Larger requests go in the +Inf bucket.
 default_size_start = 8
 default_size_factor = 2
 default_size_count = 20
