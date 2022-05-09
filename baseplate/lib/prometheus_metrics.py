@@ -1,4 +1,5 @@
-from typing import Any, Dict
+from typing import Any
+from typing import Dict
 
 from prometheus_client import Counter
 from prometheus_client import Gauge
@@ -109,7 +110,7 @@ thrift_client_requests_counter = Counter(
         "thrift_success",
         "thrift_exception_type",
         "thrift_baseplate_status",
-        "thfit_status_code",
+        "thrift_status_code",
     ],
 )
 
@@ -118,13 +119,21 @@ class PrometheusThriftClientMetrics:
     def __init__(self) -> None:
         pass
 
-    # TODO tags. labels is variadic
-
     def active_requests_metric(self, tags: Dict) -> Gauge:
-        return thrift_client_active_gauge.labels(thrift_slug=None, thrift_method=None)
+        return thrift_client_active_gauge.labels(
+            thrift_slug=tags.get("slug"), thrift_method=tags.get("method")
+        )
 
     def requests_total_metric(self, tags: Dict) -> Counter:
-        return thrift_client_requests_counter.labels(tags)
+        return thrift_client_requests_counter.labels(
+            thrift_slug=tags.get("slug"),
+            thrift_success=tags.get("success"),
+            thrift_exception_type=tags.get("exception_type"),
+            thrift_baseplate_status=tags.get("thrift_status"),
+            thrift_status_code=tags.get("thrift_status_code"),
+        )
 
     def latency_seconds_metric(self, tags: Dict) -> Histogram:
-        return thrift_client_latency_historygram.labels(tags)
+        return thrift_client_latency_historygram.labels(
+            thrift_slug=tags.get("slug"), thrift_success=tags.get("success")
+        )

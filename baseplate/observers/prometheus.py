@@ -12,8 +12,9 @@ from baseplate import LocalSpan
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
-from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
+from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
+from baseplate.thrift.ttypes import ErrorCode
 
 
 NANOSECONDS_PER_SECOND = 1e9
@@ -90,8 +91,12 @@ class PrometheusServerSpanObserver(SpanObserver):
             return
 
         if exc_info is not None:
-            self.tags["exception_type"] = exc_info[1].__class__.__name__
+            exc = exc_info[1]
+            self.tags["exception_type"] = exc.__class__.__name__
             self.tags["success"] = "false"
+            if self.protocol == "thrift":  # TODO this breaks some test that assumes all the labels
+                self.tags["thrift_status_code"] = exc.code
+                self.tags["thrift_status"] = ErrorCode()._VALUES_TO_NAMES.get(exc.code, "")
 
         if self.tags.get("exception_type", "") == "":
             self.tags["success"] = "true"

@@ -169,6 +169,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
         for time_remaining in self.retry_policy:
             span = self.server_span.make_child(trace_name)
+            span.set_tag("slug", self.namespace)
             span.start()
 
             try:
@@ -209,6 +210,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
                     client = self.client_cls(prot)
                     method = getattr(client, name)
+                    span.set_tag("method", method)
                     result = method(*args, **kwargs)
             except TTransportException as exc:
                 # the connection failed for some reason, retry if able
