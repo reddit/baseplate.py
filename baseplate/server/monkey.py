@@ -14,5 +14,5 @@ def patch_stdlib_queues() -> None:
 
 
 def gevent_is_patched() -> bool:
-    """Has any gevent patching has occurred?"""
+    """Returns true if gevent is patched, otherwise returns false."""
     return bool(monkey.saved)

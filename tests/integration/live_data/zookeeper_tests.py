@@ -20,7 +20,14 @@ from .. import get_endpoint_or_skip_container
 zookeeper_endpoint = get_endpoint_or_skip_container("zookeeper", 2181)
 
 
-class ZooKeeperTests(unittest.TestCase):
+class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
+    def tearDown(self):
+        # Cleanup gevent patching
+        import socket
+
+        importlib.reload(socket)
+        gevent.monkey.saved.clear()
+
     def test_create_client_no_secrets(self):
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(
@@ -54,34 +61,24 @@ class ZooKeeperTests(unittest.TestCase):
         secrets.get_simple.assert_called_with("secret/zk-user")
         self.assertEqual(list(client.auth_data), [("digest", "myzkuser:hunter2")])
 
-    def test_create_client_uses_correct_handler(self):
+    def test_create_client_uses_threading_handler_when_not_gevent_patched(self):
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(
             secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
         )
         assert isinstance(client.handler, SequentialThreadingHandler)
 
-
-class ZooKeeperGeventTests(unittest.TestCase):
-    def setUp(self):
-        # We patch `socket` just to make sure that the gevent handler is chosen.
-        # Nothing is special about `socket` in particular.
+    @mock.patch("time.sleep", gevent.sleep)
+    def test_create_client_uses_gevent_handler_when_gevent_patched(self):
+        # We patch `socket` just to make sure that the gevent handler is chosen,
+        # nothing is special about `socket` in particular. We don't just use
+        # `gevent.patch_all()` because we can't unpatch builtin functions such
+        # as time.sleep with `importlib.reload`.
         import socket
 
         importlib.reload(socket)
         gevent.monkey.patch_socket()
 
-    def tearDown(self):
-        import socket
-
-        importlib.reload(socket)
-        gevent.monkey.saved.clear()
-
-    @mock.patch("time.sleep", gevent.sleep)
-    def test_create_client_uses_correct_handler(self):
-        # We have to unittest mock patch `time.sleep` rather than doing a real gevent patch
-        # because `time.sleep` is a builtin, so `importlib.reload(time)` does not reload it.
-        # This means we can't unpatch it so other tests are interfered with.
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(
             secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
