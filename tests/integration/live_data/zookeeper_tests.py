@@ -3,6 +3,8 @@ import unittest
 
 from unittest import mock
 
+import gevent.socket
+
 try:
     from kazoo.exceptions import NoNodeError
     from kazoo.handlers.gevent import SequentialGeventHandler
@@ -12,8 +14,6 @@ except ImportError:
 
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import SecretsStore
-
-import gevent
 
 from .. import get_endpoint_or_skip_container
 
@@ -54,23 +54,36 @@ class ZooKeeperTests(unittest.TestCase):
         secrets.get_simple.assert_called_with("secret/zk-user")
         self.assertEqual(list(client.auth_data), [("digest", "myzkuser:hunter2")])
 
-    def test_create_client_without_gevent(self):
+    def test_create_client_uses_correct_handler(self):
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(
             secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
         )
         assert isinstance(client.handler, SequentialThreadingHandler)
 
-    def test_create_client_with_gevent(self):
+
+class ZooKeeperGeventTests(unittest.TestCase):
+    def setUp(self):
+        # We patch `socket` just to make sure that the gevent handler is chosen.
+        # Nothing is special about `socket` in particular.
+        import socket
+
+        importlib.reload(socket)
         gevent.monkey.patch_socket()
 
+    def tearDown(self):
+        import socket
+
+        importlib.reload(socket)
+        gevent.monkey.saved.clear()
+
+    @mock.patch("time.sleep", gevent.sleep)
+    def test_create_client_uses_correct_handler(self):
+        # We have to unittest mock patch `time.sleep` rather than doing a real gevent patch
+        # because `time.sleep` is a builtin, so `importlib.reload(time)` does not reload it.
+        # This means we can't unpatch it so other tests are interfered with.
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(
             secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
         )
         assert isinstance(client.handler, SequentialGeventHandler)
-
-        import socket
-
-        importlib.reload(socket)
-        gevent.monkey.saved.clear()

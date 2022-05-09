@@ -3,8 +3,6 @@ import time
 
 from typing import Optional
 
-import gevent
-
 from kazoo.client import KazooClient
 from kazoo.handlers.gevent import SequentialGeventHandler
 
@@ -59,14 +57,11 @@ def zookeeper_client_from_config(
         credentials = secrets.get_simple(path)
         auth_data.append(("digest", credentials.decode("utf8")))
 
-    # Kazoo requires different parameters depending on whether
-    # we are using gevent or not.
+    # Kazoo needs to use a different handler with gevent.
     if gevent_is_patched():
         handler = SequentialGeventHandler()
-        sleep_func = gevent.sleep
     else:
         handler = None
-        sleep_func = time.sleep
 
     return KazooClient(
         cfg.hosts,
@@ -95,6 +90,6 @@ def zookeeper_client_from_config(
             backoff=2,  # exponential backoff
             max_jitter=1,  # maximum amount to jitter sleeptimes
             max_delay=60,  # never wait longer than this
-            sleep_func=sleep_func,
+            sleep_func=time.sleep,
         ),
     )
