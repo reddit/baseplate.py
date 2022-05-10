@@ -47,7 +47,7 @@ http_client_active_requests_labels = [
 # buckets are defined above (from 100µs to ~14.9s)
 http_client_latency_seconds = Histogram(
     "http_client_latency_seconds",
-    "Description of histogram",
+    "Latency histogram of HTTP calls made by clients",
     http_client_latency_labels,
     buckets=default_buckets,
 )
@@ -55,14 +55,14 @@ http_client_latency_seconds = Histogram(
 # Counter counting total HTTP requests started by a given client
 http_client_requests_total = Counter(
     "http_client_requests_total",
-    "Description of counter",
+    "Total number of HTTP requests started by a given client",
     http_client_requests_total_labels,
 )
 
 # Gauge showing current number of active requests by a given client
 http_client_active_requests = Gauge(
     "http_client_active_requests",
-    "Description of gauge",
+    "Number of active requests for a given client",
     http_client_active_requests_labels,
 )
 
