@@ -8,6 +8,7 @@ from prometheus_client import REGISTRY
 
 from baseplate import ServerSpan
 from baseplate.observers.prometheus import PrometheusBaseplateObserver
+from baseplate.observers.prometheus import PrometheusClientSpanObserver
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
 
 
@@ -32,6 +33,25 @@ class TestException(Exception):
                     "thrift_baseplate_status_code": "",
                 },
                 "active_labels": {"thrift_method": ""},
+            },
+        ),
+        (
+            "thrift",
+            "client",
+            PrometheusClientSpanObserver,
+            {
+                "latency_labels": {"thrift_slug": "", "thrift_success": "true"},
+                "requests_labels": {
+                    "thrift_slug": "",
+                    "thrift_success": "true",
+                    "thrift_exception_type": "",
+                    "thrift_baseplate_status": "",
+                    "thrift_baseplate_status_code": "",
+                },
+                "active_labels": {
+                    "thrift_slug": "",
+                    "thrift_method": "",
+                },
             },
         ),
     ),

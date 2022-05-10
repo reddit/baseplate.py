@@ -95,7 +95,7 @@ thrift_client_active_gauge = Gauge(
     "thrift_client_active_requests", "Current in-flight requests", ["thrift_slug", "thrift_method"]
 )
 
-thrift_client_latency_historygram = Histogram(
+thrift_client_latency_histogram = Histogram(
     "thrift_client_latency_seconds",
     "Latency of thrift client requests",
     ["thrift_slug", "thrift_success"],
@@ -110,7 +110,7 @@ thrift_client_requests_counter = Counter(
         "thrift_success",
         "thrift_exception_type",
         "thrift_baseplate_status",
-        "thrift_status_code",
+        "thrift_baseplate_status_code",
     ],
 )
 
@@ -121,19 +121,31 @@ class PrometheusThriftClientMetrics:
 
     def active_requests_metric(self, tags: Dict) -> Gauge:
         return thrift_client_active_gauge.labels(
-            thrift_slug=tags.get("slug"), thrift_method=tags.get("method")
+            thrift_slug=tags.get("slug", ""), thrift_method=tags.get("method", "")
         )
 
     def requests_total_metric(self, tags: Dict) -> Counter:
         return thrift_client_requests_counter.labels(
-            thrift_slug=tags.get("slug"),
-            thrift_success=tags.get("success"),
-            thrift_exception_type=tags.get("exception_type"),
-            thrift_baseplate_status=tags.get("thrift_status"),
-            thrift_status_code=tags.get("thrift_status_code"),
+            thrift_slug=tags.get("slug", ""),
+            thrift_success=tags.get("success", ""),
+            thrift_exception_type=tags.get("exception_type", ""),
+            thrift_baseplate_status=tags.get("thrift_status", ""),
+            thrift_baseplate_status_code=tags.get("thrift_status_code", ""),
         )
 
     def latency_seconds_metric(self, tags: Dict) -> Histogram:
-        return thrift_client_latency_historygram.labels(
-            thrift_slug=tags.get("slug"), thrift_success=tags.get("success")
+        return thrift_client_latency_histogram.labels(
+            thrift_slug=tags.get("slug", ""), thrift_success=tags.get("success", "")
         )
+
+    def get_latency_seconds_metric(self) -> Histogram:
+        """Return the latency_seconds metrics"""
+        return thrift_client_latency_histogram
+
+    def get_requests_total_metric(self) -> Counter:
+        """Return the requests_total metrics"""
+        return thrift_client_requests_counter
+
+    def get_active_requests_metric(self) -> Gauge:
+        """Return the active_requests metrics"""
+        return thrift_client_active_gauge

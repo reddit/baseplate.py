@@ -91,17 +91,14 @@ class PrometheusServerSpanObserver(SpanObserver):
             return
 
         if exc_info is not None:
-            exc = exc_info[1]
-            self.tags["exception_type"] = exc.__class__.__name__
+            self.tags["exception_type"] = exc_info[1].__class__.__name__
             self.tags["success"] = "false"
-            if self.protocol == "thrift":  # TODO this breaks some test that assumes all the labels
-                self.tags["thrift_status_code"] = exc.code
-                self.tags["thrift_status"] = ErrorCode()._VALUES_TO_NAMES.get(exc.code, "")
 
         if self.tags.get("exception_type", "") == "":
             self.tags["success"] = "true"
 
         self.metrics.active_requests_metric(self.tags).dec()
+        print("aaAAAaa")
         self.metrics.requests_total_metric(self.tags).inc()
         if self.start_time is not None:
             elapsed_ns = time.perf_counter_ns() - self.start_time
@@ -173,8 +170,12 @@ class PrometheusClientSpanObserver(SpanObserver):
 
         self.tags["success"] = "true"
         if exc_info is not None:
-            self.tags["exception_type"] = exc_info[1].__class__.__name__
+            exc = exc_info[1]
+            self.tags["exception_type"] = exc.__class__.__name__
             self.tags["success"] = "false"
+            if self.protocol == "thrift":  # TODO this breaks some test that assumes all the labels
+                self.tags["thrift_status_code"] = exc.code
+                self.tags["thrift_status"] = ErrorCode()._VALUES_TO_NAMES.get(exc.code, "")
 
         self.metrics.active_requests_metric(self.tags).dec()
         self.metrics.requests_total_metric(self.tags).inc()

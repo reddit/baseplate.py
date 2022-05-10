@@ -20,6 +20,7 @@ from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
+from baseplate.observers.prometheus import PrometheusClientSpanObserver
 from baseplate.observers.timeout import ServerTimeout
 from baseplate.observers.timeout import TimeoutBaseplateObserver
 from baseplate.server import make_listener
@@ -33,6 +34,8 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
+
+from prometheus_client import REGISTRY
 
 
 @contextlib.contextmanager
@@ -605,6 +608,30 @@ class ThriftErrorReplacementTests(GeventPatchedTestCase):
                 with self.assertRaises(Error) as exc_info:
                     client.example()
         self.assertEqual(exc_info.exception.code, ErrorCode.INTERNAL_SERVER_ERROR)
+
+
+class ThriftClientMetricsTest(GeventPatchedTestCase):
+    def test_end_to_end(self):
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.edge_context = None
+
+            def example(self, context):
+                self.edge_context = context.edge_context
+                return True
+
+        handler = Handler()
+
+        prom_observer = PrometheusClientSpanObserver()
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(server.endpoint, TestService, prom_observer) as context:
+                context.span.set_tag("protocol", "thrift")
+                context.example_service.example()
+
+        print(list(REGISTRY.collect()))
+
+        assert False
+        assert handler.edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
 
 class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
