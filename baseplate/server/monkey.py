@@ -1,4 +1,4 @@
-from gevent.monkey import patch_module
+from gevent import monkey
 
 
 def patch_stdlib_queues() -> None:
@@ -10,4 +10,9 @@ def patch_stdlib_queues() -> None:
     import queue
     import gevent.queue
 
-    patch_module(queue, gevent.queue, items=["Queue", "LifoQueue", "PriorityQueue"])
+    monkey.patch_module(queue, gevent.queue, items=["Queue", "LifoQueue", "PriorityQueue"])
+
+
+def gevent_is_patched() -> bool:
+    """Returns true if gevent is patched, otherwise returns false."""
+    return bool(monkey.saved)

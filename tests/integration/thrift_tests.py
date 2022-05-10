@@ -134,6 +134,7 @@ class GeventPatchedTestCase(unittest.TestCase):
         import socket
 
         reload(socket)
+        gevent.monkey.saved.clear()
 
 
 class ThriftTraceHeaderTests(GeventPatchedTestCase):
