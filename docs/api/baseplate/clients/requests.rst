@@ -31,10 +31,11 @@ declaration to your context configuration::
       }
    )
 
-You can specify an optional `client_name` in any requests client. When
-prometheus metrics are emitted, this name will be used for the label
-`http_slug`. If `client_name` is not manually specified, we default back
-to the name of the client within the context (in this case, `foo` and `bar`).
+Prometheus metrics include the `http_slug` label, by default the label
+value is set to the key name provided in the context. In the provided code
+example the  `http_slug` labels will have the values `foo` and `bar`. If you
+would like to change the value of this label you can provide the
+`client_name` keyword argument when you create the requests client.
 
 configure it in your application's configuration file:
 
