@@ -154,7 +154,7 @@ class PrometheusClientSpanObserver(SpanObserver):
             self.metrics = PrometheusHTTPClientMetrics()
         elif self.protocol == "thrift":
             # self.metrics = PrometheusThriftClientMetrics()
-            logger.warning("PrometheusThriftClientMetrics not implemented.")
+            logger.debug("PrometheusThriftClientMetrics not implemented.")
         else:
             logger.warning(
                 "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
