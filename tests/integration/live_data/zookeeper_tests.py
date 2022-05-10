@@ -63,7 +63,7 @@ class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
         assert isinstance(client.handler, SequentialThreadingHandler)
 
     @mock.patch("baseplate.lib.live_data.zookeeper.gevent_is_patched", return_value=True)
-    def test_create_client_uses_gevent_handler_when_gevent_patched(self):
+    def test_create_client_uses_gevent_handler_when_gevent_patched(self, mock_gevent_is_patched):
         patched_default_values = tuple(
             gevent.sleep if value is time.sleep else value
             for value in KazooRetry.__init__.__defaults__
