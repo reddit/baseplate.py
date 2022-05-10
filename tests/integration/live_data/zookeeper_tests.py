@@ -1,4 +1,4 @@
-import importlib
+import time
 import unittest
 
 from unittest import mock
@@ -9,6 +9,7 @@ try:
     from kazoo.exceptions import NoNodeError
     from kazoo.handlers.gevent import SequentialGeventHandler
     from kazoo.handlers.threading import SequentialThreadingHandler
+    from kazoo.retry import KazooRetry
 except ImportError:
     raise unittest.SkipTest("kazoo is not installed")
 
@@ -21,13 +22,6 @@ zookeeper_endpoint = get_endpoint_or_skip_container("zookeeper", 2181)
 
 
 class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
-    def tearDown(self):
-        # Cleanup gevent patching
-        import socket
-
-        importlib.reload(socket)
-        gevent.monkey.saved.clear()
-
     def test_create_client_no_secrets(self):
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(
@@ -68,22 +62,15 @@ class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
         )
         assert isinstance(client.handler, SequentialThreadingHandler)
 
-    @mock.patch(
-        "kazoo.retry.KazooRetry.__init__.__defaults__",
-        (1, 0.1, 2, 0.4, 60.0, True, gevent.sleep, None, None),
-    )
+    @mock.patch("baseplate.lib.live_data.zookeeper.gevent_is_patched", return_value=True)
     def test_create_client_uses_gevent_handler_when_gevent_patched(self):
-        # We patch `socket` just to make sure that the gevent handler is chosen,
-        # nothing is special about `socket` in particular. We don't just use
-        # `gevent.patch_all()` because we can't unpatch builtin functions such
-        # as time.sleep with `importlib.reload`.
-        import socket
-
-        importlib.reload(socket)
-        gevent.monkey.patch_socket()
-
-        secrets = mock.Mock(spec=SecretsStore)
-        client = zookeeper_client_from_config(
-            secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
+        patched_default_values = tuple(
+            gevent.sleep if value is time.sleep else value
+            for value in KazooRetry.__init__.__defaults__
         )
-        assert isinstance(client.handler, SequentialGeventHandler)
+        with mock.patch("kazoo.retry.KazooRetry.__init__.__defaults__", patched_default_values):
+            secrets = mock.Mock(spec=SecretsStore)
+            client = zookeeper_client_from_config(
+                secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
+            )
+            assert isinstance(client.handler, SequentialGeventHandler)
