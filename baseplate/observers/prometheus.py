@@ -13,6 +13,7 @@ from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
+from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
 from baseplate.thrift.ttypes import ErrorCode
 
@@ -63,7 +64,7 @@ class PrometheusServerSpanObserver(SpanObserver):
         if self.protocol == "thrift":
             self.metrics = PrometheusThriftServerMetrics()
         elif self.protocol == "http":
-            logger.warning("HTTP Prometheus metrics not implemented")
+            self.metrics = PrometheusHTTPServerMetrics()
         else:
             logger.warning(
                 "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
@@ -100,10 +101,21 @@ class PrometheusServerSpanObserver(SpanObserver):
         self.metrics.active_requests_metric(self.tags).dec()
         print("aaAAAaa")
         self.metrics.requests_total_metric(self.tags).inc()
+
         if self.start_time is not None:
             elapsed_ns = time.perf_counter_ns() - self.start_time
             self.metrics.latency_seconds_metric(self.tags).observe(
                 elapsed_ns / NANOSECONDS_PER_SECOND
+            )
+
+        if hasattr(self.metrics, "response_size_bytes_metric"):
+            self.metrics.response_size_bytes_metric(self.tags).observe(
+                self.tags.get("http.response_length") or 0
+            )
+
+        if hasattr(self.metrics, "request_size_bytes_metric"):
+            self.metrics.request_size_bytes_metric(self.tags).observe(
+                self.tags.get("http.request_length") or 0
             )
 
     def on_child_span_created(self, span: Span) -> None:
