@@ -12,8 +12,8 @@ from baseplate import LocalSpan
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
-from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
+from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
 
 
@@ -44,9 +44,13 @@ class PrometheusServerSpanObserver(SpanObserver):
     def __init__(self) -> None:
         self.tags: Dict[str, Any] = {}
         self.start_time: Optional[int] = None
-        self.metrics: Optional[
-            Union[PrometheusThriftServerMetrics]
-        ] = None  # add PrometheusHTTPServerMetrics when implemented
+        self.metrics: Any = None
+        # self.metrics: Optional[
+        #     Union[
+        #         PrometheusHTTPServerMetrics,
+        #         PrometheusThriftServerMetrics,
+        #     ]
+        # ] = None
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value

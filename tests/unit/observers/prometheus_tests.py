@@ -71,7 +71,6 @@ class TestException(Exception):
                     "http_method": "",
                     "http_slug": "",
                 },
->>>>>>> 7c2d8b9 (feat(prometheus) Implement HTTP client metrics)
             },
         ),
     ),
