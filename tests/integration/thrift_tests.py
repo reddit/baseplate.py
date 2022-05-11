@@ -909,5 +909,5 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
             3,
             "thrift_client_latency_seconds_bucket",
             {"thrift_slug": "example_service", "thrift_success": "true", "le": "0.0015625"},
-            0.0,
+            1.0,
         )
