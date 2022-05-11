@@ -10,6 +10,7 @@ from baseplate import ServerSpan
 from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.observers.prometheus import PrometheusBaseplateObserver
 from baseplate.observers.prometheus import PrometheusClientSpanObserver
+from baseplate.observers.prometheus import PrometheusLocalSpanObserver
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
 
 
@@ -92,6 +93,22 @@ class TestException(Exception):
                 },
             },
         ),
+        (
+            "local",
+            "span",
+            PrometheusLocalSpanObserver,
+            {
+                "latency_labels": {
+                    "span": "",
+                },
+                "requests_labels": {
+                    "span": "",
+                },
+                "active_labels": {
+                    "span": "",
+                },
+            },
+        ),
     ),
 )
 def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
@@ -111,8 +128,6 @@ def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
 
     observer = observer_cls()
     observer.on_set_tag("protocol", protocol)
-    assert observer.get_prefix() == f"{protocol}_{client_or_server}"
-
     observer.on_start()
     after_start = REGISTRY.get_sample_value(
         f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")

@@ -343,3 +343,60 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     The HTTP success label is "true" if the status code is 2xx or 3xx, "false" otherwise.
     """
     return str(200 <= httpStatusCode < 400).lower()
+
+
+# local labels and metrics
+local_span_labels = [
+    "span",
+]
+# Latency histogram of local span
+# buckets are defined above (from 100µs to ~14.9s)
+local_span_latency_seconds = Histogram(
+    "local_span_latency_seconds",
+    "Latency histogram of local span",
+    local_span_labels,
+    buckets=default_latency_buckets,
+)
+
+# Counter counting total local spans started
+local_span_requests_total = Counter(
+    "local_span_requests_total",
+    "Total number of local spans started",
+    local_span_labels,
+)
+
+# Gauge showing current number of local spans
+local_span_active_requests = Gauge(
+    "local_span_active_requests",
+    "Number of active local spans",
+    local_span_labels,
+)
+
+
+class PrometheusLocalSpanMetrics:
+    def __init__(self) -> None:
+        pass
+
+    def latency_seconds_metric(self, tags: Dict) -> Histogram:
+        return local_span_latency_seconds.labels(
+            span=tags.get("span_name", ""),
+        )
+
+    def requests_total_metric(self, tags: Dict) -> Counter:
+        return local_span_requests_total.labels(
+            span=tags.get("span_name", ""),
+        )
+
+    def active_requests_metric(self, tags: Dict) -> Gauge:
+        return local_span_active_requests.labels(
+            span=tags.get("span_name", ""),
+        )
+
+    def get_latency_seconds_metric(self) -> Histogram:
+        return local_span_latency_seconds
+
+    def get_requests_total_metric(self) -> Counter:
+        return local_span_requests_total
+
+    def get_active_requests_metric(self) -> Gauge:
+        return local_span_active_requests
