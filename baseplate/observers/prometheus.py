@@ -12,9 +12,10 @@ from baseplate import LocalSpan
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
-from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
+from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
+from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
 
 
@@ -99,7 +100,6 @@ class PrometheusServerSpanObserver(SpanObserver):
             self.tags["success"] = "true"
 
         self.metrics.active_requests_metric(self.tags).dec()
-        print("aaAAAaa")
         self.metrics.requests_total_metric(self.tags).inc()
 
         if self.start_time is not None:
@@ -185,7 +185,7 @@ class PrometheusClientSpanObserver(SpanObserver):
             exc = exc_info[1]
             self.tags["exception_type"] = exc.__class__.__name__
             self.tags["success"] = "false"
-            if self.protocol == "thrift":  # TODO this breaks some test that assumes all the labels
+            if self.protocol == "thrift" and isinstance(exc, Error):
                 self.tags["thrift_status_code"] = exc.code
                 self.tags["thrift_status"] = ErrorCode()._VALUES_TO_NAMES.get(exc.code, "")
 

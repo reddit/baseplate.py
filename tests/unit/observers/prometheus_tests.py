@@ -53,6 +53,9 @@ class TestException(Exception):
                     "thrift_slug": "",
                     "thrift_method": "",
                 },
+            },
+        ),
+        (
             "http",
             "server",
             PrometheusServerSpanObserver,

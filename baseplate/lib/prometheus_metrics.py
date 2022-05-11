@@ -47,11 +47,13 @@ thrift_server_latency_seconds = Histogram(
     thrift_server_latency_labels,
     buckets=default_latency_buckets,
 )
+
 thrift_server_requests_total = Counter(
     "thrift_server_requests_total",
     "Total RPC request count",
     thrift_server_requests_total_labels,
 )
+
 thrift_server_active_requests = Gauge(
     "thrift_server_active_requests",
     "The number of in-flight requests being handled by the service",
@@ -98,6 +100,7 @@ class PrometheusThriftServerMetrics:
         """Return the active_requests metrics"""
         return thrift_server_active_requests
 
+
 thrift_client_active_gauge = Gauge(
     "thrift_client_active_requests", "Current in-flight requests", ["thrift_slug", "thrift_method"]
 )
@@ -106,7 +109,7 @@ thrift_client_latency_histogram = Histogram(
     "thrift_client_latency_seconds",
     "Latency of thrift client requests",
     ["thrift_slug", "thrift_success"],
-    buckets=default_buckets,
+    buckets=default_latency_buckets,
 )
 
 thrift_client_requests_counter = Counter(
@@ -156,6 +159,7 @@ class PrometheusThriftClientMetrics:
     def get_active_requests_metric(self) -> Gauge:
         """Return the active_requests metrics"""
         return thrift_client_active_gauge
+
 
 # http server labels and metrics
 http_server_histogram_labels = [
