@@ -590,20 +590,22 @@ class ThriftHealthcheck(GeventPatchedTestCase):
                 self.assertEqual(handler.probe, IsHealthyProbe.LIVENESS)
 
 
-class ThriftClientMetricsTest(GeventPatchedTestCase):
-    def assert_correct_metric(
-        self, metric, want_count, want_sample, want_name, want_labels, want_value
-    ):
-        m = metric.collect()
-        self.assertEqual(len(m), 1)
-        self.assertEqual(len(m[0].samples), want_count)
-        sample = m[0].samples[want_sample]
-        got_name = sample[0]
-        self.assertEqual(got_name, want_name)
-        got_labels = sample[1]
-        self.assertEqual(got_labels, want_labels)
-        got_value = sample[2]
-        self.assertEqual(got_value, want_value)
+class ThriftErrorReplacementTests(GeventPatchedTestCase):
+    def test_server_replaces_unhandled_errors(self):
+        """The server span should atart/stop appropriately."""
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise Exception("foo")
+
+        handler = Handler()
+
+        server_span_observer = mock.Mock(spec=ServerSpanObserver)
+        with serve_thrift(handler, TestService, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                with self.assertRaises(Error) as exc_info:
+                    client.example()
+        self.assertEqual(exc_info.exception.code, ErrorCode.INTERNAL_SERVER_ERROR)
 
 
 class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
