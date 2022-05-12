@@ -908,8 +908,8 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
         self.assert_correct_metric(
             prom_observer.metrics.get_latency_seconds_metric(),
             18,
-            3,
+            14,
             "thrift_client_latency_seconds_bucket",
-            {"thrift_slug": "example_service", "thrift_success": "true", "le": "0.0015625"},
+            {"thrift_slug": "example_service", "thrift_success": "true", "le": "+Inf"},
             1.0,
         )
