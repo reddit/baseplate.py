@@ -592,7 +592,7 @@ class ThriftHealthcheck(GeventPatchedTestCase):
 
 class ThriftErrorReplacementTests(GeventPatchedTestCase):
     def test_server_replaces_unhandled_errors(self):
-        """The server span should atart/stop appropriately."""
+        """The server span should start/stop appropriately."""
 
         class Handler(TestService.Iface):
             def example(self, context):
