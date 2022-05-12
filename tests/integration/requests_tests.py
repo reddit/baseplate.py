@@ -189,8 +189,6 @@ def test_prometheus_http_client_metrics(client_cls, client_name, method, http_se
         f"Configured baseplate context with requests client. [type={client_cls.__name__}, client_name={client_name}]"
     )
 
-    # observer = TestBaseplateObserver()
-    # observer = TestPrometheusBaseplateObserver()
     observer = PrometheusBaseplateObserver()
     logger.info(f"Created observer. [type={observer.__class__.__name__}]")
     baseplate.register(observer)
@@ -255,4 +253,65 @@ def test_prometheus_http_client_metrics(client_cls, client_name, method, http_se
     assert http_client_active_requests_samples.labels.get("http_slug") == (
         client_name if client_name is not None else "myclient"
     )
+    assert http_client_active_requests_samples.value == 0
+
+
+@pytest.mark.parametrize("method", ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "PUT", "POST"])
+def test_prometheus_http_client_metrics_inside_local_span(method, http_server):
+    baseplate = Baseplate(
+        {"myclient.filter.ip_allowlist": "127.0.0.0/8", "myclient.filter.port_denylist": "0"}
+    )
+    logger.info("Created baseplate.")
+    baseplate.configure_context({"myclient": InternalRequestsClient()})
+
+    observer = PrometheusBaseplateObserver()
+    logger.info(f"Created observer. [type={observer.__class__.__name__}]")
+    baseplate.register(observer)
+    logger.info("Registered observer with baseplate.")
+
+    # we need to clear metrics between test runs from the parametrize annotations
+    REGISTRY._names_to_collectors["http_client_requests_total"].clear()
+    REGISTRY._names_to_collectors["http_client_latency_seconds"].clear()
+    REGISTRY._names_to_collectors["http_client_active_requests"].clear()
+
+    with baseplate.server_context("test") as context:
+        with context.span.make_child("local", local=True) as span:
+            logger.debug("Created local context.")
+            fn = getattr(span.context.myclient, method.lower())
+            logger.debug(f"Making HTTP call. [method={method}, endpoint={http_server.url}]")
+            response = fn(http_server.url)
+            logger.debug(f"Made HTTP call. [method={method}, endpoint={http_server.url}]")
+
+    assert response.status_code == 204
+
+    # Only making quick checks here, since this is meant to ensure that we do record metrics inside
+    # a local span at all. Whether tags etc. are valid are tested in a previous test:
+    # test_prometheus_http_client_metrics
+    http_client_requests_total = REGISTRY._names_to_collectors[
+        "http_client_requests_total"
+    ].collect()
+    assert len(http_client_requests_total) == 1
+    assert len(http_client_requests_total[0].samples) == 2  # _total and _created
+    http_client_requests_total_total = http_client_requests_total[0].samples[0]
+    assert http_client_requests_total_total.value == 1
+
+    http_client_latency_seconds = REGISTRY._names_to_collectors[
+        "http_client_latency_seconds"
+    ].collect()
+    assert len(http_client_latency_seconds) == 1
+    assert (
+        len(http_client_latency_seconds[0].samples) == 18
+    )  # 15 time buckets (inc. inf), _count, _sum and _created
+    http_client_latency_seconds_inf = http_client_latency_seconds[0].samples[14]
+    assert http_client_latency_seconds_inf.labels.get("le") == "+Inf"
+    assert http_client_latency_seconds_inf.value == 1
+    http_client_latency_seconds_count = http_client_latency_seconds[0].samples[15]
+    assert http_client_latency_seconds_count.value == 1
+
+    http_client_active_requests = REGISTRY._names_to_collectors[
+        "http_client_active_requests"
+    ].collect()
+    assert len(http_client_active_requests) == 1
+    assert len(http_client_active_requests[0].samples) == 1
+    http_client_active_requests_samples = http_client_active_requests[0].samples[0]
     assert http_client_active_requests_samples.value == 0

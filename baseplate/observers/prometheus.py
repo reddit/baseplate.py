@@ -210,3 +210,15 @@ class PrometheusClientSpanObserver(SpanObserver):
 class PrometheusLocalSpanObserver(SpanObserver):
     def __init__(self) -> None:
         logger.debug("PrometheusLocalSpanObserver not implemented")
+
+    # Proper implementation for PrometheusLocalSpanObserver will come in a future PR
+    # In the meantime, we need this logic in place to be able to emit http client metrics
+    # when running inside a local span
+    def on_child_span_created(self, span: Span) -> None:
+        observer: Optional[SpanObserver] = None
+        if isinstance(span, LocalSpan):
+            observer = PrometheusLocalSpanObserver()
+        else:
+            observer = PrometheusClientSpanObserver()
+
+        span.register(observer)
