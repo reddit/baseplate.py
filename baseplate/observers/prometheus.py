@@ -44,13 +44,12 @@ class PrometheusServerSpanObserver(SpanObserver):
     def __init__(self) -> None:
         self.tags: Dict[str, Any] = {}
         self.start_time: Optional[int] = None
-        self.metrics: Any = None
-        # self.metrics: Optional[
-        #     Union[
-        #         PrometheusHTTPServerMetrics,
-        #         PrometheusThriftServerMetrics,
-        #     ]
-        # ] = None
+        self.metrics: Optional[
+            Union[
+                PrometheusHTTPServerMetrics,
+                PrometheusThriftServerMetrics,
+            ]
+        ] = None
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
@@ -112,12 +111,11 @@ class PrometheusServerSpanObserver(SpanObserver):
                 elapsed_ns / NANOSECONDS_PER_SECOND
             )
 
-        if hasattr(self.metrics, "response_size_bytes_metric"):
+        if isinstance(self.metrics, PrometheusHTTPServerMetrics):
             self.metrics.response_size_bytes_metric(self.tags).observe(
                 self.tags.get("http.response_length") or 0
             )
 
-        if hasattr(self.metrics, "request_size_bytes_metric"):
             self.metrics.request_size_bytes_metric(self.tags).observe(
                 self.tags.get("http.request_length") or 0
             )
