@@ -74,14 +74,14 @@ class PrometheusHTTPClientMetrics:
     def latency_seconds_metric(self, tags: Dict[str, Any]) -> Histogram:
         return http_client_latency_seconds.labels(
             http_method=tags.get("http.method", ""),
-            http_success=tags.get("http.success", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
             http_slug=tags.get("http.slug", ""),
         )
 
     def requests_total_metric(self, tags: Dict[str, Any]) -> Counter:
         return http_client_requests_total.labels(
             http_method=tags.get("http.method", ""),
-            http_success=tags.get("http.success", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
             http_response_code=tags.get("http.status_code", ""),
             http_slug=tags.get("http.slug", ""),
         )

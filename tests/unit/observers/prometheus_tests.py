@@ -58,12 +58,12 @@ class TestException(Exception):
             {
                 "latency_labels": {
                     "http_method": "",
-                    "http_success": "",
+                    "http_success": "false",
                     "http_slug": "",
                 },
                 "requests_labels": {
                     "http_method": "",
-                    "http_success": "",
+                    "http_success": "false",
                     "http_response_code": "",
                     "http_slug": "",
                 },

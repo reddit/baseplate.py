@@ -225,7 +225,6 @@ class BaseplateSession:
 
             http_status_code = response.status_code
             span.set_tag("http.status_code", http_status_code)
-            span.set_tag("http.success", str(200 <= http_status_code < 400).lower())
         return response
 
 

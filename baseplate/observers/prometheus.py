@@ -184,11 +184,6 @@ class PrometheusClientSpanObserver(SpanObserver):
             )
             return
 
-        self.tags["success"] = "true"
-        if exc_info is not None:
-            self.tags["exception_type"] = exc_info[1].__class__.__name__
-            self.tags["success"] = "false"
-
         self.metrics.active_requests_metric(self.tags).dec()
         self.metrics.requests_total_metric(self.tags).inc()
         if self.start_time is not None:

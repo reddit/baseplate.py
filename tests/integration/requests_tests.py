@@ -101,7 +101,6 @@ def test_client_makes_client_span(client_cls, client_name, method, http_server):
     assert client_span_observer.tags["http.url"] == http_server.url
     assert client_span_observer.tags["http.method"] == method
     assert client_span_observer.tags["http.status_code"] == 204
-    assert client_span_observer.tags["http.success"] == "true"
     assert client_span_observer.tags["http.slug"] == (
         client_name if client_name is not None else "myclient"
     )
