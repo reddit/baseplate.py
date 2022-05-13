@@ -168,11 +168,16 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         last_error = None
 
         for time_remaining in self.retry_policy:
-            span = self.server_span.make_child(trace_name)
-            span.start()
-
             try:
                 with self.pool.connection() as prot:
+                    span = self.server_span.make_child(trace_name)
+                    span.set_tag("slug", self.namespace)
+
+                    client = self.client_cls(prot)
+                    method = getattr(client, name)
+                    span.set_tag("method", method.__name__)
+                    span.start()
+
                     baseplate = span.baseplate
                     if baseplate:
                         service_name = baseplate.service_name
@@ -207,8 +212,6 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     if edge_context:
                         prot.trans.set_header(b"Edge-Request", edge_context)
 
-                    client = self.client_cls(prot)
-                    method = getattr(client, name)
                     result = method(*args, **kwargs)
             except TTransportException as exc:
                 # the connection failed for some reason, retry if able

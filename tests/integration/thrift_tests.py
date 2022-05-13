@@ -19,6 +19,7 @@ from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
+from baseplate.observers.prometheus import PrometheusClientSpanObserver
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
 from baseplate.observers.timeout import ServerTimeout
 from baseplate.observers.timeout import TimeoutBaseplateObserver
@@ -858,3 +859,58 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
             1.0,
         )
         self.reset_metrics(prom_observer.metrics)
+
+    def test_client_metrics(self):
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.edge_context = None
+
+            def example(self, context):
+                self.edge_context = context.edge_context
+                return True
+
+        handler = Handler()
+
+        prom_observer = PrometheusClientSpanObserver()
+        # This normally called when a child span is created in
+        # PrometheusServerSpanObserver, we're skipping that
+        prom_observer.on_set_tag("protocol", "thrift")
+
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(server.endpoint, TestService, prom_observer) as context:
+                context.example_service.example()
+
+        self.assert_correct_metric(
+            prom_observer.metrics.get_active_requests_metric(),
+            1,
+            0,
+            "thrift_client_active_requests",
+            {
+                "thrift_slug": "example_service",
+                "thrift_method": "example",
+            },
+            0.0,
+        )
+
+        self.assert_correct_metric(
+            prom_observer.metrics.get_requests_total_metric(),
+            2,
+            0,
+            "thrift_client_requests_total",
+            {
+                "thrift_slug": "example_service",
+                "thrift_success": "true",
+                "thrift_exception_type": "",
+                "thrift_baseplate_status": "",
+                "thrift_baseplate_status_code": "",
+            },
+            1.0,
+        )
+        self.assert_correct_metric(
+            prom_observer.metrics.get_latency_seconds_metric(),
+            18,
+            14,
+            "thrift_client_latency_seconds_bucket",
+            {"thrift_slug": "example_service", "thrift_success": "true", "le": "+Inf"},
+            1.0,
+        )
