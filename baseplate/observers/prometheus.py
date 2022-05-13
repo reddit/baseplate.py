@@ -139,7 +139,7 @@ class PrometheusClientSpanObserver(SpanObserver):
         self.start_time: Optional[int] = None
         self.metrics: Optional[
             Union[PrometheusHTTPClientMetrics, PrometheusThriftClientMetrics]
-        ] = None  # Add PrometheusThriftClientMetrics when implemented
+        ] = None
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
