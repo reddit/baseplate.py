@@ -14,7 +14,10 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
+from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
+from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
 
 
 NANOSECONDS_PER_SECOND = 1e9
@@ -135,7 +138,7 @@ class PrometheusClientSpanObserver(SpanObserver):
         self.tags: Dict[str, Any] = {}
         self.start_time: Optional[int] = None
         self.metrics: Optional[
-            Union[PrometheusHTTPClientMetrics]
+            Union[PrometheusHTTPClientMetrics, PrometheusThriftClientMetrics]
         ] = None  # Add PrometheusThriftClientMetrics when implemented
 
     def on_set_tag(self, key: str, value: Any) -> None:
@@ -155,8 +158,7 @@ class PrometheusClientSpanObserver(SpanObserver):
         if self.protocol == "http":
             self.metrics = PrometheusHTTPClientMetrics()
         elif self.protocol == "thrift":
-            # self.metrics = PrometheusThriftClientMetrics()
-            logger.debug("PrometheusThriftClientMetrics not implemented.")
+            self.metrics = PrometheusThriftClientMetrics()
         else:
             logger.warning(
                 "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
@@ -183,6 +185,15 @@ class PrometheusClientSpanObserver(SpanObserver):
                 "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
             )
             return
+
+        self.tags["success"] = "true"
+        if exc_info is not None:
+            exc = exc_info[1]
+            self.tags["exception_type"] = exc.__class__.__name__
+            self.tags["success"] = "false"
+            if self.protocol == "thrift" and isinstance(exc, Error):
+                self.tags["thrift_status_code"] = exc.code
+                self.tags["thrift_status"] = ErrorCode()._VALUES_TO_NAMES.get(exc.code, "")
 
         self.metrics.active_requests_metric(self.tags).dec()
         self.metrics.requests_total_metric(self.tags).inc()

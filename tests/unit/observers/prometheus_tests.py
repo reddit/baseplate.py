@@ -37,6 +37,25 @@ class TestException(Exception):
             },
         ),
         (
+            "thrift",
+            "client",
+            PrometheusClientSpanObserver,
+            {
+                "latency_labels": {"thrift_slug": "", "thrift_success": "true"},
+                "requests_labels": {
+                    "thrift_slug": "",
+                    "thrift_success": "true",
+                    "thrift_exception_type": "",
+                    "thrift_baseplate_status": "",
+                    "thrift_baseplate_status_code": "",
+                },
+                "active_labels": {
+                    "thrift_slug": "",
+                    "thrift_method": "",
+                },
+            },
+        ),
+        (
             "http",
             "server",
             PrometheusServerSpanObserver,
