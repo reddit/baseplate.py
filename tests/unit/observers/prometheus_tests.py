@@ -70,6 +70,28 @@ class TestException(Exception):
                 "active_labels": {"http_method": "", "http_endpoint": ""},
             },
         ),
+        (
+            "http",
+            "client",
+            PrometheusClientSpanObserver,
+            {
+                "latency_labels": {
+                    "http_method": "",
+                    "http_success": "false",
+                    "http_slug": "",
+                },
+                "requests_labels": {
+                    "http_method": "",
+                    "http_success": "false",
+                    "http_response_code": "",
+                    "http_slug": "",
+                },
+                "active_labels": {
+                    "http_method": "",
+                    "http_slug": "",
+                },
+            },
+        ),
     ),
 )
 def test_observer_metrics(protocol, client_or_server, observer_cls, labels):

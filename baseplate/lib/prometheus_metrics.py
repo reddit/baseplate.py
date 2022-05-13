@@ -26,6 +26,82 @@ default_size_buckets = [
     default_size_start * default_size_factor ** i for i in range(default_size_count)
 ]
 
+# http client labels and metrics
+http_client_latency_labels = [
+    "http_method",
+    "http_success",
+    "http_slug",
+]
+http_client_requests_total_labels = [
+    "http_method",
+    "http_success",
+    "http_response_code",
+    "http_slug",
+]
+http_client_active_requests_labels = [
+    "http_method",
+    "http_slug",
+]
+
+# Latency histogram of HTTP calls made by clients
+# buckets are defined above (from 100µs to ~14.9s)
+http_client_latency_seconds = Histogram(
+    "http_client_latency_seconds",
+    "Latency histogram of HTTP calls made by clients",
+    http_client_latency_labels,
+    buckets=default_latency_buckets,
+)
+
+# Counter counting total HTTP requests started by a given client
+http_client_requests_total = Counter(
+    "http_client_requests_total",
+    "Total number of HTTP requests started by a given client",
+    http_client_requests_total_labels,
+)
+
+# Gauge showing current number of active requests by a given client
+http_client_active_requests = Gauge(
+    "http_client_active_requests",
+    "Number of active requests for a given client",
+    http_client_active_requests_labels,
+)
+
+
+class PrometheusHTTPClientMetrics:
+    def __init__(self) -> None:
+        pass
+
+    def latency_seconds_metric(self, tags: Dict[str, Any]) -> Histogram:
+        return http_client_latency_seconds.labels(
+            http_method=tags.get("http.method", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
+            http_slug=tags.get("http.slug", ""),
+        )
+
+    def requests_total_metric(self, tags: Dict[str, Any]) -> Counter:
+        return http_client_requests_total.labels(
+            http_method=tags.get("http.method", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
+            http_response_code=tags.get("http.status_code", ""),
+            http_slug=tags.get("http.slug", ""),
+        )
+
+    def active_requests_metric(self, tags: Dict[str, Any]) -> Gauge:
+        return http_client_active_requests.labels(
+            http_method=tags.get("http.method", ""),
+            http_slug=tags.get("http.slug", ""),
+        )
+
+    def get_latency_seconds_metric(self) -> Histogram:
+        return http_client_latency_seconds
+
+    def get_requests_total_metric(self) -> Counter:
+        return http_client_requests_total
+
+    def get_active_requests_metric(self) -> Gauge:
+        return http_client_active_requests
+
+
 # thrift server labels
 thrift_server_latency_labels = [
     "thrift_method",
@@ -217,14 +293,14 @@ class PrometheusHTTPServerMetrics:
     def __init__(self) -> None:
         pass
 
-    def latency_seconds_metric(self, tags: Dict[str, str]) -> Any:
+    def latency_seconds_metric(self, tags: Dict[str, Any]) -> Histogram:
         return http_server_latency_seconds.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
             http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
-    def requests_total_metric(self, tags: Dict[str, str]) -> Any:
+    def requests_total_metric(self, tags: Dict[str, Any]) -> Counter:
         return http_server_requests_total.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
@@ -232,20 +308,20 @@ class PrometheusHTTPServerMetrics:
             http_response_code=tags.get("http.status_code", ""),
         )
 
-    def active_requests_metric(self, tags: Dict[str, str]) -> Any:
+    def active_requests_metric(self, tags: Dict[str, Any]) -> Gauge:
         return http_server_active_requests.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
         )
 
-    def request_size_bytes_metric(self, tags: Dict[str, str]) -> Any:
+    def request_size_bytes_metric(self, tags: Dict[str, Any]) -> Histogram:
         return http_server_request_size_bytes.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),
             http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
-    def response_size_bytes_metric(self, tags: Dict[str, str]) -> Any:
+    def response_size_bytes_metric(self, tags: Dict[str, Any]) -> Histogram:
         return http_server_response_size_bytes.labels(
             http_method=tags.get("http.method", ""),
             http_endpoint=tags.get("http.route", ""),

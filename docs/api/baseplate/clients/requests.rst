@@ -31,6 +31,12 @@ declaration to your context configuration::
       }
    )
 
+Prometheus metrics include the `http_slug` label, by default the label
+value is set to the key name provided in the context. In the above code
+example the  `http_slug` labels will have the values `foo` and `bar`. If you
+would like to change the value of this label you can provide the
+`client_name` keyword argument when you create the requests client.
+
 configure it in your application's configuration file:
 
 .. code-block:: ini

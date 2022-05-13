@@ -12,6 +12,7 @@ from baseplate import LocalSpan
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
+from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
@@ -45,8 +46,13 @@ class PrometheusBaseplateObserver(BaseplateObserver):
 class PrometheusServerSpanObserver(SpanObserver):
     def __init__(self) -> None:
         self.tags: Dict[str, Any] = {}
-        self.start_time: Any = None
-        self.metrics: Any = None
+        self.start_time: Optional[int] = None
+        self.metrics: Optional[
+            Union[
+                PrometheusHTTPServerMetrics,
+                PrometheusThriftServerMetrics,
+            ]
+        ] = None
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
@@ -108,12 +114,11 @@ class PrometheusServerSpanObserver(SpanObserver):
                 elapsed_ns / NANOSECONDS_PER_SECOND
             )
 
-        if hasattr(self.metrics, "response_size_bytes_metric"):
+        if isinstance(self.metrics, PrometheusHTTPServerMetrics):
             self.metrics.response_size_bytes_metric(self.tags).observe(
                 self.tags.get("http.response_length") or 0
             )
 
-        if hasattr(self.metrics, "request_size_bytes_metric"):
             self.metrics.request_size_bytes_metric(self.tags).observe(
                 self.tags.get("http.request_length") or 0
             )
@@ -125,7 +130,6 @@ class PrometheusServerSpanObserver(SpanObserver):
         else:
             observer = PrometheusClientSpanObserver()
 
-        observer.on_set_tag("protocol", self.protocol)
         span.register(observer)
 
 
@@ -133,7 +137,9 @@ class PrometheusClientSpanObserver(SpanObserver):
     def __init__(self) -> None:
         self.tags: Dict[str, Any] = {}
         self.start_time: Optional[int] = None
-        self.metrics: Optional[Union[PrometheusThriftClientMetrics]] = None
+        self.metrics: Optional[
+            Union[PrometheusHTTPClientMetrics, PrometheusThriftClientMetrics]
+        ] = None
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
@@ -150,7 +156,7 @@ class PrometheusClientSpanObserver(SpanObserver):
 
     def set_metrics_by_protocol(self) -> None:
         if self.protocol == "http":
-            logger.warning("PrometheusHTTPClientMetrics not implemented.")
+            self.metrics = PrometheusHTTPClientMetrics()
         elif self.protocol == "thrift":
             self.metrics = PrometheusThriftClientMetrics()
         else:
@@ -210,3 +216,15 @@ class PrometheusClientSpanObserver(SpanObserver):
 class PrometheusLocalSpanObserver(SpanObserver):
     def __init__(self) -> None:
         logger.debug("PrometheusLocalSpanObserver not implemented")
+
+    # Proper implementation for PrometheusLocalSpanObserver will come in a future PR
+    # In the meantime, we need this logic in place to be able to emit http client metrics
+    # when running inside a local span
+    def on_child_span_created(self, span: Span) -> None:
+        observer: Optional[SpanObserver] = None
+        if isinstance(span, LocalSpan):
+            observer = PrometheusLocalSpanObserver()
+        else:
+            observer = PrometheusClientSpanObserver()
+
+        span.register(observer)
