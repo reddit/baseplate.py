@@ -58,6 +58,9 @@ class PrometheusServerSpanObserver(SpanObserver):
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
 
+    def get_prefix(self) -> str:
+        return f"{self.protocol}_server"
+
     def get_labels(self) -> Dict[str, str]:
         return self.tags
 
@@ -142,6 +145,9 @@ class PrometheusClientSpanObserver(SpanObserver):
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
 
+    def get_prefix(self) -> str:
+        return f"{self.protocol}_client"
+
     def get_labels(self) -> Dict[str, str]:
         return self.tags
 
@@ -216,6 +222,13 @@ class PrometheusLocalSpanObserver(SpanObserver):
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
+
+    def get_prefix(self) -> str:
+        return f"{self.protocol}_span"
+
+    @property
+    def protocol(self) -> str:
+        return "local"
 
     def get_labels(self) -> Dict[str, Any]:
         return self.tags
