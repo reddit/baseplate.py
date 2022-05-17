@@ -10,6 +10,7 @@ from baseplate import ServerSpan
 from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.observers.prometheus import PrometheusBaseplateObserver
 from baseplate.observers.prometheus import PrometheusClientSpanObserver
+from baseplate.observers.prometheus import PrometheusLocalSpanObserver
 from baseplate.observers.prometheus import PrometheusServerSpanObserver
 
 
@@ -89,6 +90,22 @@ class TestException(Exception):
                 "active_labels": {
                     "http_method": "",
                     "http_slug": "",
+                },
+            },
+        ),
+        (
+            "local",
+            "span",
+            PrometheusLocalSpanObserver,
+            {
+                "latency_labels": {
+                    "span": "",
+                },
+                "requests_labels": {
+                    "span": "",
+                },
+                "active_labels": {
+                    "span": "",
                 },
             },
         ),

@@ -14,6 +14,7 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
+from baseplate.lib.prometheus_metrics import PrometheusLocalSpanMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
 from baseplate.thrift.ttypes import Error
@@ -126,7 +127,7 @@ class PrometheusServerSpanObserver(SpanObserver):
     def on_child_span_created(self, span: Span) -> None:
         observer: Any = None
         if isinstance(span, LocalSpan):
-            observer = PrometheusLocalSpanObserver()
+            observer = PrometheusLocalSpanObserver(span.name)
         else:
             observer = PrometheusClientSpanObserver()
 
@@ -206,7 +207,7 @@ class PrometheusClientSpanObserver(SpanObserver):
     def on_child_span_created(self, span: Span) -> None:
         observer: Optional[SpanObserver] = None
         if isinstance(span, LocalSpan):
-            observer = PrometheusLocalSpanObserver()
+            observer = PrometheusLocalSpanObserver(span.name)
         else:
             observer = PrometheusClientSpanObserver()
 
@@ -214,16 +215,49 @@ class PrometheusClientSpanObserver(SpanObserver):
 
 
 class PrometheusLocalSpanObserver(SpanObserver):
-    def __init__(self) -> None:
-        logger.debug("PrometheusLocalSpanObserver not implemented")
+    def __init__(self, span_name: Optional[str] = None) -> None:
+        self.tags: Dict[str, Any] = {"span_name": span_name if span_name is not None else ""}
+        self.start_time: Optional[int] = None
+        self.metrics: PrometheusLocalSpanMetrics = PrometheusLocalSpanMetrics()
 
-    # Proper implementation for PrometheusLocalSpanObserver will come in a future PR
-    # In the meantime, we need this logic in place to be able to emit http client metrics
-    # when running inside a local span
+    def on_set_tag(self, key: str, value: Any) -> None:
+        self.tags[key] = value
+
+    def get_prefix(self) -> str:
+        return f"{self.protocol}_span"
+
+    @property
+    def protocol(self) -> str:
+        return "local"
+
+    def get_labels(self) -> Dict[str, Any]:
+        return self.tags
+
+    def on_start(self) -> None:
+        self.start_time = time.perf_counter_ns()
+        self.metrics.active_requests_metric(self.tags).inc()
+
+    def on_incr_tag(self, key: str, delta: float) -> None:
+        pass
+
+    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+        self.tags["success"] = "true"
+        if exc_info is not None:
+            self.tags["exception_type"] = exc_info[1].__class__.__name__
+            self.tags["success"] = "false"
+
+        self.metrics.active_requests_metric(self.tags).dec()
+        self.metrics.requests_total_metric(self.tags).inc()
+        if self.start_time is not None:
+            elapsed_ns = time.perf_counter_ns() - self.start_time
+            self.metrics.latency_seconds_metric(self.tags).observe(
+                elapsed_ns / NANOSECONDS_PER_SECOND
+            )
+
     def on_child_span_created(self, span: Span) -> None:
         observer: Optional[SpanObserver] = None
         if isinstance(span, LocalSpan):
-            observer = PrometheusLocalSpanObserver()
+            observer = PrometheusLocalSpanObserver(span.name)
         else:
             observer = PrometheusClientSpanObserver()
 
