@@ -27,3 +27,23 @@ And can take advantage of:
 * Secrets securely pulled from Vault
 
 And many other things!
+
+# pre-commit
+
+* [Documentation](https://pre-commit.com/)
+
+This repo comes with pre-commit hooks that let you (on a voluntary basis)
+enable pre-commit and/or pre-push hooks.
+
+Configuration can be found at the root of the directory in
+`.pre-commit-config.yaml`. On its own, the configuration file doesn't do
+anything. You either need to [run the hooks manually](https://pre-commit.com/#pre-commit-run)
+or [install them](https://pre-commit.com/#pre-commit-install) so that they run
+automatically on every commit or push.
+
+Currently, we run the `make fmt` target on commit and `make lint` / `pytest`
+actions on push.
+
+Specific hooks can be [temporarily disabled](https://pre-commit.com/#temporarily-disabling-hooks).
+
+You can install hooks only for a specific step (i.e. [pre-push](https://pre-commit.com/#pre-commit-during-push)).
