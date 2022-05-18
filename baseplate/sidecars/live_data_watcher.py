@@ -85,7 +85,13 @@ class NodeWatcher:
         # }
         # If the load type is 'S3', this format is an indication that we support
         # downloading the contents of encrypted files uploaded to S3.
-        if json_data.get("live_data_watcher_load_type") == "S3":
+        is_s3 = False
+        try:
+            is_s3 = json_data["live_data_watcher_load_type"] == "S3"
+        except (KeyError, TypeError):
+            is_s3 = False
+
+        if is_s3:
             if not S3_FETCHER_ENABLED:
                 logger.error("Attempted to use s3 fetcher but packages are missing")
                 return None
