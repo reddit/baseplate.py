@@ -130,7 +130,7 @@ def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
     observer.on_set_tag("protocol", protocol)
 
     observer.on_start()
-    assert observer.metrics.get_prefix() == f"{protocol}_{client_or_server}"
+    assert observer.metrics.prefix == f"{protocol}_{client_or_server}"
     after_start = REGISTRY.get_sample_value(
         f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
     )

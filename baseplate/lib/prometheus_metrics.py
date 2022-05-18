@@ -28,179 +28,239 @@ default_size_buckets = [
 
 
 class PrometheusHTTPClientMetrics:
+    prefix = "http_client"
+
+    # http client labels and metrics
+    latency_labels = [
+        "http_method",
+        "http_success",
+        "http_slug",
+    ]
+    requests_total_labels = [
+        "http_method",
+        "http_success",
+        "http_response_code",
+        "http_slug",
+    ]
+    active_requests_labels = [
+        "http_method",
+        "http_slug",
+    ]
+
+    # Latency histogram of HTTP calls made by clients
+    # buckets are defined above (from 100µs to ~14.9s)
+    latency_seconds = Histogram(
+        f"{prefix}_latency_seconds",
+        "Latency histogram of HTTP calls made by clients",
+        latency_labels,
+        buckets=default_latency_buckets,
+    )
+    # Counter counting total HTTP requests started by a given client
+    requests_total = Counter(
+        f"{prefix}_requests_total",
+        "Total number of HTTP requests started by a given client",
+        requests_total_labels,
+    )
+    # Gauge showing current number of active requests by a given client
+    active_requests = Gauge(
+        f"{prefix}_active_requests",
+        "Number of active requests for a given client",
+        active_requests_labels,
+    )
+
     def __init__(self) -> None:
         pass
 
     @classmethod
-    def get_prefix(cls) -> str:
-        return "http_client"
-
-    def latency_seconds_metric(self, tags: Dict[str, Any]) -> Histogram:
-        return http_client_latency_seconds.labels(
+    def latency_seconds_metric(cls, tags: Dict[str, Any]) -> Histogram:
+        return cls.latency_seconds.labels(
             http_method=tags.get("http.method", ""),
             http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
             http_slug=tags.get("http.slug", ""),
         )
 
-    def requests_total_metric(self, tags: Dict[str, Any]) -> Counter:
-        return http_client_requests_total.labels(
+    @classmethod
+    def requests_total_metric(cls, tags: Dict[str, Any]) -> Counter:
+        return cls.requests_total.labels(
             http_method=tags.get("http.method", ""),
             http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
             http_response_code=tags.get("http.status_code", ""),
             http_slug=tags.get("http.slug", ""),
         )
 
-    def active_requests_metric(self, tags: Dict[str, Any]) -> Gauge:
-        return http_client_active_requests.labels(
+    @classmethod
+    def active_requests_metric(cls, tags: Dict[str, Any]) -> Gauge:
+        return cls.active_requests.labels(
             http_method=tags.get("http.method", ""),
             http_slug=tags.get("http.slug", ""),
         )
 
-    def get_latency_seconds_metric(self) -> Histogram:
-        return http_client_latency_seconds
+    @classmethod
+    def get_latency_seconds_metric(cls) -> Histogram:
+        return cls.latency_seconds
 
-    def get_requests_total_metric(self) -> Counter:
-        return http_client_requests_total
+    @classmethod
+    def get_requests_total_metric(cls) -> Counter:
+        return cls.requests_total
 
-    def get_active_requests_metric(self) -> Gauge:
-        return http_client_active_requests
-
-
-# http client labels and metrics
-http_client_latency_labels = [
-    "http_method",
-    "http_success",
-    "http_slug",
-]
-http_client_requests_total_labels = [
-    "http_method",
-    "http_success",
-    "http_response_code",
-    "http_slug",
-]
-http_client_active_requests_labels = [
-    "http_method",
-    "http_slug",
-]
-
-# Latency histogram of HTTP calls made by clients
-# buckets are defined above (from 100µs to ~14.9s)
-http_client_latency_seconds = Histogram(
-    f"{PrometheusHTTPClientMetrics.get_prefix()}_latency_seconds",
-    "Latency histogram of HTTP calls made by clients",
-    http_client_latency_labels,
-    buckets=default_latency_buckets,
-)
-
-# Counter counting total HTTP requests started by a given client
-http_client_requests_total = Counter(
-    f"{PrometheusHTTPClientMetrics.get_prefix()}_requests_total",
-    "Total number of HTTP requests started by a given client",
-    http_client_requests_total_labels,
-)
-
-# Gauge showing current number of active requests by a given client
-http_client_active_requests = Gauge(
-    f"{PrometheusHTTPClientMetrics.get_prefix()}_active_requests",
-    "Number of active requests for a given client",
-    http_client_active_requests_labels,
-)
+    @classmethod
+    def get_active_requests_metric(cls) -> Gauge:
+        return cls.active_requests
 
 
-class PrometheusThriftServerMetrics:
+class PrometheusHTTPServerMetrics:
+    prefix = "http_server"
+
+    # http server labels and metrics
+    histogram_labels = [
+        "http_method",
+        "http_endpoint",
+        "http_success",
+    ]
+    requests_total_labels = [
+        "http_method",
+        "http_endpoint",
+        "http_success",
+        "http_response_code",
+    ]
+    active_requests_labels = [
+        "http_method",
+        "http_endpoint",
+    ]
+
+    latency_seconds = Histogram(
+        f"{prefix}_latency_seconds",
+        "Time spent processing requests",
+        histogram_labels,
+        buckets=default_latency_buckets,
+    )
+    request_size_bytes = Histogram(
+        f"{prefix}_request_size_bytes",
+        "Size of incoming requests in bytes",
+        histogram_labels,
+        buckets=default_size_buckets,
+    )
+    response_size_bytes = Histogram(
+        f"{prefix}_response_size_bytes",
+        "Size of outgoing responses in bytes",
+        histogram_labels,
+        buckets=default_size_buckets,
+    )
+    requests_total = Counter(
+        f"{prefix}_requests_total",
+        "Total number of request handled",
+        requests_total_labels,
+    )
+    active_requests = Gauge(
+        f"{prefix}_active_requests",
+        "Current requests in flight",
+        active_requests_labels,
+    )
+
     def __init__(self) -> None:
         pass
 
     @classmethod
-    def get_prefix(cls) -> str:
-        return "thrift_server"
-
-    def latency_seconds_metric(self, tags: Dict[str, str]) -> Any:
-        """Return the latency_seconds metrics with labels set"""
-        return thrift_server_latency_seconds.labels(
-            thrift_method=tags.get("thrift.method", ""),
-            thrift_success=tags.get("success", ""),
+    def latency_seconds_metric(cls, tags: Dict[str, Any]) -> Histogram:
+        return cls.latency_seconds.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=tags.get("http.route", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
         )
 
-    def requests_total_metric(self, tags: Dict[str, str]) -> Any:
-        """Return the requests_total metrics with labels set"""
-        return thrift_server_requests_total.labels(
-            thrift_method=tags.get("thrift.method", ""),
-            thrift_success=tags.get("success", ""),
-            thrift_exception_type=tags.get("exception_type", ""),
-            thrift_baseplate_status=tags.get("thrift.status", ""),
-            thrift_baseplate_status_code=tags.get("thrift.status_code", ""),
+    @classmethod
+    def requests_total_metric(cls, tags: Dict[str, Any]) -> Counter:
+        return cls.requests_total.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=tags.get("http.route", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
+            http_response_code=tags.get("http.status_code", ""),
         )
 
-    def active_requests_metric(self, tags: Dict[str, str]) -> Any:
-        """Return the active_requests metrics with labels set"""
-        return thrift_server_active_requests.labels(
-            thrift_method=tags.get("thrift.method", ""),
+    @classmethod
+    def active_requests_metric(cls, tags: Dict[str, Any]) -> Gauge:
+        return cls.active_requests.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=tags.get("http.route", ""),
         )
 
-    def get_latency_seconds_metric(self) -> Histogram:
-        """Return the latency_seconds metrics"""
-        return thrift_server_latency_seconds
+    @classmethod
+    def request_size_bytes_metric(cls, tags: Dict[str, Any]) -> Histogram:
+        return cls.request_size_bytes.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=tags.get("http.route", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
+        )
 
-    def get_requests_total_metric(self) -> Counter:
-        """Return the requests_total metrics"""
-        return thrift_server_requests_total
+    @classmethod
+    def response_size_bytes_metric(cls, tags: Dict[str, Any]) -> Histogram:
+        return cls.response_size_bytes.labels(
+            http_method=tags.get("http.method", ""),
+            http_endpoint=tags.get("http.route", ""),
+            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
+        )
 
-    def get_active_requests_metric(self) -> Gauge:
-        """Return the active_requests metrics"""
-        return thrift_server_active_requests
+    @classmethod
+    def get_latency_seconds_metric(cls) -> Any:
+        return cls.latency_seconds
 
+    @classmethod
+    def get_requests_total_metric(cls) -> Any:
+        return cls.requests_total
 
-# thrift server labels
-thrift_server_latency_labels = [
-    "thrift_method",
-    "thrift_success",
-]
-thrift_server_requests_total_labels = [
-    "thrift_method",
-    "thrift_success",
-    "thrift_exception_type",
-    "thrift_baseplate_status",
-    "thrift_baseplate_status_code",
-]
-thrift_server_active_requests_labels = ["thrift_method"]
-
-# thrift server metrics
-thrift_server_latency_seconds = Histogram(
-    f"{PrometheusThriftServerMetrics.get_prefix()}_latency_seconds",
-    "RPC latencies",
-    thrift_server_latency_labels,
-    buckets=default_latency_buckets,
-)
-
-thrift_server_requests_total = Counter(
-    f"{PrometheusThriftServerMetrics.get_prefix()}_requests_total",
-    "Total RPC request count",
-    thrift_server_requests_total_labels,
-)
-
-thrift_server_active_requests = Gauge(
-    f"{PrometheusThriftServerMetrics.get_prefix()}_active_requests",
-    "The number of in-flight requests being handled by the service",
-    thrift_server_active_requests_labels,
-)
+    @classmethod
+    def get_active_requests_metric(cls) -> Any:
+        return cls.active_requests
 
 
 class PrometheusThriftClientMetrics:
+    prefix = "thrift_client"
+
+    latency_labels = [
+        "thrift_slug",
+        "thrift_success",
+    ]
+    requests_total_labels = [
+        "thrift_slug",
+        "thrift_success",
+        "thrift_exception_type",
+        "thrift_baseplate_status",
+        "thrift_baseplate_status_code",
+    ]
+    active_requests_labels = [
+        "thrift_slug",
+        "thrift_method",
+    ]
+
+    latency_seconds = Histogram(
+        f"{prefix}_latency_seconds",
+        "Latency of thrift client requests",
+        latency_labels,
+        buckets=default_latency_buckets,
+    )
+    requests_total = Counter(
+        f"{prefix}_requests_total",
+        "Total number of outgoing requests",
+        requests_total_labels,
+    )
+    active_requests = Gauge(
+        f"{prefix}_active_requests",
+        "Current in-flight requests",
+        active_requests_labels,
+    )
+
     def __init__(self) -> None:
         pass
 
     @classmethod
-    def get_prefix(cls) -> str:
-        return "thrift_client"
-
-    def active_requests_metric(self, tags: Dict) -> Gauge:
-        return thrift_client_active_gauge.labels(
+    def active_requests_metric(cls, tags: Dict) -> Gauge:
+        return cls.active_requests.labels(
             thrift_slug=tags.get("slug", ""), thrift_method=tags.get("method", "")
         )
 
-    def requests_total_metric(self, tags: Dict) -> Counter:
-        return thrift_client_requests_counter.labels(
+    @classmethod
+    def requests_total_metric(cls, tags: Dict) -> Counter:
+        return cls.requests_total.labels(
             thrift_slug=tags.get("slug", ""),
             thrift_success=tags.get("success", ""),
             thrift_exception_type=tags.get("exception_type", ""),
@@ -208,153 +268,106 @@ class PrometheusThriftClientMetrics:
             thrift_baseplate_status_code=tags.get("thrift_status_code", ""),
         )
 
-    def latency_seconds_metric(self, tags: Dict) -> Histogram:
-        return thrift_client_latency_histogram.labels(
+    @classmethod
+    def latency_seconds_metric(cls, tags: Dict) -> Histogram:
+        return cls.latency_seconds.labels(
             thrift_slug=tags.get("slug", ""), thrift_success=tags.get("success", "")
         )
 
-    def get_latency_seconds_metric(self) -> Histogram:
+    @classmethod
+    def get_latency_seconds_metric(cls) -> Histogram:
         """Return the latency_seconds metrics"""
-        return thrift_client_latency_histogram
+        return cls.latency_seconds
 
-    def get_requests_total_metric(self) -> Counter:
+    @classmethod
+    def get_requests_total_metric(cls) -> Counter:
         """Return the requests_total metrics"""
-        return thrift_client_requests_counter
+        return cls.requests_total
 
-    def get_active_requests_metric(self) -> Gauge:
+    @classmethod
+    def get_active_requests_metric(cls) -> Gauge:
         """Return the active_requests metrics"""
-        return thrift_client_active_gauge
+        return cls.active_requests
 
 
-thrift_client_active_gauge = Gauge(
-    f"{PrometheusThriftClientMetrics.get_prefix()}_active_requests",
-    "Current in-flight requests",
-    ["thrift_slug", "thrift_method"],
-)
+class PrometheusThriftServerMetrics:
+    prefix = "thrift_server"
 
-thrift_client_latency_histogram = Histogram(
-    f"{PrometheusThriftClientMetrics.get_prefix()}_latency_seconds",
-    "Latency of thrift client requests",
-    ["thrift_slug", "thrift_success"],
-    buckets=default_latency_buckets,
-)
-
-thrift_client_requests_counter = Counter(
-    f"{PrometheusThriftClientMetrics.get_prefix()}_requests_total",
-    "Total number of outgoing requests",
-    [
-        "thrift_slug",
+    # thrift server labels
+    latency_labels = [
+        "thrift_method",
+        "thrift_success",
+    ]
+    requests_total_labels = [
+        "thrift_method",
         "thrift_success",
         "thrift_exception_type",
         "thrift_baseplate_status",
         "thrift_baseplate_status_code",
-    ],
-)
+    ]
+    active_requests_labels = ["thrift_method"]
 
+    # thrift server metrics
+    latency_seconds = Histogram(
+        f"{prefix}_latency_seconds",
+        "RPC latencies",
+        latency_labels,
+        buckets=default_latency_buckets,
+    )
+    requests_total = Counter(
+        f"{prefix}_requests_total",
+        "Total RPC request count",
+        requests_total_labels,
+    )
+    active_requests = Gauge(
+        f"{prefix}_active_requests",
+        "The number of in-flight requests being handled by the service",
+        active_requests_labels,
+    )
 
-class PrometheusHTTPServerMetrics:
     def __init__(self) -> None:
         pass
 
     @classmethod
-    def get_prefix(cls) -> str:
-        return "http_server"
-
-    def latency_seconds_metric(self, tags: Dict[str, Any]) -> Histogram:
-        return http_server_latency_seconds.labels(
-            http_method=tags.get("http.method", ""),
-            http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
+    def latency_seconds_metric(cls, tags: Dict[str, str]) -> Any:
+        """Return the latency_seconds metrics with labels set"""
+        return cls.latency_seconds.labels(
+            thrift_method=tags.get("thrift.method", ""),
+            thrift_success=tags.get("success", ""),
         )
 
-    def requests_total_metric(self, tags: Dict[str, Any]) -> Counter:
-        return http_server_requests_total.labels(
-            http_method=tags.get("http.method", ""),
-            http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
-            http_response_code=tags.get("http.status_code", ""),
+    @classmethod
+    def requests_total_metric(cls, tags: Dict[str, str]) -> Any:
+        """Return the requests_total metrics with labels set"""
+        return cls.requests_total.labels(
+            thrift_method=tags.get("thrift.method", ""),
+            thrift_success=tags.get("success", ""),
+            thrift_exception_type=tags.get("exception_type", ""),
+            thrift_baseplate_status=tags.get("thrift.status", ""),
+            thrift_baseplate_status_code=tags.get("thrift.status_code", ""),
         )
 
-    def active_requests_metric(self, tags: Dict[str, Any]) -> Gauge:
-        return http_server_active_requests.labels(
-            http_method=tags.get("http.method", ""),
-            http_endpoint=tags.get("http.route", ""),
+    @classmethod
+    def active_requests_metric(cls, tags: Dict[str, str]) -> Any:
+        """Return the active_requests metrics with labels set"""
+        return cls.active_requests.labels(
+            thrift_method=tags.get("thrift.method", ""),
         )
 
-    def request_size_bytes_metric(self, tags: Dict[str, Any]) -> Histogram:
-        return http_server_request_size_bytes.labels(
-            http_method=tags.get("http.method", ""),
-            http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
-        )
+    @classmethod
+    def get_latency_seconds_metric(cls) -> Histogram:
+        """Return the latency_seconds metrics"""
+        return cls.latency_seconds
 
-    def response_size_bytes_metric(self, tags: Dict[str, Any]) -> Histogram:
-        return http_server_response_size_bytes.labels(
-            http_method=tags.get("http.method", ""),
-            http_endpoint=tags.get("http.route", ""),
-            http_success=getHTTPSuccessLabel(int(tags.get("http.status_code", "0"))),
-        )
+    @classmethod
+    def get_requests_total_metric(cls) -> Counter:
+        """Return the requests_total metrics"""
+        return cls.requests_total
 
-    def get_latency_seconds_metric(self) -> Any:
-        return http_server_latency_seconds
-
-    def get_requests_total_metric(self) -> Any:
-        return http_server_requests_total
-
-    def get_active_requests_metric(self) -> Any:
-        return http_server_active_requests
-
-
-# http server labels and metrics
-http_server_histogram_labels = [
-    "http_method",
-    "http_endpoint",
-    "http_success",
-]
-
-http_server_requests_total_labels = [
-    "http_method",
-    "http_endpoint",
-    "http_success",
-    "http_response_code",
-]
-
-http_server_active_requests_labels = [
-    "http_method",
-    "http_endpoint",
-]
-
-http_server_latency_seconds = Histogram(
-    "http_server_latency_seconds",
-    "Time spent processing requests",
-    http_server_histogram_labels,
-    buckets=default_latency_buckets,
-)
-
-http_server_request_size_bytes = Histogram(
-    "http_server_request_size_bytes",
-    "Size of incoming requests in bytes",
-    http_server_histogram_labels,
-    buckets=default_size_buckets,
-)
-
-http_server_response_size_bytes = Histogram(
-    "http_server_response_size_bytes",
-    "Size of outgoing responses in bytes",
-    http_server_histogram_labels,
-    buckets=default_size_buckets,
-)
-
-http_server_requests_total = Counter(
-    "http_server_requests_total",
-    "Total number of request handled",
-    http_server_requests_total_labels,
-)
-http_server_active_requests = Gauge(
-    "http_server_active_requests",
-    "Current requests in flight",
-    http_server_active_requests_labels,
-)
+    @classmethod
+    def get_active_requests_metric(cls) -> Gauge:
+        """Return the active_requests metrics"""
+        return cls.active_requests
 
 
 def getHTTPSuccessLabel(httpStatusCode: int) -> str:
@@ -365,61 +378,63 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
 
 
 class PrometheusLocalSpanMetrics:
+    prefix = "local_span"
+
+    # local labels and metrics
+    labels = [
+        "span",
+    ]
+
+    # Latency histogram of local span
+    # buckets are defined above (from 100µs to ~14.9s)
+    latency_seconds = Histogram(
+        f"{prefix}_latency_seconds",
+        "Latency histogram of local span",
+        labels,
+        buckets=default_latency_buckets,
+    )
+    # Counter counting total local spans started
+    requests_total = Counter(
+        f"{prefix}_requests_total",
+        "Total number of local spans started",
+        labels,
+    )
+    # Gauge showing current number of local spans
+    active_requests = Gauge(
+        f"{prefix}_active_requests",
+        "Number of active local spans",
+        labels,
+    )
+
     def __init__(self) -> None:
         pass
 
     @classmethod
-    def get_prefix(cls) -> str:
-        return "local_span"
-
-    def latency_seconds_metric(self, tags: Dict) -> Histogram:
-        return local_span_latency_seconds.labels(
+    def latency_seconds_metric(cls, tags: Dict) -> Histogram:
+        return cls.latency_seconds.labels(
             span=tags.get("span_name", ""),
         )
 
-    def requests_total_metric(self, tags: Dict) -> Counter:
-        return local_span_requests_total.labels(
+    @classmethod
+    def requests_total_metric(cls, tags: Dict) -> Counter:
+        return cls.requests_total.labels(
             span=tags.get("span_name", ""),
         )
 
-    def active_requests_metric(self, tags: Dict) -> Gauge:
-        return local_span_active_requests.labels(
+    @classmethod
+    def active_requests_metric(cls, tags: Dict) -> Gauge:
+        return cls.active_requests.labels(
             span=tags.get("span_name", ""),
         )
 
-    def get_latency_seconds_metric(self) -> Histogram:
-        return local_span_latency_seconds
+    @classmethod
+    def get_latency_seconds_metric(cls) -> Histogram:
+        return cls.latency_seconds
 
-    def get_requests_total_metric(self) -> Counter:
-        return local_span_requests_total
+    @classmethod
+    def get_requests_total_metric(cls) -> Counter:
+        return cls.requests_total
 
-    def get_active_requests_metric(self) -> Gauge:
-        return local_span_active_requests
-
-
-# local labels and metrics
-local_span_labels = [
-    "span",
-]
-# Latency histogram of local span
-# buckets are defined above (from 100µs to ~14.9s)
-local_span_latency_seconds = Histogram(
-    f"{PrometheusLocalSpanMetrics.get_prefix()}_latency_seconds",
-    "Latency histogram of local span",
-    local_span_labels,
-    buckets=default_latency_buckets,
-)
-
-# Counter counting total local spans started
-local_span_requests_total = Counter(
-    f"{PrometheusLocalSpanMetrics.get_prefix()}_requests_total",
-    "Total number of local spans started",
-    local_span_labels,
-)
-
-# Gauge showing current number of local spans
-local_span_active_requests = Gauge(
-    f"{PrometheusLocalSpanMetrics.get_prefix()}_active_requests",
-    "Number of active local spans",
-    local_span_labels,
-)
+    @classmethod
+    def get_active_requests_metric(cls) -> Gauge:
+        return cls.active_requests
