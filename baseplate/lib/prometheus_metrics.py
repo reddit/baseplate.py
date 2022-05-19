@@ -377,8 +377,11 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     return str(200 <= httpStatusCode < 400).lower()
 
 
-class PrometheusLocalSpanMetrics:
-    prefix = "local_span"
+class PrometheusGenericSpanMetrics:
+    prefix = None
+    
+    def __init__(self, prefix: str = "local_span") -> None:
+        self.prefix = prefix
 
     # local labels and metrics
     labels = [

@@ -14,7 +14,7 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
-from baseplate.lib.prometheus_metrics import PrometheusLocalSpanMetrics
+from baseplate.lib.prometheus_metrics import PrometheusGenericSpanMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
 from baseplate.thrift.ttypes import Error
@@ -71,10 +71,11 @@ class PrometheusServerSpanObserver(SpanObserver):
         elif self.protocol == "http":
             self.metrics = PrometheusHTTPServerMetrics()
         else:
-            logger.warning(
-                "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
+            logger.debug(
+                "Unknown protocol %s. Expected 'http' or 'thrift' protocol.",
                 self.protocol,
             )
+            self.metrics = PrometheusGenericSpanMetrics()
 
     def on_start(self) -> None:
         self.set_metrics_by_protocol()
@@ -155,11 +156,11 @@ class PrometheusClientSpanObserver(SpanObserver):
         elif self.protocol == "thrift":
             self.metrics = PrometheusThriftClientMetrics()
         else:
-            logger.warning(
-                "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
+            logger.debug(
+                "Unknown protocol %s. Expected 'http' or 'thrift' protocol.",
                 self.protocol,
             )
-        return
+            self.metrics = PrometheusGenericSpanMetrics()
 
     def on_start(self) -> None:
         self.set_metrics_by_protocol()
@@ -212,7 +213,7 @@ class PrometheusLocalSpanObserver(SpanObserver):
     def __init__(self, span_name: Optional[str] = None) -> None:
         self.tags: Dict[str, Any] = {"span_name": span_name if span_name is not None else ""}
         self.start_time: Optional[int] = None
-        self.metrics: PrometheusLocalSpanMetrics = PrometheusLocalSpanMetrics()
+        self.metrics: PrometheusGenericSpanMetrics = PrometheusGenericSpanMetrics()
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
@@ -253,3 +254,14 @@ class PrometheusLocalSpanObserver(SpanObserver):
             observer = PrometheusClientSpanObserver()
 
         span.register(observer)
+
+
+class PrometheusGenericSpanObserver(PrometheusLocalSpanObserver):
+    def __init__(self, span_name: Optional[str] = None) -> None:
+        super(PrometheusGenericSpanObserver, self).__init__(span_name)
+        self.metrics: PrometheusGenericSpanMetrics = PrometheusGenericSpanMetrics(span_name)
+
+    @property
+    def protocol(self) -> str:
+        return "generic"
+
