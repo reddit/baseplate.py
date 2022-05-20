@@ -317,9 +317,7 @@ def test_prometheus_http_client_metrics_inside_local_span(method, http_server):
     assert http_client_active_requests_samples.value == 0
 
     # checking that we got the local span metrics we expected
-    local_span_latency_seconds = REGISTRY._names_to_collectors[
-        "local_latency_seconds"
-    ].collect()
+    local_span_latency_seconds = REGISTRY._names_to_collectors["local_latency_seconds"].collect()
     assert len(local_span_latency_seconds) == 1
     assert (
         len(local_span_latency_seconds[0].samples) == 18
@@ -337,9 +335,7 @@ def test_prometheus_http_client_metrics_inside_local_span(method, http_server):
     local_span_requests_total_total = local_span_requests_total[0].samples[0]
     assert local_span_requests_total_total.value == 1
 
-    local_span_active_requests = REGISTRY._names_to_collectors[
-        "local_active_requests"
-    ].collect()
+    local_span_active_requests = REGISTRY._names_to_collectors["local_active_requests"].collect()
     assert len(local_span_active_requests) == 1
     assert len(local_span_active_requests[0].samples) == 1
     local_span_active_requests_samples = local_span_active_requests[0].samples[0]
