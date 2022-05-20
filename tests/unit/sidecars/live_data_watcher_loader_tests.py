@@ -14,6 +14,7 @@ from baseplate.sidecars.live_data_watcher import _load_from_s3
 from baseplate.sidecars.live_data_watcher import _parse_loader_type
 from baseplate.sidecars.live_data_watcher import LoaderType
 from baseplate.sidecars.live_data_watcher import NodeWatcher
+from baseplate.sidecars.live_data_watcher import LoaderException
 
 
 @pytest.fixture()
@@ -69,7 +70,7 @@ def test_load_from_s3_missing_config(start_mock_s3, missing_config):
     }
     data.pop(missing_config)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(LoaderException):
         assert _load_from_s3(json.dumps(data).encode("utf-8"))
 
 
@@ -95,7 +96,7 @@ def test_successful_load_from_s3(start_mock_s3):
 def test_unsuccessful_load_from_s3_client_error(s3_stub):
     s3_stub.add_client_error("get_object")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(LoaderException):
         _load_from_s3(
             json.dumps(
                 {
