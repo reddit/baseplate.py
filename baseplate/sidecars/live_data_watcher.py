@@ -32,13 +32,13 @@ HEARTBEAT_INTERVAL = 300
 
 
 class LoaderType(Enum):
-    RAW = 'RAW'
+    PASSTHROUGH = 'PASSTHROUGH'
     S3 = 'S3'
 
     @classmethod
     def _missing_(cls, value):
-        logger.error("Loader Type %s has not been implemented yet. Defaulting to RAW", value)
-        return cls.RAW
+        logger.error("Loader Type %s has not been implemented yet. Defaulting to PASSTHROUGH", value)
+        return cls.PASSTHROUGH
 
 
 class NodeWatcher:
@@ -63,7 +63,15 @@ class NodeWatcher:
 
         loader_type = _parse_loader_type(data)
         if loader_type == LoaderType.S3:
-            data = _load_from_s3(data)
+            try:
+                data = _load_from_s3(data)
+            except ValueError:
+                logger.error("Failed to load data from S3. Not writing to destination file")
+                return
+
+        if data is None:
+            logger.warning("No data to write to destination file. Something is likely misconfigured.")
+            return
 
         # swap out the file atomically so clients watching the file never catch
         # us mid-write.
@@ -73,6 +81,8 @@ class NodeWatcher:
             if self.owner and self.group:
                 os.fchown(tmpfile.fileno(), self.owner, self.group)
             os.fchmod(tmpfile.fileno(), self.mode)
+
+
             tmpfile.write(data)
         os.rename(self.dest + ".tmp", self.dest)
 
@@ -80,20 +90,20 @@ class NodeWatcher:
 def _parse_loader_type(data: Optional[bytes]) -> LoaderType:
     try:
         json_data = json.loads(data.decode("UTF-8"))
-    except json.decoder.JSONDecodeError:
-        logger.debug("Data is not valid JSON. Loading as RAW")
-        return LoaderType.RAW
+    except (UnicodeDecodeError, json.decoder.JSONDecodeError):
+        logger.debug("Data is not parseable as JSON, loading as PASSTHROUGH")
+        return LoaderType.PASSTHROUGH
 
     try:
         loader_type = json_data["live_data_watcher_load_type"]
     except (json.decoder.JSONDecodeError, KeyError, AttributeError, TypeError):
-        logger.debug("Data is not a JSON object like {\"live_data_watcher_load_type\":\"load_type\"}. Loading as RAW")
-        return LoaderType.RAW
+        logger.debug("Expected dict (JSON object) but got %s. Loading as PASSTHROUGH", str(type(json_data)))
+        return LoaderType.PASSTHROUGH
 
     return LoaderType(loader_type)
 
 
-def _load_from_s3(data: bytes) -> Optional[bytes]:
+def _load_from_s3(data: bytes) -> bytes:
     loader_config = json.loads(data.decode("UTF-8"))
     try:
         region_name = loader_config["region_name"]
@@ -109,7 +119,7 @@ def _load_from_s3(data: bytes) -> Optional[bytes]:
                 "Failed to update live config: unable to fetch content from s3: source config has invalid or missing keys: %s.",
                 e.args[0]
         )
-        return None
+        raise ValueError from e
 
     s3_client = boto3.client(
         "s3",
@@ -126,12 +136,15 @@ def _load_from_s3(data: bytes) -> Optional[bytes]:
             error.response["Error"]["Code"],
             error.response["Error"]["Message"],
         )
+
+        raise ValueError from error
     except ValueError as error:
         logger.exception(
             "Failed to update live config: params for loading from S3 are incorrect. Received error: %s",
             error,
         )
-    return None
+
+        raise ValueError from error
 
 
 def watch_zookeeper_nodes(zookeeper: KazooClient, nodes: Any) -> NoReturn:

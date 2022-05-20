@@ -18,16 +18,17 @@ def start_mock_s3():
         yield
 
 @pytest.mark.parametrize('data,return_value', (
-    # Non-RAW configs
+    # Non-obviously-PASSTHROUGH configs
     (json.dumps({'live_data_watcher_load_type': 'S3'}).encode('utf-8'), LoaderType.S3),
+    (json.dumps({'live_data_watcher_load_type': 'NOTS3'}).encode('utf-8'), LoaderType.PASSTHROUGH),
 
-    # Everything else should be RAW
-    (b'', LoaderType.RAW),
-    (json.dumps({'key': 'value'}).encode('utf-8'), LoaderType.RAW),
-    (json.dumps([]).encode('utf-8'), LoaderType.RAW),
-    (json.dumps(1234).encode('utf-8'), LoaderType.RAW),
-    (json.dumps(None).encode('utf-8'), LoaderType.RAW),
-    # TODO: fuzzing
+    # Everything else should be PASSTHROUGH
+    (b'', LoaderType.PASSTHROUGH),
+    (json.dumps({'key': 'value'}).encode('utf-8'), LoaderType.PASSTHROUGH),
+    (json.dumps([]).encode('utf-8'), LoaderType.PASSTHROUGH),
+    (json.dumps(1234).encode('utf-8'), LoaderType.PASSTHROUGH),
+    (json.dumps(None).encode('utf-8'), LoaderType.PASSTHROUGH),
+    (b'hey{look}at--this//ugly**string@of(ugly^^chars', LoaderType.PASSTHROUGH),
 ))
 def test_parse_loader_type(data, return_value):
     assert _parse_loader_type(data) == return_value
@@ -48,7 +49,8 @@ def test_load_from_s3_missing_config(start_mock_s3, missing_config):
     }
     data.pop(missing_config)
 
-    assert _load_from_s3(json.dumps(data).encode('utf-8')) is None
+    with pytest.raises(ValueError):
+        assert _load_from_s3(json.dumps(data).encode('utf-8'))
 
 
 def test_successful_load_from_s3(start_mock_s3):
@@ -78,19 +80,18 @@ def test_successful_load_from_s3(start_mock_s3):
 def test_unsuccessful_load_from_s3(start_mock_s3, exc):
     with mock.patch('baseplate.sidecars.live_data_watcher.boto3.client') as client:
         client.return_value.get_object.side_effect = exc
-        data = _load_from_s3(json.dumps({
-            "region_name": "us-east-1",
-            "bucket_name": 'bucket',
-            "file_key": 'key',
-            "sse_key": "key"
-        }).encode('utf-8'))
-
-        assert data is None
+        with pytest.raises(ValueError):
+             _load_from_s3(json.dumps({
+                "region_name": "us-east-1",
+                "bucket_name": 'bucket',
+                "file_key": 'key',
+                "sse_key": "key"
+            }).encode('utf-8'))
 
 
 @pytest.mark.parametrize('load_type,should_call_s3', (
     (LoaderType.S3, True),
-    (LoaderType.RAW, False),
+    (LoaderType.PASSTHROUGH, False),
 ))
 def test_loader_type_calls(tmp_path, load_type, should_call_s3):
     loader_path = 'baseplate.sidecars.live_data_watcher._load_from_s3'
