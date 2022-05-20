@@ -32,6 +32,7 @@ default_size_buckets = [
 
 generic_metrics = {}
 
+
 class PrometheusHTTPClientMetrics:
     prefix = "http_client"
 
@@ -381,6 +382,7 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     """
     return str(200 <= httpStatusCode < 400).lower()
 
+
 class PrometheusGenericSpanMetrics:
     prefix = "generic"
 
@@ -471,6 +473,7 @@ class PrometheusLocalSpanMetrics(PrometheusGenericSpanMetrics):
         labels,
     )
 
+
 def get_metrics_for_prefix(prefix: str) -> PrometheusGenericSpanMetrics:
     if prefix not in generic_metrics:
         # local labels and metrics
@@ -479,9 +482,9 @@ def get_metrics_for_prefix(prefix: str) -> PrometheusGenericSpanMetrics:
         ]
         generic_metrics[prefix] = type(
             f"PrometheusGenericSpanMetrics<{prefix}>",
-            (PrometheusGenericSpanMetrics, ),
+            (PrometheusGenericSpanMetrics,),
             {
-                "prefix":prefix,
+                "prefix": prefix,
                 # Reset the class attributes to avoid having the same prefix in the metric names
                 "labels": labels,
                 "latency_seconds": Histogram(
@@ -499,8 +502,8 @@ def get_metrics_for_prefix(prefix: str) -> PrometheusGenericSpanMetrics:
                     f"{prefix}_active_requests",
                     "Number of active local spans",
                     labels,
-                )
-            }
+                ),
+            },
         )
         logger.info(f"Created new metrics class for prefix {prefix}")
     return generic_metrics[prefix]

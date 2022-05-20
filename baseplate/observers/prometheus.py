@@ -146,7 +146,7 @@ class PrometheusClientSpanObserver(SpanObserver):
             Union[
                 PrometheusHTTPClientMetrics,
                 PrometheusThriftClientMetrics,
-                PrometheusGenericSpanMetrics
+                PrometheusGenericSpanMetrics,
             ]
         ] = None
         self.prefix = prefix or "client"
