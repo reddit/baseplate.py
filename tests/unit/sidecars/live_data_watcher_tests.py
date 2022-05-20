@@ -11,7 +11,6 @@ import boto3
 
 from moto import mock_s3
 
-from baseplate.sidecars.live_data_watcher import logger
 from baseplate.sidecars.live_data_watcher import NodeWatcher
 
 

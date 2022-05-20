@@ -12,9 +12,9 @@ from moto import mock_s3
 
 from baseplate.sidecars.live_data_watcher import _load_from_s3
 from baseplate.sidecars.live_data_watcher import _parse_loader_type
+from baseplate.sidecars.live_data_watcher import LoaderException
 from baseplate.sidecars.live_data_watcher import LoaderType
 from baseplate.sidecars.live_data_watcher import NodeWatcher
-from baseplate.sidecars.live_data_watcher import LoaderException
 
 
 @pytest.fixture()
