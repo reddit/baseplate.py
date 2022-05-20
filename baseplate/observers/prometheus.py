@@ -263,7 +263,7 @@ class PrometheusLocalSpanObserver(SpanObserver):
     def on_child_span_created(self, span: Span) -> None:
         observer: Optional[SpanObserver] = None
         if isinstance(span, LocalSpan):
-            observer = PrometheusLocalSpanObserver(prefix=span.component_name, span_name=span.name)
+            observer = PrometheusLocalSpanObserver(span_name=span.name)
         else:
             observer = PrometheusClientSpanObserver(prefix=span.component_name)
 

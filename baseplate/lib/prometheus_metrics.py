@@ -504,5 +504,5 @@ def get_metrics_for_prefix(prefix: str) -> PrometheusGenericSpanMetrics:
                 ),
             },
         )
-        logger.info(f"Created new metrics class for prefix {prefix}")
+        logger.info("Created new metrics class for prefix {}" % prefix)
     return generic_metrics[prefix]
