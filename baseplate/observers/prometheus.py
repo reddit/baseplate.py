@@ -14,9 +14,9 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib.prometheus_metrics import get_metrics_for_prefix
 from baseplate.lib.prometheus_metrics import PrometheusGenericSpanMetrics
-from baseplate.lib.prometheus_metrics import PrometheusLocalSpanMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
+from baseplate.lib.prometheus_metrics import PrometheusLocalSpanMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
 from baseplate.thrift.ttypes import Error
