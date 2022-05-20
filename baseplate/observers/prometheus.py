@@ -79,7 +79,7 @@ class PrometheusServerSpanObserver(SpanObserver):
                 "Unknown protocol %s. Expected 'http' or 'thrift' protocol.",
                 self.protocol,
             )
-            self.metrics = get_metrics_for_prefix(self.span.name)
+            self.metrics = get_metrics_for_prefix(self.span.name if self.span else "generic_server")
 
     def on_start(self) -> None:
         self.set_metrics_by_protocol()
@@ -171,7 +171,7 @@ class PrometheusClientSpanObserver(SpanObserver):
                 "Unknown protocol %s. Expected 'http' or 'thrift' protocol.",
                 self.protocol,
             )
-            self.metrics = get_metrics_for_prefix(self.prefix)
+            self.metrics = get_metrics_for_prefix(self.prefix if self.prefix else "generic_client")
 
     def on_start(self) -> None:
         self.set_metrics_by_protocol()
@@ -227,7 +227,7 @@ class PrometheusLocalSpanObserver(SpanObserver):
         self.tags: Dict[str, Any] = {"span_name": span_name if span_name is not None else ""}
         self.start_time: Optional[int] = None
 
-        self.metrics: PrometheusLocalSpanMetrics = PrometheusLocalSpanMetrics()
+        self.metrics: PrometheusGenericSpanMetrics = get_metrics_for_prefix(self.prefix)
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
