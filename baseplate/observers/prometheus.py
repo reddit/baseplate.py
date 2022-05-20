@@ -138,7 +138,7 @@ class PrometheusServerSpanObserver(SpanObserver):
 class PrometheusClientSpanObserver(SpanObserver):
     prefix = None
 
-    def __init__(self, prefix: Optional[str] = "client") -> None:
+    def __init__(self, prefix: Optional[str] = "generic_client") -> None:
         self.tags: Dict[str, Any] = {}
         self.start_time: Optional[int] = None
         self.metrics: Optional[
@@ -148,7 +148,7 @@ class PrometheusClientSpanObserver(SpanObserver):
                 PrometheusGenericSpanMetrics,
             ]
         ] = None
-        self.prefix = prefix or "client"
+        self.prefix = prefix or "generic_client"
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
