@@ -89,10 +89,10 @@ def test_unsuccessful_load_from_s3(start_mock_s3, exc):
             }).encode('utf-8'))
 
 
-@pytest.mark.parametrize('load_type,should_call_s3', (
-    (LoaderType.S3, True),
-    (LoaderType.PASSTHROUGH, False),
-))
+@pytest.mark.parametrize('load_type,should_call_s3', [
+        (LoaderType.S3, True)
+    ] + [(lt, False) for lt in LoaderType if lt != LoaderType.S3]
+)
 def test_loader_type_calls(tmp_path, load_type, should_call_s3):
     loader_path = 'baseplate.sidecars.live_data_watcher._load_from_s3'
     parse_path = 'baseplate.sidecars.live_data_watcher._parse_loader_type'
