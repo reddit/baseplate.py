@@ -1,18 +1,22 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
 import argparse
 import configparser
-from enum import Enum
 import json
 import logging
 import os
 import sys
 import time
 
+from enum import Enum
 from pathlib import Path
 from typing import Any
 from typing import NoReturn
 from typing import Optional
 
+import boto3  # type: ignore
+
+from botocore.client import ClientError  # type: ignore
+from botocore.exceptions import EndpointConnectionError  # type: ignore
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
 
@@ -20,10 +24,6 @@ from baseplate.lib import config
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.server import EnvironmentInterpolation
-
-import boto3  # type: ignore
-from botocore.client import ClientError  # type: ignore
-from botocore.exceptions import EndpointConnectionError  # type: ignore
 
 
 logger = logging.getLogger(__name__)
@@ -37,12 +37,14 @@ class LoaderException(Exception):
 
 
 class LoaderType(Enum):
-    PASSTHROUGH = 'PASSTHROUGH'
-    S3 = 'S3'
+    PASSTHROUGH = "PASSTHROUGH"
+    S3 = "S3"
 
     @classmethod
     def _missing_(cls, value):
-        logger.error("Loader Type %s has not been implemented yet. Defaulting to PASSTHROUGH", value)
+        logger.error(
+            "Loader Type %s has not been implemented yet. Defaulting to PASSTHROUGH", value
+        )
         return cls.PASSTHROUGH
 
 
@@ -75,7 +77,9 @@ class NodeWatcher:
                 return
 
         if data is None:
-            logger.warning("No data to write to destination file. Something is likely misconfigured.")
+            logger.warning(
+                "No data to write to destination file. Something is likely misconfigured."
+            )
             return
 
         # swap out the file atomically so clients watching the file never catch
@@ -86,7 +90,6 @@ class NodeWatcher:
             if self.owner and self.group:
                 os.fchown(tmpfile.fileno(), self.owner, self.group)
             os.fchmod(tmpfile.fileno(), self.mode)
-
 
             tmpfile.write(data)
         os.rename(self.dest + ".tmp", self.dest)
@@ -102,7 +105,9 @@ def _parse_loader_type(data: Optional[bytes]) -> LoaderType:
     try:
         loader_type = json_data["live_data_watcher_load_type"]
     except (json.decoder.JSONDecodeError, KeyError, AttributeError, TypeError):
-        logger.debug("Expected dict (JSON object) but got %s. Loading as PASSTHROUGH", str(type(json_data)))
+        logger.debug(
+            "Expected dict (JSON object) but got %s. Loading as PASSTHROUGH", str(type(json_data))
+        )
         return LoaderType.PASSTHROUGH
 
     return LoaderType(loader_type)
@@ -121,8 +126,8 @@ def _load_from_s3(data: bytes) -> bytes:
     except KeyError as e:
         # We require all of these keys to properly read from S3.
         logger.exception(
-                "Failed to update live config: unable to fetch content from s3: source config has invalid or missing keys: %s.",
-                e.args[0]
+            "Failed to update live config: unable to fetch content from s3: source config has invalid or missing keys: %s.",
+            e.args[0],
         )
         raise LoaderException from e
 
