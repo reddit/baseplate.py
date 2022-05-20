@@ -210,7 +210,7 @@ class BaseplateSession:
             "http.url": request.url,
             "http.slug": self.client_name if self.client_name is not None else self.name,
         }
-        with self.span.make_child(f"{self.name}.request").with_tags(tags) as span:
+        with self.span.make_child(f"{self.name}.request", component_name="http_client").with_tags(tags) as span:
             self._add_span_context(span, request)
 
             # we cannot re-use the same session every time because sessions re-use the same
