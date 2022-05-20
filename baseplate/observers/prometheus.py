@@ -138,7 +138,7 @@ class PrometheusServerSpanObserver(SpanObserver):
 class PrometheusClientSpanObserver(SpanObserver):
     prefix = None
 
-    def __init__(self, prefix: Optional[str]) -> None:
+    def __init__(self, prefix: Optional[str] = "client") -> None:
         self.tags: Dict[str, Any] = {}
         self.start_time: Optional[int] = None
         self.metrics: Optional[
