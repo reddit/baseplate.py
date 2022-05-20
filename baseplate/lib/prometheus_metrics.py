@@ -2,7 +2,6 @@ import logging
 
 from typing import Any
 from typing import Dict
-from typing import Optional
 
 from prometheus_client import Counter
 from prometheus_client import Gauge
