@@ -446,7 +446,7 @@ class PrometheusGenericSpanMetrics:
 
 class PrometheusLocalSpanMetrics(PrometheusGenericSpanMetrics):
     prefix = "local"
-    
+
     # local labels and metrics
     labels = [
         "span",
