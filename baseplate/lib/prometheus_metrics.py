@@ -445,34 +445,6 @@ class PrometheusGenericSpanMetrics:
         return cls.active_requests
 
 
-class PrometheusLocalSpanMetrics(PrometheusGenericSpanMetrics):
-    prefix = "local"
-
-    # local labels and metrics
-    labels = [
-        "span",
-    ]
-
-    latency_seconds = Histogram(
-        f"{prefix}_latency_seconds",
-        "Latency histogram of local span",
-        labels,
-        buckets=default_latency_buckets,
-    )
-    # Counter counting total local spans started
-    requests_total = Counter(
-        f"{prefix}_requests_total",
-        "Total number of local spans started",
-        labels,
-    )
-    # Gauge showing current number of local spans
-    active_requests = Gauge(
-        f"{prefix}_active_requests",
-        "Number of active local spans",
-        labels,
-    )
-
-
 def get_metrics_for_prefix(prefix: str) -> PrometheusGenericSpanMetrics:
     if prefix not in generic_metrics:
         # local labels and metrics
@@ -488,18 +460,18 @@ def get_metrics_for_prefix(prefix: str) -> PrometheusGenericSpanMetrics:
                 "labels": labels,
                 "latency_seconds": Histogram(
                     f"{prefix}_latency_seconds",
-                    "Latency histogram of local span",
+                    f"Latency histogram of {prefix} span",
                     labels,
                     buckets=default_latency_buckets,
                 ),
                 "requests_total": Counter(
                     f"{prefix}_requests_total",
-                    "Total number of local spans started",
+                    f"Total number of {prefix} spans started",
                     labels,
                 ),
                 "active_requests": Gauge(
                     f"{prefix}_active_requests",
-                    "Number of active local spans",
+                    f"Number of active {prefix} spans",
                     labels,
                 ),
             },
