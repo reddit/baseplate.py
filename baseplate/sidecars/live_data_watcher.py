@@ -41,7 +41,7 @@ class LoaderType(Enum):
     S3 = "S3"
 
     @classmethod
-    def _missing_(cls, value):
+    def _missing_(cls, value: object) -> "LoaderType":
         logger.error(
             "Loader Type %s has not been implemented yet. Defaulting to PASSTHROUGH", value
         )
@@ -95,7 +95,7 @@ class NodeWatcher:
         os.rename(self.dest + ".tmp", self.dest)
 
 
-def _parse_loader_type(data: Optional[bytes]) -> LoaderType:
+def _parse_loader_type(data: bytes) -> LoaderType:
     try:
         json_data = json.loads(data.decode("UTF-8"))
     except (UnicodeDecodeError, json.decoder.JSONDecodeError):

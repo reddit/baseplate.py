@@ -7,7 +7,6 @@ import boto3
 import botocore.session
 import pytest
 
-from botocore.client import ClientError
 from botocore.stub import Stubber
 from moto import mock_s3
 
