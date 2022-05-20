@@ -5,6 +5,8 @@ import json
 
 import boto3
 from botocore.client import ClientError
+from botocore.stub import Stubber
+import botocore.session
 from moto import mock_s3
 
 from baseplate.sidecars.live_data_watcher import NodeWatcher
@@ -16,6 +18,13 @@ from baseplate.sidecars.live_data_watcher import LoaderType
 def start_mock_s3():
     with mock_s3():
         yield
+
+@pytest.fixture()
+def s3_stub(start_mock_s3):
+    s3 = botocore.session.get_session().create_client('s3')
+    with Stubber(s3) as stubber:
+        yield stubber
+
 
 @pytest.mark.parametrize('data,return_value', (
     # Non-obviously-PASSTHROUGH configs
@@ -73,20 +82,16 @@ def test_successful_load_from_s3(start_mock_s3):
     assert data == contents
 
 
-@pytest.mark.parametrize('exc', (
-    ValueError,
-    ClientError({'Error': {'Code': 'error', 'Message': 'msg'}}, 'operation'),
-))
-def test_unsuccessful_load_from_s3(start_mock_s3, exc):
-    with mock.patch('baseplate.sidecars.live_data_watcher.boto3.client') as client:
-        client.return_value.get_object.side_effect = exc
-        with pytest.raises(ValueError):
-             _load_from_s3(json.dumps({
-                "region_name": "us-east-1",
-                "bucket_name": 'bucket',
-                "file_key": 'key',
-                "sse_key": "key"
-            }).encode('utf-8'))
+def test_unsuccessful_load_from_s3_client_error(s3_stub):
+    s3_stub.add_client_error('get_object')
+
+    with pytest.raises(ValueError):
+        _load_from_s3(json.dumps({
+            'region_name': 'us-east-1',
+            'bucket_name': 'my-test-bucket',
+            'file_key': 'my-object-key',
+            'sse_key': 'my-sse-key',
+        }).encode('utf-8'))
 
 
 @pytest.mark.parametrize('load_type,should_call_s3', [

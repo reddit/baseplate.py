@@ -23,12 +23,17 @@ from baseplate.server import EnvironmentInterpolation
 
 import boto3  # type: ignore
 from botocore.client import ClientError  # type: ignore
+from botocore.exceptions import EndpointConnectionError  # type: ignore
 
 
 logger = logging.getLogger(__name__)
 
 
 HEARTBEAT_INTERVAL = 300
+
+
+class LoaderException(Exception):
+    pass
 
 
 class LoaderType(Enum):
@@ -65,7 +70,7 @@ class NodeWatcher:
         if loader_type == LoaderType.S3:
             try:
                 data = _load_from_s3(data)
-            except ValueError:
+            except LoaderException:
                 logger.error("Failed to load data from S3. Not writing to destination file")
                 return
 
@@ -119,7 +124,7 @@ def _load_from_s3(data: bytes) -> bytes:
                 "Failed to update live config: unable to fetch content from s3: source config has invalid or missing keys: %s.",
                 e.args[0]
         )
-        raise ValueError from e
+        raise LoaderException from e
 
     s3_client = boto3.client(
         "s3",
@@ -137,14 +142,17 @@ def _load_from_s3(data: bytes) -> bytes:
             error.response["Error"]["Message"],
         )
 
-        raise ValueError from error
+        raise LoaderException from error
+    except EndpointConnectionError as error:
+        logger.exception("Unable to retrieve object")
+        raise LoaderException from error
     except ValueError as error:
         logger.exception(
             "Failed to update live config: params for loading from S3 are incorrect. Received error: %s",
             error,
         )
 
-        raise ValueError from error
+        raise LoaderException from error
 
 
 def watch_zookeeper_nodes(zookeeper: KazooClient, nodes: Any) -> NoReturn:
