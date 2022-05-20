@@ -1,6 +1,7 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
 import argparse
 import configparser
+from enum import Enum
 import json
 import logging
 import os
@@ -20,13 +21,8 @@ from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.server import EnvironmentInterpolation
 
-try:
-    import boto3  # type: ignore
-    from botocore.client import ClientError  # type: ignore
-
-    S3_FETCHER_ENABLED = True
-except ImportError:
-    S3_FETCHER_ENABLED = False
+import boto3  # type: ignore
+from botocore.client import ClientError  # type: ignore
 
 
 logger = logging.getLogger(__name__)
@@ -35,83 +31,22 @@ logger = logging.getLogger(__name__)
 HEARTBEAT_INTERVAL = 300
 
 
+class LoaderType(Enum):
+    RAW = 'RAW'
+    S3 = 'S3'
+
+    @classmethod
+    def _missing_(cls, value):
+        logger.error("Loader Type %s has not been implemented yet. Defaulting to RAW", value)
+        return cls.RAW
+
+
 class NodeWatcher:
     def __init__(self, dest: str, owner: int, group: int, mode: int):
         self.dest = dest
         self.owner = owner
         self.group = group
         self.mode = mode
-
-    @staticmethod
-    def get_encrypted_data_from_s3(
-        bucket_name: str, file_key: str, region_name: str, sse_key: str
-    ) -> Optional[bytes]:
-        s3_client = boto3.client(
-            "s3",
-            region_name=region_name,
-        )
-        data = None
-        # The S3 data must be Server Side Encrypted and we should have the decryption key.
-        kwargs = {
-            "Bucket": bucket_name,
-            "Key": file_key,
-            "SSECustomerKey": sse_key,
-            "SSECustomerAlgorithm": "AES256",
-        }
-        try:
-            s3_object = s3_client.get_object(**kwargs)
-            # Returns bytes.
-            data = s3_object["Body"].read()
-        except ClientError as error:
-            logger.exception(
-                "Failed to update live config: failed to load data from S3. Received error code %s: %s",
-                error.response["Error"]["Code"],
-                error.response["Error"]["Message"],
-            )
-            return None
-        except ValueError as error:
-            logger.exception(
-                "Failed to update live config: params for loading from S3 are incorrect. Received error: %s",
-                error,
-            )
-            return None
-        return data
-
-    @staticmethod
-    def get_data_to_write(json_data: dict, data: Optional[bytes]) -> Optional[bytes]:
-        # Check if we have a JSON in a special format containing:
-        # data = {
-        #    "live_data_watcher_load_type": str
-        # }
-        # If the load type is 'S3', this format is an indication that we support
-        # downloading the contents of encrypted files uploaded to S3.
-        is_s3 = False
-        try:
-            is_s3 = json_data["live_data_watcher_load_type"] == "S3"
-        except (KeyError, TypeError):
-            is_s3 = False
-
-        if is_s3:
-            if not S3_FETCHER_ENABLED:
-                logger.error("Attempted to use s3 fetcher but packages are missing")
-                return None
-
-            try:
-                bucket_name = json_data["bucket_name"]
-                file_key = json_data["file_key"]
-                sse_key = json_data["sse_key"]
-                region_name = json_data["region_name"]
-            except KeyError:
-                # We require all of these keys to properly read from S3.
-                logger.exception(
-                    "Failed to update live config: unble to fetch content from s3: source config has invalid or missing keys."
-                )
-                return None
-            # If we have all the correct keys, attempt to read the config from S3.
-            data = NodeWatcher.get_encrypted_data_from_s3(
-                bucket_name=bucket_name, file_key=file_key, region_name=region_name, sse_key=sse_key
-            )
-        return data
 
     def handle_empty_data(self) -> None:
         # the data node does not exist
@@ -126,6 +61,10 @@ class NodeWatcher:
             self.handle_empty_data()
             return
 
+        loader_type = _parse_loader_type(data)
+        if loader_type == LoaderType.S3:
+            data = _load_from_s3(data)
+
         # swap out the file atomically so clients watching the file never catch
         # us mid-write.
         logger.info("Updating %r", self.dest)
@@ -134,23 +73,65 @@ class NodeWatcher:
             if self.owner and self.group:
                 os.fchown(tmpfile.fileno(), self.owner, self.group)
             os.fchmod(tmpfile.fileno(), self.mode)
-            try:
-                json_data = json.loads(data.decode("UTF-8"))
-            except json.decoder.JSONDecodeError:
-                # If JSON fails to decode, still write the bytes data since
-                # we don't necessarily know if the the contents of the znode
-                # had to be valid JSON anyways.
-                tmpfile.write(data)
-            else:
-                # If no exceptions, we have valid JSON, and can parse accordingly.
-                data = NodeWatcher.get_data_to_write(json_data, data)
-                if data is None:
-                    logger.warning(
-                        "No data written to destination file. Something is likely misconfigured."
-                    )
-                    return
-                tmpfile.write(data)
+            tmpfile.write(data)
         os.rename(self.dest + ".tmp", self.dest)
+
+
+def _parse_loader_type(data: Optional[bytes]) -> LoaderType:
+    try:
+        json_data = json.loads(data.decode("UTF-8"))
+    except json.decoder.JSONDecodeError:
+        logger.debug("Data is not valid JSON. Loading as RAW")
+        return LoaderType.RAW
+
+    try:
+        loader_type = json_data["live_data_watcher_load_type"]
+    except (json.decoder.JSONDecodeError, KeyError, AttributeError, TypeError):
+        logger.debug("Data is not a JSON object like {\"live_data_watcher_load_type\":\"load_type\"}. Loading as RAW")
+        return LoaderType.RAW
+
+    return LoaderType(loader_type)
+
+
+def _load_from_s3(data: bytes) -> Optional[bytes]:
+    loader_config = json.loads(data.decode("UTF-8"))
+    try:
+        region_name = loader_config["region_name"]
+        s3_kwargs = {
+            "Bucket": loader_config["bucket_name"],
+            "Key": loader_config["file_key"],
+            "SSECustomerKey": loader_config["sse_key"],
+            "SSECustomerAlgorithm": "AES256",
+        }
+    except KeyError as e:
+        # We require all of these keys to properly read from S3.
+        logger.exception(
+                "Failed to update live config: unable to fetch content from s3: source config has invalid or missing keys: %s.",
+                e.args[0]
+        )
+        return None
+
+    s3_client = boto3.client(
+        "s3",
+        region_name=region_name,
+    )
+
+    try:
+        s3_object = s3_client.get_object(**s3_kwargs)
+        # Returns bytes.
+        return s3_object["Body"].read()
+    except ClientError as error:
+        logger.exception(
+            "Failed to update live config: failed to load data from S3. Received error code %s: %s",
+            error.response["Error"]["Code"],
+            error.response["Error"]["Message"],
+        )
+    except ValueError as error:
+        logger.exception(
+            "Failed to update live config: params for loading from S3 are incorrect. Received error: %s",
+            error,
+        )
+    return None
 
 
 def watch_zookeeper_nodes(zookeeper: KazooClient, nodes: Any) -> NoReturn:
