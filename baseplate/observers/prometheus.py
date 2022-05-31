@@ -75,7 +75,7 @@ class PrometheusServerSpanObserver(SpanObserver):
             self.metrics = PrometheusHTTPServerMetrics()
         else:
             logger.debug(
-                "Unknown protocol %s. Expected 'http' or 'thrift' protocol.",
+                "Unknown protocol %s. 'http' and 'thrift' are supported.",
                 self.protocol,
             )
             self.metrics = get_metrics_for_prefix(self.span.name if self.span else "generic_server")
@@ -167,7 +167,7 @@ class PrometheusClientSpanObserver(SpanObserver):
             self.metrics = PrometheusThriftClientMetrics()
         else:
             logger.debug(
-                "Unknown protocol %s. Expected 'http' or 'thrift' protocol.",
+                "Unknown protocol %s. 'http' and 'thrift' are supported.",
                 self.protocol,
             )
             self.metrics = get_metrics_for_prefix(self.prefix if self.prefix else "generic_client")
