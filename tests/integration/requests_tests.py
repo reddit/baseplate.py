@@ -269,12 +269,10 @@ def test_prometheus_http_client_metrics_inside_local_span(method, http_server):
     logger.info("Registered observer with baseplate.")
 
     # we need to clear metrics between test runs from the parametrize annotations
-    REGISTRY._names_to_collectors["http_client_requests_total"].clear()
-    REGISTRY._names_to_collectors["http_client_latency_seconds"].clear()
-    REGISTRY._names_to_collectors["http_client_active_requests"].clear()
-    REGISTRY._names_to_collectors["local_span_latency_seconds"].clear()
-    REGISTRY._names_to_collectors["local_span_requests_total"].clear()
-    REGISTRY._names_to_collectors["local_span_active_requests"].clear()
+    for collector_name in REGISTRY._names_to_collectors:
+        reg = REGISTRY._names_to_collectors[collector_name]
+        if hasattr(reg, "clear") and callable(getattr(reg, "clear")):
+            REGISTRY._names_to_collectors[collector_name].clear()
 
     with baseplate.server_context("test") as context:
         with context.span.make_child("local", local=True) as span:
@@ -319,9 +317,7 @@ def test_prometheus_http_client_metrics_inside_local_span(method, http_server):
     assert http_client_active_requests_samples.value == 0
 
     # checking that we got the local span metrics we expected
-    local_span_latency_seconds = REGISTRY._names_to_collectors[
-        "local_span_latency_seconds"
-    ].collect()
+    local_span_latency_seconds = REGISTRY._names_to_collectors["local_latency_seconds"].collect()
     assert len(local_span_latency_seconds) == 1
     assert (
         len(local_span_latency_seconds[0].samples) == 18
@@ -333,15 +329,13 @@ def test_prometheus_http_client_metrics_inside_local_span(method, http_server):
     local_span_latency_seconds_count = local_span_latency_seconds[0].samples[15]
     assert local_span_latency_seconds_count.value == 1
 
-    local_span_requests_total = REGISTRY._names_to_collectors["local_span_requests_total"].collect()
+    local_span_requests_total = REGISTRY._names_to_collectors["local_requests_total"].collect()
     assert len(local_span_requests_total) == 1
     assert len(local_span_requests_total[0].samples) == 2  # _total and _created
     local_span_requests_total_total = local_span_requests_total[0].samples[0]
     assert local_span_requests_total_total.value == 1
 
-    local_span_active_requests = REGISTRY._names_to_collectors[
-        "local_span_active_requests"
-    ].collect()
+    local_span_active_requests = REGISTRY._names_to_collectors["local_active_requests"].collect()
     assert len(local_span_active_requests) == 1
     assert len(local_span_active_requests[0].samples) == 1
     local_span_active_requests_samples = local_span_active_requests[0].samples[0]

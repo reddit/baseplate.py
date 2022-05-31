@@ -64,7 +64,7 @@ class KafkaConsumerWorker(PumpWorker):
         while not self.stopped:
             context = self.baseplate.make_context_object()
             with self.baseplate.make_server_span(context, f"{self.name}.pump") as span:
-                with span.make_child("kafka.consume"):
+                with span.make_child("kafka.consume", component_name="kafka_client"):
                     messages = self.consumer.consume(num_messages=self.batch_size, timeout=0)
 
                 if not messages:
@@ -77,7 +77,7 @@ class KafkaConsumerWorker(PumpWorker):
                     time.sleep(1)
                     continue
 
-                with span.make_child("kafka.work_queue_put"):
+                with span.make_child("kafka.work_queue_put", component_name="kafka_client"):
                     for message in messages:
                         self.work_queue.put(message)
 
@@ -399,7 +399,7 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
                 message.partition(),
                 message.offset(),
             )
-            with context.span.make_child("kafka.commit"):
+            with context.span.make_child("kafka.commit", component_name="kafka_client"):
                 self.consumer.commit(message=message, asynchronous=False)
 
         return KafkaMessageHandler(

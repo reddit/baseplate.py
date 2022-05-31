@@ -286,7 +286,7 @@ class CassandraSessionAdapter:
         **kwargs: Any,
     ) -> ResponseFuture:
         trace_name = f"{self.context_name}.execute"
-        span = self.server_span.make_child(trace_name)
+        span = self.server_span.make_child(trace_name, component_name="cassandra_client")
         span.start()
         # TODO: include custom payload
         if isinstance(query, str):
@@ -322,7 +322,7 @@ class CassandraSessionAdapter:
                 pass
 
         trace_name = f"{self.context_name}.prepare"
-        with self.server_span.make_child(trace_name) as span:
+        with self.server_span.make_child(trace_name, component_name="cassandra_client") as span:
             span.set_tag("statement", query)
             prepared = self.session.prepare(query)
             if cache:

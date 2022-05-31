@@ -430,7 +430,7 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
-        with self.server_span.make_child(trace_name):
+        with self.server_span.make_child(trace_name, component_name="rediscluster_client"):
             res = super().execute_command(command, *args[1:], **kwargs)
 
         self.hot_key_tracker.maybe_track_key_usage(list(args))
@@ -487,5 +487,5 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
 
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
-        with self.server_span.make_child(self.trace_name):
+        with self.server_span.make_child(self.trace_name, component_name="rediscluster_client"):
             return super().execute(**kwargs)
