@@ -16,7 +16,7 @@ extras_require = {
     "redis-py-cluster": ["redis-py-cluster>=2.1.2,<3.0.0"],
     "refcycle": ["objgraph>=3.0,<4.0"],
     "requests": ["advocate>=1.0.0,<2.0"],
-    "s3fetcher": ["boto3>=1.18"],
+    "s3fetcher": ["boto3>=1.18"],  # Kept for backwards compatibility, these are now main requirements
     "sentry": ["sentry-sdk>=0.19,<1.0"],
     "sql": ["sqlalchemy>=1.1.0,<2.0"],
     "zookeeper": ["kazoo>=2.5.0,<3.0"],
@@ -39,6 +39,7 @@ setup(
     python_requires=">=3.7",
     setup_requires=["setuptools_scm"],
     install_requires=[
+        "boto3>=1.18",
         "posix_ipc>=1.0.0,<2.0",
         "python-json-logger>=2.0,<3.0",
         "requests>=2.21.0,<3.0",

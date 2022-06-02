@@ -11,7 +11,6 @@ import boto3
 
 from moto import mock_s3
 
-from baseplate.sidecars.live_data_watcher import logger
 from baseplate.sidecars.live_data_watcher import NodeWatcher
 
 
@@ -53,19 +52,6 @@ class NodeWatcherTests(unittest.TestCase):
         self.assertEqual(expected_content, dest.read_bytes())
         self.assertEqual(dest.owner(), pwd.getpwuid(os.getuid()).pw_name)
         self.assertEqual(dest.group(), grp.getgrgid(os.getgid()).gr_name)
-
-    def test_s3_load_type_missing_sse_key_on_change(self):
-        with self.assertLogs(logger.name, level="DEBUG") as lc:
-            dest = self.output_dir.joinpath("data.txt")
-            inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
-
-            new_content = b'{"live_data_watcher_load_type":"S3","bucket_name":"test_bucket","file_key":"test_file_key","region_name":"us-east-1"}'
-            inst.on_change(new_content, None)
-        self.assertIn(
-            "WARNING:%s:No data written to destination file. Something is likely misconfigured."
-            % (logger.name),
-            lc.output,
-        )
 
     def test_on_change(self):
         dest = self.output_dir.joinpath("data.txt")
