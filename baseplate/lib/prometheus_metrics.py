@@ -451,7 +451,7 @@ def get_metrics_for_prefix(prefix: str) -> PrometheusGenericSpanMetrics:
     # https://github.com/prometheus/client_python/blob/748ffb00600dc25fbd22d37d549578e8e370d996/prometheus_client/metrics_core.py#L10
     prefix = prefix.replace(".", "_")
     prefix = re.sub("[^0-9a-zA-Z_:]+", "", prefix)
-    
+
     if prefix not in generic_metrics:
         # local labels and metrics
         labels = [
