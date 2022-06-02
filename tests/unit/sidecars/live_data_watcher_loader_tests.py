@@ -4,7 +4,6 @@ import os
 
 from unittest import mock
 
-import boto3
 import botocore.session
 import pytest
 
@@ -29,7 +28,7 @@ def start_mock_s3():
 def s3_stub(start_mock_s3):
     s3 = botocore.session.get_session().create_client("s3")
     with Stubber(s3) as stubber:
-        with mock.patch('baseplate.sidecars.live_data_watcher.boto3.client') as client:
+        with mock.patch("baseplate.sidecars.live_data_watcher.boto3.client") as client:
             client.return_value = s3
             yield stubber
 
