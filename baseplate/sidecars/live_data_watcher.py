@@ -104,7 +104,7 @@ def _parse_loader_type(data: bytes) -> LoaderType:
 
     try:
         loader_type = json_data["live_data_watcher_load_type"]
-    except (json.decoder.JSONDecodeError, KeyError, AttributeError, TypeError):
+    except (KeyError, AttributeError, TypeError):
         logger.debug(
             "Expected dict (JSON object) but got %s. Loading as PASSTHROUGH", str(type(json_data))
         )
@@ -114,6 +114,10 @@ def _parse_loader_type(data: bytes) -> LoaderType:
 
 
 def _load_from_s3(data: bytes) -> bytes:
+    # While many of the baseplate configurations use an ini format,
+    # we've opted for json in these internal-to-znode-configs because
+    # we want them to be fully controlled by the writer of the znode
+    # and json is an easier format for znode authors to work with.
     loader_config = json.loads(data.decode("UTF-8"))
     try:
         region_name = loader_config["region_name"]
