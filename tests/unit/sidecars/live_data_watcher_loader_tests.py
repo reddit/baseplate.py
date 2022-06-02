@@ -1,3 +1,4 @@
+import io
 import json
 import os
 
@@ -7,6 +8,7 @@ import boto3
 import botocore.session
 import pytest
 
+from botocore.response import StreamingBody
 from botocore.stub import Stubber
 from moto import mock_s3
 
@@ -27,7 +29,9 @@ def start_mock_s3():
 def s3_stub(start_mock_s3):
     s3 = botocore.session.get_session().create_client("s3")
     with Stubber(s3) as stubber:
-        yield stubber
+        with mock.patch('baseplate.sidecars.live_data_watcher.boto3.client') as client:
+            client.return_value = s3
+            yield stubber
 
 
 @pytest.mark.parametrize(
@@ -74,15 +78,25 @@ def test_load_from_s3_missing_config(start_mock_s3, missing_config):
         assert _load_from_s3(json.dumps(data).encode("utf-8"))
 
 
-def test_successful_load_from_s3(start_mock_s3):
+def test_successful_load_from_s3(s3_stub):
+    contents = b"my-test-contents"
     bucket = "my-test-bucket"
     key = "my-test-key"
-    contents = b"my-test-contents"
+    file_key = "my-test-key"
+    sse_key = "key"
 
-    s3 = boto3.resource("s3")
-    s3.Bucket(bucket).create()
-    obj = s3.Object(bucket, key)
-    obj.put(Body=contents)
+    s3_stub.add_response(
+        "get_object",
+        service_response={
+            "Body": StreamingBody(io.BytesIO(contents), len(contents)),
+        },
+        expected_params={
+            "Bucket": bucket,
+            "Key": file_key,
+            "SSECustomerKey": sse_key,
+            "SSECustomerAlgorithm": "AES256",
+        },
+    )
 
     data = _load_from_s3(
         json.dumps(
