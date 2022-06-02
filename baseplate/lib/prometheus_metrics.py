@@ -1,4 +1,5 @@
 import logging
+import re
 
 from typing import Any
 from typing import Dict
@@ -446,6 +447,11 @@ class PrometheusGenericSpanMetrics:
 
 
 def get_metrics_for_prefix(prefix: str) -> PrometheusGenericSpanMetrics:
+    # make sure metric names don't include disallowed chars
+    # https://github.com/prometheus/client_python/blob/748ffb00600dc25fbd22d37d549578e8e370d996/prometheus_client/metrics_core.py#L10
+    prefix = prefix.replace(".", "_")
+    prefix = re.sub("[^0-9a-zA-Z_:]+", "", prefix)
+
     if prefix not in generic_metrics:
         # local labels and metrics
         labels = [
