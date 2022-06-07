@@ -225,7 +225,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         server_span = conn._execution_options["server_span"]
 
         trace_name = f"{context_name}.execute"
-        span = server_span.make_child(trace_name, component_name="sql_client")
+        span = server_span.make_child(trace_name)
         span.set_tag("statement", statement[:1021] + "..." if len(statement) > 1024 else statement)
         span.start()
 

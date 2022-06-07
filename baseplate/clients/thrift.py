@@ -170,7 +170,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         for time_remaining in self.retry_policy:
             try:
                 with self.pool.connection() as prot:
-                    span = self.server_span.make_child(trace_name, component_name="thrift_client")
+                    span = self.server_span.make_child(trace_name)
                     span.set_tag("slug", self.namespace)
 
                     client = self.client_cls(prot)

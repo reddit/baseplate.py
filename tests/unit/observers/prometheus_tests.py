@@ -95,7 +95,7 @@ class TestException(Exception):
         ),
         (
             "local",
-            None,
+            "span",
             PrometheusLocalSpanObserver,
             {
                 "latency_labels": {
@@ -112,21 +112,17 @@ class TestException(Exception):
     ),
 )
 def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
-    prefix = protocol
-    if client_or_server is not None:
-        prefix = f"{protocol}_{client_or_server}"
-
     before_start = REGISTRY.get_sample_value(
-        f"{prefix}_latency_seconds_count", labels.get("latency_labels", "")
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
     )
 
     assert before_start is None
     before_start = REGISTRY.get_sample_value(
-        f"{prefix}_requests_total", labels.get("requests_labels", "")
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
     )
     assert before_start is None
     before_start = REGISTRY.get_sample_value(
-        f"{prefix}_active_requests", labels.get("active_labels", "")
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
     )
     assert before_start is None
 
@@ -134,32 +130,31 @@ def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
     observer.on_set_tag("protocol", protocol)
 
     observer.on_start()
-
-    assert observer.metrics.prefix == f"{prefix}"
+    assert observer.metrics.prefix == f"{protocol}_{client_or_server}"
     after_start = REGISTRY.get_sample_value(
-        f"{prefix}_latency_seconds_count", labels.get("latency_labels", "")
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
     )
     assert after_start is None
     after_start = REGISTRY.get_sample_value(
-        f"{prefix}_requests_total", labels.get("requests_labels", "")
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
     )
     assert after_start is None
     after_start = REGISTRY.get_sample_value(
-        f"{prefix}_active_requests", labels.get("active_labels", "")
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
     )
     assert after_start == 1.0
 
     observer.on_finish(None)
     after_done = REGISTRY.get_sample_value(
-        f"{prefix}_latency_seconds_count", labels.get("latency_labels", "")
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
     )
     assert after_done == 1.0
     after_done = REGISTRY.get_sample_value(
-        f"{prefix}_requests_total", labels.get("requests_labels", "")
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
     )
     assert after_done == 1.0
     after_done = REGISTRY.get_sample_value(
-        f"{prefix}_active_requests", labels.get("active_labels", "")
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
     )
     assert after_done == 0.0
 

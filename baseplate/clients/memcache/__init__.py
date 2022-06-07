@@ -332,7 +332,7 @@ class MonitoredMemcacheConnection:
 
         """
         trace_name = f"{self.context_name}.{method_name}"
-        span = self.server_span.make_child(trace_name, component_name="memcache_client")
+        span = self.server_span.make_child(trace_name)
         span.set_tag("method", method_name)
         return span
 
