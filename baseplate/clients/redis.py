@@ -163,7 +163,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
-        with self.server_span.make_child(trace_name, component_name="redis_client"):
+        with self.server_span.make_child(trace_name):
             return super().execute_command(command, *args[1:], **kwargs)
 
     # pylint: disable=arguments-differ
@@ -211,7 +211,7 @@ class MonitoredRedisPipeline(Pipeline):
 
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
-        with self.server_span.make_child(self.trace_name, component_name="redis_pipeline_client"):
+        with self.server_span.make_child(self.trace_name):
             return super().execute(**kwargs)
 
 

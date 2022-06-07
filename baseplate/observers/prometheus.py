@@ -12,10 +12,9 @@ from baseplate import LocalSpan
 from baseplate import RequestContext
 from baseplate import Span
 from baseplate import SpanObserver
-from baseplate.lib.prometheus_metrics import get_metrics_for_prefix
-from baseplate.lib.prometheus_metrics import PrometheusGenericSpanMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
+from baseplate.lib.prometheus_metrics import PrometheusLocalSpanMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
 from baseplate.thrift.ttypes import Error
@@ -41,22 +40,20 @@ class PrometheusBaseplateObserver(BaseplateObserver):
         pass
 
     def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
-        observer = PrometheusServerSpanObserver(server_span)
+        observer = PrometheusServerSpanObserver()
         server_span.register(observer)
 
 
 class PrometheusServerSpanObserver(SpanObserver):
-    def __init__(self, span: Optional[Span] = None) -> None:
+    def __init__(self) -> None:
         self.tags: Dict[str, Any] = {}
         self.start_time: Optional[int] = None
         self.metrics: Optional[
             Union[
                 PrometheusHTTPServerMetrics,
                 PrometheusThriftServerMetrics,
-                PrometheusGenericSpanMetrics,
             ]
         ] = None
-        self.span = span
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
@@ -75,15 +72,14 @@ class PrometheusServerSpanObserver(SpanObserver):
             self.metrics = PrometheusHTTPServerMetrics()
         else:
             logger.debug(
-                "Unknown protocol %s. 'http' and 'thrift' are supported.",
+                "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
                 self.protocol,
             )
-            self.metrics = get_metrics_for_prefix(self.span.name if self.span else "generic_server")
 
     def on_start(self) -> None:
         self.set_metrics_by_protocol()
         if self.metrics is None:
-            logger.warning(
+            logger.debug(
                 "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
             )
             return
@@ -95,7 +91,7 @@ class PrometheusServerSpanObserver(SpanObserver):
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         if self.metrics is None:
-            logger.warning(
+            logger.debug(
                 "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
             )
             return
@@ -130,25 +126,18 @@ class PrometheusServerSpanObserver(SpanObserver):
         if isinstance(span, LocalSpan):
             observer = PrometheusLocalSpanObserver(span.name)
         else:
-            observer = PrometheusClientSpanObserver(prefix=span.component_name)
+            observer = PrometheusClientSpanObserver()
 
         span.register(observer)
 
 
 class PrometheusClientSpanObserver(SpanObserver):
-    prefix = None
-
-    def __init__(self, prefix: Optional[str] = "generic_client") -> None:
+    def __init__(self) -> None:
         self.tags: Dict[str, Any] = {}
         self.start_time: Optional[int] = None
         self.metrics: Optional[
-            Union[
-                PrometheusHTTPClientMetrics,
-                PrometheusThriftClientMetrics,
-                PrometheusGenericSpanMetrics,
-            ]
+            Union[PrometheusHTTPClientMetrics, PrometheusThriftClientMetrics]
         ] = None
-        self.prefix = prefix or "generic_client"
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
@@ -167,15 +156,15 @@ class PrometheusClientSpanObserver(SpanObserver):
             self.metrics = PrometheusThriftClientMetrics()
         else:
             logger.debug(
-                "Unknown protocol %s. 'http' and 'thrift' are supported.",
+                "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
                 self.protocol,
             )
-            self.metrics = get_metrics_for_prefix(self.prefix if self.prefix else "generic_client")
+        return
 
     def on_start(self) -> None:
         self.set_metrics_by_protocol()
         if self.metrics is None:
-            logger.warning(
+            logger.debug(
                 "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
             )
             return
@@ -187,7 +176,7 @@ class PrometheusClientSpanObserver(SpanObserver):
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         if self.metrics is None:
-            logger.warning(
+            logger.debug(
                 "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
             )
             return
@@ -214,26 +203,23 @@ class PrometheusClientSpanObserver(SpanObserver):
         if isinstance(span, LocalSpan):
             observer = PrometheusLocalSpanObserver(span.name)
         else:
-            observer = PrometheusClientSpanObserver(prefix=span.component_name)
+            observer = PrometheusClientSpanObserver()
 
         span.register(observer)
 
 
 class PrometheusLocalSpanObserver(SpanObserver):
-    prefix = "local"
-
     def __init__(self, span_name: Optional[str] = None) -> None:
         self.tags: Dict[str, Any] = {"span_name": span_name if span_name is not None else ""}
         self.start_time: Optional[int] = None
-
-        self.metrics: PrometheusGenericSpanMetrics = get_metrics_for_prefix(self.prefix)
+        self.metrics: PrometheusLocalSpanMetrics = PrometheusLocalSpanMetrics()
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
 
     @property
     def protocol(self) -> str:
-        return self.prefix
+        return "local"
 
     def get_labels(self) -> Dict[str, Any]:
         return self.tags
@@ -262,8 +248,8 @@ class PrometheusLocalSpanObserver(SpanObserver):
     def on_child_span_created(self, span: Span) -> None:
         observer: Optional[SpanObserver] = None
         if isinstance(span, LocalSpan):
-            observer = PrometheusLocalSpanObserver(span_name=span.name)
+            observer = PrometheusLocalSpanObserver(span.name)
         else:
-            observer = PrometheusClientSpanObserver(prefix=span.component_name)
+            observer = PrometheusClientSpanObserver()
 
         span.register(observer)

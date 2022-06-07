@@ -558,7 +558,6 @@ class Span:
         name: str,
         context: RequestContext,
         baseplate: Optional[Baseplate] = None,
-        component_name: Optional[str] = None,
     ):
         self.trace_id = trace_id
         self.parent_id = parent_id
@@ -570,7 +569,6 @@ class Span:
         self.baseplate = baseplate
         self.component_name: Optional[str] = None
         self.observers: List[SpanObserver] = []
-        self.component_name = component_name
 
     def register(self, observer: SpanObserver) -> None:
         """Register an observer to receive events from this span."""
@@ -732,8 +730,8 @@ class LocalSpan(Span):
                 name,
                 context_copy,
                 self.baseplate,
-                component_name,
             )
+            span.component_name = component_name
         else:
             span = Span(
                 self.trace_id,
@@ -744,7 +742,6 @@ class LocalSpan(Span):
                 name,
                 context_copy,
                 self.baseplate,
-                component_name,
             )
         context_copy.span = span
 

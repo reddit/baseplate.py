@@ -238,7 +238,7 @@ class _KombuProducer:
             kwargs.setdefault("serializer", self.serializer.name)
 
         trace_name = f"{self.name}.publish"
-        child_span = self.span.make_child(trace_name, component_name="kombu_client")
+        child_span = self.span.make_child(trace_name)
 
         child_span.set_tag("kind", "producer")
         if routing_key:

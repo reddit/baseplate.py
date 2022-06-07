@@ -1,6 +1,3 @@
-import logging
-import re
-
 from typing import Any
 from typing import Dict
 
@@ -8,7 +5,6 @@ from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
 
-logger = logging.getLogger(__name__)
 
 # default_latency_buckets creates the default bucket values for time based histogram metrics.
 # we want this to match the baseplate.go default_buckets, ref: https://github.com/reddit/baseplate.go/blob/master/prometheusbp/metrics.go.
@@ -29,8 +25,6 @@ default_size_count = 20
 default_size_buckets = [
     default_size_start * default_size_factor ** i for i in range(default_size_count)
 ]
-
-generic_metrics = {}
 
 
 class PrometheusHTTPClientMetrics:
@@ -383,8 +377,8 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     return str(200 <= httpStatusCode < 400).lower()
 
 
-class PrometheusGenericSpanMetrics:
-    prefix = "generic"
+class PrometheusLocalSpanMetrics:
+    prefix = "local_span"
 
     # local labels and metrics
     labels = [
@@ -444,43 +438,3 @@ class PrometheusGenericSpanMetrics:
     @classmethod
     def get_active_requests_metric(cls) -> Gauge:
         return cls.active_requests
-
-
-def get_metrics_for_prefix(prefix: str) -> PrometheusGenericSpanMetrics:
-    # make sure metric names don't include disallowed chars
-    # https://github.com/prometheus/client_python/blob/748ffb00600dc25fbd22d37d549578e8e370d996/prometheus_client/metrics_core.py#L10
-    prefix = prefix.replace(".", "_")
-    prefix = re.sub("[^0-9a-zA-Z_:]+", "", prefix)
-
-    if prefix not in generic_metrics:
-        # local labels and metrics
-        labels = [
-            "span",
-        ]
-        generic_metrics[prefix] = type(
-            f"PrometheusGenericSpanMetrics<{prefix}>",
-            (PrometheusGenericSpanMetrics,),
-            {
-                "prefix": prefix,
-                # Reset the class attributes to avoid having the same prefix in the metric names
-                "labels": labels,
-                "latency_seconds": Histogram(
-                    f"{prefix}_latency_seconds",
-                    f"Latency histogram of {prefix} span",
-                    labels,
-                    buckets=default_latency_buckets,
-                ),
-                "requests_total": Counter(
-                    f"{prefix}_requests_total",
-                    f"Total number of {prefix} spans started",
-                    labels,
-                ),
-                "active_requests": Gauge(
-                    f"{prefix}_active_requests",
-                    f"Number of active {prefix} spans",
-                    labels,
-                ),
-            },
-        )
-        logger.debug("Created new metrics class for prefix %s", prefix)
-    return generic_metrics[prefix]  # type: ignore
