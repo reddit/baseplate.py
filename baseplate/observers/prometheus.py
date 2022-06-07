@@ -71,7 +71,7 @@ class PrometheusServerSpanObserver(SpanObserver):
         elif self.protocol == "http":
             self.metrics = PrometheusHTTPServerMetrics()
         else:
-            logger.warning(
+            logger.debug(
                 "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",
                 self.protocol,
             )
@@ -79,7 +79,7 @@ class PrometheusServerSpanObserver(SpanObserver):
     def on_start(self) -> None:
         self.set_metrics_by_protocol()
         if self.metrics is None:
-            logger.warning(
+            logger.debug(
                 "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
             )
             return
@@ -91,7 +91,7 @@ class PrometheusServerSpanObserver(SpanObserver):
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         if self.metrics is None:
-            logger.warning(
+            logger.debug(
                 "No metrics set for Prometheus metric collection. Metrics will not be exported correctly."
             )
             return
