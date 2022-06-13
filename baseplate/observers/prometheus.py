@@ -15,6 +15,7 @@ from baseplate import SpanObserver
 from baseplate.lib.prometheus_metrics import PrometheusHTTPClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusHTTPServerMetrics
 from baseplate.lib.prometheus_metrics import PrometheusLocalSpanMetrics
+from baseplate.lib.prometheus_metrics import PrometheusSQLAlchemyClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftClientMetrics
 from baseplate.lib.prometheus_metrics import PrometheusThriftServerMetrics
 from baseplate.thrift.ttypes import Error
@@ -154,6 +155,8 @@ class PrometheusClientSpanObserver(SpanObserver):
             self.metrics = PrometheusHTTPClientMetrics()
         elif self.protocol == "thrift":
             self.metrics = PrometheusThriftClientMetrics()
+        elif self.protocol == "sqlalchemy":
+            self.metrics = PrometheusSQLAlchemyClientMetrics()
         else:
             logger.debug(
                 "No valid protocol set for Prometheus metric collection, metrics won't be collected. Expected 'http' or 'thrift' protocol. Actual protocol: %s",

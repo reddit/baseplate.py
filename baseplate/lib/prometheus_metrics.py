@@ -438,3 +438,59 @@ class PrometheusLocalSpanMetrics:
     @classmethod
     def get_active_requests_metric(cls) -> Gauge:
         return cls.active_requests
+
+
+class PrometheusSQLAlchemyClientMetrics:
+    prefix = "database_client"
+
+    labels = [
+        "statement",
+    ]
+
+    # Latency histogram of HTTP calls made by clients
+    # buckets are defined above (from 100µs to ~14.9s)
+    latency_seconds = Histogram(
+        f"{prefix}_latency_seconds",
+        "Latency histogram of database calls made by client",
+        labels,
+        buckets=default_latency_buckets,
+    )
+    # Counter counting total HTTP requests started by a given client
+    requests_total = Counter(
+        f"{prefix}_requests_total",
+        "Total number of database requests started by a given client",
+        labels,
+    )
+    # Gauge showing current number of active requests by a given client
+    active_requests = Gauge(
+        f"{prefix}_active_requests",
+        "Number of active requests for a given client",
+        labels,
+    )
+
+    def __init__(self) -> None:
+        pass
+
+    @classmethod
+    def latency_seconds_metric(cls, tags: Dict[str, Any]) -> Histogram:
+        return cls.latency_seconds.labels(statement=tags.get("statement", ""))
+
+    @classmethod
+    def requests_total_metric(cls, tags: Dict[str, Any]) -> Counter:
+        return cls.requests_total.labels(statement=tags.get("statement", ""))
+
+    @classmethod
+    def active_requests_metric(cls, tags: Dict[str, Any]) -> Gauge:
+        return cls.active_requests.labels(statement=tags.get("statement", ""))
+
+    @classmethod
+    def get_latency_seconds_metric(cls) -> Histogram:
+        return cls.latency_seconds
+
+    @classmethod
+    def get_requests_total_metric(cls) -> Counter:
+        return cls.requests_total
+
+    @classmethod
+    def get_active_requests_metric(cls) -> Gauge:
+        return cls.active_requests
