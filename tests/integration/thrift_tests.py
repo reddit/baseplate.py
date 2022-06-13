@@ -872,9 +872,6 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
         handler = Handler()
 
         prom_observer = PrometheusClientSpanObserver()
-        # This normally called when a child span is created in
-        # PrometheusServerSpanObserver, we're skipping that
-        prom_observer.on_set_tag("protocol", "thrift")
 
         with serve_thrift(handler, TestService) as server:
             with baseplate_thrift_client(server.endpoint, TestService, prom_observer) as context:
