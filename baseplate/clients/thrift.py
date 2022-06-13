@@ -167,17 +167,17 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         trace_name = f"{self.namespace}.{name}"
         last_error = None
 
-        with self.pool.connection() as prot:
-            span = self.server_span.make_child(trace_name)
-            span.set_tag("protocol", "thrift")
-            span.set_tag("slug", self.namespace)
+        for time_remaining in self.retry_policy:
+            with self.pool.connection() as prot:
+                span = self.server_span.make_child(trace_name)
+                span.set_tag("protocol", "thrift")
+                span.set_tag("slug", self.namespace)
 
-            client = self.client_cls(prot)
-            method = getattr(client, name)
-            span.set_tag("method", method.__name__)
-            span.start()
+                client = self.client_cls(prot)
+                method = getattr(client, name)
+                span.set_tag("method", method.__name__)
+                span.start()
 
-            for time_remaining in self.retry_policy:
                 try:
                     baseplate = span.baseplate
                     if baseplate:
