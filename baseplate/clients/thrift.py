@@ -167,17 +167,18 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         trace_name = f"{self.namespace}.{name}"
         last_error = None
 
-        for time_remaining in self.retry_policy:
-            try:
-                with self.pool.connection() as prot:
-                    span = self.server_span.make_child(trace_name)
-                    span.set_tag("slug", self.namespace)
+        with self.pool.connection() as prot:
+            span = self.server_span.make_child(trace_name)
+            span.set_tag("protocol", "thrift")
+            span.set_tag("slug", self.namespace)
 
-                    client = self.client_cls(prot)
-                    method = getattr(client, name)
-                    span.set_tag("method", method.__name__)
-                    span.start()
+            client = self.client_cls(prot)
+            method = getattr(client, name)
+            span.set_tag("method", method.__name__)
+            span.start()
 
+            for time_remaining in self.retry_policy:
+                try:
                     baseplate = span.baseplate
                     if baseplate:
                         service_name = baseplate.service_name
@@ -213,38 +214,38 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         prot.trans.set_header(b"Edge-Request", edge_context)
 
                     result = method(*args, **kwargs)
-            except TTransportException as exc:
-                # the connection failed for some reason, retry if able
-                span.finish(exc_info=sys.exc_info())
-                last_error = str(exc)
-                if exc.inner is not None:
-                    last_error += f" ({exc.inner})"
-                continue
-            except (TApplicationException, TProtocolException):
-                # these are subclasses of TException but aren't ones that
-                # should be expected in the protocol. this is an error!
-                span.finish(exc_info=sys.exc_info())
-                raise
-            except Error as exc:
-                # a 5xx error is an unexpected exception but not 5xx are
-                # not.
-                if 500 <= exc.code < 600:
+                except TTransportException as exc:
+                    # the connection failed for some reason, retry if able
                     span.finish(exc_info=sys.exc_info())
-                else:
+                    last_error = str(exc)
+                    if exc.inner is not None:
+                        last_error += f" ({exc.inner})"
+                    continue
+                except (TApplicationException, TProtocolException):
+                    # these are subclasses of TException but aren't ones that
+                    # should be expected in the protocol. this is an error!
+                    span.finish(exc_info=sys.exc_info())
+                    raise
+                except Error as exc:
+                    # a 5xx error is an unexpected exception but not 5xx are
+                    # not.
+                    if 500 <= exc.code < 600:
+                        span.finish(exc_info=sys.exc_info())
+                    else:
+                        span.finish()
+                    raise
+                except TException:
+                    # this is an expected exception, as defined in the IDL
                     span.finish()
-                raise
-            except TException:
-                # this is an expected exception, as defined in the IDL
-                span.finish()
-                raise
-            except:  # noqa: E722
-                # something unexpected happened
-                span.finish(exc_info=sys.exc_info())
-                raise
-            else:
-                # a normal result
-                span.finish()
-                return result
+                    raise
+                except:  # noqa: E722
+                    # something unexpected happened
+                    span.finish(exc_info=sys.exc_info())
+                    raise
+                else:
+                    # a normal result
+                    span.finish()
+                    return result
 
         raise TTransportException(
             type=TTransportException.TIMED_OUT,
