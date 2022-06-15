@@ -1,5 +1,4 @@
 import contextlib
-import logging
 import inspect
 import sys
 
@@ -16,7 +15,6 @@ from thrift.Thrift import TException
 from thrift.transport.TTransport import TTransportException
 
 from baseplate import Span
-from baseplate import ParentSpanAlreadyFinishedError
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import metrics
@@ -24,8 +22,6 @@ from baseplate.lib.retry import RetryPolicy
 from baseplate.lib.thrift_pool import thrift_pool_from_config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.thrift.ttypes import Error
-
-logger = logging.getLogger(__name__)
 
 
 class ThriftClient(config.Parser):
@@ -244,14 +240,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     raise
                 except:  # noqa: E722
                     # something unexpected happened
-                    try:
-                        span.finish(exc_info=sys.exc_info())
-                    except ParentSpanAlreadyFinishedError:
-                        logger.warn("Attempted to finish a span where the parent was already closed")
-                        raise
-                    except:
-                        # make sure the unexpected error actually bubbles up
-                        raise
+                    span.finish(exc_info=sys.exc_info())
                     raise
                 else:
                     # a normal result
