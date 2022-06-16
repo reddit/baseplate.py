@@ -1,5 +1,6 @@
 import re
 
+from time import time
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -7,7 +8,9 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from prometheus_client import Counter
 from prometheus_client import Gauge
+from prometheus_client import Histogram
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
@@ -156,30 +159,50 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     """
 
-    PROM_PREFIX = "bp_sqlalchemy_pool"
-    PROM_LABELS = ["pool"]
+    PROM_PREFIX = "databasebp"
+    PROM_POOL_PREFIX = f"{PROM_PREFIX}_pool"
+    PROM_POOL_LABELS = ["pool"]
 
     max_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_max_size",
+        f"{PROM_POOL_PREFIX}_max_size",
         "Maximum number of connections allowed in this pool",
-        PROM_LABELS,
+        PROM_POOL_LABELS,
     )
 
     checked_in_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_idle_connections",
+        f"{PROM_POOL_PREFIX}_idle_connections",
         "Number of available, checked in, connections in this pool",
-        PROM_LABELS,
+        PROM_POOL_LABELS,
     )
 
     checked_out_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_active_connections",
+        f"{PROM_POOL_PREFIX}_active_connections",
         "Number of connections in use, or checked out, in this pool",
-        PROM_LABELS,
+        PROM_POOL_LABELS,
     )
 
     overflow_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_overflow_connections",
+        f"{PROM_POOL_PREFIX}_overflow_connections",
         "Number of connections over the desired size of this pool",
+        PROM_POOL_LABELS,
+    )
+
+    PROM_LABELS = [
+        "host",
+        "database",
+        "success",
+    ]
+
+    latency_seconds = Histogram(
+        f"{PROM_PREFIX}_latency_seconds",
+        "Latency histogram of calls to database",
+        PROM_LABELS,
+        # buckets=default_latency_buckets, # TODO: make configurable (would require configuring PROM_PREFIX too?)
+    )
+
+    requests_total = Counter(
+        f"{PROM_PREFIX}_requests_total",
+        "Total number of sql requests",
         PROM_LABELS,
     )
 
@@ -188,7 +211,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
         event.listen(self.engine, "handle_error", self.on_error)
+        self.time_started = 0.0
 
+        # Prometheus pool metrics
         pool = self.engine.pool
         if isinstance(pool, QueuePool):
             self.max_connections_gauge.labels(name).set_function(pool.size)
@@ -221,6 +246,8 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         executemany: bool,
     ) -> Tuple[str, Parameters]:
         """Handle the engine's before_cursor_execute event."""
+        self.time_started = time()
+
         context_name = conn._execution_options["context_name"]
         server_span = conn._execution_options["server_span"]
 
@@ -254,11 +281,29 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         conn.info["span"].finish()
         conn.info["span"] = None
 
+        labels = {
+            "host": conn.engine.url.host,
+            "database": conn.engine.url.database,
+            "success": "true",
+        }
+
+        self.requests_total.labels(**labels).inc()
+        self.latency_seconds.labels(**labels).observe(time() - self.time_started)
+
     def on_error(self, context: ExceptionContext) -> None:
         """Handle the event which happens on exceptions during execution."""
         exc_info = (type(context.original_exception), context.original_exception, None)
         context.connection.info["span"].finish(exc_info=exc_info)
         context.connection.info["span"] = None
+
+        labels = {
+            "host": context.connection.engine.url.host,
+            "database": context.connection.engine.url.database,
+            "success": "false",
+        }
+
+        self.requests_total.labels(**labels).inc()
+        self.latency_seconds.labels(**labels).observe(time() - self.time_started)
 
 
 class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
