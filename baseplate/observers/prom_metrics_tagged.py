@@ -18,8 +18,7 @@ from baseplate.lib import config
 
 
 class _PrometheusMetrics:
-    def __init__(self, allowlist):
-        print(allowlist)
+    def __init__(self, allowlist: List[str]):
         self.server_rate = Counter(
             "baseplate_server_span_rate", "Baseplate Server Span Counter", allowlist
         )
@@ -113,25 +112,25 @@ class _PromSpanObserver(SpanObserver):
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
 
-    def default_tags(self):
+    def default_tags(self) -> Dict[str, str]:
         return {k: "" for k in self.allowlist}
 
-    def filtered_tags(self):
+    def filtered_tags(self) -> Dict[str, Any]:
         filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.allowlist}
         return {**self.default_tags(), **filtered_tags}
 
-    def filtered_counters(self):
+    def filtered_counters(self) -> Dict[str, Any]:
         return {k: v for (k, v) in self.counters.items() if k in self.allowlist}
 
-    def runtime(self):
+    def runtime(self) -> float:
         if self.time_started:
             return time() - self.time_started
-        return 0
+        return 0.0
 
 
 class _PromTaggedMetricsServerSpanDummyObserver(SpanObserver):
     # for requests that aren't sampled
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def on_start(self) -> None:
