@@ -17,25 +17,38 @@ from baseplate import SpanObserver
 from baseplate.lib import config
 
 
+DEFAULT_LABELS = ["client", "endpoint", "success"]
+
+
 class _PrometheusMetrics:
     def __init__(self, allowlist: List[str]):
+        prefix = "baseplate"
+        extra_labels = set(allowlist) - set(DEFAULT_LABELS)
+        suffix = f"_w_{'_'.join(extra_labels)}" if len(extra_labels) > 0 else ""
+
         self.server_rate = Counter(
-            "baseplate_server_span_rate", "Baseplate Server Span Counter", allowlist
+            f"{prefix}_server_span_rate{suffix}_total", "Baseplate Server Span Counter", allowlist
         )
         self.server_latency = Histogram(
-            "baseplate_server_span_latency_seconds", "Baseplate Server Span Latency", allowlist
+            f"{prefix}_server_span_latency{suffix}_seconds",
+            "Baseplate Server Span Latency",
+            allowlist,
         )
         self.client_rate = Counter(
-            "baseplate_client_span_rate", "Baseplate Client Span Counter", allowlist
+            f"{prefix}_client_span_rate{suffix}_total", "Baseplate Client Span Counter", allowlist
         )
         self.client_latency = Histogram(
-            "baseplate_client_span_latency_seconds", "Baseplate Client Span Latency", allowlist
+            f"{prefix}_client_span_latency{suffix}_seconds",
+            "Baseplate Client Span Latency",
+            allowlist,
         )
         self.local_rate = Counter(
-            "baseplate_local_span_rate", "Baseplate Local Span Counter", allowlist
+            f"{prefix}_local_span_rate{suffix}_total", "Baseplate Local Span Counter", allowlist
         )
         self.local_latency = Histogram(
-            "baseplate_local_span_latency_seconds", "Baseplate Local Span Latency", allowlist
+            f"{prefix}_local_span_latency{suffix}_seconds",
+            "Baseplate Local Span Latency",
+            allowlist,
         )
 
 
@@ -69,7 +82,8 @@ class PromTaggedMetricsBaseplateObserver(BaseplateObserver):
                 # TODO: make latency buckets configurable?
             },
         )
-        allowlist = [*cfg.metrics.allowlist, "client", "endpoint", "success"]
+
+        allowlist = [*cfg.metrics.allowlist, *DEFAULT_LABELS]
         return cls(
             _PrometheusMetrics(allowlist),
             allowlist=allowlist,
