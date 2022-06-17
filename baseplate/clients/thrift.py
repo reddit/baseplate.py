@@ -1,6 +1,7 @@
 import contextlib
 import inspect
 import sys
+import time
 
 from math import ceil
 from typing import Any
@@ -8,7 +9,9 @@ from typing import Callable
 from typing import Iterator
 from typing import Optional
 
+from prometheus_client import Counter
 from prometheus_client import Gauge
+from prometheus_client import Histogram
 from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
@@ -18,10 +21,39 @@ from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import metrics
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.retry import RetryPolicy
 from baseplate.lib.thrift_pool import thrift_pool_from_config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
+
+
+PROM_NAMESPACE = "thrift_client"
+
+PROM_COMMON_LABELS = [
+    "thrift_method",
+    "thrift_success",
+]
+REQUESTS_TOTAL_LABELS = [
+    *PROM_COMMON_LABELS,
+    "thrift_exception_type",
+    "thrift_baseplate_status",
+    "thrift_baseplate_status_code",
+]
+
+REQUEST_LATENCY = Histogram(
+    f"{PROM_NAMESPACE}_latency_seconds",
+    "Latency of thrift client requests",
+    PROM_COMMON_LABELS,
+    buckets=default_latency_buckets,
+)
+
+REQUESTS_TOTAL = Counter(
+    f"{PROM_NAMESPACE}_requests_total",
+    "Total number of outgoing requests",
+    REQUESTS_TOTAL_LABELS,
+)
 
 
 class ThriftClient(config.Parser):
@@ -71,19 +103,19 @@ class ThriftContextFactory(ContextFactory):
 
     """
 
-    PROM_PREFIX = "bp_thrift_pool"
-    PROM_LABELS = ["client_cls"]
+    POOL_PREFIX = "thrift_pool"
+    POOL_LABELS = ["client_cls"]
 
     max_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_max_size",
+        f"{POOL_PREFIX}_max_size",
         "Maximum number of connections in this thrift pool before blocking",
-        PROM_LABELS,
+        POOL_LABELS,
     )
 
     active_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_active_connections",
+        f"{POOL_PREFIX}_active_connections",
         "Number of connections currently in use in this thrift pool",
-        PROM_LABELS,
+        POOL_LABELS,
     )
 
     def __init__(self, pool: ThriftConnectionPool, client_cls: Any):
@@ -168,15 +200,19 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         last_error = None
 
         for time_remaining in self.retry_policy:
+            start_time = time.perf_counter()
+
             with self.pool.connection() as prot:
                 span = self.server_span.make_child(trace_name)
-                span.set_tag("protocol", "thrift")
                 span.set_tag("slug", self.namespace)
 
                 client = self.client_cls(prot)
                 method = getattr(client, name)
                 span.set_tag("method", method.__name__)
                 span.start()
+
+                success = "true"
+                exception = None
 
                 try:
                     baseplate = span.baseplate
@@ -216,20 +252,27 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     result = method(*args, **kwargs)
                 except TTransportException as exc:
                     # the connection failed for some reason, retry if able
+                    success = "false"
+                    exception = exc
+
                     span.finish(exc_info=sys.exc_info())
                     last_error = str(exc)
                     if exc.inner is not None:
                         last_error += f" ({exc.inner})"
                     continue
-                except (TApplicationException, TProtocolException):
+                except (TApplicationException, TProtocolException) as exc:
                     # these are subclasses of TException but aren't ones that
                     # should be expected in the protocol. this is an error!
+                    success = "false"
+                    exception = exc
                     span.finish(exc_info=sys.exc_info())
                     raise
                 except Error as exc:
                     # a 5xx error is an unexpected exception but not 5xx are
                     # not.
                     if 500 <= exc.code < 600:
+                        success = "false"
+                        exception = exc
                         span.finish(exc_info=sys.exc_info())
                     else:
                         span.finish()
@@ -240,12 +283,30 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     raise
                 except:  # noqa: E722
                     # something unexpected happened
+                    exception = sys.exc_info()[1]
                     span.finish(exc_info=sys.exc_info())
                     raise
                 else:
                     # a normal result
                     span.finish()
                     return result
+                finally:
+                    status_code = exception.code if isinstance(exception, Error) else ""
+                    status_human = (
+                        ErrorCode()._VALUES_TO_NAMES.get(status_code, "") if status_code else ""
+                    )
+
+                    REQUEST_LATENCY.labels(thrift_method=name, thrift_success=success).observe(
+                        time.perf_counter() - start_time
+                    )
+
+                    REQUESTS_TOTAL.labels(
+                        thrift_method=name,
+                        thrift_success=success,
+                        thrift_exception_type=exception.__class__.__name__ if exception else "",
+                        thrift_baseplate_status_code=status_code,
+                        thrift_baseplate_status=status_human,
+                    ).inc()
 
         raise TTransportException(
             type=TTransportException.TIMED_OUT,
