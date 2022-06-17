@@ -160,7 +160,7 @@ class TraceInfo(NamedTuple):
             raise ValueError("invalid sampled value")
 
         if flags is not None:
-            if not 0 <= flags < 2 ** 64:
+            if not 0 <= flags < 2**64:
                 raise ValueError("invalid flags value")
 
         return cls(trace_id, parent_id, span_id, sampled, flags)
@@ -340,6 +340,20 @@ class Baseplate:
                     self._app_config, self._metrics_client
                 )
             )
+
+            if "metrics.tagged.prometheus" in self._app_config:
+                from baseplate.observers.prom_metrics_tagged import (
+                    PromTaggedMetricsBaseplateObserver,
+                )
+
+                self.register(PromTaggedMetricsBaseplateObserver.from_config(self._app_config))
+
+            # If statsd metrics are currently configured, then enable Prometheus metrics simultaneous.
+            # Once the migration to Prometheus is complete, then only enable Prometheus metrics.
+            from baseplate.observers.prometheus import PrometheusBaseplateObserver
+
+            observer = PrometheusBaseplateObserver()
+            self.register(observer)
 
         elif "metrics.namespace" in self._app_config:
             from baseplate.lib.metrics import metrics_client_from_config
