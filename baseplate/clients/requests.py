@@ -1,5 +1,6 @@
 import base64
 import ipaddress
+import time
 
 from typing import Any
 from typing import Optional
@@ -8,6 +9,9 @@ from typing import Union
 
 from advocate import AddrValidator
 from advocate import ValidatingHTTPAdapter
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 from requests import PreparedRequest
 from requests import Request
 from requests import Response
@@ -17,6 +21,8 @@ from requests.adapters import HTTPAdapter
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 
 
 def http_adapter_from_config(
@@ -99,6 +105,35 @@ def http_adapter_from_config(
         ),
     )
     return ValidatingHTTPAdapter(**kwargs)
+
+
+PROM_NAMESPACE = "http_client"
+HTTP_LABELS_COMMON = [
+    "http_method",
+    "http_client_name",
+]
+HTTP_LABELS_TERMINAL = [*HTTP_LABELS_COMMON, "http_success"]
+
+# Latency histogram of HTTP calls made by clients
+# buckets are defined above (from 100µs to ~14.9s)
+LATENCY_SECONDS = Histogram(
+    f"{PROM_NAMESPACE}_latency_seconds",
+    "Latency histogram of HTTP calls made by clients",
+    HTTP_LABELS_TERMINAL,
+    buckets=default_latency_buckets,
+)
+# Counter counting total HTTP requests started by a given client
+REQUESTS_TOTAL = Counter(
+    f"{PROM_NAMESPACE}_requests_total",
+    "Total number of HTTP requests started by a given client",
+    [*HTTP_LABELS_TERMINAL, "http_response_code"],
+)
+# Gauge showing current number of active requests by a given client
+ACTIVE_REQUESTS = Gauge(
+    f"{PROM_NAMESPACE}_active_requests",
+    "Number of active requests for a given client",
+    HTTP_LABELS_COMMON,
+)
 
 
 class BaseplateSession:
@@ -204,13 +239,20 @@ class BaseplateSession:
 
     def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
         """Send a :py:class:`~requests.PreparedRequest`."""
-        tags = {
-            "protocol": "http",
-            "http.method": request.method,
-            "http.url": request.url,
-            "http.slug": self.client_name if self.client_name is not None else self.name,
+        active_request_label_values = {
+            "http_method": request.method or "",
+            "http_client_name": self.client_name if self.client_name is not None else self.name,
         }
-        with self.span.make_child(f"{self.name}.request").with_tags(tags) as span:
+        start_time = time.perf_counter()
+        ACTIVE_REQUESTS.labels(**active_request_label_values).inc()
+
+        with self.span.make_child(f"{self.name}.request").with_tags(
+            {
+                "http.url": request.url,
+                "http.method": request.method,
+                "http.slug": self.client_name if self.client_name is not None else self.name,
+            }
+        ) as span:
             self._add_span_context(span, request)
 
             # we cannot re-use the same session every time because sessions re-use the same
@@ -225,6 +267,19 @@ class BaseplateSession:
 
             http_status_code = response.status_code
             span.set_tag("http.status_code", http_status_code)
+
+        latency_label_values = {
+            **active_request_label_values,
+            "http_success": getHTTPSuccessLabel(response.status_code),
+        }
+        requests_total_label_values = {
+            **latency_label_values,
+            "http_response_code": str(response.status_code),
+        }
+
+        LATENCY_SECONDS.labels(**latency_label_values).observe(time.perf_counter() - start_time)
+        REQUESTS_TOTAL.labels(**requests_total_label_values).inc()
+        ACTIVE_REQUESTS.labels(**active_request_label_values).dec()
         return response
 
 
@@ -265,7 +320,7 @@ class RequestsContextFactory(ContextFactory):
         :py:func:`http_adapter_from_config`.
     :param session_cls: The type for the actual session object to put on the
         request context.
-    :param client_name: Custom name to be emitted under the http_slug label
+    :param client_name: Custom name to be emitted under the http_client_name label
         for prometheus metrics. Defaults back to session_cls.name if None
 
     """
@@ -304,7 +359,7 @@ class InternalRequestsClient(config.Parser):
 
     See :py:func:`http_adapter_from_config` for available configuration settings.
 
-    :param client_name: Custom name to be emitted under the http_slug label
+    :param client_name: Custom name to be emitted under the http_client_name label
         for prometheus metrics. Defaults back to session_cls.name if None
 
     """
@@ -354,7 +409,7 @@ class ExternalRequestsClient(config.Parser):
 
     See :py:func:`http_adapter_from_config` for available configuration settings.
 
-    :param client_name: Custom name to be emitted under the http_slug label
+    :param client_name: Custom name to be emitted under the http_client_name label
         for prometheus metrics. Defaults back to session_cls.name if None
 
     """

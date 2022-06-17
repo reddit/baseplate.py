@@ -1,4 +1,5 @@
 import sys
+import time
 
 from logging import Logger
 from typing import Any
@@ -6,6 +7,9 @@ from typing import Callable
 from typing import Mapping
 from typing import Optional
 
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 from requests.structures import CaseInsensitiveDict
 from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
@@ -18,8 +22,39 @@ from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import TraceInfo
 from baseplate.lib.edgecontext import EdgeContextFactory
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
+
+
+PROM_NAMESPACE = "thrift_server"
+
+PROM_COMMON_LABELS = ["thrift_method"]
+PROM_LATENCY = Histogram(
+    f"{PROM_NAMESPACE}_latency_seconds",
+    "Time spent processing requests",
+    [
+        *PROM_COMMON_LABELS,
+        "thrift_success",
+    ],
+    buckets=default_latency_buckets,
+)
+PROM_REQUESTS = Counter(
+    f"{PROM_NAMESPACE}_requests_total",
+    "Total RPC request count",
+    [
+        *PROM_COMMON_LABELS,
+        "thrift_success",
+        "thrift_exception_type",
+        "thrift_baseplate_status",
+        "thrift_baseplate_status_code",
+    ],
+)
+PROM_ACTIVE = Gauge(
+    f"{PROM_NAMESPACE}_active_requests",
+    "The number of in-flight requests being handled by the service",
+    PROM_COMMON_LABELS,
+)
 
 
 class _ContextAwareHandler:
@@ -43,12 +78,21 @@ class _ContextAwareHandler:
 
             span = self.context.span
             span.set_tag("thrift.method", fn_name)
+            start_time = time.perf_counter()
+            success = "true"
+            exception = ""
+            status_code = ""
+            status_name = ""
+
             try:
                 span.start()
+                PROM_ACTIVE.labels(fn_name).inc()
                 result = handler_fn(self.context, *args, **kwargs)
-            except (TApplicationException, TProtocolException, TTransportException):
+            except (TApplicationException, TProtocolException, TTransportException) as exc:
                 # these are subclasses of TException but aren't ones that
                 # should be expected in the protocol
+                exception = exc.__class__.__name__
+                success = "false"
                 span.finish(exc_info=sys.exc_info())
                 raise
             except Error as exc:
@@ -58,19 +102,29 @@ class _ContextAwareHandler:
                 span.set_tag("thrift.status_code", exc.code)
                 span.set_tag("thrift.status", status)
                 span.set_tag("success", "false")
+
+                success = "false"
+                exception = exc.__class__.__name__
+                status_code = exc.code
+                status_name = status
+
                 # mark 5xx errors as failures since those are still "unexpected"
                 if 500 <= exc.code < 600:
+                    success = "false"
                     span.finish(exc_info=sys.exc_info())
                 else:
                     span.finish()
                 raise
             except TException as e:
+                exception = e.__class__.__name__
                 span.set_tag("exception_type", type(e).__name__)
                 span.set_tag("success", "false")
                 # this is an expected exception, as defined in the IDL
                 span.finish()
                 raise
             except:  # noqa: E722
+                exception = sys.exc_info()[1].__class__.__name__
+                success = "false"
                 # the handler crashed (or timed out)!
                 span.finish(exc_info=sys.exc_info())
                 if self.convert_to_baseplate_error:
@@ -83,6 +137,16 @@ class _ContextAwareHandler:
                 # a normal result
                 span.finish()
                 return result
+            finally:
+                PROM_ACTIVE.labels(fn_name).dec()
+                PROM_REQUESTS.labels(
+                    thrift_method=fn_name,
+                    thrift_success=success,
+                    thrift_exception_type=exception,
+                    thrift_baseplate_status=status_name,
+                    thrift_baseplate_status_code=status_code,
+                ).inc()
+                PROM_LATENCY.labels(fn_name, success).observe(time.perf_counter() - start_time)
 
         return call_with_context
 

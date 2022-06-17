@@ -3,13 +3,11 @@ import unittest
 
 from unittest import mock
 
-from prometheus_client import REGISTRY
 from pyramid.response import Response
 
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
-from baseplate.observers.prometheus import PrometheusBaseplateObserver
 
 from . import FakeEdgeContextFactory
 
@@ -279,70 +277,3 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_finish.called)
 
         response.app_iter.close()
-
-    def test_prometheus_metrics(self):
-        self.baseplate.register(PrometheusBaseplateObserver())
-        self.test_app.get("/route/random/world")
-
-        self.assertEqual(
-            0.0,
-            REGISTRY.get_sample_value(
-                "http_server_active_requests",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                },
-            ),
-        )
-
-        self.assertEqual(
-            1.0,
-            REGISTRY.get_sample_value(
-                "http_server_requests_total",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                    "http_success": "true",
-                    "http_response_code": "200",
-                },
-            ),
-        )
-
-        self.assertEqual(
-            1.0,
-            REGISTRY.get_sample_value(
-                "http_server_latency_seconds_bucket",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                    "http_success": "true",
-                    "le": "+Inf",
-                },
-            ),
-        )
-
-        self.assertEqual(
-            1.0,
-            REGISTRY.get_sample_value(
-                "http_server_request_size_bytes_bucket",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                    "http_success": "true",
-                    "le": "+Inf",
-                },
-            ),
-        )
-
-        self.assertEqual(
-            1.0,
-            REGISTRY.get_sample_value(
-                "http_server_response_size_bytes_bucket",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                    "http_success": "true",
-                    "le": "+Inf",
-                },
-            ),
-        )
