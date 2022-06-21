@@ -1,6 +1,6 @@
 import re
 
-from time import time
+from time import perf_counter
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -27,6 +27,7 @@ from baseplate import SpanObserver
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import metrics
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.secrets import SecretsStore
 
 
@@ -197,7 +198,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         f"{PROM_PREFIX}_latency_seconds",
         "Latency histogram of calls to database",
         PROM_LABELS,
-        # buckets=default_latency_buckets, # TODO: make configurable (would require configuring PROM_PREFIX too?)
+        buckets=default_latency_buckets,
     )
 
     requests_total = Counter(
@@ -246,7 +247,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         executemany: bool,
     ) -> Tuple[str, Parameters]:
         """Handle the engine's before_cursor_execute event."""
-        self.time_started = time()
+        self.time_started = perf_counter()
 
         context_name = conn._execution_options["context_name"]
         server_span = conn._execution_options["server_span"]
@@ -288,7 +289,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         }
 
         self.requests_total.labels(**labels).inc()
-        self.latency_seconds.labels(**labels).observe(time() - self.time_started)
+        self.latency_seconds.labels(**labels).observe(perf_counter() - self.time_started)
 
     def on_error(self, context: ExceptionContext) -> None:
         """Handle the event which happens on exceptions during execution."""
@@ -303,7 +304,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         }
 
         self.requests_total.labels(**labels).inc()
-        self.latency_seconds.labels(**labels).observe(time() - self.time_started)
+        self.latency_seconds.labels(**labels).observe(perf_counter() - self.time_started)
 
 
 class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
