@@ -341,10 +341,6 @@ class Baseplate:
                 )
             )
 
-            from baseplate.observers.prom_metrics_tagged import PromTaggedMetricsBaseplateObserver
-
-            self.register(PromTaggedMetricsBaseplateObserver.from_config(self._app_config))
-
             # If statsd metrics are currently configured, then enable Prometheus metrics simultaneous.
             # Once the migration to Prometheus is complete, then only enable Prometheus metrics.
             from baseplate.observers.prometheus import PrometheusBaseplateObserver
