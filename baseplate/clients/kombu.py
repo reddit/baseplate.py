@@ -1,4 +1,5 @@
 import abc
+import time
 
 from typing import Any
 from typing import Generic
@@ -11,17 +12,41 @@ import kombu.serialization
 from kombu import Connection
 from kombu import Exchange
 from kombu.pools import Producers
+from prometheus_client import Counter
+from prometheus_client import Histogram
 from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.protocol.TProtocol import TProtocolFactory
+from vine.promises import promise  # type: ignore
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.secrets import SecretsStore
 
 
 T = TypeVar("T")
+
+amqp_producer_labels = [
+    "amqp_address",
+    "amqp_virtual_host",
+    "amqp_exchange",  # exchange_type
+    "amqp_queue",  # exchange_name
+    "amqp_success",
+]
+
+PROCESSING_TIME = Histogram(
+    "amqp_producer_message_processing_seconds",
+    "latency histogram of how long it takes to queue a message",
+    amqp_producer_labels,
+    buckets=default_latency_buckets,
+)
+PROCESSED_TOTAL = Counter(
+    "amqp_producer_message_processed_total",
+    "total messages produced by this host",
+    amqp_producer_labels,
+)
 
 
 def connection_from_config(
@@ -232,8 +257,27 @@ class _KombuProducer:
         self.exchange = exchange
         self.producers = producers
         self.serializer = serializer
+        self.prom_labels = {
+            "amqp_address": f"{self.connection.hostname}:{self.connection.port}",
+            "amqp_virtual_host": self.connection.virtual_host,
+            "amqp_exchange": self.exchange.type,
+            "amqp_queue": self.exchange.name,
+        }
+
+    def _on_success(self, start_time: float) -> None:
+        PROCESSING_TIME.labels(**self.prom_labels, amqp_success="true").observe(
+            time.perf_counter() - start_time
+        )
+        PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="true").inc()
+
+    def _on_error(self, start_time: float) -> None:
+        PROCESSING_TIME.labels(**self.prom_labels, amqp_success="false").observe(
+            time.perf_counter() - start_time
+        )
+        PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="false").inc()
 
     def publish(self, body: Any, routing_key: Optional[str] = None, **kwargs: Any) -> Any:
+        start_time = time.perf_counter()
         if self.serializer:
             kwargs.setdefault("serializer", self.serializer.name)
 
@@ -247,6 +291,19 @@ class _KombuProducer:
         with child_span:
             producer_pool = self.producers[self.connection]
             with producer_pool.acquire(block=True) as producer:
-                return producer.publish(
-                    body=body, routing_key=routing_key, exchange=self.exchange, **kwargs
-                )
+                try:
+                    p = producer.publish(
+                        body=body, routing_key=routing_key, exchange=self.exchange, **kwargs
+                    )
+                    # since publish(...) returns a promise, we have to handle it with callbacks
+                    on_success = promise(self._on_success, (start_time,))
+                    on_error = promise(self._on_error, (start_time,))
+                    p.then(on_success, on_error=on_error)
+                    return p
+                except Exception:
+                    # we have to handle exceptions here
+                    PROCESSING_TIME.labels(**self.prom_labels, amqp_success="false").observe(
+                        time.perf_counter() - start_time
+                    )
+                    PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="false").inc()
+                    raise

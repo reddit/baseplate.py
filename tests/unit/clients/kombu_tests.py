@@ -1,7 +1,15 @@
+from unittest import mock
+
 import pytest
 
+from prometheus_client import REGISTRY
+
+from baseplate.clients.kombu import _KombuProducer
 from baseplate.clients.kombu import connection_from_config
+from baseplate.clients.kombu import exchange_from_config
 from baseplate.clients.kombu import KombuThriftSerializer
+from baseplate.clients.kombu import PROCESSED_TOTAL
+from baseplate.clients.kombu import PROCESSING_TIME
 from baseplate.lib.config import ConfigurationError
 from baseplate.testing.lib.secrets import FakeSecretsStore
 
@@ -120,3 +128,98 @@ class TestKombuThriftSerializer:
     def test_deserialize_errors(self, input, exc, serializer):
         with pytest.raises(exc):
             serializer.deserialize(input)
+
+
+class Test_KombuProducer:
+    def setup(self):
+        PROCESSING_TIME.clear()
+        PROCESSED_TOTAL.clear()
+
+    @pytest.fixture
+    def app_config(self):
+        yield {
+            "rabbitmq.hostname": "amqp://rabbit.local:5672",
+            "rabbitmq.exchange_type": "topic",
+            "rabbitmq.exchange_name": "test_name",
+        }
+
+    @pytest.fixture
+    def prefix(self):
+        yield "rabbitmq."
+
+    @pytest.fixture
+    def connection(self, app_config, prefix):
+        yield connection_from_config(app_config, prefix=prefix)
+
+    @pytest.fixture
+    def exchange(self, app_config, prefix):
+        yield exchange_from_config(app_config, prefix=prefix)
+
+    @pytest.fixture
+    def producer(self):
+        yield mock.MagicMock()
+
+    @pytest.fixture
+    def producer_pool(self, producer):
+        pp = mock.MagicMock()
+        pp.acquire().__enter__.return_value = producer
+        yield pp
+
+    @pytest.fixture
+    def producers(self, connection, producer_pool):
+        p = mock.MagicMock()
+        p.__getitem__.return_value = producer_pool
+        yield p
+
+    @pytest.fixture
+    def span(self):
+        yield mock.MagicMock()
+
+    @pytest.fixture
+    def kombu_producer(self, span, connection, exchange, producers):
+        yield _KombuProducer("name", span, connection, exchange, producers)
+
+    @pytest.fixture
+    def expected_labels(self):
+        yield {
+            "amqp_address": "rabbit.local:5672",
+            "amqp_virtual_host": "/",
+            "amqp_exchange": "topic",
+            "amqp_queue": "test_name",
+        }
+
+    def test__on_success(self, kombu_producer, expected_labels):
+        kombu_producer._on_success(1)
+        expected_labels["amqp_success"] = "true"
+        assert (
+            REGISTRY.get_sample_value(
+                f"{PROCESSING_TIME._name}_bucket", {**expected_labels, **{"le": "+Inf"}}
+            )
+            == 1
+        )
+        assert REGISTRY.get_sample_value(f"{PROCESSED_TOTAL._name}_total", expected_labels) == 1
+
+    def test__on_error(self, kombu_producer, expected_labels):
+        kombu_producer._on_error(1)
+        expected_labels["amqp_success"] = "false"
+        assert (
+            REGISTRY.get_sample_value(
+                f"{PROCESSING_TIME._name}_bucket", {**expected_labels, **{"le": "+Inf"}}
+            )
+            == 1
+        )
+        assert REGISTRY.get_sample_value(f"{PROCESSED_TOTAL._name}_total", expected_labels) == 1
+
+    def test_publish_prom_exc(self, kombu_producer, expected_labels, producer):
+        producer.publish.side_effect = Exception("Any error")
+
+        with pytest.raises(Exception, match=r"^Any error$"):
+            kombu_producer.publish(body="doesn't matter")
+        expected_labels["amqp_success"] = "false"
+        assert (
+            REGISTRY.get_sample_value(
+                f"{PROCESSING_TIME._name}_bucket", {**expected_labels, **{"le": "+Inf"}}
+            )
+            == 1
+        )
+        assert REGISTRY.get_sample_value(f"{PROCESSED_TOTAL._name}_total", expected_labels) == 1
