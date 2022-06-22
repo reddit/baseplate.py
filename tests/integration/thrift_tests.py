@@ -708,7 +708,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
             "protocol": "thrift",
             "thrift.method": "example",
             "exception_type": "ExpectedException",
-            "success": "true",
+            "success": "false",
         }
         self.assertEqual(got_labels, want_labels)
 
@@ -726,7 +726,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
             18,
             3,
             "thrift_server_latency_seconds_bucket",
-            {"thrift_method": "example", "thrift_success": "true", "le": "0.0015625"},
+            {"thrift_method": "example", "thrift_success": "false", "le": "0.0015625"},
             1.0,
         )
         self.assert_correct_metric(
@@ -739,7 +739,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
                 "thrift_baseplate_status_code": "",
                 "thrift_exception_type": "ExpectedException",
                 "thrift_method": "example",
-                "thrift_success": "true",
+                "thrift_success": "false",
             },
             1.0,
         )
@@ -823,7 +823,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
             "exception_type": "Error",
             "thrift.status_code": 404,
             "thrift.status": "NOT_FOUND",
-            "success": "true",
+            "success": "false",
         }
         self.assertEqual(got_labels, want_labels)
 
@@ -841,7 +841,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
             18,
             3,
             "thrift_server_latency_seconds_bucket",
-            {"thrift_method": "example", "thrift_success": "true", "le": "0.0015625"},
+            {"thrift_method": "example", "thrift_success": "false", "le": "0.0015625"},
             1.0,
         )
         self.assert_correct_metric(
@@ -854,7 +854,7 @@ class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
                 "thrift_baseplate_status_code": "404",
                 "thrift_exception_type": "Error",
                 "thrift_method": "example",
-                "thrift_success": "true",
+                "thrift_success": "false",
             },
             1.0,
         )
