@@ -57,6 +57,7 @@ class _ContextAwareHandler:
                 span.set_tag("exception_type", "Error")
                 span.set_tag("thrift.status_code", exc.code)
                 span.set_tag("thrift.status", status)
+                span.set_tag("success", "false")
                 # mark 5xx errors as failures since those are still "unexpected"
                 if 500 <= exc.code < 600:
                     span.finish(exc_info=sys.exc_info())
@@ -65,6 +66,7 @@ class _ContextAwareHandler:
                 raise
             except TException as e:
                 span.set_tag("exception_type", type(e).__name__)
+                span.set_tag("success", "false")
                 # this is an expected exception, as defined in the IDL
                 span.finish()
                 raise
