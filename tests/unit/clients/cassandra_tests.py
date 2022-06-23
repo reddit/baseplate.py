@@ -16,7 +16,12 @@ import logging
 from baseplate.lib.config import ConfigurationError
 from baseplate.clients.cassandra import (
     cluster_from_config,
+    CassandraCallbackArgs,
+    CassandraPrometheusLabels,
     CassandraSessionAdapter,
+    REQUEST_TIME,
+    REQUEST_ACTIVE,
+    REQUEST_TOTAL,
     _on_execute_complete,
     _on_execute_failed,
 )
@@ -78,11 +83,9 @@ class ClusterFromConfigTests(unittest.TestCase):
 class CassandraSessionAdapterTests(unittest.TestCase):
     def setUp(self):
         # cleaning up prom registry
-        collectors = list(REGISTRY._collector_to_names.keys())
-        for collector in collectors:
-            # some system collectors cannot be cleared
-            if hasattr(collector, "clear"):
-                collector.clear()
+        REQUEST_TIME.clear()
+        REQUEST_ACTIVE.clear()
+        REQUEST_TOTAL.clear()
 
         self.session = mock.MagicMock()
         self.prepared_statements = {}
@@ -112,22 +115,17 @@ class CassandraSessionAdapterTests(unittest.TestCase):
         ]  # mocking cluster contact points
         self.adapter.execute_async("SELECT foo from bar;")
 
-        requests_active = REGISTRY._names_to_collectors[
-            "cassandra_client_requests_active"
-        ].collect()
-        self.assertEquals(len(requests_active), 1)
-        self.assertEquals(len(requests_active[0].samples), 1)
-        requests_active_s = requests_active[0].samples[0]
-        self.assertEquals(requests_active_s.name, "cassandra_client_requests_active")
-        self.assertEquals(
-            len(requests_active_s.labels.keys()), 3
-        )  # contact_points, keyspace, query_name
-        self.assertEquals(
-            requests_active_s.labels["cassandra_contact_points"], "hostname1,hostname2"
+        self.assertEqual(
+            REGISTRY.get_sample_value(
+                "cassandra_client_active_requests",
+                {
+                    "cassandra_contact_points": "hostname1,hostname2",
+                    "cassandra_keyspace": "keyspace",
+                    "cassandra_query_name": "",
+                },
+            ),
+            1,
         )
-        self.assertEquals(requests_active_s.labels["cassandra_keyspace"], "keyspace")
-        self.assertEquals(requests_active_s.labels["cassandra_query_name"], "")
-        self.assertEquals(requests_active_s.value, 1)
 
     def test_execute_async_with_query_name_prom_metrics(self):
         self.session.keyspace = "keyspace"  # mocking keyspace name
@@ -137,178 +135,103 @@ class CassandraSessionAdapterTests(unittest.TestCase):
         ]  # mocking cluster contact points
         self.adapter.execute_async("SELECT foo from bar;", query_name="foo_bar")
 
-        requests_active = REGISTRY._names_to_collectors[
-            "cassandra_client_requests_active"
-        ].collect()
-        self.assertEquals(len(requests_active), 1)
-        self.assertEquals(len(requests_active[0].samples), 1)
-        requests_active_s = requests_active[0].samples[0]
-        self.assertEquals(requests_active_s.name, "cassandra_client_requests_active")
-        self.assertEquals(
-            len(requests_active_s.labels.keys()), 3
-        )  # contact_points, keyspace, query_name
-        self.assertEquals(
-            requests_active_s.labels["cassandra_contact_points"], "hostname1,hostname2"
+        self.assertEqual(
+            REGISTRY.get_sample_value(
+                "cassandra_client_active_requests",
+                {
+                    "cassandra_contact_points": "hostname1,hostname2",
+                    "cassandra_keyspace": "keyspace",
+                    "cassandra_query_name": "foo_bar",
+                },
+            ),
+            1,
         )
-        self.assertEquals(requests_active_s.labels["cassandra_keyspace"], "keyspace")
-        self.assertEquals(requests_active_s.labels["cassandra_query_name"], "foo_bar")
-        self.assertEquals(requests_active_s.value, 1)
 
 
 class CassandraTests(unittest.TestCase):
     def setUp(self):
-        collectors = list(REGISTRY._collector_to_names.keys())
-        for collector in collectors:
-            # some system collectors cannot be cleared
-            if hasattr(collector, "clear"):
-                collector.clear()
+        REQUEST_TIME.clear()
+        REQUEST_ACTIVE.clear()
+        REQUEST_TOTAL.clear()
 
     def test_prom__on_execute_complete(self):
         result = mock.MagicMock()
         span = mock.MagicMock()
         event = mock.MagicMock()
         start_time = 1.0
-        prom_labels = (
-            "contact1,contact2",
-            "cassandra_keyspace",
-            "",
+
+        prom_labels_tuple = CassandraPrometheusLabels(
+            cassandra_contact_points="contact1,contact2",
+            cassandra_keyspace="keyspace",
+            cassandra_query_name="",
         )
 
         _on_execute_complete(
             result,
-            (
-                span,
-                start_time,
-                prom_labels,
+            CassandraCallbackArgs(
+                span=span,
+                start_time=start_time,
+                prom_labels=prom_labels_tuple,
             ),
             event,
         )
+        prom_labels = prom_labels_tuple._asdict()
+        prom_labels_w_success = {**prom_labels, **{"cassandra_success": "true"}}
 
-        requests_total = REGISTRY._names_to_collectors["cassandra_client_requests_total"].collect()
-        self.assertEquals(len(requests_total), 1)
-        self.assertEquals(len(requests_total[0].samples), 2)  # _total and _created
-        requests_total_s = requests_total[0].samples[0]
-        self.assertEquals(requests_total_s.name, "cassandra_client_requests_total")
         self.assertEquals(
-            len(requests_total_s.labels.keys()), 4
-        )  # contact_points, keyspace, query_name  and success
-        self.assertEquals(requests_total_s.labels["cassandra_contact_points"], prom_labels[0])
-        self.assertEquals(requests_total_s.labels["cassandra_keyspace"], prom_labels[1])
-        self.assertEquals(requests_total_s.labels["cassandra_query_name"], prom_labels[2])
-        self.assertEquals(
-            requests_total_s.labels["cassandra_success"], "true"
-        )  # this is the happy path
-        self.assertEquals(requests_total_s.value, 1)
+            REGISTRY.get_sample_value("cassandra_client_requests_total", prom_labels_w_success), 1
+        )
 
-        requests_active = REGISTRY._names_to_collectors[
-            "cassandra_client_requests_active"
-        ].collect()
-        self.assertEquals(len(requests_active), 1)
-        self.assertEquals(len(requests_active[0].samples), 1)
-        requests_active_s = requests_active[0].samples[0]
-        self.assertEquals(requests_active_s.name, "cassandra_client_requests_active")
+        # we start from 0 here since this is a unit test, so -1 is the expected result
         self.assertEquals(
-            len(requests_active_s.labels.keys()), 3
-        )  # contact_points, keyspace, query_name
-        self.assertEquals(requests_active_s.labels["cassandra_contact_points"], prom_labels[0])
-        self.assertEquals(requests_active_s.labels["cassandra_keyspace"], prom_labels[1])
-        self.assertEquals(requests_active_s.labels["cassandra_query_name"], prom_labels[2])
-        self.assertEquals(
-            requests_active_s.value, -1
-        )  # we start from 0 here since this is a unit test, so -1 is the expected result
+            REGISTRY.get_sample_value("cassandra_client_active_requests", prom_labels), -1
+        )
 
-        requests_latency = REGISTRY._names_to_collectors[
-            "cassandra_client_latency_seconds"
-        ].collect()
-        self.assertEquals(len(requests_latency), 1)
         self.assertEquals(
-            len(requests_latency[0].samples), 18
-        )  # 15 buckets (including +Inf), _total, _sum and _created
-        requests_latency_s = requests_latency[0].samples[14]  # +Inf
-        self.assertEquals(requests_latency_s.name, "cassandra_client_latency_seconds_bucket")
-        self.assertEquals(
-            len(requests_latency_s.labels.keys()), 5
-        )  # contact_points, keyspace, query_name and success, +le
-        self.assertEquals(requests_latency_s.labels["cassandra_contact_points"], prom_labels[0])
-        self.assertEquals(requests_latency_s.labels["cassandra_keyspace"], prom_labels[1])
-        self.assertEquals(requests_latency_s.labels["cassandra_query_name"], prom_labels[2])
-        self.assertEquals(
-            requests_latency_s.labels["cassandra_success"], "true"
-        )  # this is the happy path
-        self.assertEquals(requests_latency_s.labels["le"], "+Inf")
-        self.assertEquals(requests_latency_s.value, 1)
+            REGISTRY.get_sample_value(
+                "cassandra_client_latency_seconds_bucket",
+                {**prom_labels_w_success, **{"le": "+Inf"}},
+            ),
+            1,
+        )
 
     def test_prom__on_execute_failed(self):
         result = mock.MagicMock()
         span = mock.MagicMock()
         event = mock.MagicMock()
         start_time = 1.0
-        prom_labels = (
-            "contact1,contact2",
-            "cassandra_keyspace",
-            "",
+
+        prom_labels_tuple = CassandraPrometheusLabels(
+            cassandra_contact_points="contact1,contact2",
+            cassandra_keyspace="keyspace",
+            cassandra_query_name="",
         )
 
         _on_execute_failed(
             result,
-            (
-                span,
-                start_time,
-                prom_labels,
+            CassandraCallbackArgs(
+                span=span,
+                start_time=start_time,
+                prom_labels=prom_labels_tuple,
             ),
             event,
         )
+        prom_labels = prom_labels_tuple._asdict()
+        prom_labels_w_success = {**prom_labels, **{"cassandra_success": "false"}}
 
-        requests_total = REGISTRY._names_to_collectors["cassandra_client_requests_total"].collect()
-        self.assertEquals(len(requests_total), 1)
-        self.assertEquals(len(requests_total[0].samples), 2)  # _total and _created
-        requests_total_s = requests_total[0].samples[0]
-        self.assertEquals(requests_total_s.name, "cassandra_client_requests_total")
         self.assertEquals(
-            len(requests_total_s.labels.keys()), 4
-        )  # contact_points, keyspace, query_name and success
-        self.assertEquals(requests_total_s.labels["cassandra_contact_points"], prom_labels[0])
-        self.assertEquals(requests_total_s.labels["cassandra_keyspace"], prom_labels[1])
-        self.assertEquals(requests_total_s.labels["cassandra_query_name"], prom_labels[2])
-        self.assertEquals(
-            requests_total_s.labels["cassandra_success"], "false"
-        )  # this is the failure path
-        self.assertEquals(requests_total_s.value, 1)
+            REGISTRY.get_sample_value("cassandra_client_requests_total", prom_labels_w_success), 1
+        )
 
-        requests_active = REGISTRY._names_to_collectors[
-            "cassandra_client_requests_active"
-        ].collect()
-        self.assertEquals(len(requests_active), 1)
-        self.assertEquals(len(requests_active[0].samples), 1)
-        requests_active_s = requests_active[0].samples[0]
-        self.assertEquals(requests_active_s.name, "cassandra_client_requests_active")
+        # we start from 0 here since this is a unit test, so -1 is the expected result
         self.assertEquals(
-            len(requests_active_s.labels.keys()), 3
-        )  # contact_points, keyspace, query_name
-        self.assertEquals(requests_active_s.labels["cassandra_contact_points"], prom_labels[0])
-        self.assertEquals(requests_active_s.labels["cassandra_keyspace"], prom_labels[1])
-        self.assertEquals(requests_active_s.labels["cassandra_query_name"], prom_labels[2])
-        self.assertEquals(
-            requests_active_s.value, -1
-        )  # we start from 0 here since this is a unit test, so -1 is the expected result
+            REGISTRY.get_sample_value("cassandra_client_active_requests", prom_labels), -1
+        )
 
-        requests_latency = REGISTRY._names_to_collectors[
-            "cassandra_client_latency_seconds"
-        ].collect()
-        self.assertEquals(len(requests_latency), 1)
         self.assertEquals(
-            len(requests_latency[0].samples), 18
-        )  # 15 buckets (including +Inf), _total, _sum and _created
-        requests_latency_s = requests_latency[0].samples[14]  # +Inf
-        self.assertEquals(requests_latency_s.name, "cassandra_client_latency_seconds_bucket")
-        self.assertEquals(
-            len(requests_latency_s.labels.keys()), 5
-        )  # contact_points, keyspace, query_name and success, +le
-        self.assertEquals(requests_latency_s.labels["cassandra_contact_points"], prom_labels[0])
-        self.assertEquals(requests_latency_s.labels["cassandra_keyspace"], prom_labels[1])
-        self.assertEquals(requests_latency_s.labels["cassandra_query_name"], prom_labels[2])
-        self.assertEquals(
-            requests_latency_s.labels["cassandra_success"], "false"
-        )  # this is the failure path
-        self.assertEquals(requests_latency_s.labels["le"], "+Inf")
-        self.assertEquals(requests_latency_s.value, 1)
+            REGISTRY.get_sample_value(
+                "cassandra_client_latency_seconds_bucket",
+                {**prom_labels_w_success, **{"le": "+Inf"}},
+            ),
+            1,
+        )
