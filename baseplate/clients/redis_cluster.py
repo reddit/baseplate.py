@@ -2,6 +2,7 @@ import logging
 import random
 
 from datetime import timedelta
+from time import perf_counter
 from typing import Any
 from typing import Dict
 from typing import List
@@ -9,14 +10,17 @@ from typing import Optional
 
 import rediscluster
 
+from prometheus_client import Counter
 from prometheus_client import Gauge
+from prometheus_client import Histogram
+from redis import RedisError
 from rediscluster.pipeline import ClusterPipeline
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import metrics
-
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 
 logger = logging.getLogger(__name__)
 randomizer = random.SystemRandom()
@@ -103,6 +107,31 @@ MULTI_KEY_WRITE_COMMANDS = frozenset(["DEL"])
 # These are a special case of multi-key write commands that take arguments in the form
 #  of key value [key value ...]
 MULTI_KEY_BATCH_WRITE_COMMANDS = frozenset(["MSET", "MSETNX"])
+
+PROM_NAMESPACE = "redis_cluster"
+PROM_SHARED_LABELS = [
+    f"{PROM_NAMESPACE}_command",
+    f"{PROM_NAMESPACE}_database",
+    f"{PROM_NAMESPACE}_startup_host",
+]
+LATENCY_SECONDS = Histogram(
+    f"{PROM_NAMESPACE}_latency_seconds",
+    "Latency histogram of HTTP calls made by clients",
+    [*PROM_SHARED_LABELS, f"{PROM_NAMESPACE}_success"],
+    buckets=default_latency_buckets,
+)
+
+REQUESTS_TOTAL = Counter(
+    f"{PROM_NAMESPACE}_requests_total",
+    "Total number of HTTP requests started by a given client",
+    [*PROM_SHARED_LABELS, f"{PROM_NAMESPACE}_success"],
+)
+
+ACTIVE_REQUESTS = Gauge(
+    f"{PROM_NAMESPACE}_active_requests",
+    "Number of active requests for a given client",
+    PROM_SHARED_LABELS,
+)
 
 
 class HotKeyTracker:
@@ -347,7 +376,7 @@ class ClusterRedisContextFactory(ContextFactory):
     :param connection_pool: A connection pool.
     """
 
-    PROM_PREFIX = "bp_redis_cluster_pool"
+    PROM_PREFIX = f"{PROM_NAMESPACE}_pool"
     PROM_LABELS = ["pool"]
 
     max_connections_gauge = Gauge(
@@ -426,7 +455,29 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         trace_name = f"{self.context_name}.{command}"
 
         with self.server_span.make_child(trace_name):
-            res = super().execute_command(command, *args[1:], **kwargs)
+            start_time = perf_counter()
+            success = "true"
+            labels = {
+                f"{PROM_NAMESPACE}_command": command,
+                f"{PROM_NAMESPACE}_startup_host": self.connection_pool.connection_kwargs.get(
+                    "host", ""
+                ),
+                f"{PROM_NAMESPACE}_database": self.connection_pool.connection_kwargs.get("db", ""),
+            }
+            ACTIVE_REQUESTS.labels(**labels).inc()
+
+            try:
+                res = super().execute_command(command, *args[1:], **kwargs)
+                if isinstance(res, RedisError):
+                    success = "false"
+            except:  # noqa: E722
+                success = "false"
+                raise
+            finally:
+                ACTIVE_REQUESTS.labels(**labels).dec()
+                result_labels = {**labels, f"{PROM_NAMESPACE}_success": success}
+                REQUESTS_TOTAL.labels(**result_labels).inc()
+                LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
 
         self.hot_key_tracker.maybe_track_key_usage(list(args))
 

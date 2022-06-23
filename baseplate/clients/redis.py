@@ -1,11 +1,10 @@
 from math import ceil
+from time import perf_counter
 from typing import Any
 from typing import Dict
 from typing import Optional
 
 import redis
-
-from prometheus_client import Gauge
 
 # redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
 try:
@@ -13,11 +12,42 @@ try:
 except ImportError:
     from redis.client import Pipeline
 
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
 from baseplate.lib import metrics
+
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+
+PROM_NAMESPACE = "redis"
+PROM_SHARED_LABELS = [
+    f"{PROM_NAMESPACE}_command",
+    f"{PROM_NAMESPACE}_database",
+    f"{PROM_NAMESPACE}_startup_host",
+]
+LATENCY_SECONDS = Histogram(
+    f"{PROM_NAMESPACE}_latency_seconds",
+    "Latency histogram for calls made by clients",
+    [*PROM_SHARED_LABELS, f"{PROM_NAMESPACE}_success"],
+    buckets=default_latency_buckets,
+)
+
+REQUESTS_TOTAL = Counter(
+    f"{PROM_NAMESPACE}_requests_total",
+    "Total number of requests made by client",
+    [*PROM_SHARED_LABELS, f"{PROM_NAMESPACE}_success"],
+)
+
+ACTIVE_REQUESTS = Gauge(
+    f"{PROM_NAMESPACE}_active_requests",
+    "Number of active requests for a given client",
+    PROM_SHARED_LABELS,
+)
 
 
 def pool_from_config(
@@ -94,7 +124,7 @@ class RedisContextFactory(ContextFactory):
 
     """
 
-    PROM_PREFIX = "bp_redis_pool"
+    PROM_PREFIX = f"{PROM_NAMESPACE}_pool"
     PROM_LABELS = ["pool"]
 
     max_connections = Gauge(
@@ -162,7 +192,30 @@ class MonitoredRedisConnection(redis.StrictRedis):
         trace_name = f"{self.context_name}.{command}"
 
         with self.server_span.make_child(trace_name):
-            return super().execute_command(command, *args[1:], **kwargs)
+            start_time = perf_counter()
+            success = "true"
+            labels = {
+                f"{PROM_NAMESPACE}_command": command,
+                f"{PROM_NAMESPACE}_startup_host": self.connection_pool.connection_kwargs.get(
+                    "host", ""
+                ),
+                f"{PROM_NAMESPACE}_database": self.connection_pool.connection_kwargs.get("db", ""),
+            }
+            ACTIVE_REQUESTS.labels(**labels).inc()
+
+            try:
+                res = super().execute_command(command, *args[1:], **kwargs)
+                if isinstance(res, redis.RedisError):
+                    success = "false"
+                return res
+            except:  # noqa: E722
+                success = "false"
+                raise
+            finally:
+                ACTIVE_REQUESTS.labels(**labels).dec()
+                result_labels = {**labels, f"{PROM_NAMESPACE}_success": success}
+                REQUESTS_TOTAL.labels(**result_labels).inc()
+                LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
 
     # pylint: disable=arguments-differ
     def pipeline(  # type: ignore
