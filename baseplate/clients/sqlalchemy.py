@@ -160,7 +160,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     """
 
-    PROM_PREFIX = "databasebp"
+    PROM_PREFIX = "sql"
     PROM_POOL_PREFIX = f"{PROM_PREFIX}_pool"
     PROM_POOL_LABELS = ["pool"]
 
