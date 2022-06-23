@@ -33,27 +33,27 @@ from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.secrets import SecretsStore
 
 cassandra_labels = [
-    "contact_points",
-    "keyspace",
+    "cassandra_contact_points",
+    "cassandra_keyspace",
+    "cassandra_query_name",
 ]
-cassandra_labels_w_success = cassandra_labels + ["success"]
+cassandra_labels_w_success = cassandra_labels + ["cassandra_success"]
 REQUEST_TIME = Histogram(
     "cassandra_client_latency_seconds",
     "Time spent executing cassandra query",
     cassandra_labels_w_success,
     buckets=default_latency_buckets,
 )
-REQUEST_TOTAL = Counter(
-    "cassandra_client_requests_total",
-    "Total number of cassandra queries",
-    cassandra_labels_w_success,
-)
 REQUEST_ACTIVE = Gauge(
     "cassandra_client_requests_active",
     "Current number of active cassandra queries",
     cassandra_labels,
 )
-
+REQUEST_TOTAL = Counter(
+    "cassandra_client_requests_total",
+    "Total number of cassandra queries",
+    cassandra_labels_w_success,
+)
 
 if TYPE_CHECKING:
     import cqlmapper.connection
@@ -313,20 +313,25 @@ class CassandraSessionAdapter:
         query: Query,
         parameters: Optional[Parameters] = None,
         timeout: Union[float, object] = _NOT_SET,
+        query_name: Optional[str] = None,
         **kwargs: Any,
     ) -> Any:
-        return self.execute_async(query, parameters, timeout, **kwargs).result()
+        return self.execute_async(
+            query, parameters=parameters, timeout=timeout, query_name=query_name, **kwargs
+        ).result()
 
     def execute_async(
         self,
         query: Query,
         parameters: Optional[Parameters] = None,
         timeout: Union[float, object] = _NOT_SET,
+        query_name: Optional[str] = None,
         **kwargs: Any,
     ) -> ResponseFuture:
         prom_labels = (
             ",".join(self.cluster.contact_points),
             self.session.keyspace,
+            query_name if query_name is not None else "",
         )
         REQUEST_ACTIVE.labels(*prom_labels).inc()
         start_time = time.perf_counter()

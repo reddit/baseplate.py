@@ -119,9 +119,39 @@ class CassandraSessionAdapterTests(unittest.TestCase):
         self.assertEquals(len(requests_active[0].samples), 1)
         requests_active_s = requests_active[0].samples[0]
         self.assertEquals(requests_active_s.name, "cassandra_client_requests_active")
-        self.assertEquals(len(requests_active_s.labels.keys()), 2)  # contact_points, keyspace
-        self.assertEquals(requests_active_s.labels["contact_points"], "hostname1,hostname2")
-        self.assertEquals(requests_active_s.labels["keyspace"], "keyspace")
+        self.assertEquals(
+            len(requests_active_s.labels.keys()), 3
+        )  # contact_points, keyspace, query_name
+        self.assertEquals(
+            requests_active_s.labels["cassandra_contact_points"], "hostname1,hostname2"
+        )
+        self.assertEquals(requests_active_s.labels["cassandra_keyspace"], "keyspace")
+        self.assertEquals(requests_active_s.labels["cassandra_query_name"], "")
+        self.assertEquals(requests_active_s.value, 1)
+
+    def test_execute_async_with_query_name_prom_metrics(self):
+        self.session.keyspace = "keyspace"  # mocking keyspace name
+        self.session.cluster.contact_points = [
+            "hostname1",
+            "hostname2",
+        ]  # mocking cluster contact points
+        self.adapter.execute_async("SELECT foo from bar;", query_name="foo_bar")
+
+        requests_active = REGISTRY._names_to_collectors[
+            "cassandra_client_requests_active"
+        ].collect()
+        self.assertEquals(len(requests_active), 1)
+        self.assertEquals(len(requests_active[0].samples), 1)
+        requests_active_s = requests_active[0].samples[0]
+        self.assertEquals(requests_active_s.name, "cassandra_client_requests_active")
+        self.assertEquals(
+            len(requests_active_s.labels.keys()), 3
+        )  # contact_points, keyspace, query_name
+        self.assertEquals(
+            requests_active_s.labels["cassandra_contact_points"], "hostname1,hostname2"
+        )
+        self.assertEquals(requests_active_s.labels["cassandra_keyspace"], "keyspace")
+        self.assertEquals(requests_active_s.labels["cassandra_query_name"], "foo_bar")
         self.assertEquals(requests_active_s.value, 1)
 
 
@@ -140,7 +170,8 @@ class CassandraTests(unittest.TestCase):
         start_time = 1.0
         prom_labels = (
             "contact1,contact2",
-            "keyspace",
+            "cassandra_keyspace",
+            "",
         )
 
         _on_execute_complete(
@@ -159,11 +190,14 @@ class CassandraTests(unittest.TestCase):
         requests_total_s = requests_total[0].samples[0]
         self.assertEquals(requests_total_s.name, "cassandra_client_requests_total")
         self.assertEquals(
-            len(requests_total_s.labels.keys()), 3
-        )  # contact_points, keyspace and success
-        self.assertEquals(requests_total_s.labels["contact_points"], prom_labels[0])
-        self.assertEquals(requests_total_s.labels["keyspace"], prom_labels[1])
-        self.assertEquals(requests_total_s.labels["success"], "true")  # this is the happy path
+            len(requests_total_s.labels.keys()), 4
+        )  # contact_points, keyspace, query_name  and success
+        self.assertEquals(requests_total_s.labels["cassandra_contact_points"], prom_labels[0])
+        self.assertEquals(requests_total_s.labels["cassandra_keyspace"], prom_labels[1])
+        self.assertEquals(requests_total_s.labels["cassandra_query_name"], prom_labels[2])
+        self.assertEquals(
+            requests_total_s.labels["cassandra_success"], "true"
+        )  # this is the happy path
         self.assertEquals(requests_total_s.value, 1)
 
         requests_active = REGISTRY._names_to_collectors[
@@ -173,9 +207,12 @@ class CassandraTests(unittest.TestCase):
         self.assertEquals(len(requests_active[0].samples), 1)
         requests_active_s = requests_active[0].samples[0]
         self.assertEquals(requests_active_s.name, "cassandra_client_requests_active")
-        self.assertEquals(len(requests_active_s.labels.keys()), 2)  # contact_points, keyspace
-        self.assertEquals(requests_active_s.labels["contact_points"], prom_labels[0])
-        self.assertEquals(requests_active_s.labels["keyspace"], prom_labels[1])
+        self.assertEquals(
+            len(requests_active_s.labels.keys()), 3
+        )  # contact_points, keyspace, query_name
+        self.assertEquals(requests_active_s.labels["cassandra_contact_points"], prom_labels[0])
+        self.assertEquals(requests_active_s.labels["cassandra_keyspace"], prom_labels[1])
+        self.assertEquals(requests_active_s.labels["cassandra_query_name"], prom_labels[2])
         self.assertEquals(
             requests_active_s.value, -1
         )  # we start from 0 here since this is a unit test, so -1 is the expected result
@@ -190,11 +227,14 @@ class CassandraTests(unittest.TestCase):
         requests_latency_s = requests_latency[0].samples[14]  # +Inf
         self.assertEquals(requests_latency_s.name, "cassandra_client_latency_seconds_bucket")
         self.assertEquals(
-            len(requests_latency_s.labels.keys()), 4
-        )  # contact_points, keyspace and success, +le
-        self.assertEquals(requests_latency_s.labels["contact_points"], prom_labels[0])
-        self.assertEquals(requests_latency_s.labels["keyspace"], prom_labels[1])
-        self.assertEquals(requests_latency_s.labels["success"], "true")  # this is the happy path
+            len(requests_latency_s.labels.keys()), 5
+        )  # contact_points, keyspace, query_name and success, +le
+        self.assertEquals(requests_latency_s.labels["cassandra_contact_points"], prom_labels[0])
+        self.assertEquals(requests_latency_s.labels["cassandra_keyspace"], prom_labels[1])
+        self.assertEquals(requests_latency_s.labels["cassandra_query_name"], prom_labels[2])
+        self.assertEquals(
+            requests_latency_s.labels["cassandra_success"], "true"
+        )  # this is the happy path
         self.assertEquals(requests_latency_s.labels["le"], "+Inf")
         self.assertEquals(requests_latency_s.value, 1)
 
@@ -205,7 +245,8 @@ class CassandraTests(unittest.TestCase):
         start_time = 1.0
         prom_labels = (
             "contact1,contact2",
-            "keyspace",
+            "cassandra_keyspace",
+            "",
         )
 
         _on_execute_failed(
@@ -224,11 +265,14 @@ class CassandraTests(unittest.TestCase):
         requests_total_s = requests_total[0].samples[0]
         self.assertEquals(requests_total_s.name, "cassandra_client_requests_total")
         self.assertEquals(
-            len(requests_total_s.labels.keys()), 3
-        )  # contact_points, keyspace and success
-        self.assertEquals(requests_total_s.labels["contact_points"], prom_labels[0])
-        self.assertEquals(requests_total_s.labels["keyspace"], prom_labels[1])
-        self.assertEquals(requests_total_s.labels["success"], "false")  # this is the failure path
+            len(requests_total_s.labels.keys()), 4
+        )  # contact_points, keyspace, query_name and success
+        self.assertEquals(requests_total_s.labels["cassandra_contact_points"], prom_labels[0])
+        self.assertEquals(requests_total_s.labels["cassandra_keyspace"], prom_labels[1])
+        self.assertEquals(requests_total_s.labels["cassandra_query_name"], prom_labels[2])
+        self.assertEquals(
+            requests_total_s.labels["cassandra_success"], "false"
+        )  # this is the failure path
         self.assertEquals(requests_total_s.value, 1)
 
         requests_active = REGISTRY._names_to_collectors[
@@ -238,9 +282,12 @@ class CassandraTests(unittest.TestCase):
         self.assertEquals(len(requests_active[0].samples), 1)
         requests_active_s = requests_active[0].samples[0]
         self.assertEquals(requests_active_s.name, "cassandra_client_requests_active")
-        self.assertEquals(len(requests_active_s.labels.keys()), 2)  # contact_points, keyspace
-        self.assertEquals(requests_active_s.labels["contact_points"], prom_labels[0])
-        self.assertEquals(requests_active_s.labels["keyspace"], prom_labels[1])
+        self.assertEquals(
+            len(requests_active_s.labels.keys()), 3
+        )  # contact_points, keyspace, query_name
+        self.assertEquals(requests_active_s.labels["cassandra_contact_points"], prom_labels[0])
+        self.assertEquals(requests_active_s.labels["cassandra_keyspace"], prom_labels[1])
+        self.assertEquals(requests_active_s.labels["cassandra_query_name"], prom_labels[2])
         self.assertEquals(
             requests_active_s.value, -1
         )  # we start from 0 here since this is a unit test, so -1 is the expected result
@@ -255,10 +302,13 @@ class CassandraTests(unittest.TestCase):
         requests_latency_s = requests_latency[0].samples[14]  # +Inf
         self.assertEquals(requests_latency_s.name, "cassandra_client_latency_seconds_bucket")
         self.assertEquals(
-            len(requests_latency_s.labels.keys()), 4
-        )  # contact_points, keyspace and success, +le
-        self.assertEquals(requests_latency_s.labels["contact_points"], prom_labels[0])
-        self.assertEquals(requests_latency_s.labels["keyspace"], prom_labels[1])
-        self.assertEquals(requests_latency_s.labels["success"], "false")  # this is the failure path
+            len(requests_latency_s.labels.keys()), 5
+        )  # contact_points, keyspace, query_name and success, +le
+        self.assertEquals(requests_latency_s.labels["cassandra_contact_points"], prom_labels[0])
+        self.assertEquals(requests_latency_s.labels["cassandra_keyspace"], prom_labels[1])
+        self.assertEquals(requests_latency_s.labels["cassandra_query_name"], prom_labels[2])
+        self.assertEquals(
+            requests_latency_s.labels["cassandra_success"], "false"
+        )  # this is the failure path
         self.assertEquals(requests_latency_s.labels["le"], "+Inf")
         self.assertEquals(requests_latency_s.value, 1)
