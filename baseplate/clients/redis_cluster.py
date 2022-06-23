@@ -116,14 +116,14 @@ PROM_SHARED_LABELS = [
 ]
 LATENCY_SECONDS = Histogram(
     f"{PROM_NAMESPACE}_latency_seconds",
-    "Latency histogram of HTTP calls made by clients",
+    "Latency histogram for calls made by clients",
     [*PROM_SHARED_LABELS, f"{PROM_NAMESPACE}_success"],
     buckets=default_latency_buckets,
 )
 
 REQUESTS_TOTAL = Counter(
     f"{PROM_NAMESPACE}_requests_total",
-    "Total number of HTTP requests started by a given client",
+    "Total number of requests made by client",
     [*PROM_SHARED_LABELS, f"{PROM_NAMESPACE}_success"],
 )
 
