@@ -157,11 +157,17 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
 def configure_logging(config: Configuration, debug: bool) -> None:
     logging.captureWarnings(capture=True)
 
+    level = config.get("log_level", "INFO")
+    if level.upper() in logging._levelToName.values():
+        numeric_level = logging.getLevelName(level.upper())
+    else:
+        numeric_level = logging.getLevelName("INFO")
+
     if debug:
         logging_level = logging.DEBUG
         warnings.simplefilter("always")  # enable DeprecationWarning etc.
     else:
-        logging_level = logging.INFO
+        logging_level = numeric_level
 
     formatter: logging.Formatter
     if not sys.stdin.isatty():
