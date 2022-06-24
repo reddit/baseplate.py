@@ -157,7 +157,7 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
 def configure_logging(config: Configuration, debug: bool) -> None:
     logging.captureWarnings(capture=True)
 
-    level = config.get("log_level", "INFO")
+    level = config.app.get("log_level", "INFO")
     if level.upper() in logging._levelToName.values():
         numeric_level = logging.getLevelName(level.upper())
     else:
