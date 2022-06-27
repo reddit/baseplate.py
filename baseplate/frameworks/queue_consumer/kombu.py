@@ -1,10 +1,12 @@
 import logging
 import queue
 import socket
+import time
 
 from typing import Any
 from typing import Callable
 from typing import Dict
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
@@ -14,15 +16,46 @@ import kombu
 from gevent.server import StreamServer
 from kombu.mixins import ConsumerMixin
 from kombu.transport.virtual import Channel
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate.clients.kombu import KombuSerializer
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.server.queue_consumer import HealthcheckCallback
 from baseplate.server.queue_consumer import make_simple_healthchecker
 from baseplate.server.queue_consumer import MessageHandler
 from baseplate.server.queue_consumer import PumpWorker
 from baseplate.server.queue_consumer import QueueConsumerFactory
+
+
+class AmqpConsumerPrometheusLabels(NamedTuple):
+    amqp_address: str
+    amqp_virtual_host: str
+    amqp_exchange: str
+    amqp_routing_key: str
+
+
+AMQP_PROCESSING_TIME = Histogram(
+    "amqp_consumer_message_processing_time_seconds",
+    "latency histogram of how long it takes to process a message",
+    AmqpConsumerPrometheusLabels._fields + ("amqp_success",),
+    buckets=default_latency_buckets,
+)
+
+AMQP_PROCESSED_TOTAL = Counter(
+    "amqp_consumer_messages_processed_total",
+    "total count of messages processed by this host",
+    AmqpConsumerPrometheusLabels._fields + ("amqp_success",),
+)
+
+AMQP_ACTIVE_MESSAGES = Gauge(
+    "amqp_consumer_active_messages",
+    "gauge that reflects the number of messages currently being processed",
+    AmqpConsumerPrometheusLabels._fields,
+)
 
 
 if TYPE_CHECKING:
@@ -98,6 +131,16 @@ class KombuMessageHandler(MessageHandler):
         self.error_handler_fn = error_handler_fn
 
     def handle(self, message: kombu.Message) -> None:
+        start_time = time.perf_counter()
+        prometheus_success = "true"
+        prometheus_labels = AmqpConsumerPrometheusLabels(
+            amqp_address=message.channel.connection.client.host,  # note: localhost will be translated to 127.0.0.1 by the library
+            amqp_virtual_host=message.channel.connection.client.virtual_host,
+            amqp_exchange=message.delivery_info.get("exchange", ""),
+            amqp_routing_key=message.delivery_info.get("routing_key", ""),
+        )
+        AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).inc()
+
         context = self.baseplate.make_context_object()
         try:
             # We place the call to ``baseplate.make_server_span`` inside the
@@ -114,6 +157,7 @@ class KombuMessageHandler(MessageHandler):
                 span.set_tag("amqp.exchange", delivery_info.get("exchange", ""))
                 self.handler_fn(context, message_body, message)
         except Exception as exc:
+            prometheus_success = "false"
             logger.exception(
                 "Unhandled error while trying to process a message.  The message "
                 "has been returned to the queue broker."
@@ -128,6 +172,14 @@ class KombuMessageHandler(MessageHandler):
                 raise
         else:
             message.ack()
+        finally:
+            AMQP_PROCESSING_TIME.labels(
+                **prometheus_labels._asdict(), amqp_success=prometheus_success
+            ).observe(time.perf_counter() - start_time)
+            AMQP_PROCESSED_TOTAL.labels(
+                **prometheus_labels._asdict(), amqp_success=prometheus_success
+            ).inc()
+            AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).dec()
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):
@@ -248,7 +300,10 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
 
     def build_message_handler(self) -> KombuMessageHandler:
         return KombuMessageHandler(
-            self.baseplate, self.name, self.handler_fn, self.error_handler_fn
+            self.baseplate,
+            self.name,
+            self.handler_fn,
+            self.error_handler_fn,
         )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
