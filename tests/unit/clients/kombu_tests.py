@@ -5,11 +5,11 @@ import pytest
 from prometheus_client import REGISTRY
 
 from baseplate.clients.kombu import _KombuProducer
+from baseplate.clients.kombu import AMQP_PROCESSED_TOTAL
+from baseplate.clients.kombu import AMQP_PROCESSING_TIME
 from baseplate.clients.kombu import connection_from_config
 from baseplate.clients.kombu import exchange_from_config
 from baseplate.clients.kombu import KombuThriftSerializer
-from baseplate.clients.kombu import PROCESSED_TOTAL
-from baseplate.clients.kombu import PROCESSING_TIME
 from baseplate.lib.config import ConfigurationError
 from baseplate.testing.lib.secrets import FakeSecretsStore
 
@@ -132,8 +132,8 @@ class TestKombuThriftSerializer:
 
 class Test_KombuProducer:
     def setup(self):
-        PROCESSING_TIME.clear()
-        PROCESSED_TOTAL.clear()
+        AMQP_PROCESSING_TIME.clear()
+        AMQP_PROCESSED_TOTAL.clear()
 
     @pytest.fixture
     def app_config(self):
@@ -184,8 +184,8 @@ class Test_KombuProducer:
         yield {
             "amqp_address": "rabbit.local:5672",
             "amqp_virtual_host": "/",
-            "amqp_exchange": "topic",
-            "amqp_queue": "test_name",
+            "amqp_exchange_type": "topic",
+            "amqp_exchange_name": "test_name",
         }
 
     def test__on_success(self, kombu_producer, expected_labels):
@@ -193,22 +193,26 @@ class Test_KombuProducer:
         expected_labels["amqp_success"] = "true"
         assert (
             REGISTRY.get_sample_value(
-                f"{PROCESSING_TIME._name}_bucket", {**expected_labels, **{"le": "+Inf"}}
+                f"{AMQP_PROCESSING_TIME._name}_bucket", {**expected_labels, **{"le": "+Inf"}}
             )
             == 1
         )
-        assert REGISTRY.get_sample_value(f"{PROCESSED_TOTAL._name}_total", expected_labels) == 1
+        assert (
+            REGISTRY.get_sample_value(f"{AMQP_PROCESSED_TOTAL._name}_total", expected_labels) == 1
+        )
 
     def test__on_error(self, kombu_producer, expected_labels):
         kombu_producer._on_error(1)
         expected_labels["amqp_success"] = "false"
         assert (
             REGISTRY.get_sample_value(
-                f"{PROCESSING_TIME._name}_bucket", {**expected_labels, **{"le": "+Inf"}}
+                f"{AMQP_PROCESSING_TIME._name}_bucket", {**expected_labels, **{"le": "+Inf"}}
             )
             == 1
         )
-        assert REGISTRY.get_sample_value(f"{PROCESSED_TOTAL._name}_total", expected_labels) == 1
+        assert (
+            REGISTRY.get_sample_value(f"{AMQP_PROCESSED_TOTAL._name}_total", expected_labels) == 1
+        )
 
     def test_publish_prom_exc(self, kombu_producer, expected_labels, producer):
         producer.publish.side_effect = Exception("Any error")
@@ -218,8 +222,10 @@ class Test_KombuProducer:
         expected_labels["amqp_success"] = "false"
         assert (
             REGISTRY.get_sample_value(
-                f"{PROCESSING_TIME._name}_bucket", {**expected_labels, **{"le": "+Inf"}}
+                f"{AMQP_PROCESSING_TIME._name}_bucket", {**expected_labels, **{"le": "+Inf"}}
             )
             == 1
         )
-        assert REGISTRY.get_sample_value(f"{PROCESSED_TOTAL._name}_total", expected_labels) == 1
+        assert (
+            REGISTRY.get_sample_value(f"{AMQP_PROCESSED_TOTAL._name}_total", expected_labels) == 1
+        )

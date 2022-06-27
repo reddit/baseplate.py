@@ -31,18 +31,18 @@ T = TypeVar("T")
 amqp_producer_labels = [
     "amqp_address",
     "amqp_virtual_host",
-    "amqp_exchange",  # exchange_type
-    "amqp_queue",  # exchange_name
+    "amqp_exchange_type",
+    "amqp_exchange_name",
     "amqp_success",
 ]
 
-PROCESSING_TIME = Histogram(
+AMQP_PROCESSING_TIME = Histogram(
     "amqp_producer_message_processing_seconds",
     "latency histogram of how long it takes to queue a message",
     amqp_producer_labels,
     buckets=default_latency_buckets,
 )
-PROCESSED_TOTAL = Counter(
+AMQP_PROCESSED_TOTAL = Counter(
     "amqp_producer_message_processed_total",
     "total messages produced by this host",
     amqp_producer_labels,
@@ -260,21 +260,23 @@ class _KombuProducer:
         self.prom_labels = {
             "amqp_address": f"{self.connection.hostname}:{self.connection.port}",
             "amqp_virtual_host": self.connection.virtual_host,
-            "amqp_exchange": self.exchange.type,
-            "amqp_queue": self.exchange.name,
+            "amqp_exchange_type": self.exchange.type,
+            "amqp_exchange_name": self.exchange.name,
         }
 
     def _on_success(self, start_time: float) -> None:
-        PROCESSING_TIME.labels(**self.prom_labels, amqp_success="true").observe(
-            time.perf_counter() - start_time
-        )
-        PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="true").inc()
+        if isinstance(self.connection.transport, kombu.transport.pyamqp.Transport):
+            AMQP_PROCESSING_TIME.labels(**self.prom_labels, amqp_success="true").observe(
+                time.perf_counter() - start_time
+            )
+            AMQP_PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="true").inc()
 
     def _on_error(self, start_time: float) -> None:
-        PROCESSING_TIME.labels(**self.prom_labels, amqp_success="false").observe(
-            time.perf_counter() - start_time
-        )
-        PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="false").inc()
+        if isinstance(self.connection.transport, kombu.transport.pyamqp.Transport):
+            AMQP_PROCESSING_TIME.labels(**self.prom_labels, amqp_success="false").observe(
+                time.perf_counter() - start_time
+            )
+            AMQP_PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="false").inc()
 
     def publish(self, body: Any, routing_key: Optional[str] = None, **kwargs: Any) -> Any:
         start_time = time.perf_counter()
@@ -301,9 +303,10 @@ class _KombuProducer:
                     p.then(on_success, on_error=on_error)
                     return p
                 except Exception:
-                    # we have to handle exceptions here
-                    PROCESSING_TIME.labels(**self.prom_labels, amqp_success="false").observe(
-                        time.perf_counter() - start_time
-                    )
-                    PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="false").inc()
+                    if isinstance(self.connection.transport, kombu.transport.pyamqp.Transport):
+                        # we have to handle exceptions here
+                        AMQP_PROCESSING_TIME.labels(
+                            **self.prom_labels, amqp_success="false"
+                        ).observe(time.perf_counter() - start_time)
+                        AMQP_PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="false").inc()
                     raise
