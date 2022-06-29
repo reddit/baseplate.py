@@ -8,7 +8,7 @@ else:
     del redis
 
 from baseplate.lib.config import ConfigurationError
-from baseplate.clients.redis import pool_from_config, RedisContextFactory
+from baseplate.clients.redis import pool_from_config
 
 
 class PoolFromConfigTests(unittest.TestCase):

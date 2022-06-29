@@ -11,7 +11,7 @@ else:
     del pymemcache
 
 from baseplate.lib.config import ConfigurationError
-from baseplate.clients.memcache import pool_from_config, MemcacheContextFactory
+from baseplate.clients.memcache import pool_from_config
 from baseplate.clients.memcache import lib as memcache_lib
 
 
