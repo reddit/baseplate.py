@@ -115,13 +115,7 @@ class RedisContextFactory(ContextFactory):
 
     def __init__(self, connection_pool: redis.ConnectionPool, name: str = "redis"):
         self.connection_pool = connection_pool
-
-        if isinstance(connection_pool, redis.BlockingConnectionPool):
-            self.max_connections.labels(name).set_function(lambda: connection_pool.max_connections)
-            self.idle_connections.labels(name).set_function(connection_pool.pool.qsize)
-            self.open_connections.labels(name).set_function(
-                lambda: len(connection_pool._connections)  # type: ignore
-            )
+        self.name = name
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
@@ -131,6 +125,10 @@ class RedisContextFactory(ContextFactory):
         open_connections = len(self.connection_pool._connections)  # type: ignore
         available = self.connection_pool.pool.qsize()
         in_use = size - available
+
+        self.max_connections.labels(self.name).set(size)
+        self.idle_connections.labels(self.name).set(available)
+        self.open_connections.labels(self.name).set(open_connections)
 
         batch.gauge("pool.size").replace(size)
         batch.gauge("pool.in_use").replace(in_use)

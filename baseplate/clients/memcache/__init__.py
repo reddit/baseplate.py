@@ -153,14 +153,14 @@ class MemcacheContextFactory(ContextFactory):
 
     def __init__(self, pooled_client: PooledClient, name: str = "default"):
         self.pooled_client = pooled_client
-
-        pool = self.pooled_client.client_pool
-        self.pool_size_gauge.labels(name).set_function(lambda: pool.max_size)
-        self.free_connections_gauge.labels(name).set_function(lambda: len(pool.free))
-        self.used_connections_gauge.labels(name).set_function(lambda: len(pool.used))
+        self.name = name
 
     def report_memcache_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.pooled_client.client_pool
+        self.pool_size_gauge.labels(self.name).set(pool.max_size)
+        self.free_connections_gauge.labels(self.name).set(len(pool.free))
+        self.used_connections_gauge.labels(self.name).set(len(pool.used))
+
         batch.gauge("pool.in_use").replace(len(pool.used))
         batch.gauge("pool.open_and_available").replace(len(pool.free))
         batch.gauge("pool.size").replace(pool.max_size)
