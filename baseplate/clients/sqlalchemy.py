@@ -170,28 +170,16 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         PROM_POOL_LABELS,
     )
 
-    checked_in_connections_gauge = Gauge(
-        f"{PROM_POOL_PREFIX}_idle_connections",
-        "Number of available, checked in, connections in this pool",
-        PROM_POOL_LABELS,
-    )
-
     checked_out_connections_gauge = Gauge(
-        f"{PROM_POOL_PREFIX}_active_connections",
-        "Number of connections in use, or checked out, in this pool",
-        PROM_POOL_LABELS,
-    )
-
-    overflow_connections_gauge = Gauge(
-        f"{PROM_POOL_PREFIX}_overflow_connections",
-        "Number of connections over the desired size of this pool",
+        f"{PROM_POOL_PREFIX}_client_connections",
+        "Number of connections in use by this pool (checked out + overflow)",
         PROM_POOL_LABELS,
     )
 
     PROM_LABELS = [
-        "host",
-        "database",
-        "success",
+        "sql_address",
+        "sql_database",
+        "sql_success",
     ]
 
     latency_seconds = Histogram(
@@ -218,9 +206,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         pool = self.engine.pool
         if isinstance(pool, QueuePool):
             self.max_connections_gauge.labels(name).set_function(pool.size)
-            self.checked_in_connections_gauge.labels(name).set_function(pool.checkedin)
-            self.checked_out_connections_gauge.labels(name).set_function(pool.checkedout)
-            self.overflow_connections_gauge.labels(name).set_function(pool.overflow)
+            self.checked_out_connections_gauge.labels(name).set_function(pool.checkedout + pool.overflow)
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.engine.pool
@@ -283,9 +269,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         conn.info["span"] = None
 
         labels = {
-            "host": conn.engine.url.host,
-            "database": conn.engine.url.database,
-            "success": "true",
+            "sql_address": conn.engine.url.host,
+            "sql_database": conn.engine.url.database,
+            "sql_success": "true",
         }
 
         self.requests_total.labels(**labels).inc()
@@ -298,9 +284,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         context.connection.info["span"] = None
 
         labels = {
-            "host": context.connection.engine.url.host,
-            "database": context.connection.engine.url.database,
-            "success": "false",
+            "sql_address": context.connection.engine.url.host,
+            "sql_database": context.connection.engine.url.database,
+            "sql_success": "false",
         }
 
         self.requests_total.labels(**labels).inc()
