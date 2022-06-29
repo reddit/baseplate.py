@@ -103,7 +103,7 @@ class _ContextAwareHandler:
                 span.set_tag("thrift.status", status)
                 span.set_tag("success", "false")
 
-                success = false
+                success = "false"
                 exception = exc.__class__.__name__
                 status_code = exc.code
                 status_name = status
