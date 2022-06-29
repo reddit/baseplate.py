@@ -28,7 +28,7 @@ PROM_NAMESPACE = "redis"
 PROM_SHARED_LABELS = [
     f"{PROM_NAMESPACE}_command",
     f"{PROM_NAMESPACE}_database",
-    f"{PROM_NAMESPACE}_host",
+    f"{PROM_NAMESPACE}_address",
 ]
 LATENCY_SECONDS = Histogram(
     f"{PROM_NAMESPACE}_latency_seconds",
@@ -196,7 +196,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
             success = "true"
             labels = {
                 f"{PROM_NAMESPACE}_command": command,
-                f"{PROM_NAMESPACE}_host": self.connection_pool.connection_kwargs.get("host", ""),
+                f"{PROM_NAMESPACE}_address": self.connection_pool.connection_kwargs.get("host", ""),
                 f"{PROM_NAMESPACE}_database": self.connection_pool.connection_kwargs.get("db", ""),
             }
             ACTIVE_REQUESTS.labels(**labels).inc()
