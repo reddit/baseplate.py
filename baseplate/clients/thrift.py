@@ -103,8 +103,8 @@ class ThriftContextFactory(ContextFactory):
 
     """
 
-    POOL_PREFIX = "thrift_pool"
-    POOL_LABELS = ["client_cls"]
+    POOL_PREFIX = "thrift_client_pool"
+    POOL_LABELS = ["thrift_pool"]
 
     max_connections_gauge = Gauge(
         f"{POOL_PREFIX}_max_size",
