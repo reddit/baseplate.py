@@ -19,10 +19,10 @@ class TestException(Exception):
 
 
 @pytest.mark.parametrize(
-    "protocol,client_or_server,observer_cls,labels",
+    "tags,client_or_server,observer_cls,labels",
     (
         (
-            "thrift",
+            {"protocol": "thrift"},
             "server",
             PrometheusServerSpanObserver,
             {
@@ -38,7 +38,7 @@ class TestException(Exception):
             },
         ),
         (
-            "thrift",
+            {"protocol": "thrift"},
             "client",
             PrometheusClientSpanObserver,
             {
@@ -57,7 +57,7 @@ class TestException(Exception):
             },
         ),
         (
-            "http",
+            {"protocol": "http"},
             "server",
             PrometheusServerSpanObserver,
             {
@@ -72,7 +72,7 @@ class TestException(Exception):
             },
         ),
         (
-            "http",
+            {"protocol": "http"},
             "client",
             PrometheusClientSpanObserver,
             {
@@ -94,67 +94,72 @@ class TestException(Exception):
             },
         ),
         (
-            "local",
+            {"protocol": "local", "span_name": "span_1", "component_name": "component_1"},
             "span",
             PrometheusLocalSpanObserver,
             {
                 "latency_labels": {
-                    "span": "",
+                    "span_name": "span_1",
+                    "component_name": "component_1",
                 },
                 "requests_labels": {
-                    "span": "",
+                    "span_name": "span_1",
+                    "component_name": "component_1",
                 },
                 "active_labels": {
-                    "span": "",
+                    "span_name": "span_1",
+                    "component_name": "component_1",
                 },
             },
         ),
     ),
 )
-def test_observer_metrics(protocol, client_or_server, observer_cls, labels):
+def test_observer_metrics(tags, client_or_server, observer_cls, labels):
+    protocol = tags.get("protocol", "")
     before_start = REGISTRY.get_sample_value(
-        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", {})
     )
 
     assert before_start is None
     before_start = REGISTRY.get_sample_value(
-        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", {})
     )
     assert before_start is None
     before_start = REGISTRY.get_sample_value(
-        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", {})
     )
     assert before_start is None
 
     observer = observer_cls()
-    observer.on_set_tag("protocol", protocol)
+    for tag, tag_value in tags.items():
+        observer.on_set_tag(tag, tag_value)
 
     observer.on_start()
     assert observer.metrics.prefix == f"{protocol}_{client_or_server}"
     after_start = REGISTRY.get_sample_value(
-        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", {})
     )
     assert after_start is None
     after_start = REGISTRY.get_sample_value(
-        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", {})
     )
     assert after_start is None
     after_start = REGISTRY.get_sample_value(
-        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", {})
     )
     assert after_start == 1.0
 
     observer.on_finish(None)
     after_done = REGISTRY.get_sample_value(
-        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", "")
+        f"{protocol}_{client_or_server}_latency_seconds_count", labels.get("latency_labels", {})
     )
     assert after_done == 1.0
     after_done = REGISTRY.get_sample_value(
-        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", "")
+        f"{protocol}_{client_or_server}_requests_total", labels.get("requests_labels", {})
     )
     assert after_done == 1.0
     after_done = REGISTRY.get_sample_value(
-        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", "")
+        f"{protocol}_{client_or_server}_active_requests", labels.get("active_labels", {})
     )
     assert after_done == 0.0
 

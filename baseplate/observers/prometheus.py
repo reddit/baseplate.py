@@ -124,7 +124,7 @@ class PrometheusServerSpanObserver(SpanObserver):
     def on_child_span_created(self, span: Span) -> None:
         observer: Any = None
         if isinstance(span, LocalSpan):
-            observer = PrometheusLocalSpanObserver(span.name)
+            observer = PrometheusLocalSpanObserver(span)
         else:
             observer = PrometheusClientSpanObserver()
 
@@ -201,7 +201,7 @@ class PrometheusClientSpanObserver(SpanObserver):
     def on_child_span_created(self, span: Span) -> None:
         observer: Optional[SpanObserver] = None
         if isinstance(span, LocalSpan):
-            observer = PrometheusLocalSpanObserver(span.name)
+            observer = PrometheusLocalSpanObserver(span)
         else:
             observer = PrometheusClientSpanObserver()
 
@@ -209,8 +209,13 @@ class PrometheusClientSpanObserver(SpanObserver):
 
 
 class PrometheusLocalSpanObserver(SpanObserver):
-    def __init__(self, span_name: Optional[str] = None) -> None:
-        self.tags: Dict[str, Any] = {"span_name": span_name if span_name is not None else ""}
+    def __init__(self, span: LocalSpan = None) -> None:
+        self.tags: Dict[str, Any] = {
+            "span_name": span.name if span is not None else "",
+            "component_name": span.component_name
+            if (span is not None and span.component_name is not None)
+            else "",
+        }
         self.start_time: Optional[int] = None
         self.metrics: PrometheusLocalSpanMetrics = PrometheusLocalSpanMetrics()
 
@@ -248,7 +253,7 @@ class PrometheusLocalSpanObserver(SpanObserver):
     def on_child_span_created(self, span: Span) -> None:
         observer: Optional[SpanObserver] = None
         if isinstance(span, LocalSpan):
-            observer = PrometheusLocalSpanObserver(span.name)
+            observer = PrometheusLocalSpanObserver(span)
         else:
             observer = PrometheusClientSpanObserver()
 

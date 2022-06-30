@@ -382,7 +382,8 @@ class PrometheusLocalSpanMetrics:
 
     # local labels and metrics
     labels = [
-        "span",
+        "span_name",
+        "component_name",
     ]
 
     # Latency histogram of local span
@@ -412,19 +413,22 @@ class PrometheusLocalSpanMetrics:
     @classmethod
     def latency_seconds_metric(cls, tags: Dict) -> Histogram:
         return cls.latency_seconds.labels(
-            span=tags.get("span_name", ""),
+            span_name=tags.get("span_name", ""),
+            component_name=tags.get("component_name", ""),
         )
 
     @classmethod
     def requests_total_metric(cls, tags: Dict) -> Counter:
         return cls.requests_total.labels(
-            span=tags.get("span_name", ""),
+            span_name=tags.get("span_name", ""),
+            component_name=tags.get("component_name", ""),
         )
 
     @classmethod
     def active_requests_metric(cls, tags: Dict) -> Gauge:
         return cls.active_requests.labels(
-            span=tags.get("span_name", ""),
+            span_name=tags.get("span_name", ""),
+            component_name=tags.get("component_name", ""),
         )
 
     @classmethod
