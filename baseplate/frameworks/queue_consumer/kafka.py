@@ -8,6 +8,7 @@ from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
@@ -15,9 +16,13 @@ from typing import TYPE_CHECKING
 import confluent_kafka
 
 from gevent.server import StreamServer
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 
 from baseplate import Baseplate
 from baseplate import RequestContext
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.server.queue_consumer import HealthcheckCallback
 from baseplate.server.queue_consumer import make_simple_healthchecker
 from baseplate.server.queue_consumer import MessageHandler
@@ -36,6 +41,31 @@ logger = logging.getLogger(__name__)
 
 KafkaMessageDeserializer = Callable[[bytes], Any]
 Handler = Callable[[RequestContext, Any, confluent_kafka.Message], None]
+
+
+class KafkaConsumerPrometheusLabels(NamedTuple):
+    kafka_address: str
+    kafka_topic: str
+
+
+KAFKA_PROCESSING_TIME = Histogram(
+    "kafka_consumer_message_processing_time_seconds",
+    "latency histogram of how long it takes to process a message",
+    KafkaConsumerPrometheusLabels._fields + ("kafka_success",),
+    buckets=default_latency_buckets,
+)
+
+KAFKA_PROCESSED_TOTAL = Counter(
+    "kafka_consumer_messages_processed_total",
+    "total count of messages processed by this host",
+    KafkaConsumerPrometheusLabels._fields + ("kafka_success",),
+)
+
+KAFKA_ACTIVE_MESSAGES = Gauge(
+    "kafka_consumer_active_messages",
+    "gauge that reflects the number of messages currently being processed",
+    KafkaConsumerPrometheusLabels._fields,
+)
 
 
 class KafkaConsumerWorker(PumpWorker):
@@ -99,14 +129,26 @@ class KafkaMessageHandler(MessageHandler):
         handler_fn: Handler,
         message_unpack_fn: KafkaMessageDeserializer,
         on_success_fn: Optional[Handler] = None,
+        bootstrap_servers: str = "",
     ):
         self.baseplate = baseplate
         self.name = name
         self.handler_fn = handler_fn
         self.message_unpack_fn = message_unpack_fn
         self.on_success_fn = on_success_fn
+        # as far as I can tell, there is no way to extract the bootstrap servers from the
+        # consumer or the message itself. So wee need to have it passed from the parent
+        self.bootstrap_servers = bootstrap_servers
 
     def handle(self, message: confluent_kafka.Message) -> None:
+        logger.error("handling stuff")
+        prom_labels = KafkaConsumerPrometheusLabels(
+            kafka_address=self.bootstrap_servers,
+            kafka_topic=message.topic() if message.topic() is not None else "",
+        )
+        prom_success = "true"
+        start_time = time.perf_counter()
+        KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc()
         context = self.baseplate.make_context_object()
         try:
             # We place the call to ``baseplate.make_server_span`` inside the
@@ -115,6 +157,7 @@ class KafkaMessageHandler(MessageHandler):
             with self.baseplate.make_server_span(context, f"{self.name}.handler") as span:
                 error = message.error()
                 if error:
+                    prom_success = "false"
                     # this isn't a real message, but is an error from Kafka
                     raise ValueError(f"KafkaError: {error.str()}")
 
@@ -134,6 +177,7 @@ class KafkaMessageHandler(MessageHandler):
                 try:
                     data = self.message_unpack_fn(blob)
                 except Exception:
+                    prom_success = "false"
                     logger.error("skipping invalid message")
                     context.span.incr_tag(f"{self.name}.{topic}.invalid_message")
                     return
@@ -158,6 +202,7 @@ class KafkaMessageHandler(MessageHandler):
 
                 context.metrics.gauge(f"{self.name}.{topic}.offset.{partition}").replace(offset)
         except Exception:
+            prom_success = "false"
             # let this exception crash the server so we'll stop processing messages
             # and won't commit offsets. when the server restarts it will get
             # this message again and try to process it.
@@ -165,6 +210,13 @@ class KafkaMessageHandler(MessageHandler):
                 "Unhandled error while trying to process a message, terminating the server"
             )
             raise
+        finally:
+            logger.error(prom_labels)
+            KAFKA_PROCESSING_TIME.labels(
+                **prom_labels._asdict(), kafka_success=prom_success
+            ).observe(time.perf_counter() - start_time)
+            KAFKA_PROCESSED_TOTAL.labels(**prom_labels._asdict(), kafka_success=prom_success).inc()
+            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec()
 
 
 class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
@@ -177,6 +229,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         kafka_consume_batch_size: int = 1,
         message_unpack_fn: KafkaMessageDeserializer = json.loads,
         health_check_fn: Optional[HealthcheckCallback] = None,
+        bootstrap_servers: str = "",
     ):
         """`_BaseKafkaQueueConsumerFactory` constructor.
 
@@ -191,6 +244,8 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             and returns the message in the format the handler expects. Defaults to `json.loads`.
         :param health_check_fn: A `baseplate.server.queue_consumer.HealthcheckCallback`
             function that can be used to customize your health check.
+        :param bootstrap_servers: The bootstrap servers used to create the consumer. Used for
+            prometheus labels.
 
         """
         self.name = name
@@ -200,6 +255,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         self.kafka_consume_batch_size = kafka_consume_batch_size
         self.message_unpack_fn = message_unpack_fn
         self.health_check_fn = health_check_fn
+        self.bootstrap_servers = bootstrap_servers
 
     @classmethod
     def new(
@@ -255,6 +311,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             kafka_consume_batch_size=kafka_consume_batch_size,
             message_unpack_fn=message_unpack_fn,
             health_check_fn=health_check_fn,
+            bootstrap_servers=bootstrap_servers,
         )
 
     @classmethod
@@ -324,7 +381,11 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
 
     def build_message_handler(self) -> KafkaMessageHandler:
         return KafkaMessageHandler(
-            self.baseplate, self.name, self.handler_fn, self.message_unpack_fn
+            self.baseplate,
+            self.name,
+            self.handler_fn,
+            self.message_unpack_fn,
+            bootstrap_servers=self.bootstrap_servers,
         )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
@@ -402,6 +463,11 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
             with context.span.make_child("kafka.commit"):
                 self.consumer.commit(message=message, asynchronous=False)
 
+        logger.error(self.consumer)
+        logger.error(type(self.consumer))
+        logger.error(dir(self.consumer))
+        # logger.error(self.consumer.assignment())
+        # logger.error(self.consumer.consumer_group_metadata())
         return KafkaMessageHandler(
             self.baseplate,
             self.name,
@@ -409,6 +475,7 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
             self.message_unpack_fn,
             # commit offset after each successful message handle()
             on_success_fn=commit_offset,
+            bootstrap_servers=self.bootstrap_servers,
         )
 
 
