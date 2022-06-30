@@ -99,11 +99,10 @@ class ThriftContextFactory(ContextFactory):
             },
         )
 
-        pool_name = type(self.client_cls).__name__
-        self.max_connections_gauge.labels(pool_name).set_function(lambda: self.pool.size)
-        self.active_connections_gauge.labels(pool_name).set_function(lambda: self.pool.checkedout)
-
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
+        pool_name = type(self.client_cls).__name__
+        self.max_connections_gauge.labels(pool_name).set(self.pool.size)
+        self.active_connections_gauge.labels(pool_name).set(self.pool.checkedout)
         batch.gauge("pool.size").replace(self.pool.size)
         batch.gauge("pool.in_use").replace(self.pool.checkedout)
         # it's hard to report "open_and_available" currently because we can't
