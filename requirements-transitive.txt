@@ -62,7 +62,7 @@ pyparsing==2.4.7
 pyramid==1.10.5
 python-json-logger==2.0.1
 reddit-cqlmapper==0.3.0
-redis==3.5.3
+redis==4.3.4
 redis-py-cluster==2.1.2
 regex==2020.11.13
 requests==2.25.1
