@@ -109,9 +109,10 @@ class CassandraSessionAdapterTests(unittest.TestCase):
 
     def test_execute_async_prom_metrics(self):
         self.session.keyspace = "keyspace"  # mocking keyspace name
+        # hostnames purposefully out of order :-)
         self.session.cluster.contact_points = [
-            "hostname1",
             "hostname2",
+            "hostname1",
         ]  # mocking cluster contact points
         self.adapter.execute_async("SELECT foo from bar;")
 

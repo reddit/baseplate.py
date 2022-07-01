@@ -337,7 +337,7 @@ class CassandraSessionAdapter:
         **kwargs: Any,
     ) -> ResponseFuture:
         prom_labels = CassandraPrometheusLabels(
-            cassandra_contact_points=",".join(self.cluster.contact_points),
+            cassandra_contact_points=",".join(sorted(self.cluster.contact_points)),
             cassandra_keyspace=self.session.keyspace,
             cassandra_query_name=query_name if query_name is not None else "",
         )
