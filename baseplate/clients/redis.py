@@ -241,7 +241,7 @@ class MessageQueue:
         :raises: :py:exc:`~baseplate.lib.message_queue.TimedOutError` The queue
             was empty for the allowed duration of the call.
 
-        :param count: the number of messages to get from the queue, the default value is 1
+        :param count: the number of messages to get from the queue
 
         """
         if isinstance(timeout, float):
