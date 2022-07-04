@@ -8,12 +8,10 @@ from typing import List
 from typing import Optional
 
 from prometheus_client import Gauge
-
 from redis import cluster
+from redis.connection import BlockingConnectionPool
 from redis.cluster import ClusterPipeline
 from redis.connection import ConnectionPool
-from redis.connection import BlockingConnectionPool
-
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
