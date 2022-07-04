@@ -362,9 +362,7 @@ class ClusterRedisContextFactory(ContextFactory):
         PROM_LABELS,
     )
 
-    def __init__(
-        self, connection_pool: ConnectionPool, name: str = "redis_cluster"
-    ):
+    def __init__(self, connection_pool: ConnectionPool, name: str = "redis_cluster"):
         self.connection_pool = connection_pool
         self.name = name
 
