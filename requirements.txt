@@ -25,4 +25,4 @@ types-requests==2.25.6
 types-setuptools==57.0.2
 webtest==2.0.35
 wheel==0.36.2
-fakeredis==1.5.0
+fakeredis==1.8.1
