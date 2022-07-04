@@ -247,7 +247,7 @@ class MessageQueue:
         if isinstance(timeout, float):
             timeout = int(ceil(timeout))
 
-        # lpop returns array if count argument passed in
+        # lpop returns array if count argument passed in, even for 1 item
         if count == 1:
             count = None
 

@@ -92,7 +92,7 @@ class RedisMessageQueueTests(unittest.TestCase):
 
         with contextlib.closing(message_queue) as mq:
             mq.put(b"x")
-            message = mq.get(timeout=0)
+            message = mq.get()
             self.assertEqual(message, b"x")
 
     def test_get_zero_timeout(self):
