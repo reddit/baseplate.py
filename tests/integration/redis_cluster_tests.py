@@ -14,6 +14,7 @@ from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
 redis_endpoint = get_endpoint_or_skip_container("redis-cluster-node", 7000)
 
+
 # This belongs on the unit tests section but the client class attempts to initialise
 # the list of nodes when being instantiated so it's simpler to test here with a redis
 # cluster available
