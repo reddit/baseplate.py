@@ -1,9 +1,9 @@
 import unittest
 
 try:
-    import rediscluster
+    import redis
 except ImportError:
-    raise unittest.SkipTest("redis-py-cluster is not installed")
+    raise unittest.SkipTest("redis-py is not installed")
 
 from baseplate.lib.config import ConfigurationError
 from baseplate.clients.redis_cluster import cluster_pool_from_config
@@ -13,7 +13,6 @@ from baseplate import Baseplate
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
 redis_endpoint = get_endpoint_or_skip_container("redis-cluster-node", 7000)
-
 
 # This belongs on the unit tests section but the client class attempts to initialise
 # the list of nodes when being instantiated so it's simpler to test here with a redis
@@ -117,7 +116,7 @@ class RedisClusterIntegrationTests(unittest.TestCase):
 
     def test_error(self):
         with self.server_span:
-            with self.assertRaises(rediscluster.RedisClusterException):
+            with self.assertRaises(redis.cluster.RedisClusterException):
                 self.context.rediscluster.execute_command("crazycommand")
 
         server_span_observer = self.baseplate_observer.get_only_child()
