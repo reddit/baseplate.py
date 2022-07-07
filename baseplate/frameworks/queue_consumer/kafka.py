@@ -334,26 +334,15 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
 class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
     """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kafka.
 
-    The `InOrderConsumerFactory` attempts to achieve in order, exactly once
-    message processing.
+    DEPRECATED: Please use the `FastConsumerFactory` class instead. If you need more control,
+    you can create the :py:class:`~confluent_kafka.Consumer` yourself and use the
+    constructor directly.
 
-    This will run a single `KafkaConsumerWorker` that reads messages from Kafka and
-    puts them into an internal work queue. Then it will run a single `KafkaMessageHandler`
-    that reads messages from the internal work queue, processes them with the
-    `handler_fn`, and then commits each message's offset to Kafka.
-
-    This one-at-a-time, in-order processing ensures that when a failure happens
-    during processing we don't commit its offset (or the offset of any later
-    messages) and that when the server restarts it will receive the failed
-    message and attempt to process it again. Additionally, because each
-    message's offset is committed immediately after processing we should
-    never process a message more than once.
-
-    For most cases where you just need a basic consumer with sensible defaults
-    you can use `InOrderConsumerFactory.new`.
-
-    If you need more control, you can create the :py:class:`~confluent_kafka.Consumer`
-    yourself and use the constructor directly.
+    The `InOrderConsumerFactory` attempted to achieve in-order, exactly-once
+    message processing. However, Kafka does not guarantee order across partitions,
+    and this consumer did not guarantee exactly-once consumption, so it is misleading.
+    Committing the offset for every message is taxing on the Kafka cluster and generally
+    should not be done.
 
     """
 
