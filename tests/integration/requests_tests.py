@@ -97,7 +97,7 @@ def test_client_makes_client_span(client_cls, client_name, method, http_server):
     assert client_span_observer.on_finish_called
     assert client_span_observer.on_finish_exc_info is None
     assert client_span_observer.tags["http.url"] == http_server.url
-    assert client_span_observer.tags["http.method"] == method
+    assert client_span_observer.tags["http.method"] == method.lower()
     assert client_span_observer.tags["http.status_code"] == 204
     assert client_span_observer.tags["http.slug"] == (
         client_name if client_name is not None else "myclient"
@@ -128,7 +128,7 @@ def test_connection_error(client_cls):
     assert client_span_observer.on_finish_called
     assert client_span_observer.on_finish_exc_info is not None
     assert client_span_observer.tags["http.url"] == bogus_url
-    assert client_span_observer.tags["http.method"] == "GET"
+    assert client_span_observer.tags["http.method"] == "GET".lower()
     assert "http.status_code" not in client_span_observer.tags
 
 

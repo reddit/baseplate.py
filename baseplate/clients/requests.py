@@ -240,7 +240,7 @@ class BaseplateSession:
     def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
         """Send a :py:class:`~requests.PreparedRequest`."""
         active_request_label_values = {
-            "http_method": request.method or "",
+            "http_method": request.method.lower() if request.method else "",
             "http_client_name": self.client_name if self.client_name is not None else self.name,
         }
         start_time = time.perf_counter()
@@ -249,7 +249,7 @@ class BaseplateSession:
         with self.span.make_child(f"{self.name}.request").with_tags(
             {
                 "http.url": request.url,
-                "http.method": request.method,
+                "http.method": request.method.lower() if request.method else "",
                 "http.slug": self.client_name if self.client_name is not None else self.name,
             }
         ) as span:
