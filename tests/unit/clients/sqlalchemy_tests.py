@@ -96,13 +96,9 @@ class EngineContextFactoryTest(unittest.TestCase):
 
         prom_labels = {"pool": "factory_name"}
         # this serves to prove that we never set these metrics / go down the code path after the isinstance check
+        self.assertEqual(REGISTRY.get_sample_value("sql_client_pool_max_size", prom_labels), None)
         self.assertEqual(
-            REGISTRY.get_sample_value(self.factory.max_connections_gauge._name, prom_labels), None
-        )
-        self.assertEqual(
-            REGISTRY.get_sample_value(
-                self.factory.checked_out_connections_gauge._name, prom_labels
-            ),
+            REGISTRY.get_sample_value("sql_client_pool_client_connections", prom_labels),
             None,
         )
 
@@ -118,14 +114,9 @@ class EngineContextFactoryTest(unittest.TestCase):
         self.factory.report_runtime_metrics(batch)
 
         prom_labels = {"pool": "factory_name"}
+        self.assertEqual(REGISTRY.get_sample_value("sql_client_pool_max_size", prom_labels), 4)
         self.assertEqual(
-            REGISTRY.get_sample_value(self.factory.max_connections_gauge._name, prom_labels), 4
-        )
-        self.assertEqual(
-            REGISTRY.get_sample_value(
-                self.factory.checked_out_connections_gauge._name, prom_labels
-            ),
-            12,
+            REGISTRY.get_sample_value("sql_client_pool_client_connections", prom_labels), 12
         )
 
     def test_on_after_execute(self):
@@ -147,12 +138,10 @@ class EngineContextFactoryTest(unittest.TestCase):
             "sql_success": "true",
         }
 
-        self.assertEqual(
-            REGISTRY.get_sample_value(f"{self.factory.requests_total._name}_total", prom_labels), 1
-        )
+        self.assertEqual(REGISTRY.get_sample_value("sql_client_requests_total", prom_labels), 1)
         self.assertEqual(
             REGISTRY.get_sample_value(
-                f"{self.factory.latency_seconds._name}_bucket", {**prom_labels, "le": "+Inf"}
+                "sql_client_latency_seconds_bucket", {**prom_labels, "le": "+Inf"}
             ),
             1,
         )
@@ -169,12 +158,10 @@ class EngineContextFactoryTest(unittest.TestCase):
             "sql_success": "false",
         }
 
-        self.assertEqual(
-            REGISTRY.get_sample_value(f"{self.factory.requests_total._name}_total", prom_labels), 1
-        )
+        self.assertEqual(REGISTRY.get_sample_value("sql_client_requests_total", prom_labels), 1)
         self.assertEqual(
             REGISTRY.get_sample_value(
-                f"{self.factory.latency_seconds._name}_bucket", {**prom_labels, "le": "+Inf"}
+                "sql_client_latency_seconds_bucket", {**prom_labels, "le": "+Inf"}
             ),
             1,
         )
