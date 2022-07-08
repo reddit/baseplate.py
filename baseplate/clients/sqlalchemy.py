@@ -179,20 +179,25 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     PROM_LABELS = [
         "sql_address",
         "sql_database",
-        "sql_success",
     ]
 
     latency_seconds = Histogram(
         f"{PROM_PREFIX}_latency_seconds",
         "Latency histogram of calls to database",
-        PROM_LABELS,
+        PROM_LABELS + ["sql_success"],
         buckets=default_latency_buckets,
+    )
+
+    active_requests = Gauge(
+        f"{PROM_PREFIX}_active_requests",
+        "total requests that are in-flight",
+        PROM_LABELS,
     )
 
     requests_total = Counter(
         f"{PROM_PREFIX}_requests_total",
         "Total number of sql requests",
-        PROM_LABELS,
+        PROM_LABELS + ["sql_success"],
     )
 
     def __init__(self, engine: Engine, name: str = "sqlalchemy"):
@@ -239,6 +244,11 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         executemany: bool,
     ) -> Tuple[str, Parameters]:
         """Handle the engine's before_cursor_execute event."""
+        labels = {
+            "sql_address": conn.engine.url.host,
+            "sql_database": conn.engine.url.database,
+        }
+        self.active_requests.labels(**labels).inc()
         self.time_started = perf_counter()
 
         context_name = conn._execution_options["context_name"]
@@ -277,11 +287,13 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         labels = {
             "sql_address": conn.engine.url.host,
             "sql_database": conn.engine.url.database,
-            "sql_success": "true",
         }
 
-        self.requests_total.labels(**labels).inc()
-        self.latency_seconds.labels(**labels).observe(perf_counter() - self.time_started)
+        self.active_requests.labels(**labels).dec()
+        self.requests_total.labels(**labels, sql_success="true").inc()
+        self.latency_seconds.labels(**labels, sql_success="true").observe(
+            perf_counter() - self.time_started
+        )
 
     def on_error(self, context: ExceptionContext) -> None:
         """Handle the event which happens on exceptions during execution."""
@@ -292,11 +304,13 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         labels = {
             "sql_address": context.connection.engine.url.host,
             "sql_database": context.connection.engine.url.database,
-            "sql_success": "false",
         }
 
-        self.requests_total.labels(**labels).inc()
-        self.latency_seconds.labels(**labels).observe(perf_counter() - self.time_started)
+        self.active_requests.labels(**labels).dec()
+        self.requests_total.labels(**labels, sql_success="false").inc()
+        self.latency_seconds.labels(**labels, sql_success="false").observe(
+            perf_counter() - self.time_started
+        )
 
 
 class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):

@@ -79,6 +79,7 @@ class EngineContextFactoryTest(unittest.TestCase):
         SQLAlchemyEngineContextFactory.checked_out_connections_gauge.clear()
         SQLAlchemyEngineContextFactory.latency_seconds.clear()
         SQLAlchemyEngineContextFactory.requests_total.clear()
+        SQLAlchemyEngineContextFactory.active_requests.clear()
 
         engine = mock.MagicMock()
         # engine.execution_options.return_value = mock.MagicMock()
@@ -119,6 +120,34 @@ class EngineContextFactoryTest(unittest.TestCase):
             REGISTRY.get_sample_value("sql_client_pool_client_connections", prom_labels), 12
         )
 
+    def test_on_before_execute(self):
+        conn = mock.MagicMock()
+        conn.engine.url.host = "test_hostname"
+        conn.engine.url.database = "test_database"
+        server_span = mock.MagicMock()
+        server_span.make_child.side_effect = [
+            mock.MagicMock(trace_id="test_span_trace_id", id="test_span_id")
+        ]
+        conn._execution_options = {
+            "context_name": "test_context_name",
+            "server_span": server_span,
+        }
+        self.factory.on_before_execute(
+            conn=conn,
+            cursor=None,
+            statement="",
+            parameters=None,
+            context=None,
+            executemany=False,
+        )
+
+        prom_labels = {
+            "sql_address": "test_hostname",
+            "sql_database": "test_database",
+        }
+
+        self.assertEqual(REGISTRY.get_sample_value("sql_client_active_requests", prom_labels), 1)
+
     def test_on_after_execute(self):
         conn = mock.MagicMock()
         conn.engine.url.host = "test_hostname"
@@ -135,16 +164,22 @@ class EngineContextFactoryTest(unittest.TestCase):
         prom_labels = {
             "sql_address": "test_hostname",
             "sql_database": "test_database",
-            "sql_success": "true",
         }
 
-        self.assertEqual(REGISTRY.get_sample_value("sql_client_requests_total", prom_labels), 1)
         self.assertEqual(
             REGISTRY.get_sample_value(
-                "sql_client_latency_seconds_bucket", {**prom_labels, "le": "+Inf"}
+                "sql_client_requests_total", {**prom_labels, "sql_success": "true"}
             ),
             1,
         )
+        self.assertEqual(
+            REGISTRY.get_sample_value(
+                "sql_client_latency_seconds_bucket",
+                {**prom_labels, "le": "+Inf", "sql_success": "true"},
+            ),
+            1,
+        )
+        self.assertEqual(REGISTRY.get_sample_value("sql_client_active_requests", prom_labels), -1)
 
     def test_on_error(self):
         exception_context = mock.MagicMock()
@@ -155,13 +190,19 @@ class EngineContextFactoryTest(unittest.TestCase):
         prom_labels = {
             "sql_address": "test_hostname",
             "sql_database": "test_database",
-            "sql_success": "false",
         }
 
-        self.assertEqual(REGISTRY.get_sample_value("sql_client_requests_total", prom_labels), 1)
         self.assertEqual(
             REGISTRY.get_sample_value(
-                "sql_client_latency_seconds_bucket", {**prom_labels, "le": "+Inf"}
+                "sql_client_requests_total", {**prom_labels, "sql_success": "false"}
             ),
             1,
         )
+        self.assertEqual(
+            REGISTRY.get_sample_value(
+                "sql_client_latency_seconds_bucket",
+                {**prom_labels, "le": "+Inf", "sql_success": "false"},
+            ),
+            1,
+        )
+        self.assertEqual(REGISTRY.get_sample_value("sql_client_active_requests", prom_labels), -1)
