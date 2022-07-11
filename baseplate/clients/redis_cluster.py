@@ -7,10 +7,11 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-import rediscluster
-
 from prometheus_client import Gauge
-from rediscluster.pipeline import ClusterPipeline
+from redis import cluster
+from redis.cluster import ClusterPipeline
+from redis.connection import BlockingConnectionPool
+from redis.connection import ConnectionPool
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -132,7 +133,7 @@ class HotKeyTracker:
 
     def __init__(
         self,
-        redis_client: rediscluster.RedisCluster,
+        redis_client: cluster.RedisCluster,
         track_reads_sample_rate: float,
         track_writes_sample_rate: float,
     ):
@@ -208,7 +209,7 @@ class HotKeyTracker:
 # We want to be able to combine blocking behaviour with the ability to read from replicas
 # Unfortunately this is not provide as-is so we combine two connection pool classes to provide
 # the desired behaviour.
-class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlockingConnectionPool):
+class ClusterWithReadReplicasBlockingConnectionPool(BlockingConnectionPool):
     # pylint: disable=arguments-differ
     def get_node_by_slot(self, slot: int, read_command: bool = False) -> Dict[str, Any]:
         """Get a node from the slot.
@@ -225,7 +226,7 @@ class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlocking
 
 def cluster_pool_from_config(
     app_config: config.RawConfig, prefix: str = "rediscluster.", **kwargs: Any
-) -> rediscluster.ClusterConnectionPool:
+) -> ConnectionPool:
     """Make a ClusterConnectionPool from a configuration dictionary.
 
     The keys useful to :py:func:`cluster_pool_from_config` should be prefixed, e.g.
@@ -308,7 +309,7 @@ def cluster_pool_from_config(
             options.url, **kwargs
         )
     else:
-        connection_pool = rediscluster.ClusterBlockingConnectionPool.from_url(options.url, **kwargs)
+        connection_pool = BlockingConnectionPool.from_url(options.url, **kwargs)
 
     connection_pool.track_key_reads_sample_rate = options.track_key_reads_sample_rate
     connection_pool.track_key_writes_sample_rate = options.track_key_writes_sample_rate
@@ -361,14 +362,12 @@ class ClusterRedisContextFactory(ContextFactory):
         PROM_LABELS,
     )
 
-    def __init__(
-        self, connection_pool: rediscluster.ClusterConnectionPool, name: str = "redis_cluster"
-    ):
+    def __init__(self, connection_pool: ConnectionPool, name: str = "redis_cluster"):
         self.connection_pool = connection_pool
         self.name = name
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
-        if not isinstance(self.connection_pool, rediscluster.ClusterBlockingConnectionPool):
+        if not isinstance(self.connection_pool, BlockingConnectionPool):
             return
 
         size = self.connection_pool.max_connections
@@ -389,7 +388,7 @@ class ClusterRedisContextFactory(ContextFactory):
         )
 
 
-class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
+class MonitoredClusterRedisConnection(cluster.RedisCluster):
     """Cluster Redis connection that collects diagnostic information.
 
     This connection acts like :py:class:`rediscluster.Redis` except that all
@@ -403,7 +402,7 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         self,
         context_name: str,
         server_span: Span,
-        connection_pool: rediscluster.ClusterConnectionPool,
+        connection_pool: ConnectionPool,
         track_key_reads_sample_rate: float = 0,
         track_key_writes_sample_rate: float = 0,
     ):
@@ -462,7 +461,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
         self,
         trace_name: str,
         server_span: Span,
-        connection_pool: rediscluster.ClusterConnectionPool,
+        connection_pool: ConnectionPool,
         response_callbacks: Dict,
         hot_key_tracker: Optional[HotKeyTracker],
         **kwargs: Any,

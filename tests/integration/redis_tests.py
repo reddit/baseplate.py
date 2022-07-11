@@ -113,5 +113,14 @@ class RedisMessageQueueTests(unittest.TestCase):
             message = mq.get()
             self.assertEqual(message, b"x")
 
+    def test_get_multiple_items(self):
+        message_queue = MessageQueue(self.qname, self.pool)
+
+        with contextlib.closing(message_queue) as mq:
+            mq.put(b"x")
+            mq.put(b"y")
+            message = mq.get(count=2, timeout=0)
+            self.assertEqual(message, [b"x", b"y"])
+
     def tearDown(self):
         redis.Redis(connection_pool=self.pool).delete(self.qname)

@@ -1,9 +1,9 @@
 import unittest
 
 try:
-    import rediscluster
+    import redis
 except ImportError:
-    raise unittest.SkipTest("redis-py-cluster is not installed")
+    raise unittest.SkipTest("redis-py is not installed")
 
 from baseplate.lib.config import ConfigurationError
 from baseplate.clients.redis_cluster import cluster_pool_from_config
@@ -117,7 +117,7 @@ class RedisClusterIntegrationTests(unittest.TestCase):
 
     def test_error(self):
         with self.server_span:
-            with self.assertRaises(rediscluster.RedisClusterException):
+            with self.assertRaises(redis.cluster.RedisClusterException):
                 self.context.rediscluster.execute_command("crazycommand")
 
         server_span_observer = self.baseplate_observer.get_only_child()

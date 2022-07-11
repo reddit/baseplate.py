@@ -232,7 +232,7 @@ class MessageQueue:
         else:
             self.client = client
 
-    def get(self, timeout: Optional[float] = None) -> bytes:
+    def get(self, timeout: Optional[float] = None, count: Optional[int] = None) -> bytes:
         """Read a message from the queue.
 
         :param timeout: If the queue is empty, the call will block up to
@@ -241,12 +241,18 @@ class MessageQueue:
         :raises: :py:exc:`~baseplate.lib.message_queue.TimedOutError` The queue
             was empty for the allowed duration of the call.
 
+        :param count: the number of messages to get from the queue
+
         """
         if isinstance(timeout, float):
             timeout = int(ceil(timeout))
 
+        # lpop returns array if count argument passed in, even for 1 item
+        if count == 1:
+            count = None
+
         if timeout == 0:
-            message = self.client.lpop(self.queue)
+            message = self.client.lpop(self.queue, count=count or None)
         else:
             message = self.client.blpop(self.queue, timeout=timeout or 0)
 
