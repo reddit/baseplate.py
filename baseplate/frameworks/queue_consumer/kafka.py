@@ -137,11 +137,10 @@ class KafkaMessageHandler(MessageHandler):
         self.message_unpack_fn = message_unpack_fn
         self.on_success_fn = on_success_fn
         # as far as I can tell, there is no way to extract the bootstrap servers from the
-        # consumer or the message itself. So wee need to have it passed from the parent
+        # consumer or the message itself. So we need to have it passed from the parent
         self.bootstrap_servers = bootstrap_servers
 
     def handle(self, message: confluent_kafka.Message) -> None:
-        logger.error("handling stuff")
         prom_labels = KafkaConsumerPrometheusLabels(
             kafka_address=self.bootstrap_servers,
             kafka_topic=message.topic() if message.topic() is not None else "",
@@ -211,7 +210,6 @@ class KafkaMessageHandler(MessageHandler):
             )
             raise
         finally:
-            logger.error(prom_labels)
             KAFKA_PROCESSING_TIME.labels(
                 **prom_labels._asdict(), kafka_success=prom_success
             ).observe(time.perf_counter() - start_time)
@@ -463,11 +461,6 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
             with context.span.make_child("kafka.commit"):
                 self.consumer.commit(message=message, asynchronous=False)
 
-        logger.error(self.consumer)
-        logger.error(type(self.consumer))
-        logger.error(dir(self.consumer))
-        # logger.error(self.consumer.assignment())
-        # logger.error(self.consumer.consumer_group_metadata())
         return KafkaMessageHandler(
             self.baseplate,
             self.name,
