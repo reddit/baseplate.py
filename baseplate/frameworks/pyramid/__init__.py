@@ -139,7 +139,9 @@ def _make_baseplate_tween(
         else:
             if request.span:
                 request.span.set_tag("http.status_code", response.status_code)
+                content_length = response.content_length
                 response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
+                response.content_length = content_length
         finally:
             http_endpoint = endpoint
             http_method = request.method.lower()
@@ -169,12 +171,9 @@ def _make_baseplate_tween(
             REQUEST_SIZE.labels(**histogram_labels).observe(request.content_length or 0)
             if response:
                 try:
-                    response.body  # It looks like content_length is lazy populated
                     if response.content_length is not None:
-                        RESPONSE_SIZE.labels(**histogram_labels).observe(
-                            (response and response.content_length) or 0
-                        )
-                except:  # noqa: E722
+                        RESPONSE_SIZE.labels(**histogram_labels).observe(response.content_length)
+                except Exception:
                     pass
 
             # avoid a reference cycle

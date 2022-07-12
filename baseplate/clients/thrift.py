@@ -302,13 +302,14 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
             exception_type = ""
             baseplate_status = ""
             baseplate_status_code = ""
-            if sys.exc_info() != (None, None, None):
+            exc_info = sys.exc_info()
+            if exc_info[0] is not None:
                 thrift_success = "false"
-                exception_type = sys.exc_info()[0].__name__
-                exc = sys.exc_info()[1]
-                if isinstance(exc, Error):
-                    baseplate_status_code = exc.code
-                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(exc.code, "")
+                exception_type = exc_info[0].__name__
+                current_exc = exc_info[1]
+                if isinstance(current_exc, Error):
+                    baseplate_status_code = current_exc.code
+                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")
 
             REQUEST_LATENCY.labels(
                 thrift_method=name,
