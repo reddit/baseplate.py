@@ -122,23 +122,23 @@ class _ContextAwareHandler:
                 return result
             finally:
                 thrift_success = "true"
-                exception = ""
-                status_code = ""
-                status_name = ""
+                exception_type = ""
+                baseplate_status_code = ""
+                baseplate_status_name = ""
                 if sys.exc_info() != (None, None, None):
                     thrift_success = "false"
-                    exception = sys.exc_info()[0].__name__
+                    exception_type = sys.exc_info()[0].__name__
                     exc = sys.exc_info()[1]
                     if isinstance(exc, Error):
-                        status_code = exc.code
-                        status_name = ErrorCode()._VALUES_TO_NAMES.get(exc.code, "")
+                        baseplate_status_code = exc.code
+                        baseplate_status_name = ErrorCode()._VALUES_TO_NAMES.get(exc.code, "")
                 PROM_ACTIVE.labels(fn_name).dec()
                 PROM_REQUESTS.labels(
                     thrift_method=fn_name,
                     thrift_success=thrift_success,
-                    thrift_exception_type=exception,
-                    thrift_baseplate_status=status_name,
-                    thrift_baseplate_status_code=status_code,
+                    thrift_exception_type=exception_type,
+                    thrift_baseplate_status=baseplate_status_name,
+                    thrift_baseplate_status_code=baseplate_status_code,
                 ).inc()
                 PROM_LATENCY.labels(fn_name, thrift_success).observe(
                     time.perf_counter() - start_time

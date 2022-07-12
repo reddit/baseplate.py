@@ -28,15 +28,15 @@ from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
 
-
 PROM_NAMESPACE = "thrift_client"
 
 PROM_COMMON_LABELS = [
     "thrift_method",
-    "thrift_success",
+    "thrift_client_name",
 ]
 REQUESTS_TOTAL_LABELS = [
     *PROM_COMMON_LABELS,
+    "thrift_success",
     "thrift_exception_type",
     "thrift_baseplate_status",
     "thrift_baseplate_status_code",
@@ -45,7 +45,10 @@ REQUESTS_TOTAL_LABELS = [
 REQUEST_LATENCY = Histogram(
     f"{PROM_NAMESPACE}_latency_seconds",
     "Latency of thrift client requests",
-    PROM_COMMON_LABELS,
+    [
+        *PROM_COMMON_LABELS,
+        "thrift_success",
+    ],
     buckets=default_latency_buckets,
 )
 
@@ -53,6 +56,12 @@ REQUESTS_TOTAL = Counter(
     f"{PROM_NAMESPACE}_requests_total",
     "Total number of outgoing requests",
     REQUESTS_TOTAL_LABELS,
+)
+
+ACTIVE_REQUESTS = Gauge(
+    f"{PROM_NAMESPACE}_active_requests",
+    "number of in-flight requests",
+    PROM_COMMON_LABELS,
 )
 
 
@@ -198,118 +207,127 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         trace_name = f"{self.namespace}.{name}"
         last_error = None
 
-        for time_remaining in self.retry_policy:
-            start_time = time.perf_counter()
+        try:
+            for time_remaining in self.retry_policy:
+                start_time = time.perf_counter()
+                ACTIVE_REQUESTS.labels(
+                    thrift_method=name,
+                    thrift_client_name="",
+                ).inc()
 
-            with self.pool.connection() as prot:
-                span = self.server_span.make_child(trace_name)
-                span.set_tag("slug", self.namespace)
+                with self.pool.connection() as prot:
+                    span = self.server_span.make_child(trace_name)
+                    span.set_tag("slug", self.namespace)
 
-                client = self.client_cls(prot)
-                method = getattr(client, name)
-                span.set_tag("method", method.__name__)
-                span.start()
-
-                success = "true"
-                exception = None
-
-                try:
-                    baseplate = span.baseplate
-                    if baseplate:
-                        service_name = baseplate.service_name
-                        if service_name:
-                            prot.trans.set_header(b"User-Agent", service_name.encode())
-
-                    prot.trans.set_header(b"Trace", str(span.trace_id).encode())
-                    prot.trans.set_header(b"Parent", str(span.parent_id).encode())
-                    prot.trans.set_header(b"Span", str(span.id).encode())
-                    if span.sampled is not None:
-                        sampled = "1" if span.sampled else "0"
-                        prot.trans.set_header(b"Sampled", sampled.encode())
-                    if span.flags:
-                        prot.trans.set_header(b"Flags", str(span.flags).encode())
-
-                    min_timeout = time_remaining
-                    if self.pool.timeout:
-                        if not min_timeout or self.pool.timeout < min_timeout:
-                            min_timeout = self.pool.timeout
-                    if min_timeout and min_timeout > 0:
-                        # min_timeout is in float seconds, we are converting to int milliseconds
-                        # rounding up here.
-                        prot.trans.set_header(
-                            b"Deadline-Budget", str(int(ceil(min_timeout * 1000))).encode()
-                        )
+                    client = self.client_cls(prot)
+                    method = getattr(client, name)
+                    span.set_tag("method", method.__name__)
+                    span.start()
 
                     try:
-                        edge_context = span.context.raw_edge_context
-                    except AttributeError:
-                        edge_context = None
+                        baseplate = span.baseplate
+                        if baseplate:
+                            service_name = baseplate.service_name
+                            if service_name:
+                                prot.trans.set_header(b"User-Agent", service_name.encode())
 
-                    if edge_context:
-                        prot.trans.set_header(b"Edge-Request", edge_context)
+                        prot.trans.set_header(b"Trace", str(span.trace_id).encode())
+                        prot.trans.set_header(b"Parent", str(span.parent_id).encode())
+                        prot.trans.set_header(b"Span", str(span.id).encode())
+                        if span.sampled is not None:
+                            sampled = "1" if span.sampled else "0"
+                            prot.trans.set_header(b"Sampled", sampled.encode())
+                        if span.flags:
+                            prot.trans.set_header(b"Flags", str(span.flags).encode())
 
-                    result = method(*args, **kwargs)
-                except TTransportException as exc:
-                    # the connection failed for some reason, retry if able
-                    success = "false"
-                    exception = exc
+                        min_timeout = time_remaining
+                        if self.pool.timeout:
+                            if not min_timeout or self.pool.timeout < min_timeout:
+                                min_timeout = self.pool.timeout
+                        if min_timeout and min_timeout > 0:
+                            # min_timeout is in float seconds, we are converting to int milliseconds
+                            # rounding up here.
+                            prot.trans.set_header(
+                                b"Deadline-Budget", str(int(ceil(min_timeout * 1000))).encode()
+                            )
 
-                    span.finish(exc_info=sys.exc_info())
-                    last_error = str(exc)
-                    if exc.inner is not None:
-                        last_error += f" ({exc.inner})"
-                    continue
-                except (TApplicationException, TProtocolException) as exc:
-                    # these are subclasses of TException but aren't ones that
-                    # should be expected in the protocol. this is an error!
-                    success = "false"
-                    exception = exc
-                    span.finish(exc_info=sys.exc_info())
-                    raise
-                except Error as exc:
-                    # a 5xx error is an unexpected exception but not 5xx are
-                    # not.
-                    if 500 <= exc.code < 600:
-                        success = "false"
-                        exception = exc
+                        try:
+                            edge_context = span.context.raw_edge_context
+                        except AttributeError:
+                            edge_context = None
+
+                        if edge_context:
+                            prot.trans.set_header(b"Edge-Request", edge_context)
+
+                        result = method(*args, **kwargs)
+                    except TTransportException as exc:
+                        # the connection failed for some reason, retry if able
                         span.finish(exc_info=sys.exc_info())
-                    else:
+                        last_error = str(exc)
+                        if exc.inner is not None:
+                            last_error += f" ({exc.inner})"
+                        continue
+                    except (TApplicationException, TProtocolException) as exc:
+                        # these are subclasses of TException but aren't ones that
+                        # should be expected in the protocol. this is an error!
+                        span.finish(exc_info=sys.exc_info())
+                        raise
+                    except Error as exc:
+                        # a 5xx error is an unexpected exception but not 5xx are
+                        # not.
+                        if 500 <= exc.code < 600:
+                            span.finish(exc_info=sys.exc_info())
+                        else:
+                            span.finish()
+                        raise
+                    except TException:
+                        # this is an expected exception, as defined in the IDL
                         span.finish()
-                    raise
-                except TException:
-                    # this is an expected exception, as defined in the IDL
-                    span.finish()
-                    raise
-                except:  # noqa: E722
-                    # something unexpected happened
-                    exception = sys.exc_info()[1]
-                    span.finish(exc_info=sys.exc_info())
-                    raise
-                else:
-                    # a normal result
-                    span.finish()
-                    return result
-                finally:
-                    status_code = exception.code if isinstance(exception, Error) else ""
-                    status_human = (
-                        ErrorCode()._VALUES_TO_NAMES.get(status_code, "") if status_code else ""
-                    )
+                        raise
+                    except:  # noqa: E722
+                        # something unexpected happened
+                        span.finish(exc_info=sys.exc_info())
+                        raise
+                    else:
+                        # a normal result
+                        span.finish()
+                        return result
 
-                    REQUEST_LATENCY.labels(thrift_method=name, thrift_success=success).observe(
-                        time.perf_counter() - start_time
-                    )
+            raise TTransportException(
+                type=TTransportException.TIMED_OUT,
+                message=f"retry policy exhausted while attempting {self.namespace}.{name}, last error was: {last_error}",
+            )
+        finally:
+            thrift_success = "true"
+            exception_type = ""
+            baseplate_status = ""
+            baseplate_status_code = ""
+            if sys.exc_info() != (None, None, None):
+                thrift_success = "false"
+                exception_type = sys.exc_info()[0].__name__
+                exc = sys.exc_info()[1]
+                if isinstance(exc, Error):
+                    baseplate_status_code = exc.code
+                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(exc.code, "")
 
-                    REQUESTS_TOTAL.labels(
-                        thrift_method=name,
-                        thrift_success=success,
-                        thrift_exception_type=exception.__class__.__name__ if exception else "",
-                        thrift_baseplate_status_code=status_code,
-                        thrift_baseplate_status=status_human,
-                    ).inc()
+            REQUEST_LATENCY.labels(
+                thrift_method=name,
+                thrift_client_name="",
+                thrift_success=thrift_success,
+            ).observe(time.perf_counter() - start_time)
 
-        raise TTransportException(
-            type=TTransportException.TIMED_OUT,
-            message=f"retry policy exhausted while attempting {self.namespace}.{name}, last error was: {last_error}",
-        )
+            REQUESTS_TOTAL.labels(
+                thrift_method=name,
+                thrift_client_name="",
+                thrift_success=thrift_success,
+                thrift_exception_type=exception_type,
+                thrift_baseplate_status_code=baseplate_status_code,
+                thrift_baseplate_status=baseplate_status,
+            ).inc()
+
+            ACTIVE_REQUESTS.labels(
+                thrift_method=name,
+                thrift_client_name="",
+            ).dec()
 
     return _call_thrift_method
