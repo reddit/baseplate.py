@@ -23,7 +23,7 @@ def does_not_raise():
     yield
 
 
-class Test_ThriftHttpServerPrometheusMetrics:
+class Test_ThriftServerPrometheusMetrics:
     def setup(self):
         PROM_LATENCY.clear()
         PROM_REQUESTS.clear()
@@ -99,7 +99,7 @@ class Test_ThriftHttpServerPrometheusMetrics:
             ),
         ],
     )
-    def test_http_server_prometheus_metrics(
+    def test_thrift_server_prometheus_metrics(
         self, exc, convert, exc_type, status, status_code, expectation
     ):
         class Handler:

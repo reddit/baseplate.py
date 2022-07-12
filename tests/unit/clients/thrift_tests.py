@@ -139,14 +139,14 @@ class TestPrometheusMetrics:
 
         proxy_method = _build_thrift_proxy_method("handle")
         pool = mock.MagicMock(timeout=None)
-        pool.__enter__.side_effect = [mock.MagicMock()]
+        pool.__enter__.return_value = mock.MagicMock()
         client_cls = mock.MagicMock()
         client_cls.handle = handle
         handler = mock.MagicMock(
             retry_policy=[None],
             pool=pool,
         )
-        handler.client_cls.side_effect = [client_cls]
+        handler.client_cls.return_value = client_cls
 
         thrift_success = str((exc is None)).lower()
         prom_labels = {
@@ -190,4 +190,35 @@ class TestPrometheusMetrics:
             == 1
         )
         assert REGISTRY.get_sample_value("thrift_client_active_requests", prom_labels) == 0
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]  # ensures we first increase number of active requests
+        assert mock_manager.mock_calls == [
+            mock.call.inc(),
+            mock.call.dec(),
+        ]  # ensures we first increase number of active requests
+
+
+class TestThriftContextFactory:
+    @pytest.fixture
+    def pool(self):
+        yield mock.MagicMock(size=4, checkedout=8)
+
+    @pytest.fixture
+    def context_factory(self, pool):
+        class Iface:
+            def handle(*args, **kwargs):
+                pass
+
+        context_factory = ThriftContextFactory(
+            pool=pool,
+            client_cls=Iface,
+        )
+        context_factory.max_connections_gauge.clear()
+        context_factory.active_connections_gauge.clear()
+        yield context_factory
+
+    def test_thrift_server_pool_prometheus_metrics(self, context_factory):
+        context_factory.report_runtime_metrics(batch=mock.MagicMock())
+        prom_labels = {
+            "thrift_pool": "Iface",
+        }
+        assert REGISTRY.get_sample_value("thrift_client_pool_max_size", prom_labels) == 4
+        assert REGISTRY.get_sample_value("thrift_client_pool_active_connections", prom_labels) == 8
