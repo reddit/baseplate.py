@@ -7,7 +7,6 @@ from prometheus_client import REGISTRY
 from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
-from thrift.Thrift import TProcessor
 from thrift.transport.TTransport import TTransportException
 
 from baseplate.frameworks.thrift import _ContextAwareHandler

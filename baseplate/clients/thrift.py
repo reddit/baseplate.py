@@ -267,7 +267,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         if exc.inner is not None:
                             last_error += f" ({exc.inner})"
                         continue
-                    except (TApplicationException, TProtocolException) as exc:
+                    except (TApplicationException, TProtocolException):
                         # these are subclasses of TException but aren't ones that
                         # should be expected in the protocol. this is an error!
                         span.finish(exc_info=sys.exc_info())
