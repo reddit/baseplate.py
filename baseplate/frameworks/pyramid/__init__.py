@@ -128,7 +128,7 @@ def _make_baseplate_tween(
         endpoint = request.matched_route.pattern if request.matched_route else ""
 
         try:
-            ACTIVE_REQUESTS.labels(http_method=request.method, http_endpoint=endpoint).inc()
+            ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
             response = handler(request)
             if request.span:
                 request.span.set_tag("http.response_length", response.content_length)
@@ -141,23 +141,41 @@ def _make_baseplate_tween(
                 request.span.set_tag("http.status_code", response.status_code)
                 response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
         finally:
+            http_endpoint = endpoint
+            http_method = request.method.lower()
+            http_response_code = ""
+
+            if sys.exc_info() == (None, None, None):
+                http_success = (
+                    getHTTPSuccessLabel(int(response.status_code)) if response else "false"
+                )
+                http_response_code = response.status_code if response else ""
+            else:
+                http_success = "false"
+
             histogram_labels = {
-                "http_method": request.method,
-                "http_endpoint": endpoint,
-                "http_success": getHTTPSuccessLabel(int(response.status_code)) if response else "",
+                "http_method": http_method,
+                "http_endpoint": http_endpoint,
+                "http_success": http_success,
             }
-            ACTIVE_REQUESTS.labels(http_method=request.method, http_endpoint=endpoint).dec()
+            ACTIVE_REQUESTS.labels(http_method=http_method, http_endpoint=http_endpoint).dec()
             REQUEST_LATENCY.labels(**histogram_labels).observe(time.perf_counter() - time_started)
             REQUESTS_TOTAL.labels(
                 **{
                     **histogram_labels,
-                    "http_response_code": response.status_code if response else "",
+                    "http_response_code": http_response_code,
                 }
             ).inc()
             REQUEST_SIZE.labels(**histogram_labels).observe(request.content_length or 0)
-            RESPONSE_SIZE.labels(**histogram_labels).observe(
-                (response and response.content_length) or 0
-            )
+            if response:
+                try:
+                    response.body  # It looks like content_length is lazy populated
+                    if response.content_length is not None:
+                        RESPONSE_SIZE.labels(**histogram_labels).observe(
+                            (response and response.content_length) or 0
+                        )
+                except:  # noqa: E722
+                    pass
 
             # avoid a reference cycle
             request.start_server_span = None

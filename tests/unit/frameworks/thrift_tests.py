@@ -1,4 +1,4 @@
-from contextlib import contextmanager
+from contextlib import nullcontext as does_not_raise
 from unittest import mock
 
 import pytest
@@ -15,11 +15,6 @@ from baseplate.frameworks.thrift import PROM_LATENCY
 from baseplate.frameworks.thrift import PROM_REQUESTS
 from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
-
-
-@contextmanager
-def does_not_raise():
-    yield
 
 
 class Test_ThriftServerPrometheusMetrics:
