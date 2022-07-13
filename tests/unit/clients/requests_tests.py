@@ -31,7 +31,6 @@ class TestBaseplateSessionProm:
         LATENCY_SECONDS.clear()
         REQUESTS_TOTAL.clear()
 
-    # need to patch Session() somehow...
     # request is a reserved name that can't be used in parametrize
     @pytest.mark.parametrize(
         "req",
