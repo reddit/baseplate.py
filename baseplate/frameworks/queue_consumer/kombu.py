@@ -34,7 +34,7 @@ from baseplate.server.queue_consumer import QueueConsumerFactory
 class AmqpConsumerPrometheusLabels(NamedTuple):
     amqp_address: str
     amqp_virtual_host: str
-    amqp_exchange: str
+    amqp_exchange_name: str
     amqp_routing_key: str
 
 
@@ -136,7 +136,7 @@ class KombuMessageHandler(MessageHandler):
         prometheus_labels = AmqpConsumerPrometheusLabels(
             amqp_address=message.channel.connection.client.host,  # note: localhost will be translated to 127.0.0.1 by the library
             amqp_virtual_host=message.channel.connection.client.virtual_host,
-            amqp_exchange=message.delivery_info.get("exchange", ""),
+            amqp_exchange_name=message.delivery_info.get("exchange", ""),
             amqp_routing_key=message.delivery_info.get("routing_key", ""),
         )
         AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).inc()

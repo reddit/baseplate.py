@@ -76,7 +76,7 @@ class TestKombuMessageHandler:
         prom_labels = AmqpConsumerPrometheusLabels(
             amqp_address="hostname:port",
             amqp_virtual_host="/",
-            amqp_exchange="exchange",
+            amqp_exchange_name="exchange",
             amqp_routing_key="routing-key",
         )
         mock_manager = mock.Mock()
@@ -145,7 +145,7 @@ class TestKombuMessageHandler:
         prom_labels = AmqpConsumerPrometheusLabels(
             amqp_address="hostname:port",
             amqp_virtual_host="/",
-            amqp_exchange="exchange",
+            amqp_exchange_name="exchange",
             amqp_routing_key="routing-key",
         )
         mock_manager = mock.Mock()
@@ -207,7 +207,7 @@ class TestKombuMessageHandler:
         prom_labels = AmqpConsumerPrometheusLabels(
             amqp_address="hostname:port",
             amqp_virtual_host="/",
-            amqp_exchange="exchange",
+            amqp_exchange_name="exchange",
             amqp_routing_key="routing-key",
         )
         mock_manager = mock.Mock()
