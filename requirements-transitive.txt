@@ -62,12 +62,11 @@ pyparsing==2.4.7
 pyramid==1.10.5
 python-json-logger==2.0.1
 reddit-cqlmapper==0.3.0
-redis==3.5.3
-redis-py-cluster==2.1.2
+redis==4.3.4
 regex==2020.11.13
 requests==2.25.1
 sentry-sdk==0.20.1
-six==1.15.0
+six==1.16.0
 snowballstemmer==2.1.0
 sortedcontainers==2.4.0
 soupsieve==2.2

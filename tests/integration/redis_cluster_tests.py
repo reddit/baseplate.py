@@ -1,9 +1,12 @@
 import unittest
 
 try:
-    import rediscluster
+    import redis.cluster as rediscluster
 except ImportError:
-    raise unittest.SkipTest("redis-py-cluster is not installed")
+    try:
+        import rediscluster
+    except ImportError:
+        raise unittest.SkipTest("redis-py-cluster is not installed")
 
 from baseplate.lib.config import ConfigurationError
 from baseplate.clients.redis_cluster import cluster_pool_from_config

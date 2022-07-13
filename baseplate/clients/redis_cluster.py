@@ -7,10 +7,21 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-import rediscluster
+# rediscluster was ported into redis-py after in version 4.1.0
+try:
+    import redis.cluster as rediscluster
+except ImportError:
+    import rediscluster
 
 from prometheus_client import Gauge
-from rediscluster.pipeline import ClusterPipeline
+try:
+    from redis.cluster import ClusterPipeline
+    from redis.connection import BlockingConnectionPool as ClusterBlockingConnectionPool
+    from redis.connection import ConnectionPool as ClusterConnectionPool
+except ModuleNotFoundError:
+    from rediscluster.pipeline import ClusterPipeline
+    from rediscluster import ClusterBlockingConnectionPool
+    from rediscluster import ClusterConnectionPool
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -208,7 +219,7 @@ class HotKeyTracker:
 # We want to be able to combine blocking behaviour with the ability to read from replicas
 # Unfortunately this is not provide as-is so we combine two connection pool classes to provide
 # the desired behaviour.
-class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlockingConnectionPool):
+class ClusterWithReadReplicasBlockingConnectionPool(ClusterBlockingConnectionPool):
     # pylint: disable=arguments-differ
     def get_node_by_slot(self, slot: int, read_command: bool = False) -> Dict[str, Any]:
         """Get a node from the slot.
@@ -225,7 +236,7 @@ class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlocking
 
 def cluster_pool_from_config(
     app_config: config.RawConfig, prefix: str = "rediscluster.", **kwargs: Any
-) -> rediscluster.ClusterConnectionPool:
+) -> ClusterConnectionPool:
     """Make a ClusterConnectionPool from a configuration dictionary.
 
     The keys useful to :py:func:`cluster_pool_from_config` should be prefixed, e.g.
@@ -362,13 +373,13 @@ class ClusterRedisContextFactory(ContextFactory):
     )
 
     def __init__(
-        self, connection_pool: rediscluster.ClusterConnectionPool, name: str = "redis_cluster"
+        self, connection_pool: ClusterConnectionPool, name: str = "redis_cluster"
     ):
         self.connection_pool = connection_pool
         self.name = name
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
-        if not isinstance(self.connection_pool, rediscluster.ClusterBlockingConnectionPool):
+        if not isinstance(self.connection_pool, ClusterBlockingConnectionPool):
             return
 
         size = self.connection_pool.max_connections
@@ -403,7 +414,7 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         self,
         context_name: str,
         server_span: Span,
-        connection_pool: rediscluster.ClusterConnectionPool,
+        connection_pool: ClusterConnectionPool,
         track_key_reads_sample_rate: float = 0,
         track_key_writes_sample_rate: float = 0,
     ):
@@ -462,7 +473,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
         self,
         trace_name: str,
         server_span: Span,
-        connection_pool: rediscluster.ClusterConnectionPool,
+        connection_pool: ClusterConnectionPool,
         response_callbacks: Dict,
         hot_key_tracker: Optional[HotKeyTracker],
         **kwargs: Any,

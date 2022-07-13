@@ -12,8 +12,8 @@ extras_require = {
     "memcache": ["pymemcache>=1.3.0,<1.4.4"],
     "prometheus": ["prometheus-client>=0.12.0,<1.0"],
     "pyramid": ["pyramid>=1.9.0,<2.0"],
-    "redis": ["redis>=2.10.0,<4.0.0"],
-    "redis-py-cluster": ["redis-py-cluster>=2.1.2,<3.0.0"],
+    "redis": ["redis>=2.10.0,<=4.3.4"],
+    "redis-py-cluster": ["redis-py-cluster>=2.1.2,<3.0.0"],  # Kept for backwards compatibility, this has been ported into redis-py
     "refcycle": ["objgraph>=3.0,<4.0"],
     "requests": ["advocate>=1.0.0,<2.0"],
     "s3fetcher": ["boto3>=1.18"],  # Kept for backwards compatibility, these are now main requirements
