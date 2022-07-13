@@ -1,5 +1,6 @@
 import base64
 import ipaddress
+import sys
 import time
 
 from typing import Any
@@ -246,41 +247,50 @@ class BaseplateSession:
         start_time = time.perf_counter()
         ACTIVE_REQUESTS.labels(**active_request_label_values).inc()
 
-        with self.span.make_child(f"{self.name}.request").with_tags(
-            {
-                "http.url": request.url,
-                "http.method": request.method.lower() if request.method else "",
-                "http.slug": self.client_name if self.client_name is not None else self.name,
+        try:
+            with self.span.make_child(f"{self.name}.request").with_tags(
+                {
+                    "http.url": request.url,
+                    "http.method": request.method.lower() if request.method else "",
+                    "http.slug": self.client_name if self.client_name is not None else self.name,
+                }
+            ) as span:
+                self._add_span_context(span, request)
+
+                # we cannot re-use the same session every time because sessions re-use the same
+                # CookieJar and so we'd muddle cookies cross-request. if the application wants
+                # to keep track of cookies, it should do so itself.
+                #
+                # note: we're still getting connection pooling because we're re-using the adapter.
+                session = Session()
+                session.mount("http://", self.adapter)
+                session.mount("https://", self.adapter)
+                response = session.send(request, **kwargs)
+
+                http_status_code = response.status_code
+                span.set_tag("http.status_code", http_status_code)
+
+            return response
+        finally:
+            if sys.exc_info()[0] is not None:
+                status_code = ""
+                http_success = "false"
+            elif response and response.status_code:
+                http_success = getHTTPSuccessLabel(response.status_code)
+                status_code = str(response.status_code)
+            else:
+                status_code = ""
+                http_success = ""
+
+            latency_label_values = {**active_request_label_values, "http_success": http_success}
+            requests_total_label_values = {
+                **latency_label_values,
+                "http_response_code": str(status_code),
             }
-        ) as span:
-            self._add_span_context(span, request)
 
-            # we cannot re-use the same session every time because sessions re-use the same
-            # CookieJar and so we'd muddle cookies cross-request. if the application wants
-            # to keep track of cookies, it should do so itself.
-            #
-            # note: we're still getting connection pooling because we're re-using the adapter.
-            session = Session()
-            session.mount("http://", self.adapter)
-            session.mount("https://", self.adapter)
-            response = session.send(request, **kwargs)
-
-            http_status_code = response.status_code
-            span.set_tag("http.status_code", http_status_code)
-
-        latency_label_values = {
-            **active_request_label_values,
-            "http_success": getHTTPSuccessLabel(response.status_code),
-        }
-        requests_total_label_values = {
-            **latency_label_values,
-            "http_response_code": str(response.status_code),
-        }
-
-        LATENCY_SECONDS.labels(**latency_label_values).observe(time.perf_counter() - start_time)
-        REQUESTS_TOTAL.labels(**requests_total_label_values).inc()
-        ACTIVE_REQUESTS.labels(**active_request_label_values).dec()
-        return response
+            LATENCY_SECONDS.labels(**latency_label_values).observe(time.perf_counter() - start_time)
+            REQUESTS_TOTAL.labels(**requests_total_label_values).inc()
+            ACTIVE_REQUESTS.labels(**active_request_label_values).dec()
 
 
 class InternalBaseplateSession(BaseplateSession):
