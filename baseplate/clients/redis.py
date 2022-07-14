@@ -24,27 +24,29 @@ from baseplate.lib import metrics
 
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 
-PROM_NAMESPACE = "redis"
+PROM_PREFIX = "redis_client"
+PROM_LABELS_PREFIX = "redis"
+
 PROM_SHARED_LABELS = [
-    f"{PROM_NAMESPACE}_command",
-    f"{PROM_NAMESPACE}_database",
-    f"{PROM_NAMESPACE}_address",
+    f"{PROM_LABELS_PREFIX}_command",
+    f"{PROM_LABELS_PREFIX}_database",
+    f"{PROM_LABELS_PREFIX}_address",
 ]
 LATENCY_SECONDS = Histogram(
-    f"{PROM_NAMESPACE}_latency_seconds",
+    f"{PROM_PREFIX}_latency_seconds",
     "Latency histogram for calls made by clients",
-    [*PROM_SHARED_LABELS, f"{PROM_NAMESPACE}_success"],
+    [*PROM_SHARED_LABELS, f"{PROM_LABELS_PREFIX}_success"],
     buckets=default_latency_buckets,
 )
 
 REQUESTS_TOTAL = Counter(
-    f"{PROM_NAMESPACE}_requests_total",
+    f"{PROM_PREFIX}_requests_total",
     "Total number of requests made by client",
-    [*PROM_SHARED_LABELS, f"{PROM_NAMESPACE}_success"],
+    [*PROM_SHARED_LABELS, f"{PROM_LABELS_PREFIX}_success"],
 )
 
 ACTIVE_REQUESTS = Gauge(
-    f"{PROM_NAMESPACE}_active_requests",
+    f"{PROM_PREFIX}_active_requests",
     "Number of active requests for a given client",
     PROM_SHARED_LABELS,
 )
@@ -124,7 +126,7 @@ class RedisContextFactory(ContextFactory):
 
     """
 
-    PROM_PREFIX = f"{PROM_NAMESPACE}_pool"
+    PROM_PREFIX = f"{PROM_PREFIX}_pool"
     PROM_LABELS = ["pool"]
 
     max_connections = Gauge(
@@ -195,9 +197,13 @@ class MonitoredRedisConnection(redis.StrictRedis):
             start_time = perf_counter()
             success = "true"
             labels = {
-                f"{PROM_NAMESPACE}_command": command,
-                f"{PROM_NAMESPACE}_address": self.connection_pool.connection_kwargs.get("host", ""),
-                f"{PROM_NAMESPACE}_database": self.connection_pool.connection_kwargs.get("db", ""),
+                f"{PROM_LABELS_PREFIX}_command": command,
+                f"{PROM_LABELS_PREFIX}_address": self.connection_pool.connection_kwargs.get(
+                    "host", ""
+                ),
+                f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
+                    "db", ""
+                ),
             }
             ACTIVE_REQUESTS.labels(**labels).inc()
 
@@ -211,7 +217,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
                 raise
             finally:
                 ACTIVE_REQUESTS.labels(**labels).dec()
-                result_labels = {**labels, f"{PROM_NAMESPACE}_success": success}
+                result_labels = {**labels, f"{PROM_LABELS_PREFIX}_success": success}
                 REQUESTS_TOTAL.labels(**result_labels).inc()
                 LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
 
