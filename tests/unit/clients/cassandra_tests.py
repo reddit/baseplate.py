@@ -2,6 +2,8 @@ import unittest
 
 from unittest import mock
 
+from prometheus_client import REGISTRY
+
 try:
     import cassandra
 
@@ -10,9 +12,22 @@ except ImportError:
     raise unittest.SkipTest("cassandra-driver is not installed")
 
 import baseplate
+import logging
 from baseplate.lib.config import ConfigurationError
-from baseplate.clients.cassandra import cluster_from_config, CassandraSessionAdapter
+from baseplate.clients.cassandra import (
+    cluster_from_config,
+    CassandraCallbackArgs,
+    CassandraPrometheusLabels,
+    CassandraSessionAdapter,
+    REQUEST_TIME,
+    REQUEST_ACTIVE,
+    REQUEST_TOTAL,
+    _on_execute_complete,
+    _on_execute_failed,
+)
 from baseplate.lib.secrets import SecretsStore
+
+logger = logging.getLogger(__name__)
 
 
 class ClusterFromConfigTests(unittest.TestCase):
@@ -67,6 +82,11 @@ class ClusterFromConfigTests(unittest.TestCase):
 
 class CassandraSessionAdapterTests(unittest.TestCase):
     def setUp(self):
+        # cleaning up prom registry
+        REQUEST_TIME.clear()
+        REQUEST_ACTIVE.clear()
+        REQUEST_TOTAL.clear()
+
         self.session = mock.MagicMock()
         self.prepared_statements = {}
         self.mock_server_span = mock.MagicMock(spec=baseplate.ServerSpan)
@@ -86,3 +106,133 @@ class CassandraSessionAdapterTests(unittest.TestCase):
         # prepares.
         calls = [mock.call(statement), mock.call(statement)]
         self.session.prepare.assert_has_calls(calls)
+
+    def test_execute_async_prom_metrics(self):
+        self.session.keyspace = "keyspace"  # mocking keyspace name
+        # hostnames purposefully out of order :-)
+        self.session.cluster.contact_points = [
+            "hostname2",
+            "hostname1",
+        ]  # mocking cluster contact points
+        self.adapter.execute_async("SELECT foo from bar;")
+
+        self.assertEqual(
+            REGISTRY.get_sample_value(
+                "cassandra_client_active_requests",
+                {
+                    "cassandra_contact_points": "hostname1,hostname2",
+                    "cassandra_keyspace": "keyspace",
+                    "cassandra_query_name": "",
+                },
+            ),
+            1,
+        )
+
+    def test_execute_async_with_query_name_prom_metrics(self):
+        self.session.keyspace = "keyspace"  # mocking keyspace name
+        self.session.cluster.contact_points = [
+            "hostname1",
+            "hostname2",
+        ]  # mocking cluster contact points
+        self.adapter.execute_async("SELECT foo from bar;", query_name="foo_bar")
+
+        self.assertEqual(
+            REGISTRY.get_sample_value(
+                "cassandra_client_active_requests",
+                {
+                    "cassandra_contact_points": "hostname1,hostname2",
+                    "cassandra_keyspace": "keyspace",
+                    "cassandra_query_name": "foo_bar",
+                },
+            ),
+            1,
+        )
+
+
+class CassandraTests(unittest.TestCase):
+    def setUp(self):
+        REQUEST_TIME.clear()
+        REQUEST_ACTIVE.clear()
+        REQUEST_TOTAL.clear()
+
+    def test_prom__on_execute_complete(self):
+        result = mock.MagicMock()
+        span = mock.MagicMock()
+        event = mock.MagicMock()
+        start_time = 1.0
+
+        prom_labels_tuple = CassandraPrometheusLabels(
+            cassandra_contact_points="contact1,contact2",
+            cassandra_keyspace="keyspace",
+            cassandra_query_name="",
+        )
+
+        _on_execute_complete(
+            result,
+            CassandraCallbackArgs(
+                span=span,
+                start_time=start_time,
+                prom_labels=prom_labels_tuple,
+            ),
+            event,
+        )
+        prom_labels = prom_labels_tuple._asdict()
+        prom_labels_w_success = {**prom_labels, **{"cassandra_success": "true"}}
+
+        self.assertEquals(
+            REGISTRY.get_sample_value("cassandra_client_requests_total", prom_labels_w_success), 1
+        )
+
+        # we start from 0 here since this is a unit test, so -1 is the expected result
+        self.assertEquals(
+            REGISTRY.get_sample_value("cassandra_client_active_requests", prom_labels), -1
+        )
+
+        self.assertEquals(
+            REGISTRY.get_sample_value(
+                "cassandra_client_latency_seconds_bucket",
+                {**prom_labels_w_success, **{"le": "+Inf"}},
+            ),
+            1,
+        )
+
+    def test_prom__on_execute_failed(self):
+        result = mock.MagicMock()
+        span = mock.MagicMock()
+        event = mock.MagicMock()
+        start_time = 1.0
+
+        prom_labels_tuple = CassandraPrometheusLabels(
+            cassandra_contact_points="contact1,contact2",
+            cassandra_keyspace="keyspace",
+            cassandra_query_name="",
+        )
+
+        _on_execute_failed(
+            result,
+            CassandraCallbackArgs(
+                span=span,
+                start_time=start_time,
+                prom_labels=prom_labels_tuple,
+            ),
+            event,
+        )
+        prom_labels = prom_labels_tuple._asdict()
+        prom_labels_w_success = {**prom_labels, **{"cassandra_success": "false"}}
+
+        self.assertEquals(
+            REGISTRY.get_sample_value("cassandra_client_requests_total", prom_labels_w_success), 1
+        )
+
+        # we start from 0 here since this is a unit test, so -1 is the expected result
+        self.assertEquals(
+            REGISTRY.get_sample_value("cassandra_client_active_requests", prom_labels), -1
+        )
+
+        self.assertEquals(
+            REGISTRY.get_sample_value(
+                "cassandra_client_latency_seconds_bucket",
+                {**prom_labels_w_success, **{"le": "+Inf"}},
+            ),
+            1,
+        )

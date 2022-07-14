@@ -1,4 +1,5 @@
 import logging
+import time
 
 from threading import Event
 from typing import Any
@@ -6,6 +7,7 @@ from typing import Callable
 from typing import Dict
 from typing import List
 from typing import Mapping
+from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -21,12 +23,39 @@ from cassandra.cluster import Session  # pylint: disable=no-name-in-module
 from cassandra.query import BoundStatement  # pylint: disable=no-name-in-module
 from cassandra.query import PreparedStatement  # pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.secrets import SecretsStore
 
+
+class CassandraPrometheusLabels(NamedTuple):
+    cassandra_contact_points: str
+    cassandra_keyspace: str
+    cassandra_query_name: str
+
+
+REQUEST_TIME = Histogram(
+    "cassandra_client_latency_seconds",
+    "Time spent executing cassandra query",
+    CassandraPrometheusLabels._fields + ("cassandra_success",),
+    buckets=default_latency_buckets,
+)
+REQUEST_ACTIVE = Gauge(
+    "cassandra_client_active_requests",
+    "Current number of active cassandra queries",
+    CassandraPrometheusLabels._fields,
+)
+REQUEST_TOTAL = Counter(
+    "cassandra_client_requests_total",
+    "Total number of cassandra queries",
+    CassandraPrometheusLabels._fields + ("cassandra_success",),
+)
 
 if TYPE_CHECKING:
     import cqlmapper.connection
@@ -231,20 +260,38 @@ def wrap_future(
     return response_future
 
 
-def _on_execute_complete(_result: Any, span: Span, event: Event) -> None:
+class CassandraCallbackArgs(NamedTuple):
+    span: Span
+    start_time: float
+    prom_labels: CassandraPrometheusLabels
+
+
+def _on_execute_complete(_result: Any, args: CassandraCallbackArgs, event: Event) -> None:
     # TODO: tag with anything from the result set?
     # TODO: tag with any returned warnings
     try:
-        span.finish()
+        args.span.finish()
     finally:
+        prom_labels = args.prom_labels._asdict()
+        REQUEST_TIME.labels(**prom_labels, cassandra_success="true").observe(
+            time.perf_counter() - args.start_time
+        )
+        REQUEST_TOTAL.labels(**prom_labels, cassandra_success="true").inc()
+        REQUEST_ACTIVE.labels(**prom_labels).dec()
         event.set()
 
 
-def _on_execute_failed(exc: BaseException, span: Span, event: Event) -> None:
+def _on_execute_failed(exc: BaseException, args: CassandraCallbackArgs, event: Event) -> None:
     try:
         exc_info = (type(exc), exc, None)
-        span.finish(exc_info=exc_info)
+        args.span.finish(exc_info=exc_info)
     finally:
+        prom_labels = args.prom_labels._asdict()
+        REQUEST_TIME.labels(**prom_labels, cassandra_success="false").observe(
+            time.perf_counter() - args.start_time
+        )
+        REQUEST_TOTAL.labels(**prom_labels, cassandra_success="false").inc()
+        REQUEST_ACTIVE.labels(**prom_labels).dec()
         event.set()
 
 
@@ -274,17 +321,29 @@ class CassandraSessionAdapter:
         query: Query,
         parameters: Optional[Parameters] = None,
         timeout: Union[float, object] = _NOT_SET,
+        query_name: Optional[str] = None,
         **kwargs: Any,
     ) -> Any:
-        return self.execute_async(query, parameters, timeout, **kwargs).result()
+        return self.execute_async(
+            query, parameters=parameters, timeout=timeout, query_name=query_name, **kwargs
+        ).result()
 
     def execute_async(
         self,
         query: Query,
         parameters: Optional[Parameters] = None,
         timeout: Union[float, object] = _NOT_SET,
+        query_name: Optional[str] = None,
         **kwargs: Any,
     ) -> ResponseFuture:
+        prom_labels = CassandraPrometheusLabels(
+            cassandra_contact_points=",".join(sorted(self.cluster.contact_points)),
+            cassandra_keyspace=self.session.keyspace,
+            cassandra_query_name=query_name if query_name is not None else "",
+        )
+
+        REQUEST_ACTIVE.labels(**prom_labels._asdict()).inc()
+        start_time = time.perf_counter()
         trace_name = f"{self.context_name}.execute"
         span = self.server_span.make_child(trace_name)
         span.start()
@@ -296,12 +355,17 @@ class CassandraSessionAdapter:
         elif isinstance(query, BoundStatement):
             span.set_tag("statement", query.prepared_statement.query_string)
         future = self.session.execute_async(query, parameters=parameters, timeout=timeout, **kwargs)
+        callback_args = CassandraCallbackArgs(
+            span=span,
+            start_time=start_time,
+            prom_labels=prom_labels,
+        )
         future = wrap_future(
             response_future=future,
             callback_fn=_on_execute_complete,
-            callback_args=span,
+            callback_args=callback_args,
             errback_fn=_on_execute_failed,
-            errback_args=span,
+            errback_args=callback_args,
         )
         return future
 
