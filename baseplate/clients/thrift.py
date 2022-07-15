@@ -117,20 +117,13 @@ def _enumerate_service_methods(client: Any) -> Iterator[str]:
     """Return an iterable of service methods from a generated Iface class."""
     ifaces_found = 0
 
-    # python3 drops the concept of unbound methods, so they're just plain
-    # functions and we have to account for that here. see:
-    # https://stackoverflow.com/questions/17019949/why-is-there-a-difference-between-inspect-ismethod-and-inspect-isfunction-from-p  # noqa: E501
-    def predicate(x: Any) -> bool:
-        return inspect.isfunction(x) or inspect.ismethod(x)
-
     for base_cls in inspect.getmro(client):
         if base_cls.__name__ == "Iface":
-            for name, _ in inspect.getmembers(base_cls, predicate):
+            for name, _ in inspect.getmembers(base_cls, inspect.isroutine):
                 yield name
             ifaces_found += 1
-
+    
     assert ifaces_found > 0, "class is not a thrift client; it has no Iface"
-
 
 class _PooledClientProxy:
     """A proxy which acts like a thrift client but uses a connection pool."""
