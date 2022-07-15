@@ -144,13 +144,14 @@ class TestPrometheusMetrics:
         handler = mock.MagicMock(
             retry_policy=[None],
             pool=pool,
+            namespace="test_namespace",
         )
         handler.client_cls.return_value = client_cls
 
         thrift_success = str((exc is None)).lower()
         prom_labels = {
             "thrift_method": "handle",
-            "thrift_client_name": "",
+            "thrift_client_name": "test_namespace",
         }
         requests_total_prom_labels = {
             "thrift_exception_type": exc_type,
