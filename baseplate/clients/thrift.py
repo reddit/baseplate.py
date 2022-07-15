@@ -122,7 +122,7 @@ def _enumerate_service_methods(client: Any) -> Iterator[str]:
             for name, _ in inspect.getmembers(base_cls, inspect.isroutine):
                 yield name
             ifaces_found += 1
-            
+
     assert ifaces_found > 0, "class is not a thrift client; it has no Iface"
 
 
