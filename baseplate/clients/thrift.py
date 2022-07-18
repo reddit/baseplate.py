@@ -212,7 +212,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                 start_time = time.perf_counter()
                 ACTIVE_REQUESTS.labels(
                     thrift_method=name,
-                    thrift_client_name="",
+                    thrift_client_name=self.namespace,
                 ).inc()
 
                 with self.pool.connection() as prot:
@@ -313,13 +313,13 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
             REQUEST_LATENCY.labels(
                 thrift_method=name,
-                thrift_client_name="",
+                thrift_client_name=self.namespace,
                 thrift_success=thrift_success,
             ).observe(time.perf_counter() - start_time)
 
             REQUESTS_TOTAL.labels(
                 thrift_method=name,
-                thrift_client_name="",
+                thrift_client_name=self.namespace,
                 thrift_success=thrift_success,
                 thrift_exception_type=exception_type,
                 thrift_baseplate_status_code=baseplate_status_code,
@@ -328,7 +328,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
             ACTIVE_REQUESTS.labels(
                 thrift_method=name,
-                thrift_client_name="",
+                thrift_client_name=self.namespace,
             ).dec()
 
     return _call_thrift_method
