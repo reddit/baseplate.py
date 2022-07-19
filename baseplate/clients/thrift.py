@@ -119,8 +119,9 @@ def _enumerate_service_methods(client: Any) -> Iterator[str]:
 
     for base_cls in inspect.getmro(client):
         if base_cls.__name__ == "Iface":
-            for name, _ in inspect.getmembers(base_cls, inspect.isroutine):
-                yield name
+            for name in base_cls.__dict__:
+                if callable(getattr(base_cls, name)):
+                    yield name
             ifaces_found += 1
 
     assert ifaces_found > 0, "class is not a thrift client; it has no Iface"
