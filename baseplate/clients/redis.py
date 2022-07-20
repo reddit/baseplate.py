@@ -24,11 +24,12 @@ from baseplate.lib import metrics
 
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 
-PROM_NAMESPACE = "redis"
+PROM_NAMESPACE = "redis_client"
+PROM_LABEL_PREFIX = "redis"
 PROM_SHARED_LABELS = [
-    f"{PROM_NAMESPACE}_command",
-    f"{PROM_NAMESPACE}_database",
-    f"{PROM_NAMESPACE}_address",
+    f"{PROM_LABEL_PREFIX}_command",
+    f"{PROM_LABEL_PREFIX}_database",
+    f"{PROM_LABEL_PREFIX}_address",
 ]
 LATENCY_SECONDS = Histogram(
     f"{PROM_NAMESPACE}_latency_seconds",
@@ -197,9 +198,13 @@ class MonitoredRedisConnection(redis.StrictRedis):
             start_time = perf_counter()
             success = "true"
             labels = {
-                f"{PROM_NAMESPACE}_command": command,
-                f"{PROM_NAMESPACE}_address": self.connection_pool.connection_kwargs.get("host", ""),
-                f"{PROM_NAMESPACE}_database": self.connection_pool.connection_kwargs.get("db", ""),
+                f"{PROM_LABEL_PREFIX}_command": command,
+                f"{PROM_LABEL_PREFIX}_address": self.connection_pool.connection_kwargs.get(
+                    "host", ""
+                ),
+                f"{PROM_LABEL_PREFIX}_database": self.connection_pool.connection_kwargs.get(
+                    "db", ""
+                ),
             }
             ACTIVE_REQUESTS.labels(**labels).inc()
 
@@ -213,7 +218,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
                 raise
             finally:
                 ACTIVE_REQUESTS.labels(**labels).dec()
-                result_labels = {**labels, f"{PROM_NAMESPACE}_success": success}
+                result_labels = {**labels, f"{PROM_LABEL_PREFIX}_success": success}
                 REQUESTS_TOTAL.labels(**result_labels).inc()
                 LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
 
