@@ -35,7 +35,7 @@ from baseplate.lib.secrets import SecretsStore
 
 
 class CassandraPrometheusLabels(NamedTuple):
-    cassandra_contact_points: str
+    cassandra_client_name: str
     cassandra_keyspace: str
     cassandra_query_name: str
 
@@ -127,17 +127,20 @@ class CassandraClient(config.Parser):
     See :py:func:`cluster_from_config` for available configuration settings.
 
     :param keyspace: Which keyspace to set as the default for operations.
+    :param client_name: the service-provided name for the client to identify the backends for
+        cassandra host. MUST be user specified, MAY be blank if not specified.
 
     """
 
-    def __init__(self, keyspace: str, **kwargs: Any):
+    def __init__(self, keyspace: str, client_name: str = "", **kwargs: Any):
         self.keyspace = keyspace
         self.kwargs = kwargs
+        self.client_name = client_name
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "CassandraContextFactory":
         cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
         session = cluster.connect(keyspace=self.keyspace)
-        return CassandraContextFactory(session)
+        return CassandraContextFactory(session, prometheus_client_name=self.client_name)
 
 
 class CassandraContextFactory(ContextFactory):
@@ -150,15 +153,24 @@ class CassandraContextFactory(ContextFactory):
     record diagnostic information.
 
     :param cassandra.cluster.Session session: A configured session object.
+    :param prometheus_client_name: the service-provided name for the client to identify the backends
+        for cassandra host. MUST be user specified, MAY be blank if not specified.
 
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, prometheus_client_name: Optional[str] = None):
         self.session = session
         self.prepared_statements: Dict[str, PreparedStatement] = {}
+        self.prometheus_client_name = prometheus_client_name
 
     def make_object_for_context(self, name: str, span: Span) -> "CassandraSessionAdapter":
-        return CassandraSessionAdapter(name, span, self.session, self.prepared_statements)
+        return CassandraSessionAdapter(
+            name,
+            span,
+            self.session,
+            self.prepared_statements,
+            prometheus_client_name=self.prometheus_client_name,
+        )
 
 
 class CQLMapperClient(config.Parser):
@@ -307,11 +319,13 @@ class CassandraSessionAdapter:
         server_span: Span,
         session: Session,
         prepared_statements: Dict[str, PreparedStatement],
+        prometheus_client_name: Optional[str] = None,
     ):
         self.context_name = context_name
         self.server_span = server_span
         self.session = session
         self.prepared_statements = prepared_statements
+        self.prometheus_client_name = prometheus_client_name
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.session, name)
@@ -337,7 +351,9 @@ class CassandraSessionAdapter:
         **kwargs: Any,
     ) -> ResponseFuture:
         prom_labels = CassandraPrometheusLabels(
-            cassandra_contact_points=",".join(sorted(self.cluster.contact_points)),
+            cassandra_client_name=self.prometheus_client_name
+            if self.prometheus_client_name is not None
+            else self.context_name,
             cassandra_keyspace=self.session.keyspace,
             cassandra_query_name=query_name if query_name is not None else "",
         )
