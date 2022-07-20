@@ -73,13 +73,13 @@ class TestKafkaMessageHandler:
         return msg
 
     @mock.patch("baseplate.frameworks.queue_consumer.kafka.time")
-    @pytest.mark.parametrize("bootstrap_servers", [None, "127.0.0.1:9092"])
-    def test_handle(self, time, context, span, baseplate, name, message, bootstrap_servers):
+    @pytest.mark.parametrize("prometheus_client_name", [None, "my_kafka_client_name"])
+    def test_handle(self, time, context, span, baseplate, name, message, prometheus_client_name):
         time.time.return_value = 2.0
         time.perf_counter.side_effect = [1, 2]
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address=bootstrap_servers if bootstrap_servers is not None else "",
+            kafka_client_name=prometheus_client_name if prometheus_client_name is not None else "",
             kafka_topic="topic_1",
         )
 
@@ -109,7 +109,7 @@ class TestKafkaMessageHandler:
             ) as active_dec_spy_method:
                 mock_manager.attach_mock(active_dec_spy_method, "dec")
 
-                if bootstrap_servers is None:
+                if prometheus_client_name is None:
                     handler = KafkaMessageHandler(
                         baseplate, name, handler_fn, message_unpack_fn, on_success_fn
                     )
@@ -120,7 +120,7 @@ class TestKafkaMessageHandler:
                         handler_fn,
                         message_unpack_fn,
                         on_success_fn,
-                        bootstrap_servers=bootstrap_servers,
+                        prometheus_client_name=prometheus_client_name,
                     )
                 handler.handle(message)
 
@@ -180,7 +180,7 @@ class TestKafkaMessageHandler:
         context.metrics.gauge.return_value = mock_gauge
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address="",
+            kafka_client_name="",
             kafka_topic="topic_1",
         )
 
@@ -258,7 +258,7 @@ class TestKafkaMessageHandler:
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address="",
+            kafka_client_name="",
             kafka_topic="topic_1",
         )
 
@@ -317,7 +317,7 @@ class TestKafkaMessageHandler:
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address="",
+            kafka_client_name="",
             kafka_topic="topic_1",
         )
 
@@ -386,7 +386,7 @@ class TestKafkaMessageHandler:
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address="",
+            kafka_client_name="",
             kafka_topic="topic_1",
         )
 
@@ -585,7 +585,7 @@ class TestInOrderConsumerFactory:
         assert pump.consumer == factory.consumer
         assert pump.work_queue == work_queue
 
-    def test_build_message_handler(self, make_queue_consumer_factory, bootstrap_servers):
+    def test_build_message_handler(self, make_queue_consumer_factory):
         factory = make_queue_consumer_factory()
         handler = factory.build_message_handler()
         assert isinstance(handler, KafkaMessageHandler)
@@ -594,7 +594,6 @@ class TestInOrderConsumerFactory:
         assert handler.handler_fn == factory.handler_fn
         assert handler.message_unpack_fn == factory.message_unpack_fn
         assert handler.on_success_fn.__name__ == "commit_offset"
-        assert handler.bootstrap_servers == bootstrap_servers
 
     def test_build_multiple_message_handlers(self, make_queue_consumer_factory):
         factory = make_queue_consumer_factory()
@@ -705,7 +704,7 @@ class TestFastConsumerFactory:
     def make_queue_consumer_factory(self, name, baseplate, bootstrap_servers, group_id, topics):
         @mock.patch("confluent_kafka.Consumer")
         def _make_queue_consumer_factory(kafka_consumer, health_check_fn=None):
-            mock_consumer = mock.Mock(config={"bootstrap_servers": bootstrap_servers})
+            mock_consumer = mock.Mock()
             mock_consumer.list_topics.return_value = mock.Mock(
                 topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
             )
@@ -732,7 +731,7 @@ class TestFastConsumerFactory:
         assert pump.consumer == factory.consumer
         assert pump.work_queue == work_queue
 
-    def test_build_message_handler(self, make_queue_consumer_factory, bootstrap_servers):
+    def test_build_message_handler(self, make_queue_consumer_factory):
         factory = make_queue_consumer_factory()
         handler = factory.build_message_handler()
         assert isinstance(handler, KafkaMessageHandler)
@@ -741,7 +740,6 @@ class TestFastConsumerFactory:
         assert handler.handler_fn == factory.handler_fn
         assert handler.message_unpack_fn == factory.message_unpack_fn
         assert handler.on_success_fn is None
-        assert handler.bootstrap_servers == bootstrap_servers
 
     @pytest.mark.parametrize("health_check_fn", [None, lambda req: True])
     def test_build_health_checker(self, health_check_fn, make_queue_consumer_factory):
