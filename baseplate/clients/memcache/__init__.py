@@ -181,18 +181,18 @@ LABELS_COMMON = [
     f"{PROM_NAMESPACE}_command",
 ]
 LATENCY_SECONDS = Histogram(
-    f"{PROM_NAMESPACE}_latency_seconds",
+    f"{PROM_NAMESPACE}_client_latency_seconds",
     "Latency histogram of outoing memcached requests",
     [*LABELS_COMMON, f"{PROM_NAMESPACE}_success"],
     buckets=default_latency_buckets,
 )
 REQUESTS_TOTAL = Counter(
-    f"{PROM_NAMESPACE}_requests_total",
+    f"{PROM_NAMESPACE}_client_requests_total",
     "Total number of memcached requests",
     [*LABELS_COMMON, f"{PROM_NAMESPACE}_success"],
 )
 ACTIVE_REQUESTS = Gauge(
-    f"{PROM_NAMESPACE}_active_requests",
+    f"{PROM_NAMESPACE}_client_active_requests",
     "Number of active requests",
     LABELS_COMMON,
 )
