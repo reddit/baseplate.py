@@ -332,7 +332,8 @@ class BaseplateConfigurator:
         )
         span.set_tag("protocol", "http")
         span.set_tag("http.url", request.url)
-        span.set_tag("http.route", request.matched_route.pattern)
+        # not sure this is accurate, as this is based on pyramid events 
+        # span.set_tag("http.route", request.matched_route.name)
         span.set_tag("http.method", request.method)
         span.set_tag("peer.ipv4", request.remote_addr)
         span.start()
