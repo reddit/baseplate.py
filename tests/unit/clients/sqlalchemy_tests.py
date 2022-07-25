@@ -142,6 +142,7 @@ class EngineContextFactoryTest(unittest.TestCase):
         )
 
         prom_labels = {
+            "sql_pool": "factory_name",
             "sql_address": "test_hostname",
             "sql_database": "test_database",
         }
@@ -162,6 +163,7 @@ class EngineContextFactoryTest(unittest.TestCase):
         )
 
         prom_labels = {
+            "sql_pool": "factory_name",
             "sql_address": "test_hostname",
             "sql_database": "test_database",
         }
@@ -188,6 +190,7 @@ class EngineContextFactoryTest(unittest.TestCase):
         self.factory.on_error(exception_context)
 
         prom_labels = {
+            "sql_pool": "factory_name",
             "sql_address": "test_hostname",
             "sql_database": "test_database",
         }
