@@ -10,17 +10,19 @@ from typing import Optional
 
 import rediscluster
 
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
 from redis import RedisError
 from rediscluster.pipeline import ClusterPipeline
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
+from baseplate.clients.redis import ACTIVE_REQUESTS
+from baseplate.clients.redis import LATENCY_SECONDS
+from baseplate.clients.redis import MAX_CONNECTIONS
+from baseplate.clients.redis import OPEN_CONNECTIONS
+from baseplate.clients.redis import PROM_LABELS_PREFIX
+from baseplate.clients.redis import REQUESTS_TOTAL
 from baseplate.lib import config
 from baseplate.lib import metrics
-from baseplate.lib.prometheus_metrics import default_latency_buckets
 
 logger = logging.getLogger(__name__)
 randomizer = random.SystemRandom()
@@ -107,33 +109,6 @@ MULTI_KEY_WRITE_COMMANDS = frozenset(["DEL"])
 # These are a special case of multi-key write commands that take arguments in the form
 #  of key value [key value ...]
 MULTI_KEY_BATCH_WRITE_COMMANDS = frozenset(["MSET", "MSETNX"])
-
-PROM_PREFIX = "redis_cluster_client"
-PROM_LABELS_PREFIX = "redis_cluster"
-
-PROM_SHARED_LABELS = [
-    f"{PROM_LABELS_PREFIX}_command",
-    f"{PROM_LABELS_PREFIX}_database",
-    f"{PROM_LABELS_PREFIX}_startup_address",
-]
-LATENCY_SECONDS = Histogram(
-    f"{PROM_PREFIX}_latency_seconds",
-    "Latency histogram for calls made by clients",
-    [*PROM_SHARED_LABELS, f"{PROM_LABELS_PREFIX}_success"],
-    buckets=default_latency_buckets,
-)
-
-REQUESTS_TOTAL = Counter(
-    f"{PROM_PREFIX}_requests_total",
-    "Total number of requests made by client",
-    [*PROM_SHARED_LABELS, f"{PROM_LABELS_PREFIX}_success"],
-)
-
-ACTIVE_REQUESTS = Gauge(
-    f"{PROM_PREFIX}_active_requests",
-    "Number of active requests for a given client",
-    PROM_SHARED_LABELS,
-)
 
 
 class HotKeyTracker:
@@ -370,7 +345,7 @@ class ClusterRedisContextFactory(ContextFactory):
     """Cluster Redis client context factory.
 
     This factory will attach a
-    :py:class:`~baseplate.clients.redis.MonitoredClusterRedisConnection` to an
+    :py:class:`~baseplate.clients.redis.MonitoredRedisClusterConnection` to an
     attribute on the :py:class:`~baseplate.RequestContext`. When Redis commands
     are executed via this connection object, they will use connections from the
     provided :py:class:`rediscluster.ClusterConnectionPool` and automatically record
@@ -378,23 +353,7 @@ class ClusterRedisContextFactory(ContextFactory):
     :param connection_pool: A connection pool.
     """
 
-    PROM_PREFIX = f"{PROM_PREFIX}_pool"
-    PROM_LABELS = ["pool"]
-
-    max_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_max_size",
-        "Maximum number of connections allowed in this redis cluster pool",
-        PROM_LABELS,
-    )
-    open_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_open_connections",
-        "Number of open connections in this redis cluster pool",
-        PROM_LABELS,
-    )
-
-    def __init__(
-        self, connection_pool: rediscluster.ClusterConnectionPool, name: str = "redis_cluster"
-    ):
+    def __init__(self, connection_pool: rediscluster.ClusterConnectionPool, name: str = "redis"):
         self.connection_pool = connection_pool
         self.name = name
 
@@ -403,15 +362,15 @@ class ClusterRedisContextFactory(ContextFactory):
             return
 
         size = self.connection_pool.max_connections
-        open_connections = len(self.connection_pool._connections)
-        self.max_connections_gauge.labels(self.name).set(size)
-        self.open_connections_gauge.labels(self.name).set(open_connections)
+        open_connections_num = len(self.connection_pool._connections)
+        MAX_CONNECTIONS.labels(self.name).set(size)
+        OPEN_CONNECTIONS.labels(self.name).set(open_connections_num)
 
         batch.gauge("pool.size").replace(size)
-        batch.gauge("pool.open_connections").replace(open_connections)
+        batch.gauge("pool.open_connections").replace(open_connections_num)
 
-    def make_object_for_context(self, name: str, span: Span) -> "MonitoredClusterRedisConnection":
-        return MonitoredClusterRedisConnection(
+    def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisClusterConnection":
+        return MonitoredRedisClusterConnection(
             name,
             span,
             self.connection_pool,
@@ -420,13 +379,13 @@ class ClusterRedisContextFactory(ContextFactory):
         )
 
 
-class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
+class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
     """Cluster Redis connection that collects diagnostic information.
 
     This connection acts like :py:class:`rediscluster.Redis` except that all
     operations are automatically wrapped with diagnostic collection.
     The interface is the same as that class except for the
-    :py:meth:`~baseplate.clients.redis.MonitoredClusterRedisConnection.pipeline`
+    :py:meth:`~baseplate.clients.redis.MonitoredRedisClusterConnection.pipeline`
     method.
     """
 
@@ -461,12 +420,13 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
             success = "true"
             labels = {
                 f"{PROM_LABELS_PREFIX}_command": command,
-                f"{PROM_LABELS_PREFIX}_startup_address": self.connection_pool.connection_kwargs.get(
-                    "host", ""
+                f"{PROM_LABELS_PREFIX}_client_name": self.connection_pool.connection_kwargs.get(
+                    "client_name", ""
                 ),
                 f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
                     "db", ""
                 ),
+                f"{PROM_LABELS_PREFIX}_type": "cluster",
             }
             ACTIVE_REQUESTS.labels(**labels).inc()
 
