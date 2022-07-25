@@ -18,12 +18,17 @@ from baseplate.clients.memcache import lib as memcache_lib
 
 
 class PrometheusInstrumentationTests(unittest.TestCase):
-    def test(self):
+    # test the @_prom_instrument decorator by calling one of the decorated functions
+    def test_prometheus_decorator(self):
+        # stub out the server span, each call to MonitoredMemcacheConnection
+        # will create a new span - but we don't use that for prom
         span = mock.Mock()
         span_inner = mock.Mock()
-        span_inner.__enter__ = span_inner.__exit__ = mock.Mock(return_value=mock.Mock())
+        span_inner.__enter__ = mock.Mock(return_value=mock.Mock())
+        span_inner.__exit__ = mock.Mock(return_value=None)
         span.make_child = lambda trace_name: span_inner
 
+        # stub out the client, we only use the server name
         pooled_client = mock.Mock()
         pooled_client.server = "server name"
 
@@ -59,6 +64,27 @@ class PrometheusInstrumentationTests(unittest.TestCase):
                     **prom_labels,
                     "memcached_success": "true",
                     "le": "+Inf",
+                },
+            )
+            == 1
+        )
+
+        class FailClient(mock.Mock):
+            server = "hello"
+
+            def incr(self, _a, _b, noreply=None):
+                raise TypeError
+
+        fail_mmc = MonitoredMemcacheConnection("test", span, FailClient())
+        self.assertRaises(TypeError, fail_mmc.incr, "aaa", 1)
+
+        assert (
+            REGISTRY.get_sample_value(
+                "memcached_client_requests_total",
+                {
+                    "memcached_address": "hello",
+                    "memcached_command": "incr",
+                    "memcached_success": "false",
                 },
             )
             == 1
