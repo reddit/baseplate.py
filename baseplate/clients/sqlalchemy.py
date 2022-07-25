@@ -213,9 +213,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         pool = self.engine.pool
         if isinstance(pool, QueuePool):
             self.max_connections_gauge.labels(name).set_function(pool.size)
-            self.checked_out_connections_gauge.labels(name).set_function(
-                pool.checkedout + pool.overflow
-            )
+            self.checked_out_connections_gauge.labels(name).set_function((lambda: pool.checkedout() + pool.overflow()))
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.engine.pool
