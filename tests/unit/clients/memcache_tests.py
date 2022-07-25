@@ -10,9 +10,59 @@ except ImportError:
 else:
     del pymemcache
 
+from prometheus_client import REGISTRY
 from baseplate.lib.config import ConfigurationError
 from baseplate.clients.memcache import pool_from_config
+from baseplate.clients.memcache import MonitoredMemcacheConnection
 from baseplate.clients.memcache import lib as memcache_lib
+
+
+class PrometheusInstrumentationTests(unittest.TestCase):
+    def test(self):
+        span = mock.Mock()
+        span_inner = mock.Mock()
+        span_inner.__enter__ = span_inner.__exit__ = mock.Mock(return_value=mock.Mock())
+        span.make_child = lambda trace_name: span_inner
+
+        pooled_client = mock.Mock()
+        pooled_client.server = "server name"
+
+        prom_labels = {
+            "memcached_address": "server name",
+            "memcached_command": "incr",
+        }
+
+        mmc = MonitoredMemcacheConnection("test", span, pooled_client)
+        mmc.incr("blah", 1)
+
+        assert (
+            REGISTRY.get_sample_value(
+                "memcached_client_active_requests",
+                prom_labels,
+            )
+            == 0
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                "memcached_client_requests_total",
+                {
+                    **prom_labels,
+                    "memcached_success": "true",
+                },
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                "memcached_client_latency_seconds_bucket",
+                {
+                    **prom_labels,
+                    "memcached_success": "true",
+                    "le": "+Inf",
+                },
+            )
+            == 1
+        )
 
 
 class PoolFromConfigTests(unittest.TestCase):
