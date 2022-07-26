@@ -143,7 +143,11 @@ def _make_baseplate_tween(
         finally:
             http_endpoint = ""
             if request.matched_route:
-                http_endpoint = request.matched_route.pattern if request.matched_route.pattern else request.matched_route.name
+                http_endpoint = (
+                    request.matched_route.pattern
+                    if request.matched_route.pattern
+                    else request.matched_route.name
+                )
             http_method = request.method.lower()
             http_response_code = ""
 
@@ -327,7 +331,11 @@ class BaseplateConfigurator:
 
         endpoint = ""
         if request.matched_route:
-            endpoint = request.matched_route.pattern if request.matched_route.pattern else request.matched_route.name
+            endpoint = (
+                request.matched_route.pattern
+                if request.matched_route.pattern
+                else request.matched_route.name
+            )
         ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
 
         span = self.baseplate.make_server_span(
