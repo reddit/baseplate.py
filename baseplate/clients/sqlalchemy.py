@@ -209,14 +209,6 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         event.listen(self.engine, "handle_error", self.on_error)
         self.time_started = 0.0
 
-        # Prometheus pool metrics
-        pool = self.engine.pool
-        if isinstance(pool, QueuePool):
-            self.max_connections_gauge.labels(name).set_function(pool.size)
-            self.checked_out_connections_gauge.labels(name).set_function(
-                (lambda: pool.checkedout() + pool.overflow())
-            )
-
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.engine.pool
         if not isinstance(pool, QueuePool):
