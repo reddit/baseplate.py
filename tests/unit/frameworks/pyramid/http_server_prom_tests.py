@@ -8,13 +8,14 @@ from pyramid.response import Response
 
 from baseplate.frameworks.pyramid import _make_baseplate_tween
 from baseplate.frameworks.pyramid import ACTIVE_REQUESTS
+from baseplate.frameworks.pyramid import BaseplateConfigurator
 from baseplate.frameworks.pyramid import REQUEST_LATENCY
 from baseplate.frameworks.pyramid import REQUEST_SIZE
 from baseplate.frameworks.pyramid import REQUESTS_TOTAL
 from baseplate.frameworks.pyramid import RESPONSE_SIZE
 
 
-class TestPyramidHttpServerPrometheus:
+class TestPyramidHttpServerIntegrationPrometheus:
     def setup(self):
         ACTIVE_REQUESTS.clear()
         REQUESTS_TOTAL.clear()
@@ -31,7 +32,7 @@ class TestPyramidHttpServerPrometheus:
             Exception("some generic exception"),
         ],
     )
-    def test_build_thrift_proxy_method(self, response):
+    def test_http_server_metric_collection_method(self, response):
         status_code = ""
         http_success = "false"
         expectation = does_not_raise()
@@ -50,7 +51,10 @@ class TestPyramidHttpServerPrometheus:
         handler = mock.MagicMock(return_value=response)
         registry = mock.MagicMock()
         request = mock.MagicMock(content_length=42, method="GET")
+        request.matched_route.name = "route"
         request.matched_route.pattern = "route_pattern"
+        event = mock.MagicMock(request=request)
+        bpConfigurator = BaseplateConfigurator(mock.MagicMock())
 
         mock_manager = mock.Mock()
         with mock.patch.object(
@@ -80,6 +84,7 @@ class TestPyramidHttpServerPrometheus:
                     ) as response_size_spy_method:
                         mock_manager.attach_mock(response_size_spy_method, "response_observe")
                         with expectation:
+                            bpConfigurator._on_new_request(event)
                             _make_baseplate_tween(handler=handler, _registry=registry)(request)
 
         assert (
