@@ -1,0 +1,23 @@
+repos:
+- repo: local
+  hooks:
+  - id: make-fmt
+    name: make-fmt
+    stages: [commit]
+    language: system
+    entry: docker-compose run baseplate make fmt
+    always_run: true
+  - id: make-lint
+    name: make-lint
+    stages: [push]
+    language: system
+    entry: docker-compose run baseplate make lint
+    always_run: true
+    fail_fast: true
+  - id: pytest
+    name: pytest
+    stages: [push]
+    language: system
+    entry: docker-compose run baseplate pytest
+    always_run: true
+    fail_fast: true
