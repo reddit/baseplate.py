@@ -175,6 +175,11 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         "Number of connections in use by this pool (checked out + overflow)",
         PROM_POOL_LABELS,
     )
+    checked_in_connections_gauge = Gauge(
+        f"{PROM_POOL_PREFIX}_idle_connections",
+        "Number of connections not in use by this pool (unused pool connections)",
+        PROM_POOL_LABELS,
+    )
 
     PROM_LABELS = [
         "sql_pool",
@@ -216,6 +221,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         self.max_connections_gauge.labels(self.name).set(pool.size())
         self.checked_out_connections_gauge.labels(self.name).set(pool.checkedout())
+        self.checked_in_connections_gauge.labels(self.name).set(pool.checkedin())
 
         batch.gauge("pool.size").replace(pool.size())
         batch.gauge("pool.open_and_available").replace(pool.checkedin())
