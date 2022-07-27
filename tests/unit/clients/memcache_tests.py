@@ -18,16 +18,17 @@ from baseplate.clients.memcache import lib as memcache_lib
 
 
 class PrometheusInstrumentationTests(unittest.TestCase):
-    # test the @_prom_instrument decorator by calling one of the decorated functions
-    def test_prometheus_decorator(self):
+    def setUp(self):
         # stub out the server span, each call to MonitoredMemcacheConnection
         # will create a new span - but we don't use that for prom
-        span = mock.Mock()
         span_inner = mock.Mock()
         span_inner.__enter__ = mock.Mock(return_value=mock.Mock())
         span_inner.__exit__ = mock.Mock(return_value=None)
-        span.make_child = lambda trace_name: span_inner
+        self.span = mock.Mock()
+        self.span.make_child = lambda trace_name: span_inner
 
+    # test the @_prom_instrument decorator by calling one of the decorated functions
+    def test_prometheus_decorator(self):
         # stub out the client, we only use the server name
         pooled_client = mock.Mock()
         pooled_client.server = "server name"
@@ -37,7 +38,7 @@ class PrometheusInstrumentationTests(unittest.TestCase):
             "memcached_command": "incr",
         }
 
-        mmc = MonitoredMemcacheConnection("test", span, pooled_client)
+        mmc = MonitoredMemcacheConnection("test", self.span, pooled_client)
         mmc.incr("blah", 1)
 
         assert (
@@ -69,13 +70,14 @@ class PrometheusInstrumentationTests(unittest.TestCase):
             == 1
         )
 
+    def test_prometheus_decorator_failing(self):
         class FailClient(mock.Mock):
             server = "hello"
 
             def incr(self, _a, _b, noreply=None):
                 raise TypeError
 
-        fail_mmc = MonitoredMemcacheConnection("test", span, FailClient())
+        fail_mmc = MonitoredMemcacheConnection("test", self.span, FailClient())
         self.assertRaises(TypeError, fail_mmc.incr, "aaa", 1)
 
         assert (
