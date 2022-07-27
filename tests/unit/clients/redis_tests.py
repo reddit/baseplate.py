@@ -53,25 +53,26 @@ class TestMonitoredRedisConnection:
     def app_config(self):
         yield {
             "redis.url": "redis://localhost:1234/0",
-            # "redis.socket_timeout": "30 seconds",
-            # "redis.socket_connect_timeout": "300 milliseconds",
         }
 
     @pytest.fixture
     def expected_labels(self):
         yield {
-            "redis_address": "localhost",
+            "redis_client_name": "test_client",
+            "redis_type": "standalone",
             "redis_command": "some_command",
             "redis_database": "0",
         }
 
     @pytest.fixture
     def connection(self):
-        return {"connection_class": DummyConnection}
+        yield {"connection_class": DummyConnection}
 
     @pytest.fixture
     def connection_pool(self, app_config, connection):
-        yield pool_from_config(app_config=app_config, prefix="redis.", **connection)
+        yield pool_from_config(
+            app_config=app_config, prefix="redis.", client_name="test_client", **connection
+        )
 
     @pytest.fixture
     def context(self):
@@ -88,7 +89,9 @@ class TestMonitoredRedisConnection:
     def test_execute_command_exc_redis_err(
         self, monitored_redis_connection, expected_labels, app_config
     ):
-        monitored_redis_connection.connection_pool = pool_from_config(app_config=app_config)
+        monitored_redis_connection.connection_pool = pool_from_config(
+            app_config=app_config, client_name="test_client"
+        )
         with pytest.raises(ConnectionError):  # ConnectionError inherits from RedisError
             monitored_redis_connection.execute_command("some_command")
         assert REGISTRY.get_sample_value(f"{ACTIVE_REQUESTS._name}", expected_labels) == 0
@@ -103,6 +106,7 @@ class TestMonitoredRedisConnection:
 
     def test_execute_command(self, monitored_redis_connection, expected_labels):
         monitored_redis_connection.execute_command("some_command")
+        # assert [i for i in REGISTRY.collect()] == ""
         assert REGISTRY.get_sample_value(f"{ACTIVE_REQUESTS._name}", expected_labels) == 0
         expected_labels["redis_success"] = "true"
         assert (

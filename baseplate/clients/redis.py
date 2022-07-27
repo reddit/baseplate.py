@@ -30,7 +30,8 @@ PROM_LABELS_PREFIX = "redis"
 PROM_SHARED_LABELS = [
     f"{PROM_LABELS_PREFIX}_command",
     f"{PROM_LABELS_PREFIX}_database",
-    f"{PROM_LABELS_PREFIX}_address",
+    f"{PROM_LABELS_PREFIX}_client_name",
+    f"{PROM_LABELS_PREFIX}_type",
 ]
 LATENCY_SECONDS = Histogram(
     f"{PROM_PREFIX}_latency_seconds",
@@ -49,6 +50,25 @@ ACTIVE_REQUESTS = Gauge(
     f"{PROM_PREFIX}_active_requests",
     "Number of active requests for a given client",
     PROM_SHARED_LABELS,
+)
+
+PROM_POOL_PREFIX = f"{PROM_PREFIX}_pool"
+PROM_LABELS = ["pool"]
+
+MAX_CONNECTIONS = Gauge(
+    f"{PROM_POOL_PREFIX}_max_size",
+    "Maximum number of connections allowed in this redisbp pool",
+    PROM_LABELS,
+)
+IDLE_CONNECTIONS = Gauge(
+    f"{PROM_POOL_PREFIX}_idle_connections",
+    "Number of idle connections in this redisbp pool",
+    PROM_LABELS,
+)
+OPEN_CONNECTIONS = Gauge(
+    f"{PROM_POOL_PREFIX}_active_connections",
+    "Number of open connections in this redisbp pool",
+    PROM_LABELS,
 )
 
 
@@ -126,25 +146,6 @@ class RedisContextFactory(ContextFactory):
 
     """
 
-    PROM_PREFIX = f"{PROM_PREFIX}_pool"
-    PROM_LABELS = ["pool"]
-
-    max_connections = Gauge(
-        f"{PROM_PREFIX}_max_size",
-        "Maximum number of connections allowed in this redisbp pool",
-        PROM_LABELS,
-    )
-    idle_connections = Gauge(
-        f"{PROM_PREFIX}_idle_connections",
-        "Number of idle connections in this redisbp pool",
-        PROM_LABELS,
-    )
-    open_connections = Gauge(
-        f"{PROM_PREFIX}_active_connections",
-        "Number of open connections in this redisbp pool",
-        PROM_LABELS,
-    )
-
     def __init__(self, connection_pool: redis.ConnectionPool, name: str = "redis"):
         self.connection_pool = connection_pool
         self.name = name
@@ -154,17 +155,17 @@ class RedisContextFactory(ContextFactory):
             return
 
         size = self.connection_pool.max_connections
-        open_connections = len(self.connection_pool._connections)  # type: ignore
+        open_connections_num = len(self.connection_pool._connections)  # type: ignore
         available = self.connection_pool.pool.qsize()
         in_use = size - available
 
-        self.max_connections.labels(self.name).set(size)
-        self.idle_connections.labels(self.name).set(available)
-        self.open_connections.labels(self.name).set(open_connections)
+        MAX_CONNECTIONS.labels(self.name).set(size)
+        IDLE_CONNECTIONS.labels(self.name).set(available)
+        OPEN_CONNECTIONS.labels(self.name).set(open_connections_num)
 
         batch.gauge("pool.size").replace(size)
         batch.gauge("pool.in_use").replace(in_use)
-        batch.gauge("pool.open_and_available").replace(open_connections - in_use)
+        batch.gauge("pool.open_and_available").replace(open_connections_num - in_use)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
         return MonitoredRedisConnection(name, span, self.connection_pool)
@@ -198,12 +199,13 @@ class MonitoredRedisConnection(redis.StrictRedis):
             success = "true"
             labels = {
                 f"{PROM_LABELS_PREFIX}_command": command,
-                f"{PROM_LABELS_PREFIX}_address": self.connection_pool.connection_kwargs.get(
-                    "host", ""
+                f"{PROM_LABELS_PREFIX}_client_name": self.connection_pool.connection_kwargs.get(
+                    "client_name", ""
                 ),
                 f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
                     "db", ""
                 ),
+                f"{PROM_LABELS_PREFIX}_type": "standalone",
             }
             ACTIVE_REQUESTS.labels(**labels).inc()
 
