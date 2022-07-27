@@ -171,7 +171,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     )
 
     checked_out_connections_gauge = Gauge(
-        f"{PROM_POOL_PREFIX}_client_connections",
+        f"{PROM_POOL_PREFIX}_active_connections",
         "Number of connections in use by this pool (checked out + overflow)",
         PROM_POOL_LABELS,
     )
