@@ -7,21 +7,13 @@ import fakeredis
 import pytest
 
 from prometheus_client import REGISTRY
-
-try:
-    import redis
-except ImportError:
-    raise unittest.SkipTest("redis-py is not installed")
-else:
-    del redis
 from rediscluster.exceptions import RedisClusterException
 
-from baseplate.clients.redis_cluster import HotKeyTracker
-
 from baseplate.clients.redis_cluster import ACTIVE_REQUESTS
+from baseplate.clients.redis_cluster import cluster_pool_from_config
+from baseplate.clients.redis_cluster import HotKeyTracker
 from baseplate.clients.redis_cluster import LATENCY_SECONDS
 from baseplate.clients.redis_cluster import MonitoredRedisClusterConnection
-from baseplate.clients.redis_cluster import cluster_pool_from_config
 from baseplate.clients.redis_cluster import REQUESTS_TOTAL
 
 

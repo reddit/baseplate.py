@@ -57,17 +57,17 @@ PROM_LABELS = ["pool"]
 
 MAX_CONNECTIONS = Gauge(
     f"{PROM_POOL_PREFIX}_max_size",
-    "Maximum number of connections allowed in this redisbp pool",
+    "Maximum number of connections allowed in this redis client connection pool",
     PROM_LABELS,
 )
 IDLE_CONNECTIONS = Gauge(
     f"{PROM_POOL_PREFIX}_idle_connections",
-    "Number of idle connections in this redisbp pool",
+    "Number of idle connections in this redis client connection pool",
     PROM_LABELS,
 )
 OPEN_CONNECTIONS = Gauge(
     f"{PROM_POOL_PREFIX}_active_connections",
-    "Number of open connections in this redisbp pool",
+    "Number of open connections in this redis client connection pool",
     PROM_LABELS,
 )
 
