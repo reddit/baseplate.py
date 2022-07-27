@@ -104,12 +104,22 @@ class EngineContextFactoryTest(unittest.TestCase):
         )
 
     def test_report_runtime_metrics_prom_with_queue_pool(self):
+        """
+        This test is to prove that we set the metrics correctly when we have a QueuePool
+
+        We are testing that the metrics report what the pool does. Technically the math here
+        would imply that there are 0 idle connections since overflow connections are in use.
+        """
         batch = mock.MagicMock()
 
         pool = mock.MagicMock(spec=QueuePool)  # this will pass the isinstance check
         pool.size.return_value = 4
+        # includes overflow connections
         pool.checkedout.return_value = 12
+        # unused in the test but required for the rest of the report_runtime_metrics call
         pool.overflow.return_value = 16
+        # fake the idle connections for testing the metric value
+        pool.checkedin.return_value = 2
         self.factory.engine.pool = pool
 
         self.factory.report_runtime_metrics(batch)
@@ -117,7 +127,10 @@ class EngineContextFactoryTest(unittest.TestCase):
         prom_labels = {"sql_pool": "factory_name"}
         self.assertEqual(REGISTRY.get_sample_value("sql_client_pool_max_size", prom_labels), 4)
         self.assertEqual(
-            REGISTRY.get_sample_value("sql_client_pool_client_connections", prom_labels), 12
+            REGISTRY.get_sample_value("sql_client_pool_active_connections", prom_labels), 12
+        )
+        self.assertEqual(
+            REGISTRY.get_sample_value("sql_client_pool_idle_connections", prom_labels), 2
         )
 
     def test_on_before_execute(self):
