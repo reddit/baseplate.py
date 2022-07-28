@@ -4,21 +4,21 @@
 # bp.go v2 ref: https://XXXXXXXXX/reddit-go/baseplate/blob/main/metricsbp/metricsbp.go
 
 default_latency_buckets = [
-	0.000100,  # 100us
-	0.000500,  # 500us
-	0.001000,  # 1ms
-	0.002500,  # 2.5ms
-	0.005000,  # 5ms
-	0.010000,  # 10ms
-	0.025000,  # 25ms
-	0.050000,  # 50ms
-	0.100000,  # 100ms
-	0.250000,  # 250ms
-	0.500000,  # 500ms
-	1.000000,  # 1s
-	5.000000,  # 5s
-	15.000000, # 15s (fastly timeout)
-	30.000000, # 30s
+    0.000100,  # 100us
+    0.000500,  # 500us
+    0.001000,  # 1ms
+    0.002500,  # 2.5ms
+    0.005000,  # 5ms
+    0.010000,  # 10ms
+    0.025000,  # 25ms
+    0.050000,  # 50ms
+    0.100000,  # 100ms
+    0.250000,  # 250ms
+    0.500000,  # 500ms
+    1.000000,  # 1s
+    5.000000,  # 5s
+    15.000000, # 15s (fastly timeout)
+    30.000000, # 30s
 ]
 
 # Default buckets for size base histograms, from <=8 bytes to 4mB in 20
