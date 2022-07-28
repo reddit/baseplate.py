@@ -1,7 +1,7 @@
 # default_latency_buckets creates the default bucket values for time based histogram metrics.
 # we want this to match the baseplate.go default_buckets
 # bp.go v0 ref: https://github.com/reddit/baseplate.go/blob/master/prometheusbp/metrics.go.
-# bp.go v2 ref: https://XXXXXXXXX/reddit-go/baseplate/blob/main/metricsbp/metricsbp.go
+# bp.go v2 ref: https://XXXXXXXXX/baseplate/blob/main/metricsbp/metricsbp.go
 
 default_latency_buckets = [
     0.000100,  # 100us
