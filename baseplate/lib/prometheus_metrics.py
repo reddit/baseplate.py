@@ -17,8 +17,8 @@ default_latency_buckets = [
     0.500000,  # 500ms
     1.000000,  # 1s
     5.000000,  # 5s
-    15.000000, # 15s (fastly timeout)
-    30.000000, # 30s
+    15.000000,  # 15s (fastly timeout)
+    30.000000,  # 30s
 ]
 
 # Default buckets for size base histograms, from <=8 bytes to 4mB in 20
