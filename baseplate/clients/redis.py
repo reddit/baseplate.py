@@ -53,7 +53,7 @@ ACTIVE_REQUESTS = Gauge(
 )
 
 PROM_POOL_PREFIX = f"{PROM_PREFIX}_pool"
-PROM_LABELS = ["pool"]
+PROM_LABELS = ["redis_pool"]
 
 MAX_CONNECTIONS = Gauge(
     f"{PROM_POOL_PREFIX}_max_size",
