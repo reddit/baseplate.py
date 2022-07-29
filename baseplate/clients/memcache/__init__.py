@@ -135,7 +135,7 @@ class MemcacheContextFactory(ContextFactory):
     """
 
     PROM_PREFIX = "memcached_client_pool"
-    PROM_LABELS = ["pool"]
+    PROM_LABELS = ["memcached_pool"]
 
     pool_size_gauge = Gauge(
         f"{PROM_PREFIX}_max_size",
