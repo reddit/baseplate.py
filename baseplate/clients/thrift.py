@@ -307,9 +307,11 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                 thrift_success = "false"
                 exception_type = exc_info[0].__name__
                 current_exc = exc_info[1]
-                if isinstance(current_exc, Error):
+                try:
                     baseplate_status_code = current_exc.code
                     baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")
+                except AttributeError:
+                    pass
 
             REQUEST_LATENCY.labels(
                 thrift_method=name,
