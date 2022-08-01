@@ -125,10 +125,8 @@ def _make_baseplate_tween(
         time_started = time.perf_counter()
 
         response: Optional[Response] = None
-        endpoint = request.matched_route.pattern if request.matched_route else ""
 
         try:
-            ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
             response = handler(request)
             if request.span:
                 request.span.set_tag("http.response_length", response.content_length)
@@ -143,7 +141,13 @@ def _make_baseplate_tween(
                 response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
                 response.content_length = content_length
         finally:
-            http_endpoint = endpoint
+            http_endpoint = ""
+            if request.matched_route:
+                http_endpoint = (
+                    request.matched_route.pattern
+                    if request.matched_route.pattern
+                    else request.matched_route.name
+                )
             http_method = request.method.lower()
             http_response_code = ""
 
@@ -325,6 +329,15 @@ class BaseplateConfigurator:
             if self.edge_context_factory:
                 request.edge_context = self.edge_context_factory.from_upstream(edge_payload)
 
+        endpoint = ""
+        if request.matched_route:
+            endpoint = (
+                request.matched_route.pattern
+                if request.matched_route.pattern
+                else request.matched_route.name
+            )
+        ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
+
         span = self.baseplate.make_server_span(
             request,
             name=request.matched_route.name,
@@ -332,7 +345,6 @@ class BaseplateConfigurator:
         )
         span.set_tag("protocol", "http")
         span.set_tag("http.url", request.url)
-        span.set_tag("http.route", request.matched_route.pattern)
         span.set_tag("http.method", request.method)
         span.set_tag("peer.ipv4", request.remote_addr)
         span.start()

@@ -135,7 +135,7 @@ class MemcacheContextFactory(ContextFactory):
     """
 
     PROM_PREFIX = "memcached_client_pool"
-    PROM_LABELS = ["pool"]
+    PROM_LABELS = ["memcached_pool"]
 
     pool_size_gauge = Gauge(
         f"{PROM_PREFIX}_max_size",
@@ -150,7 +150,7 @@ class MemcacheContextFactory(ContextFactory):
     )
 
     free_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_free_connections",
+        f"{PROM_PREFIX}_idle_connections",
         "Number of free connections in this pool",
         PROM_LABELS,
     )

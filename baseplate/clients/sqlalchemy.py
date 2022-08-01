@@ -171,8 +171,13 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     )
 
     checked_out_connections_gauge = Gauge(
-        f"{PROM_POOL_PREFIX}_client_connections",
+        f"{PROM_POOL_PREFIX}_active_connections",
         "Number of connections in use by this pool (checked out + overflow)",
+        PROM_POOL_LABELS,
+    )
+    checked_in_connections_gauge = Gauge(
+        f"{PROM_POOL_PREFIX}_idle_connections",
+        "Number of connections not in use by this pool (unused pool connections)",
         PROM_POOL_LABELS,
     )
 
@@ -209,14 +214,6 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         event.listen(self.engine, "handle_error", self.on_error)
         self.time_started = 0.0
 
-        # Prometheus pool metrics
-        pool = self.engine.pool
-        if isinstance(pool, QueuePool):
-            self.max_connections_gauge.labels(name).set_function(pool.size)
-            self.checked_out_connections_gauge.labels(name).set_function(
-                pool.checkedout + pool.overflow
-            )
-
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.engine.pool
         if not isinstance(pool, QueuePool):
@@ -224,6 +221,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         self.max_connections_gauge.labels(self.name).set(pool.size())
         self.checked_out_connections_gauge.labels(self.name).set(pool.checkedout())
+        self.checked_in_connections_gauge.labels(self.name).set(pool.checkedin())
 
         batch.gauge("pool.size").replace(pool.size())
         batch.gauge("pool.open_and_available").replace(pool.checkedin())
