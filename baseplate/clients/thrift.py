@@ -308,8 +308,18 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                 exception_type = exc_info[0].__name__
                 current_exc = exc_info[1]
                 try:
-                    baseplate_status_code = current_exc.code
-                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")
+                    # We want the following code to execute whenever the
+                    # service raises an instance of Baseplate's `Error` class.
+                    # Unfortunately, we cannot just rely on `isinstance` to do
+                    # what we want here because some services compile
+                    # Baseplate's thrift file on their own and import `Error`
+                    # from that. When this is done, `isinstance` will always
+                    # return `False` since it's technically a different class.
+                    # To fix this, we optimistically try to access `code` on
+                    # `current_exc` and just catch the `AttributeError` if the
+                    # `code` attribute is not present.
+                    baseplate_status_code = current_exc.code  # type: ignore
+                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
                 except AttributeError:
                     pass
 
