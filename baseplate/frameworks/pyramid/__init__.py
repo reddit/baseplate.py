@@ -333,7 +333,7 @@ class BaseplateConfigurator:
         if request.matched_route:
             endpoint = (
                 request.matched_route.pattern
-                if request.matched_route.pattern
+                if (hasattr(request.matched_route, "pattern") and request.matched_route.pattern)
                 else request.matched_route.name
             )
         ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
