@@ -149,6 +149,8 @@ def _make_baseplate_tween(
                     else request.matched_route.name
                 )
             http_method = request.method.lower()
+
+            print(f"request: {http_method} endpoint: {str(http_endpoint)}")
             http_response_code = ""
 
             if sys.exc_info() == (None, None, None):

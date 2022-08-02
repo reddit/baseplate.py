@@ -2,6 +2,7 @@ from contextlib import nullcontext as does_not_raise
 from unittest import mock
 
 import pytest
+import types
 
 from prometheus_client import REGISTRY
 from pyramid.response import Response
@@ -149,13 +150,13 @@ class TestPyramidHttpServerIntegrationPrometheus:
 
         prom_labels = {
             "http_method": "get",
-            "http_endpoint": "route_pattern",
+            "http_endpoint": "route_name",
         }
 
         handler = mock.MagicMock(return_value=response)
         registry = mock.MagicMock()
         request = mock.MagicMock(content_length=42, method="GET")
-        request.matched_route.name = "route"
+        request.matched_route = types.SimpleNamespace(name="route_name")
         event = mock.MagicMock(request=request)
         bpConfigurator = BaseplateConfigurator(mock.MagicMock())
 
