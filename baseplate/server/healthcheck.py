@@ -1,9 +1,9 @@
 """Check health of a baseplate service on localhost."""
 import argparse
+import re
 import socket
 import sys
 import typing
-import re
 import urllib.parse
 
 import requests
@@ -19,8 +19,8 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 
 
 TIMEOUT = 30  # seconds
-REDIS_TIMEOUT = 2   # seconds
-PING_BUFFER = 128   # byte size
+REDIS_TIMEOUT = 2  # seconds
+PING_BUFFER = 128  # byte size
 CLUSTER_INFO_BUFFER = 1024  # byte size
 
 
@@ -49,7 +49,9 @@ def check_http_service(endpoint: EndpointConfiguration, probe: int) -> None:
     response.raise_for_status()
     response.json()
 
+
 def check_redis_service(endpoint: EndpointConfiguration, probe: int) -> None:
+    # pylint: disable=unused-argument
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(REDIS_TIMEOUT)
@@ -62,20 +64,33 @@ def check_redis_service(endpoint: EndpointConfiguration, probe: int) -> None:
     except socket.timeout:
         raise ValueError("Cannot connect to the endpoint")
 
+
 def check_redis_cluster_service(endpoint: EndpointConfiguration, probe: int) -> None:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.settimeout(REDIS_TIMEOUT)
             address: InternetAddress = typing.cast(InternetAddress, endpoint.address)
             sock.connect((address.host, address.port))
-            sock.sendall(b"CLUSTER INFO\n")
-            data = sock.recv(CLUSTER_INFO_BUFFER).decode("UTF-8")
-            if not re.search(r"cluster_state:pass", data):
-                raise ValueError("Did not receive cluster_state:ok from the redis cluster")
+            if probe in [IsHealthyProbe.LIVENESS, IsHealthyProbe.STARTUP]:
+                sock.sendall(b"PING\n")
+                data = sock.recv(PING_BUFFER).decode("UTF-8")
+                if not re.match(r"\+PONG", data):
+                    raise ValueError("Did not receive a PONG to the PING")
+            elif probe == IsHealthyProbe.READINESS:
+                sock.sendall(b"CLUSTER INFO\n")
+                data = sock.recv(CLUSTER_INFO_BUFFER).decode("UTF-8")
+                if not re.search(r"cluster_state:pass", data):
+                    raise ValueError("Did not receive cluster_state:ok from the redis cluster")
     except socket.timeout:
         raise ValueError("Cannot connect to the endpoint")
 
-CHECKERS = {"thrift": check_thrift_service, "wsgi": check_http_service, "redis": check_redis_service, "redis-cluster": check_redis_cluster_service }
+
+CHECKERS = {
+    "thrift": check_thrift_service,
+    "wsgi": check_http_service,
+    "redis": check_redis_service,
+    "redis-cluster": check_redis_cluster_service,
+}
 
 
 def parse_args() -> argparse.Namespace:
