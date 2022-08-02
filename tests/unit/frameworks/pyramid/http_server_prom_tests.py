@@ -1,8 +1,9 @@
+import types
+
 from contextlib import nullcontext as does_not_raise
 from unittest import mock
 
 import pytest
-import types
 
 from prometheus_client import REGISTRY
 from pyramid.response import Response
