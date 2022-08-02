@@ -145,7 +145,7 @@ def _make_baseplate_tween(
             if request.matched_route:
                 http_endpoint = (
                     request.matched_route.pattern
-                    if request.matched_route.pattern
+                    if (hasattr(request.matched_route, "pattern") and request.matched_route.pattern)
                     else request.matched_route.name
                 )
             http_method = request.method.lower()
