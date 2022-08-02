@@ -24,7 +24,7 @@ class TestPyramidHttpServerIntegrationPrometheus:
         RESPONSE_SIZE.clear()
 
     @pytest.mark.parametrize(
-        "response,path",
+        "response",
         [
             Response("ok"),
             Response("page not found", status=404),
