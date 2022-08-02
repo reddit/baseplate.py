@@ -11,6 +11,10 @@ WORKDIR /src
 # don't care for our tests.
 ENV CASS_DRIVER_NO_EXTENSIONS theytaketoolongtobuild
 
+RUN apt-get update -y
+
+RUN apt-get install -y librdkafka-dev
+
 COPY requirements*.txt ./
 RUN pip install -r requirements.txt
 
