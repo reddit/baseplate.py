@@ -148,6 +148,9 @@ def _make_baseplate_tween(
                     if request.matched_route.pattern
                     else request.matched_route.name
                 )
+            else:
+                http_endpoint = "404"
+                
             http_method = request.method.lower()
             http_response_code = ""
 
@@ -307,7 +310,7 @@ class BaseplateConfigurator:
 
         # this request didn't match a route we know
         if not request.matched_route:
-            # TODO: some metric for 404s would be good
+            ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint="404").inc()
             return
 
         trace_info = None
