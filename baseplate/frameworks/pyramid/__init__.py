@@ -150,7 +150,7 @@ def _make_baseplate_tween(
                 )
             else:
                 http_endpoint = "404"
-                
+
             http_method = request.method.lower()
             http_response_code = ""
 
