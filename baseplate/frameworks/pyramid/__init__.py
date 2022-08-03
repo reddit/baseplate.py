@@ -152,8 +152,6 @@ def _make_baseplate_tween(
                 http_endpoint = "404"
 
             http_method = request.method.lower()
-
-            print(f"request: {http_method} endpoint: {str(http_endpoint)}")
             http_response_code = ""
 
             if sys.exc_info() == (None, None, None):
