@@ -495,7 +495,8 @@ class SpecParser(Parser[ConfigNamespace]):
     def parse(self, key_path: str, raw_config: RawConfig) -> ConfigNamespace:
         parsed = ConfigNamespace()
         for key, spec in self.spec.items():
-            assert "." not in key, "dots are not allowed in keys"
+            if "." in key:
+                raise AssertionError("dots are not allowed in keys")
 
             if key_path:
                 sub_key_path = f"{key_path}.{key}"
