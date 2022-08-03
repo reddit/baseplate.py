@@ -20,8 +20,7 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 
 TIMEOUT = 30  # seconds
 REDIS_TIMEOUT = 2  # seconds
-PING_BUFFER = 128  # byte size
-CLUSTER_INFO_BUFFER = 1024  # byte size
+PING_BUFFER = 128  # buffer size
 
 
 def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
