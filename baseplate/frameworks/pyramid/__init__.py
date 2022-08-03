@@ -145,13 +145,15 @@ def _make_baseplate_tween(
             if request.matched_route:
                 http_endpoint = (
                     request.matched_route.pattern
-                    if request.matched_route.pattern
+                    if (hasattr(request.matched_route, "pattern") and request.matched_route.pattern)
                     else request.matched_route.name
                 )
             else:
                 http_endpoint = "404"
 
             http_method = request.method.lower()
+
+            print(f"request: {http_method} endpoint: {str(http_endpoint)}")
             http_response_code = ""
 
             if sys.exc_info() == (None, None, None):
