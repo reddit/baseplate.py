@@ -19,7 +19,7 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 
 
 TIMEOUT = 30  # seconds
-REDIS_TIMEOUT = 2  # seconds
+REDIS_TIMEOUT = 15  # seconds
 PING_BUFFER = 128  # buffer size
 
 
