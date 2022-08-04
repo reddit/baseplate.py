@@ -259,83 +259,83 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         prot.trans.set_header(b"Edge-Request", edge_context)
 
                     result = method(*args, **kwargs)
-                except TTransportException as exc:
-                    # the connection failed for some reason, retry if able
+            except TTransportException as exc:
+                # the connection failed for some reason, retry if able
+                span.finish(exc_info=sys.exc_info())
+                last_error = str(exc)
+                if exc.inner is not None:
+                    last_error += f" ({exc.inner})"
+                continue
+            except (TApplicationException, TProtocolException):
+                # these are subclasses of TException but aren't ones that
+                # should be expected in the protocol. this is an error!
+                span.finish(exc_info=sys.exc_info())
+                raise
+            except Error as exc:
+                # a 5xx error is an unexpected exception but not 5xx are
+                # not.
+                if 500 <= exc.code < 600:
                     span.finish(exc_info=sys.exc_info())
-                    last_error = str(exc)
-                    if exc.inner is not None:
-                        last_error += f" ({exc.inner})"
-                    continue
-                except (TApplicationException, TProtocolException):
-                    # these are subclasses of TException but aren't ones that
-                    # should be expected in the protocol. this is an error!
-                    span.finish(exc_info=sys.exc_info())
-                    raise
-                except Error as exc:
-                    # a 5xx error is an unexpected exception but not 5xx are
-                    # not.
-                    if 500 <= exc.code < 600:
-                        span.finish(exc_info=sys.exc_info())
-                    else:
-                        span.finish()
-                    raise
-                except TException:
-                    # this is an expected exception, as defined in the IDL
-                    span.finish()
-                    raise
-                except:  # noqa: E722
-                    # something unexpected happened
-                    span.finish(exc_info=sys.exc_info())
-                    raise
                 else:
-                    # a normal result
                     span.finish()
-                    return result
-                finally:
-                    thrift_success = "true"
-                    exception_type = ""
-                    baseplate_status = ""
-                    baseplate_status_code = ""
-                    exc_info = sys.exc_info()
-                    if exc_info[0] is not None:
-                        thrift_success = "false"
-                        exception_type = exc_info[0].__name__
-                        current_exc = exc_info[1]
-                        try:
-                            # We want the following code to execute whenever the
-                            # service raises an instance of Baseplate's `Error` class.
-                            # Unfortunately, we cannot just rely on `isinstance` to do
-                            # what we want here because some services compile
-                            # Baseplate's thrift file on their own and import `Error`
-                            # from that. When this is done, `isinstance` will always
-                            # return `False` since it's technically a different class.
-                            # To fix this, we optimistically try to access `code` on
-                            # `current_exc` and just catch the `AttributeError` if the
-                            # `code` attribute is not present.
-                            baseplate_status_code = current_exc.code  # type: ignore
-                            baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
-                        except AttributeError:
-                            pass
+                raise
+            except TException:
+                # this is an expected exception, as defined in the IDL
+                span.finish()
+                raise
+            except:  # noqa: E722
+                # something unexpected happened
+                span.finish(exc_info=sys.exc_info())
+                raise
+            else:
+                # a normal result
+                span.finish()
+                return result
+            finally:
+                thrift_success = "true"
+                exception_type = ""
+                baseplate_status = ""
+                baseplate_status_code = ""
+                exc_info = sys.exc_info()
+                if exc_info[0] is not None:
+                    thrift_success = "false"
+                    exception_type = exc_info[0].__name__
+                    current_exc = exc_info[1]
+                    try:
+                        # We want the following code to execute whenever the
+                        # service raises an instance of Baseplate's `Error` class.
+                        # Unfortunately, we cannot just rely on `isinstance` to do
+                        # what we want here because some services compile
+                        # Baseplate's thrift file on their own and import `Error`
+                        # from that. When this is done, `isinstance` will always
+                        # return `False` since it's technically a different class.
+                        # To fix this, we optimistically try to access `code` on
+                        # `current_exc` and just catch the `AttributeError` if the
+                        # `code` attribute is not present.
+                        baseplate_status_code = current_exc.code  # type: ignore
+                        baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
+                    except AttributeError:
+                        pass
 
-                    REQUEST_LATENCY.labels(
-                        thrift_method=name,
-                        thrift_client_name=self.namespace,
-                        thrift_success=thrift_success,
-                    ).observe(time.perf_counter() - start_time)
+                REQUEST_LATENCY.labels(
+                    thrift_method=name,
+                    thrift_client_name=self.namespace,
+                    thrift_success=thrift_success,
+                ).observe(time.perf_counter() - start_time)
 
-                    REQUESTS_TOTAL.labels(
-                        thrift_method=name,
-                        thrift_client_name=self.namespace,
-                        thrift_success=thrift_success,
-                        thrift_exception_type=exception_type,
-                        thrift_baseplate_status_code=baseplate_status_code,
-                        thrift_baseplate_status=baseplate_status,
-                    ).inc()
+                REQUESTS_TOTAL.labels(
+                    thrift_method=name,
+                    thrift_client_name=self.namespace,
+                    thrift_success=thrift_success,
+                    thrift_exception_type=exception_type,
+                    thrift_baseplate_status_code=baseplate_status_code,
+                    thrift_baseplate_status=baseplate_status,
+                ).inc()
 
-                    ACTIVE_REQUESTS.labels(
-                        thrift_method=name,
-                        thrift_client_name=self.namespace,
-                    ).dec()
+                ACTIVE_REQUESTS.labels(
+                    thrift_method=name,
+                    thrift_client_name=self.namespace,
+                ).dec()
                     
 
             raise TTransportException(
