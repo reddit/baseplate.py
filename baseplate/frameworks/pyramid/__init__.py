@@ -123,8 +123,8 @@ def _make_baseplate_tween(
 ) -> Callable[[Request], Response]:
     def baseplate_tween(request: Request) -> Response:
         time_started = (
-            request.start_time
-            if (hasattr(request, "start_time") and request.start_time is not None)
+            request.reddit_start_time
+            if (hasattr(request, "start_time") and request.reddit_start_time is not None)
             else time.perf_counter()
         )
 
@@ -172,7 +172,7 @@ def _make_baseplate_tween(
                 "http_success": http_success,
             }
 
-            if getattr(request, "prom_metrics_enabled", False):
+            if getattr(request, "reddit_prom_metrics_enabled", False):
                 ACTIVE_REQUESTS.labels(http_method=http_method, http_endpoint=http_endpoint).dec()
                 REQUEST_LATENCY.labels(**histogram_labels).observe(
                     time.perf_counter() - time_started
@@ -194,7 +194,7 @@ def _make_baseplate_tween(
                         pass
 
             # avoid a reference cycle
-            request.prom_metrics_enabled = False
+            request.reddit_prom_metrics_enabled = False
             request.start_server_span = None
         return response
 
@@ -202,8 +202,13 @@ def _make_baseplate_tween(
 
 
 def _manually_close_request_metrics(request: Request) -> None:
-    """Close the request metrics manually when using wsgi to make trackable requests that
-    are triggered by pyramid scripting"""
+    """
+    Close the request metrics manually when using wsgi to make trackable requests that
+    are triggered by pyramid scripting.
+
+    This is duplicated from the tween because it has specific handling around not having
+    access to a response to determine the appropriate status code and success criteria.
+    """
     http_endpoint = ""
     if request.matched_route:
         http_endpoint = (
@@ -222,7 +227,6 @@ def _manually_close_request_metrics(request: Request) -> None:
         http_response_code = "200"
     else:
         http_success = "false"
-        http_response_code = "500"
 
     histogram_labels = {
         "http_method": http_method,
@@ -230,7 +234,7 @@ def _manually_close_request_metrics(request: Request) -> None:
         "http_success": http_success,
     }
 
-    if getattr(request, "prom_metrics_enabled", False):
+    if getattr(request, "reddit_prom_metrics_enabled", False):
         ACTIVE_REQUESTS.labels(http_method=http_method, http_endpoint=http_endpoint).dec()
         REQUESTS_TOTAL.labels(
             **{
@@ -239,13 +243,13 @@ def _manually_close_request_metrics(request: Request) -> None:
             }
         ).inc()
 
-        if hasattr(request, "start_time") and request.start_time is not None:
+        if hasattr(request, "start_time") and request.reddit_start_time is not None:
             REQUEST_LATENCY.labels(**histogram_labels).observe(
-                time.perf_counter() - request.start_time
+                time.perf_counter() - request.reddit_start_time
             )
 
     # avoid a reference cycle
-    request.prom_metrics_enabled = False
+    request.reddit_prom_metrics_enabled = False
 
 
 class BaseplateEvent:
@@ -375,8 +379,8 @@ class BaseplateConfigurator:
             )
         else:
             endpoint = "404"
-        request.prom_metrics_enabled = True
-        request.start_time = time.perf_counter()
+        request.reddit_prom_metrics_enabled = True
+        request.reddit_start_time = time.perf_counter()
         ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
 
         # this request didn't match a route we know
