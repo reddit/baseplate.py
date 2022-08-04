@@ -22,11 +22,17 @@ liveness:
 
    $ baseplate-healthcheck thrift 127.0.0.1:9090 --probe liveness
 
-or a WSGI (HTTP) service listening on a UNIX domain socket, with default probe
+A WSGI (HTTP) service listening on a UNIX domain socket, with default probe
 
 .. code-block:: console
 
    $ baseplate-healthcheck wsgi /run/myservice.sock
+
+or a redis service listening on host:port with liveness probe:
+
+.. code-block:: console
+
+   $ baseplate-healthcheck redis 127.0.0.1:6379 --probe liveness
 
 Results
 -------
