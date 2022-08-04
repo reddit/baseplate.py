@@ -208,12 +208,15 @@ def manually_close_request_metrics(request: Request, response: Optional[Response
                 time.perf_counter() - request.reddit_start_time
             )
 
-        if hasattr(request, "content_length"):
-            REQUEST_SIZE.labels(**histogram_labels).observe(request.content_length or 0)
+        # do it this way for tests and for services that bastardize the request object
+        # for script execution where this may not be set
+        if hasattr(request, "content_length") and request.content_length is not None:
+            REQUEST_SIZE.labels(**histogram_labels).observe(request.content_length)
 
+        # response may not be set if this handler is called from a pyramid script handler
         if response:
             try:
-                if response.content_length is not None:
+                if hasattr(response, "content_length") and response.content_length is not None:
                     RESPONSE_SIZE.labels(**histogram_labels).observe(response.content_length)
             except Exception:
                 pass
