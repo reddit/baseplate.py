@@ -9,7 +9,7 @@ Command Line
 ------------
 
 There are two required arguments on the command line: the protocol of the
-service to check (``thrift`` or ``wsgi``) and the endpoint to connect to.
+service to check (``thrift``, ``wsgi`` or ``redis``) and the endpoint to connect to.
 
 There's also an optional argument on the command line: the probe to check.
 By default the probe to check is ``readiness``, but you can choose one from:
