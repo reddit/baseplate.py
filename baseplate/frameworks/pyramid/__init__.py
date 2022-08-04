@@ -122,7 +122,11 @@ def _make_baseplate_tween(
     handler: Callable[[Request], Response], _registry: Registry
 ) -> Callable[[Request], Response]:
     def baseplate_tween(request: Request) -> Response:
-        time_started = time.perf_counter()
+        time_started = (
+            request.start_time
+            if (hasattr(request, "start_time") and request.start_time is not None)
+            else time.perf_counter()
+        )
 
         response: Optional[Response] = None
 
@@ -167,27 +171,81 @@ def _make_baseplate_tween(
                 "http_endpoint": http_endpoint,
                 "http_success": http_success,
             }
-            ACTIVE_REQUESTS.labels(http_method=http_method, http_endpoint=http_endpoint).dec()
-            REQUEST_LATENCY.labels(**histogram_labels).observe(time.perf_counter() - time_started)
-            REQUESTS_TOTAL.labels(
-                **{
-                    **histogram_labels,
-                    "http_response_code": http_response_code,
-                }
-            ).inc()
-            REQUEST_SIZE.labels(**histogram_labels).observe(request.content_length or 0)
-            if response:
-                try:
-                    if response.content_length is not None:
-                        RESPONSE_SIZE.labels(**histogram_labels).observe(response.content_length)
-                except Exception:
-                    pass
+
+            if getattr(request, "prom_metrics_enabled", False):
+                ACTIVE_REQUESTS.labels(http_method=http_method, http_endpoint=http_endpoint).dec()
+                REQUEST_LATENCY.labels(**histogram_labels).observe(
+                    time.perf_counter() - time_started
+                )
+                REQUESTS_TOTAL.labels(
+                    **{
+                        **histogram_labels,
+                        "http_response_code": http_response_code,
+                    }
+                ).inc()
+                REQUEST_SIZE.labels(**histogram_labels).observe(request.content_length or 0)
+                if response:
+                    try:
+                        if response.content_length is not None:
+                            RESPONSE_SIZE.labels(**histogram_labels).observe(
+                                response.content_length
+                            )
+                    except Exception:
+                        pass
 
             # avoid a reference cycle
+            request.prom_metrics_enabled = False
             request.start_server_span = None
         return response
 
     return baseplate_tween
+
+
+def _manually_close_request_metrics(request: Request) -> None:
+    """Close the request metrics manually when using wsgi to make trackable requests that
+    are triggered by pyramid scripting"""
+    http_endpoint = ""
+    if request.matched_route:
+        http_endpoint = (
+            request.matched_route.pattern
+            if (hasattr(request.matched_route, "pattern") and request.matched_route.pattern)
+            else request.matched_route.name
+        )
+    else:
+        http_endpoint = "404"
+
+    http_method = request.method.lower()
+    http_response_code = ""
+
+    if sys.exc_info() == (None, None, None):
+        http_success = "true"
+        http_response_code = "200"
+    else:
+        http_success = "false"
+        http_response_code = "500"
+
+    histogram_labels = {
+        "http_method": http_method,
+        "http_endpoint": http_endpoint,
+        "http_success": http_success,
+    }
+
+    if getattr(request, "prom_metrics_enabled", False):
+        ACTIVE_REQUESTS.labels(http_method=http_method, http_endpoint=http_endpoint).dec()
+        REQUESTS_TOTAL.labels(
+            **{
+                **histogram_labels,
+                "http_response_code": http_response_code,
+            }
+        ).inc()
+
+        if hasattr(request, "start_time") and request.start_time is not None:
+            REQUEST_LATENCY.labels(**histogram_labels).observe(
+                time.perf_counter() - request.start_time
+            )
+
+    # avoid a reference cycle
+    request.prom_metrics_enabled = False
 
 
 class BaseplateEvent:
@@ -307,10 +365,22 @@ class BaseplateConfigurator:
 
     def _on_new_request(self, event: pyramid.events.ContextFound) -> None:
         request = event.request
+        endpoint = ""
+
+        if request.matched_route:
+            endpoint = (
+                request.matched_route.pattern
+                if (hasattr(request.matched_route, "pattern") and request.matched_route.pattern)
+                else request.matched_route.name
+            )
+        else:
+            endpoint = "404"
+        request.prom_metrics_enabled = True
+        request.start_time = time.perf_counter()
+        ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
 
         # this request didn't match a route we know
         if not request.matched_route:
-            ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint="404").inc()
             return
 
         trace_info = None
@@ -331,15 +401,6 @@ class BaseplateConfigurator:
             request.raw_edge_context = edge_payload
             if self.edge_context_factory:
                 request.edge_context = self.edge_context_factory.from_upstream(edge_payload)
-
-        endpoint = ""
-        if request.matched_route:
-            endpoint = (
-                request.matched_route.pattern
-                if (hasattr(request.matched_route, "pattern") and request.matched_route.pattern)
-                else request.matched_route.name
-            )
-        ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
 
         span = self.baseplate.make_server_span(
             request,
