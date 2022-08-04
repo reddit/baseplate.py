@@ -53,10 +53,11 @@ Configuration
 -------------
 
 .. warning::
-   :py:class:`sqlalchemy.pool.QueuePool` does not handle :py:class:`~baseplate.observers.timeout.ServerTimeout`
-   exceptions gracefully, resulting in connection pool leaks. It is recommended
-   to avoid local pooling (via :py:class:`sqlalchemy.pool.NullPool`) and instead
-   use middleware pooling (such as `pgbouncer`) while this issue persists.
+   :py:class:`sqlalchemy.pool.QueuePool` does not handle `ServerTimeout`
+   exceptions gracefully, potentially leaking connections. It is recommended
+   to avoid local pooling entirely (via :py:class:`sqlalchemy.pool.NullPool`)
+   while this issue persists and instead rely on middleware pooling (such as
+   `pgbouncer`).
 
 .. autoclass:: SQLAlchemySession
 

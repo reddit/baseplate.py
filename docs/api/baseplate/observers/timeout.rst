@@ -16,11 +16,11 @@ upstream services are yet taken into account.
 
 .. warning::
 
-   The timeout mechanism may throw a :py:class:`~baseplate.observers.timeout.ServerTimeout`
-   exception whenever a gevent context switch occurs. If this exception is not
-   handled gracefully your application could get stuck in a bad state. For example,
-   if a `:py:class:`~baseplate.observers.timeout.ServerTimeout` exception is thrown
-   while releasing a connection then the connection might never be fully released.
+   The timeout mechanism may throw a `ServerTimeout` exception whenever a gevent
+   context switch occurs. If this exception is not handled gracefully your
+   application could get stuck in a bad state. For example, if a `ServerTimeout`
+   exception is thrown while releasing a connection then the connection might
+   never be fully released.
 
 .. versionadded:: 1.2
 
