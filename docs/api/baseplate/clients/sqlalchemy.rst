@@ -53,6 +53,7 @@ Configuration
 -------------
 
 .. warning::
+
    :py:class:`sqlalchemy.pool.QueuePool` does not handle `ServerTimeout`
    exceptions gracefully, potentially leaking connections. It is recommended
    to avoid local pooling entirely (via :py:class:`sqlalchemy.pool.NullPool`)
