@@ -208,6 +208,9 @@ def manually_close_request_metrics(request: Request, response: Optional[Response
                 time.perf_counter() - request.reddit_start_time
             )
 
+        if hasattr(request, "content_length"):
+            REQUEST_SIZE.labels(**histogram_labels).observe(request.content_length or 0)
+
         if response:
             try:
                 if response.content_length is not None:
