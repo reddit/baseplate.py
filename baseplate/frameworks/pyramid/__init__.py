@@ -215,11 +215,9 @@ def manually_close_request_metrics(request: Request, response: Optional[Response
 
         # response may not be set if this handler is called from a pyramid script handler
         if response:
-            try:
-                if hasattr(response, "content_length") and response.content_length is not None:
-                    RESPONSE_SIZE.labels(**histogram_labels).observe(response.content_length)
-            except Exception:
-                pass
+            if hasattr(response, "content_length") and response.content_length is not None:
+                RESPONSE_SIZE.labels(**histogram_labels).observe(response.content_length)
+
 
         # avoid missing a secondary request if the same request object is re-used in scripting
         request.reddit_prom_metrics_enabled = False
