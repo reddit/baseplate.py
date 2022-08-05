@@ -79,57 +79,40 @@ class TestKombuMessageHandler:
             amqp_exchange_name="exchange",
             amqp_routing_key="routing-key",
         )
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                handler.handle(message)
+        handler.handle(message)
 
-                baseplate.make_context_object.assert_called_once()
-                baseplate.make_server_span.assert_called_once_with(context, name)
-                baseplate.make_server_span().__enter__.assert_called_once()
-                span.set_tag.assert_has_calls(
-                    [
-                        mock.call("kind", "consumer"),
-                        mock.call("amqp.routing_key", "routing-key"),
-                        mock.call("amqp.consumer_tag", "consumer-tag"),
-                        mock.call("amqp.delivery_tag", "delivery-tag"),
-                        mock.call("amqp.exchange", "exchange"),
-                    ],
-                    any_order=True,
-                )
-                handler_fn.assert_called_once_with(context, message.decode(), message)
-                message.ack.assert_called_once()
-                assert (
-                    REGISTRY.get_sample_value(
-                        f"{AMQP_PROCESSING_TIME._name}_bucket",
-                        {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
-                    )
-                    == 1
-                )
-                assert (
-                    REGISTRY.get_sample_value(
-                        f"{AMQP_PROCESSED_TOTAL._name}_total",
-                        {**prom_labels._asdict(), **{"amqp_success": "true"}},
-                    )
-                    == 1
-                )
-                assert (
-                    REGISTRY.get_sample_value(
-                        f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()
-                    )
-                    == 0
-                )
-                assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
+        baseplate.make_context_object.assert_called_once()
+        baseplate.make_server_span.assert_called_once_with(context, name)
+        baseplate.make_server_span().__enter__.assert_called_once()
+        span.set_tag.assert_has_calls(
+            [
+                mock.call("kind", "consumer"),
+                mock.call("amqp.routing_key", "routing-key"),
+                mock.call("amqp.consumer_tag", "consumer-tag"),
+                mock.call("amqp.delivery_tag", "delivery-tag"),
+                mock.call("amqp.exchange", "exchange"),
+            ],
+            any_order=True,
+        )
+        handler_fn.assert_called_once_with(context, message.decode(), message)
+        message.ack.assert_called_once()
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_PROCESSING_TIME._name}_bucket",
+                {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_PROCESSED_TOTAL._name}_total",
+                {**prom_labels._asdict(), **{"amqp_success": "true"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+        )
 
     @pytest.mark.parametrize(
         "err,expectation",

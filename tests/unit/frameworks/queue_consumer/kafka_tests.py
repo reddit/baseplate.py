@@ -95,34 +95,20 @@ class TestKafkaMessageHandler:
         mock_gauge = mock.Mock()
         context.metrics.gauge.return_value = mock_gauge
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-
-                if prometheus_client_name is None:
-                    handler = KafkaMessageHandler(
-                        baseplate, name, handler_fn, message_unpack_fn, on_success_fn
-                    )
-                else:
-                    handler = KafkaMessageHandler(
-                        baseplate,
-                        name,
-                        handler_fn,
-                        message_unpack_fn,
-                        on_success_fn,
-                        prometheus_client_name=prometheus_client_name,
-                    )
-                handler.handle(message)
+        if prometheus_client_name is None:
+            handler = KafkaMessageHandler(
+                baseplate, name, handler_fn, message_unpack_fn, on_success_fn
+            )
+        else:
+            handler = KafkaMessageHandler(
+                baseplate,
+                name,
+                handler_fn,
+                message_unpack_fn,
+                on_success_fn,
+                prometheus_client_name=prometheus_client_name,
+            )
+        handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -169,7 +155,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     def test_handle_no_endpoint_timestamp(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
@@ -184,24 +169,8 @@ class TestKafkaMessageHandler:
             kafka_topic="topic_1",
         )
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-
-                handler = KafkaMessageHandler(
-                    baseplate, name, handler_fn, message_unpack_fn, on_success_fn
-                )
-                handler.handle(message)
+        handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+        handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -243,7 +212,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     def test_handle_kafka_error(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
@@ -262,21 +230,8 @@ class TestKafkaMessageHandler:
             kafka_topic="topic_1",
         )
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                with pytest.raises(ValueError):
-                    handler.handle(message)
+        with pytest.raises(ValueError):
+            handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -305,7 +260,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     def test_handle_unpack_error(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
@@ -321,20 +275,7 @@ class TestKafkaMessageHandler:
             kafka_topic="topic_1",
         )
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                handler.handle(message)
+        handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -374,7 +315,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     def test_handle_handler_error(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock(side_effect=ValueError("something went wrong"))
@@ -390,21 +330,8 @@ class TestKafkaMessageHandler:
             kafka_topic="topic_1",
         )
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                with pytest.raises(ValueError):
-                    handler.handle(message)
+        with pytest.raises(ValueError):
+            handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -445,7 +372,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
 
 @pytest.fixture
