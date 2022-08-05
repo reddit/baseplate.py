@@ -160,21 +160,8 @@ class TestPrometheusMetrics:
             "thrift_baseplate_status_code": status_code,
         }
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            ACTIVE_REQUESTS.labels(**prom_labels),
-            "inc",
-            wraps=ACTIVE_REQUESTS.labels(**prom_labels).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                ACTIVE_REQUESTS.labels(**prom_labels),
-                "dec",
-                wraps=ACTIVE_REQUESTS.labels(**prom_labels).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                with expectation:
-                    proxy_method(self=handler)
+        with expectation:
+            proxy_method(self=handler)
 
         tries = 1 if exc_type != "TTransportException" else 2
         assert (
@@ -192,14 +179,6 @@ class TestPrometheusMetrics:
             == tries
         )
         assert REGISTRY.get_sample_value("thrift_client_active_requests", prom_labels) == 0
-        assert (
-            mock_manager.mock_calls
-            == [
-                mock.call.inc(),
-                mock.call.dec(),
-            ]
-            * tries
-        )  # ensures we first increase number of active requests
 
     def test_build_thrift_proxy_method_fail_connection(self):
         def handle(*args, **kwargs):

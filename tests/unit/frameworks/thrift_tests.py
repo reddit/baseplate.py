@@ -110,21 +110,8 @@ class Test_ThriftServerPrometheusMetrics:
             convert_to_baseplate_error=convert,
         )
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            PROM_ACTIVE.labels(thrift_method="handle"),
-            "inc",
-            wraps=PROM_ACTIVE.labels(thrift_method="handle").inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                PROM_ACTIVE.labels(thrift_method="handle"),
-                "dec",
-                wraps=PROM_ACTIVE.labels(thrift_method="handle").dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                with expectation:
-                    context_handler.handle()
+        with expectation:
+            context_handler.handle()
 
         common_prom_labels = {
             "thrift_method": "handle",
@@ -153,7 +140,3 @@ class Test_ThriftServerPrometheusMetrics:
             REGISTRY.get_sample_value("thrift_server_active_requests", {"thrift_method": "handle"})
             == 0
         )
-        assert mock_manager.mock_calls == [
-            mock.call.inc(),
-            mock.call.dec(),
-        ]  # ensures we first increase number of active requests

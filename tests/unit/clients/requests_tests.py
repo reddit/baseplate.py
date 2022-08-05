@@ -82,27 +82,12 @@ class TestBaseplateSessionProm:
             status_code = response.status_code
             http_success = getHTTPSuccessLabel(status_code)
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            ACTIVE_REQUESTS.labels(**prom_labels),
-            "inc",
-            wraps=ACTIVE_REQUESTS.labels(**prom_labels).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                ACTIVE_REQUESTS.labels(**prom_labels),
-                "dec",
-                wraps=ACTIVE_REQUESTS.labels(**prom_labels).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-
-                with mock.patch("baseplate.clients.requests.Session", spec=Session) as session:
-                    session().send.return_value = response
-                    with expectation:
-                        baseplate_session.send(req.prepare())
+        with mock.patch("baseplate.clients.requests.Session", spec=Session) as session:
+            session().send.return_value = response
+            with expectation:
+                baseplate_session.send(req.prepare())
 
         assert REGISTRY.get_sample_value("http_client_active_requests", prom_labels) == 0
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
         assert (
             REGISTRY.get_sample_value(
