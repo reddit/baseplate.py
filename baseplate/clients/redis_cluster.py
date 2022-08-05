@@ -428,17 +428,16 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
                 ),
                 f"{PROM_LABELS_PREFIX}_type": "cluster",
             }
-            ACTIVE_REQUESTS.labels(**labels).inc()
 
             try:
-                res = super().execute_command(command, *args[1:], **kwargs)
+                with ACTIVE_REQUESTS.labels(**labels).track_inprogress():
+                    res = super().execute_command(command, *args[1:], **kwargs)
                 if isinstance(res, RedisError):
                     success = "false"
             except:  # noqa: E722
                 success = "false"
                 raise
             finally:
-                ACTIVE_REQUESTS.labels(**labels).dec()
                 result_labels = {**labels, f"{PROM_LABELS_PREFIX}_success": success}
                 REQUESTS_TOTAL.labels(**result_labels).inc()
                 LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
