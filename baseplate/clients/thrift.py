@@ -209,12 +209,10 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
         for time_remaining in self.retry_policy:
             try:
-                with self.pool.connection() as prot:
+                with self.pool.connection() as prot, ACTIVE_REQUESTS.labels(
+                    thrift_method=name, thrift_client_name=self.namespace
+                ).track_inprogress():
                     start_time = time.perf_counter()
-                    ACTIVE_REQUESTS.labels(
-                        thrift_method=name,
-                        thrift_client_name=self.namespace,
-                    ).inc()
 
                     span = self.server_span.make_child(trace_name)
                     span.set_tag("slug", self.namespace)
@@ -338,10 +336,6 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                             thrift_baseplate_status=baseplate_status,
                         ).inc()
 
-                        ACTIVE_REQUESTS.labels(
-                            thrift_method=name,
-                            thrift_client_name=self.namespace,
-                        ).dec()
             except TTransportException:
                 # swallow exception so we can retry on TTransportException (relies on the for loop)
                 continue

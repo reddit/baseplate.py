@@ -245,7 +245,6 @@ class BaseplateSession:
             "http_client_name": self.client_name if self.client_name is not None else self.name,
         }
         start_time = time.perf_counter()
-        ACTIVE_REQUESTS.labels(**active_request_label_values).inc()
 
         try:
             with self.span.make_child(f"{self.name}.request").with_tags(
@@ -254,7 +253,7 @@ class BaseplateSession:
                     "http.method": request.method.lower() if request.method else "",
                     "http.slug": self.client_name if self.client_name is not None else self.name,
                 }
-            ) as span:
+            ) as span, ACTIVE_REQUESTS.labels(**active_request_label_values).track_inprogress():
                 self._add_span_context(span, request)
 
                 # we cannot re-use the same session every time because sessions re-use the same
@@ -290,7 +289,6 @@ class BaseplateSession:
 
             LATENCY_SECONDS.labels(**latency_label_values).observe(time.perf_counter() - start_time)
             REQUESTS_TOTAL.labels(**requests_total_label_values).inc()
-            ACTIVE_REQUESTS.labels(**active_request_label_values).dec()
 
 
 class InternalBaseplateSession(BaseplateSession):

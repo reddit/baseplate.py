@@ -194,20 +194,19 @@ class MonitoredRedisConnection(redis.StrictRedis):
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
-        with self.server_span.make_child(trace_name):
+        labels = {
+            f"{PROM_LABELS_PREFIX}_command": command,
+            f"{PROM_LABELS_PREFIX}_client_name": self.connection_pool.connection_kwargs.get(
+                "client_name", ""
+            ),
+            f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get("db", ""),
+            f"{PROM_LABELS_PREFIX}_type": "standalone",
+        }
+        with self.server_span.make_child(trace_name), ACTIVE_REQUESTS.labels(
+            **labels
+        ).track_inprogress():
             start_time = perf_counter()
             success = "true"
-            labels = {
-                f"{PROM_LABELS_PREFIX}_command": command,
-                f"{PROM_LABELS_PREFIX}_client_name": self.connection_pool.connection_kwargs.get(
-                    "client_name", ""
-                ),
-                f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
-                    "db", ""
-                ),
-                f"{PROM_LABELS_PREFIX}_type": "standalone",
-            }
-            ACTIVE_REQUESTS.labels(**labels).inc()
 
             try:
                 res = super().execute_command(command, *args[1:], **kwargs)
@@ -218,7 +217,6 @@ class MonitoredRedisConnection(redis.StrictRedis):
                 success = "false"
                 raise
             finally:
-                ACTIVE_REQUESTS.labels(**labels).dec()
                 result_labels = {**labels, f"{PROM_LABELS_PREFIX}_success": success}
                 REQUESTS_TOTAL.labels(**result_labels).inc()
                 LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)

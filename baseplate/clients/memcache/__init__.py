@@ -207,15 +207,13 @@ def _prom_instrument(func: Any) -> Any:
         success = "true"
         start_time = perf_counter()
 
-        ACTIVE_REQUESTS.labels(**labels_common).inc()
-
         try:
-            return func(self, *args, **kwargs)
+            with ACTIVE_REQUESTS.labels(**labels_common).track_inprogress():
+                return func(self, *args, **kwargs)
         except:  # noqa
             success = "false"
             raise
         finally:
-            ACTIVE_REQUESTS.labels(**labels_common).dec()
             REQUESTS_TOTAL.labels(**{**labels_common, f"{PROM_NAMESPACE}_success": success}).inc()
             LATENCY_SECONDS.labels(
                 **{**labels_common, f"{PROM_NAMESPACE}_success": success}

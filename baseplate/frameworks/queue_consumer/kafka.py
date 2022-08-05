@@ -145,13 +145,14 @@ class KafkaMessageHandler(MessageHandler):
         )
         prom_success = "true"
         start_time = time.perf_counter()
-        KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc()
         context = self.baseplate.make_context_object()
         try:
             # We place the call to ``baseplate.make_server_span`` inside the
             # try/except block because we still want Baseplate to see and
             # handle the error (publish it to error reporting)
-            with self.baseplate.make_server_span(context, f"{self.name}.handler") as span:
+            with self.baseplate.make_server_span(
+                context, f"{self.name}.handler"
+            ) as span, KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).track_inprogress():
                 error = message.error()
                 if error:
                     prom_success = "false"
@@ -212,7 +213,6 @@ class KafkaMessageHandler(MessageHandler):
                 **prom_labels._asdict(), kafka_success=prom_success
             ).observe(time.perf_counter() - start_time)
             KAFKA_PROCESSED_TOTAL.labels(**prom_labels._asdict(), kafka_success=prom_success).inc()
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec()
 
 
 class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):

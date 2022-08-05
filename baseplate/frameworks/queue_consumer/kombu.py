@@ -139,14 +139,17 @@ class KombuMessageHandler(MessageHandler):
             amqp_exchange_name=message.delivery_info.get("exchange", ""),
             amqp_routing_key=message.delivery_info.get("routing_key", ""),
         )
-        AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).inc()
 
         context = self.baseplate.make_context_object()
         try:
             # We place the call to ``baseplate.make_server_span`` inside the
             # try/except block because we still want Baseplate to see and
             # handle the error (publish it to error reporting)
-            with self.baseplate.make_server_span(context, self.name) as span:
+            with self.baseplate.make_server_span(
+                context, self.name
+            ) as span, AMQP_ACTIVE_MESSAGES.labels(
+                **prometheus_labels._asdict()
+            ).track_inprogress():
                 delivery_info = message.delivery_info
                 message_body = None
                 message_body = message.decode()
@@ -179,7 +182,6 @@ class KombuMessageHandler(MessageHandler):
             AMQP_PROCESSED_TOTAL.labels(
                 **prometheus_labels._asdict(), amqp_success=prometheus_success
             ).inc()
-            AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).dec()
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):

@@ -81,8 +81,8 @@ class _ContextAwareHandler:
 
             try:
                 span.start()
-                PROM_ACTIVE.labels(fn_name).inc()
-                result = handler_fn(self.context, *args, **kwargs)
+                with PROM_ACTIVE.labels(fn_name).track_inprogress():
+                    result = handler_fn(self.context, *args, **kwargs)
             except (TApplicationException, TProtocolException, TTransportException):
                 # these are subclasses of TException but aren't ones that
                 # should be expected in the protocol
@@ -150,7 +150,6 @@ class _ContextAwareHandler:
                         baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
                     except AttributeError:
                         pass
-                PROM_ACTIVE.labels(fn_name).dec()
                 PROM_REQUESTS.labels(
                     thrift_method=fn_name,
                     thrift_success=thrift_success,
