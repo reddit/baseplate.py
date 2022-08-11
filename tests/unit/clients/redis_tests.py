@@ -40,6 +40,16 @@ class DummyConnection:
         pass
 
     def read_response(self):
+        # Must return same number as test_pipeline_instrumentation calls
+        return ["OK", "OK"]
+
+    def pack_commands(self, *args):
+        pass
+
+    def send_packed_command(self, *args):
+        pass
+
+    def disconnect(self):
         pass
 
 
@@ -116,6 +126,11 @@ class TestMonitoredRedisConnection:
             == 1
         )
         assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", expected_labels) == 1
+
+    def test_pipeline_instrumentation(self, monitored_redis_connection, expected_labels):
+        monitored_redis_connection.pipeline("test").set("hello", 42).set("goodbye", 23).execute()
+        labels = {**expected_labels, "redis_command": "SET", "redis_success": "true"}
+        assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", labels) == 2.0
 
 
 class TestPoolFromConfig:
