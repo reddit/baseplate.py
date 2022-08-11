@@ -131,6 +131,10 @@ class TestMonitoredRedisConnection:
         monitored_redis_connection.pipeline("test").set("hello", 42).set("goodbye", 23).execute()
         labels = {**expected_labels, "redis_command": "SET", "redis_success": "true"}
         assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", labels) == 2.0
+        assert (
+            REGISTRY.get_sample_value(f"{LATENCY_SECONDS._name}_bucket", {**labels, "le": "+Inf"})
+            == 2.0
+        )
 
 
 class TestPoolFromConfig:
