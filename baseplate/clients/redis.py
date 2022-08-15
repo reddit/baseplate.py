@@ -283,10 +283,9 @@ class MonitoredRedisPipeline(Pipeline):
             num_reqs = len(self.command_stack)
             commands = [args[0] for (args, options) in self.command_stack]
 
-            # Whether chained or pipelined it's one concurrent transaction
-            ACTIVE_REQUESTS.labels(**labels).inc()
             try:
-                return super().execute(**kwargs)
+                with ACTIVE_REQUESTS.labels(**labels).track_inprogress():
+                    return super().execute(**kwargs)
             except:  # noqa: E722
                 success = "false"
                 raise
