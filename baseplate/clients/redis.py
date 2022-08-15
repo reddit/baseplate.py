@@ -290,7 +290,6 @@ class MonitoredRedisPipeline(Pipeline):
                 success = "false"
                 raise
             finally:
-                ACTIVE_REQUESTS.labels(**labels).dec()
                 for command in commands:
                     result_labels = {
                         **labels,
