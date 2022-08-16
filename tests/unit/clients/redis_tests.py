@@ -129,12 +129,21 @@ class TestMonitoredRedisConnection:
 
     def test_pipeline_instrumentation(self, monitored_redis_connection, expected_labels):
         monitored_redis_connection.pipeline("test").set("hello", 42).set("goodbye", 23).execute()
+
         labels = {**expected_labels, "redis_command": "SET", "redis_success": "true"}
-        assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", labels) == 2.0
+        assert (
+            REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", labels) == 2.0
+        ), "Unexpected value for REQUESTS_TOTAL metric. Expected to have seen two successful SET calls."
         assert (
             REGISTRY.get_sample_value(f"{LATENCY_SECONDS._name}_bucket", {**labels, "le": "+Inf"})
             == 2.0
-        )
+        ), "Unexpected value for LATENCY_SECONDS metric. Expected two successful SET calls in +Inf bucket."
+        assert (
+            REGISTRY.get_sample_value(
+                f"{ACTIVE_REQUESTS._name}", {**expected_labels, "redis_command": "pipeline"}
+            )
+            == 0
+        ), "There should be no lingering ACTIVE_REQUESTS after completion. This Gauge with these labels should not be None/unset."
 
 
 class TestPoolFromConfig:
