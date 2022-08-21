@@ -15,9 +15,9 @@ from typing import Optional
 
 import boto3  # type: ignore
 
-from botocore import UNSIGNED
+from botocore import UNSIGNED  # type: ignore
 from botocore.client import ClientError  # type: ignore
-from botocore.client import Config
+from botocore.client import Config  # type: ignore
 from botocore.exceptions import EndpointConnectionError  # type: ignore
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
@@ -137,11 +137,11 @@ def _load_from_s3(data: bytes) -> bytes:
         )
         raise LoaderException from e
 
-    # Client needs to be anonymous/unsigned or boto3 will try to read the local credentials 
-    # on the service pods. And - due to an AWS quirk - any request that comes in signed with 
-    # credentails will profile for permissions for the resource being requested EVEN if the 
-    # resource is public. In other words, this means that a given service could not access 
-    # public resources belonging to another cluster/AWS account unless the request credentials 
+    # Client needs to be anonymous/unsigned or boto3 will try to read the local credentials
+    # on the service pods. And - due to an AWS quirk - any request that comes in signed with
+    # credentails will profile for permissions for the resource being requested EVEN if the
+    # resource is public. In other words, this means that a given service could not access
+    # public resources belonging to another cluster/AWS account unless the request credentials
     # were unsigned.
     s3_client = boto3.client(
         "s3",
