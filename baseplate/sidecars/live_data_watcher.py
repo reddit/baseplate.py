@@ -17,7 +17,7 @@ import boto3  # type: ignore
 
 from botocore import UNSIGNED  # type: ignore
 from botocore.client import ClientError  # type: ignore
-from botocore.client import Config  # type: ignore
+from botocore.client import Config
 from botocore.exceptions import EndpointConnectionError  # type: ignore
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
