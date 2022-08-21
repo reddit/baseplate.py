@@ -141,9 +141,9 @@ def _load_from_s3(data: bytes) -> bytes:
         # Client needs to be anonymous/unsigned or boto3 will try to read the local credentials
         # on the service pods. And - due to an AWS quirk - any request that comes in signed with
         # credentials will profile for permissions for the resource being requested EVEN if the
-        # resource is public. In other words, this means that a given service could not access
-        # public resources belonging to another cluster/AWS account unless the request credentials
-        # were unsigned.
+        # resource is public. In other words, this means that a given service cannot access
+        # a public resource belonging to another cluster/AWS account unless the request credentials
+        # are unsigned.
         s3_client = boto3.client(
             "s3",
             config=Config(signature_version=UNSIGNED),
