@@ -137,7 +137,7 @@ def _load_from_s3(data: bytes) -> bytes:
         )
         raise LoaderException from e
 
-    if loader_config.get("anon") == True:
+    if loader_config.get("anon") is True:
         # Client needs to be anonymous/unsigned or boto3 will try to read the local credentials
         # on the service pods. And - due to an AWS quirk - any request that comes in signed with
         # credentials will profile for permissions for the resource being requested EVEN if the
