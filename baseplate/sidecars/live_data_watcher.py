@@ -137,17 +137,23 @@ def _load_from_s3(data: bytes) -> bytes:
         )
         raise LoaderException from e
 
-    # Client needs to be anonymous/unsigned or boto3 will try to read the local credentials
-    # on the service pods. And - due to an AWS quirk - any request that comes in signed with
-    # credentails will profile for permissions for the resource being requested EVEN if the
-    # resource is public. In other words, this means that a given service could not access
-    # public resources belonging to another cluster/AWS account unless the request credentials
-    # were unsigned.
-    s3_client = boto3.client(
-        "s3",
-        config=Config(signature_version=UNSIGNED),
-        region_name=region_name,
-    )
+    if loader_config.get("anon") == True:
+        # Client needs to be anonymous/unsigned or boto3 will try to read the local credentials
+        # on the service pods. And - due to an AWS quirk - any request that comes in signed with
+        # credentails will profile for permissions for the resource being requested EVEN if the
+        # resource is public. In other words, this means that a given service could not access
+        # public resources belonging to another cluster/AWS account unless the request credentials
+        # were unsigned.
+        s3_client = boto3.client(
+            "s3",
+            config=Config(signature_version=UNSIGNED),
+            region_name=region_name,
+        )
+    else:
+        s3_client = boto3.client(
+            "s3",
+            region_name=region_name,
+        )
 
     try:
         s3_object = s3_client.get_object(**s3_kwargs)

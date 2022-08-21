@@ -79,10 +79,10 @@ def test_load_from_s3_missing_config(start_mock_s3, missing_config):
 
 def test_successful_load_from_s3(s3_stub):
     contents = b"my-test-contents"
-    bucket = "my-test-bucket"
-    key = "my-test-key"
+    bucket_name = "my-test-bucket"
     file_key = "my-test-key"
     sse_key = "key"
+    anon = True
 
     s3_stub.add_response(
         "get_object",
@@ -90,7 +90,7 @@ def test_successful_load_from_s3(s3_stub):
             "Body": StreamingBody(io.BytesIO(contents), len(contents)),
         },
         expected_params={
-            "Bucket": bucket,
+            "Bucket": bucket_name,
             "Key": file_key,
             "SSECustomerKey": sse_key,
             "SSECustomerAlgorithm": "AES256",
@@ -99,7 +99,13 @@ def test_successful_load_from_s3(s3_stub):
 
     data = _load_from_s3(
         json.dumps(
-            {"region_name": "us-east-1", "bucket_name": bucket, "file_key": key, "sse_key": "key"}
+            {
+                "region_name": "us-east-1",
+                "bucket_name": bucket_name,
+                "file_key": file_key,
+                "sse_key": sse_key,
+                "anon": anon,
+            }
         ).encode("utf-8")
     )
 
