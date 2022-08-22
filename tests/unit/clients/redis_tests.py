@@ -110,7 +110,7 @@ class TestMonitoredRedisConnection:
         monitored_redis_connection.connection_pool = pool_from_config(
             app_config=app_config, client_name=""
         )
-        expected_labels["redis_client_name"] = ""
+        expected_labels.pop("redis_client_name")
 
         with pytest.raises(ConnectionError):  # ConnectionError inherits from RedisError
             monitored_redis_connection.execute_command("some_command")
