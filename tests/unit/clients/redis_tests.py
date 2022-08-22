@@ -104,6 +104,18 @@ class TestMonitoredRedisConnection:
         )
         assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", expected_labels) == 1
 
+    def test_execute_command_empty_client_name(
+        self, monitored_redis_connection, expected_labels, app_config
+    ):
+        monitored_redis_connection.connection_pool = pool_from_config(
+            app_config=app_config, client_name=""
+        )
+        expected_labels["redis_client_name"] = ""
+
+        with pytest.raises(ConnectionError):  # ConnectionError inherits from RedisError
+            monitored_redis_connection.execute_command("some_command")
+        assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", expected_labels)
+
     def test_execute_command(self, monitored_redis_connection, expected_labels):
         monitored_redis_connection.execute_command("some_command")
         # assert [i for i in REGISTRY.collect()] == ""
