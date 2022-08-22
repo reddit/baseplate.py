@@ -77,12 +77,19 @@ def test_load_from_s3_missing_config(start_mock_s3, missing_config):
         assert _load_from_s3(json.dumps(data).encode("utf-8"))
 
 
-def test_successful_load_from_s3(s3_stub):
+@pytest.mark.parametrize(
+    "anon_req",
+    (
+        True,
+        False,
+    ),
+)
+def test_successful_load_from_s3(s3_stub, anon_req):
     contents = b"my-test-contents"
     bucket_name = "my-test-bucket"
     file_key = "my-test-key"
     sse_key = "key"
-    anon = True
+    anon = anon_req
 
     s3_stub.add_response(
         "get_object",
