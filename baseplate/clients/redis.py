@@ -282,14 +282,15 @@ class MonitoredRedisPipeline(Pipeline):
             }
             num_reqs = len(self.command_stack)
             commands = [args[0] for (args, options) in self.command_stack]
-
+            print(labels)
+            ACTIVE_REQUESTS.labels(**labels).inc()
             try:
-                with ACTIVE_REQUESTS.labels(**labels).track_inprogress():
-                    return super().execute(**kwargs)
+                return super().execute(**kwargs)
             except:  # noqa: E722
                 success = "false"
                 raise
             finally:
+                ACTIVE_REQUESTS.labels(**labels).dec()
                 for command in commands:
                     result_labels = {
                         **labels,
