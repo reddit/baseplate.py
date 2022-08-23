@@ -141,18 +141,21 @@ class TestMonitoredRedisConnection:
             ) as active_dec_spy_method:
                 mock_manager.attach_mock(active_dec_spy_method, "dec")
 
+                # This KeyError is the same problem as the RedisClusterException in `test_execute_command_exc_redis_err` above
                 with pytest.raises(KeyError):
                     monitored_redis_connection.pipeline("test").set("hello", 42).set(
                         "goodbye", 23
                     ).execute()
                 labels = {**expected_labels, "redis_command": "SET", "redis_success": "false"}
-                assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", labels) == 2.0
+                assert (
+                    REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", labels) == 2.0
+                ), "Unexpected value for REQUESTS_TOTAL metric. Expected to have seen two successful SET calls."
                 assert (
                     REGISTRY.get_sample_value(
                         f"{LATENCY_SECONDS._name}_bucket", {**labels, "le": "+Inf"}
                     )
                     == 2.0
-                )
+                ), "Should have seen two SET commands in latency bucket"
                 assert mock_manager.mock_calls == [
                     mock.call.inc(),
                     mock.call.dec(),

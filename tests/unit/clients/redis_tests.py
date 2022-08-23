@@ -155,7 +155,7 @@ class TestMonitoredRedisConnection:
                         f"{LATENCY_SECONDS._name}_bucket", {**labels, "le": "+Inf"}
                     )
                     == 2.0
-                ), "There should be no lingering ACTIVE_REQUESTS after completion. This Gauge with these labels should not be None/unset."
+                ), "Should have seen two SET commands in latency bucket"
                 assert mock_manager.mock_calls == [
                     mock.call.inc(),
                     mock.call.dec(),
