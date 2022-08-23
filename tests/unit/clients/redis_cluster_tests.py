@@ -30,8 +30,27 @@ class DummyConnection(object):
     def get_connection(self):
         pass
 
+    def connect(self):
+        pass
+
     def can_read(self):
         return False
+
+    def send_command(self, command):
+        pass
+
+    def read_response(self):
+        # Must return same number as test_pipeline_instrumentation calls
+        return ["OK", "OK"]
+
+    def pack_commands(self, *args):
+        pass
+
+    def send_packed_command(self, *args):
+        pass
+
+    def disconnect(self):
+        pass
 
 
 class TestMonitoredRedisConnection:
@@ -105,6 +124,39 @@ class TestMonitoredRedisConnection:
             == 1
         )
         assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", expected_labels) == 1
+
+    def test_pipeline_instrumentation(self, monitored_redis_connection, expected_labels):
+        active_labels = {**expected_labels, "redis_command": "pipeline"}
+        mock_manager = mock.Mock()
+        with mock.patch.object(
+            ACTIVE_REQUESTS.labels(**active_labels),
+            "inc",
+            wraps=ACTIVE_REQUESTS.labels(**active_labels).inc,
+        ) as active_inc_spy_method:
+            mock_manager.attach_mock(active_inc_spy_method, "inc")
+            with mock.patch.object(
+                ACTIVE_REQUESTS.labels(**active_labels),
+                "dec",
+                wraps=ACTIVE_REQUESTS.labels(**active_labels).dec,
+            ) as active_dec_spy_method:
+                mock_manager.attach_mock(active_dec_spy_method, "dec")
+
+                with pytest.raises(KeyError):
+                    monitored_redis_connection.pipeline("test").set("hello", 42).set(
+                        "goodbye", 23
+                    ).execute()
+                labels = {**expected_labels, "redis_command": "SET", "redis_success": "false"}
+                assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", labels) == 2.0
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{LATENCY_SECONDS._name}_bucket", {**labels, "le": "+Inf"}
+                    )
+                    == 2.0
+                )
+                assert mock_manager.mock_calls == [
+                    mock.call.inc(),
+                    mock.call.dec(),
+                ], "Instrumentation should increment and then decrement active requests exactly once"
 
 
 class HotKeyTrackerTests(unittest.TestCase):

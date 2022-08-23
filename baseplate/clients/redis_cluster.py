@@ -508,7 +508,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
                 f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
                     "db", ""
                 ),
-                f"{PROM_LABELS_PREFIX}_type": "standalone",
+                f"{PROM_LABELS_PREFIX}_type": "cluster",
             }
             num_reqs = len(self.command_stack)
             commands = [cmd.args[0] for cmd in self.command_stack]
