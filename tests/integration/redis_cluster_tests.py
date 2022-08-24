@@ -157,12 +157,3 @@ class RedisClusterIntegrationTests(unittest.TestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
-
-        labels = {
-            "redis_client_name": "",
-            "redis_type": "standalone",
-            "redis_database": "0",
-            "redis_command": "GET",
-            "redis_success": "true",
-        }
-        assert REGISTRY.get_sample_value("redis_client_requests_total", labels) == 5.0

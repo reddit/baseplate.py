@@ -497,7 +497,6 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         with self.server_span.make_child(self.trace_name):
-
             success = "true"
             start_time = perf_counter()
             labels = {
@@ -510,10 +509,9 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
                 ),
                 f"{PROM_LABELS_PREFIX}_type": "cluster",
             }
-            num_reqs = len(self.command_stack)
-            commands = [cmd.args[0] for cmd in self.command_stack]
 
             ACTIVE_REQUESTS.labels(**labels).inc()
+
             try:
                 return super().execute(**kwargs)
             except:  # noqa: E722
@@ -521,13 +519,9 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
                 raise
             finally:
                 ACTIVE_REQUESTS.labels(**labels).dec()
-                for command in commands:
-                    result_labels = {
-                        **labels,
-                        f"{PROM_LABELS_PREFIX}_success": success,
-                        f"{PROM_LABELS_PREFIX}_command": command,
-                    }
-                    REQUESTS_TOTAL.labels(**result_labels).inc()
-                    LATENCY_SECONDS.labels(**result_labels).observe(
-                        (perf_counter() - start_time) / num_reqs
-                    )
+                result_labels = {
+                    **labels,
+                    f"{PROM_LABELS_PREFIX}_success": success,
+                }
+                REQUESTS_TOTAL.labels(**result_labels).inc()
+                LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
