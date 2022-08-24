@@ -7,7 +7,6 @@ except ImportError:
 
 from baseplate.lib.config import ConfigurationError
 from baseplate.clients.redis_cluster import cluster_pool_from_config
-from prometheus_client import REGISTRY
 
 from baseplate.clients.redis_cluster import ClusterRedisClient
 from baseplate import Baseplate
