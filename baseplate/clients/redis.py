@@ -267,7 +267,34 @@ class MonitoredRedisPipeline(Pipeline):
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         with self.server_span.make_child(self.trace_name):
-            return super().execute(**kwargs)
+            success = "true"
+            start_time = perf_counter()
+            labels = {
+                f"{PROM_LABELS_PREFIX}_command": "pipeline",
+                f"{PROM_LABELS_PREFIX}_client_name": self.connection_pool.connection_kwargs.get(
+                    "client_name", ""
+                ),
+                f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
+                    "db", ""
+                ),
+                f"{PROM_LABELS_PREFIX}_type": "standalone",
+            }
+
+            ACTIVE_REQUESTS.labels(**labels).inc()
+
+            try:
+                return super().execute(**kwargs)
+            except:  # noqa: E722
+                success = "false"
+                raise
+            finally:
+                ACTIVE_REQUESTS.labels(**labels).dec()
+                result_labels = {
+                    **labels,
+                    f"{PROM_LABELS_PREFIX}_success": success,
+                }
+                REQUESTS_TOTAL.labels(**result_labels).inc()
+                LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
 
 
 class MessageQueue:
