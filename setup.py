@@ -33,6 +33,7 @@ setup(
     url="https://github.com/reddit/baseplate.py",
     project_urls={
         "Documentation": "https://baseplate.readthedocs.io/en/stable/",
+        "Source": "https://github.com/reddit/baseplate.py",
     },
     use_scm_version=True,
     packages=find_packages(exclude=["tests", "tests.*"]),
