@@ -48,6 +48,7 @@ from baseplate.lib.config import Optional as OptionalConfig
 from baseplate.lib.config import parse_config
 from baseplate.lib.config import Timespan
 from baseplate.lib.log_formatter import CustomJsonFormatter
+from baseplate.lib.prometheus_metrics import are_metrics_enabled
 from baseplate.server import einhorn
 from baseplate.server import reloader
 from baseplate.server.net import bind_socket
@@ -270,12 +271,10 @@ def load_app_and_run_server() -> None:
     listener = make_listener(args.bind)
     server = make_server(config.server, listener, app)
 
-    cfg = parse_config(config.server, {"drain_time": OptionalConfig(Timespan)})
-
     if einhorn.is_worker():
         einhorn.ack_startup()
 
-    if "metrics.tagging" in config.app or "metrics.namespace" in config.app:
+    if are_metrics_enabled(config.app):
         from baseplate.server.prometheus import start_prometheus_exporter
 
         start_prometheus_exporter()
@@ -295,6 +294,7 @@ def load_app_and_run_server() -> None:
 
         SERVER_STATE.state = ServerLifecycle.SHUTTING_DOWN
 
+        cfg = parse_config(config.server, {"drain_time": OptionalConfig(Timespan)})
         if cfg.drain_time:
             logger.debug("Draining inbound requests...")
             time.sleep(cfg.drain_time.total_seconds())
