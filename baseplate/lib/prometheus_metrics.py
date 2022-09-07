@@ -43,17 +43,17 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     return str(200 <= httpStatusCode < 400).lower()
 
 
-def are_metrics_enabled(raw_config: Dict[str, str]) -> bool:
-    if "metrics.tagging" in raw_config or "metrics.namespace" in raw_config:
-        return True
-
+def is_metrics_enabled(raw_config: Dict[str, str]) -> bool:
     cfg = config.parse_config(
         raw_config,
         {
             "metrics": {
-                "enabled": config.Optional(config.Boolean, default=False),
+                "enabled": config.Optional(config.Boolean),
             }
         },
     )
 
-    return cfg.metrics.enabled
+    if cfg.metrics.enabled is not None:
+        return cfg.metrics.enabled
+
+    return "metrics.tagging" in raw_config or "metrics.namespace" in raw_config

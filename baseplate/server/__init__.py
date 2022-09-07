@@ -48,7 +48,7 @@ from baseplate.lib.config import Optional as OptionalConfig
 from baseplate.lib.config import parse_config
 from baseplate.lib.config import Timespan
 from baseplate.lib.log_formatter import CustomJsonFormatter
-from baseplate.lib.prometheus_metrics import are_metrics_enabled
+from baseplate.lib.prometheus_metrics import is_metrics_enabled
 from baseplate.server import einhorn
 from baseplate.server import reloader
 from baseplate.server.net import bind_socket
@@ -274,7 +274,7 @@ def load_app_and_run_server() -> None:
     if einhorn.is_worker():
         einhorn.ack_startup()
 
-    if are_metrics_enabled(config.app):
+    if is_metrics_enabled(config.app):
         from baseplate.server.prometheus import start_prometheus_exporter
 
         start_prometheus_exporter()
