@@ -62,7 +62,7 @@ def example_application(request):
 
 
 def render_exception_view(request):
-    return HTTPNotImplemented(title="a fancy title", text="a fancy explanation")
+    return HTTPNotImplemented(title="a fancy title", body="a fancy explanation")
 
 
 def render_bad_exception_view(request):
@@ -208,7 +208,7 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
         self.assertTrue(self.context_init_event_subscriber.called)
-        self.assertIn("a fancy explanation", response.text)
+        self.assertIn(b"a fancy explanation", response.body)
         args, _ = self.server_observer.on_finish.call_args
         self.assertEqual(args[0], None)
 
