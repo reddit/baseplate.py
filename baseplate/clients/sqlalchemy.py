@@ -1,5 +1,6 @@
 import re
 
+from time import perf_counter
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -7,6 +8,9 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
@@ -23,6 +27,7 @@ from baseplate import SpanObserver
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import metrics
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.secrets import SecretsStore
 
 
@@ -91,8 +96,14 @@ def engine_from_config(
         if not secrets:
             raise TypeError("'secrets' is required if 'credentials_secret' is set")
         credentials = secrets.get_credentials(options.credentials_secret)
-        url.username = credentials.username
-        url.password = credentials.password
+
+        # support sqlalchemy 1.4+ where URL is immutable
+        # https://docs.sqlalchemy.org/en/14/changelog/migration_14.html#the-url-object-is-now-immutable
+        if hasattr(url, "set"):
+            url = url.set(username=credentials.username, password=credentials.password)
+        else:
+            url.username = credentials.username
+            url.password = credentials.password
 
     return create_engine(url, **kwargs)
 
@@ -119,7 +130,7 @@ class SQLAlchemySession(config.Parser):
         engine = engine_from_config(
             raw_config, secrets=self.secrets, prefix=f"{key_path}.", **self.kwargs
         )
-        return SQLAlchemySessionContextFactory(engine)
+        return SQLAlchemySessionContextFactory(engine, key_path)
 
 
 Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
@@ -149,16 +160,68 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, engine: Engine):
+    PROM_PREFIX = "sql_client"
+    PROM_POOL_PREFIX = f"{PROM_PREFIX}_pool"
+    PROM_POOL_LABELS = ["sql_pool"]
+
+    max_connections_gauge = Gauge(
+        f"{PROM_POOL_PREFIX}_max_size",
+        "Maximum number of connections allowed in this pool",
+        PROM_POOL_LABELS,
+    )
+
+    checked_out_connections_gauge = Gauge(
+        f"{PROM_POOL_PREFIX}_active_connections",
+        "Number of connections in use by this pool (checked out + overflow)",
+        PROM_POOL_LABELS,
+    )
+    checked_in_connections_gauge = Gauge(
+        f"{PROM_POOL_PREFIX}_idle_connections",
+        "Number of connections not in use by this pool (unused pool connections)",
+        PROM_POOL_LABELS,
+    )
+
+    PROM_LABELS = [
+        "sql_pool",
+        "sql_address",
+        "sql_database",
+    ]
+
+    latency_seconds = Histogram(
+        f"{PROM_PREFIX}_latency_seconds",
+        "Latency histogram of calls to database",
+        PROM_LABELS + ["sql_success"],
+        buckets=default_latency_buckets,
+    )
+
+    active_requests = Gauge(
+        f"{PROM_PREFIX}_active_requests",
+        "total requests that are in-flight",
+        PROM_LABELS,
+    )
+
+    requests_total = Counter(
+        f"{PROM_PREFIX}_requests_total",
+        "Total number of sql requests",
+        PROM_LABELS + ["sql_success"],
+    )
+
+    def __init__(self, engine: Engine, name: str = "sqlalchemy"):
         self.engine = engine.execution_options()
+        self.name = name
         event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
         event.listen(self.engine, "handle_error", self.on_error)
+        self.time_started = 0.0
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.engine.pool
         if not isinstance(pool, QueuePool):
             return
+
+        self.max_connections_gauge.labels(self.name).set(pool.size())
+        self.checked_out_connections_gauge.labels(self.name).set(pool.checkedout())
+        self.checked_in_connections_gauge.labels(self.name).set(pool.checkedin())
 
         batch.gauge("pool.size").replace(pool.size())
         batch.gauge("pool.open_and_available").replace(pool.checkedin())
@@ -180,12 +243,20 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         executemany: bool,
     ) -> Tuple[str, Parameters]:
         """Handle the engine's before_cursor_execute event."""
+        labels = {
+            "sql_pool": self.name,
+            "sql_address": conn.engine.url.host,
+            "sql_database": conn.engine.url.database,
+        }
+        self.active_requests.labels(**labels).inc()
+        self.time_started = perf_counter()
+
         context_name = conn._execution_options["context_name"]
         server_span = conn._execution_options["server_span"]
 
-        trace_name = "{}.{}".format(context_name, "execute")
+        trace_name = f"{context_name}.execute"
         span = server_span.make_child(trace_name)
-        span.set_tag("statement", statement)
+        span.set_tag("statement", statement[:1021] + "..." if len(statement) > 1024 else statement)
         span.start()
 
         conn.info["span"] = span
@@ -213,11 +284,35 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         conn.info["span"].finish()
         conn.info["span"] = None
 
+        labels = {
+            "sql_pool": self.name,
+            "sql_address": conn.engine.url.host,
+            "sql_database": conn.engine.url.database,
+        }
+
+        self.active_requests.labels(**labels).dec()
+        self.requests_total.labels(**labels, sql_success="true").inc()
+        self.latency_seconds.labels(**labels, sql_success="true").observe(
+            perf_counter() - self.time_started
+        )
+
     def on_error(self, context: ExceptionContext) -> None:
         """Handle the event which happens on exceptions during execution."""
         exc_info = (type(context.original_exception), context.original_exception, None)
         context.connection.info["span"].finish(exc_info=exc_info)
         context.connection.info["span"] = None
+
+        labels = {
+            "sql_pool": self.name,
+            "sql_address": context.connection.engine.url.host,
+            "sql_database": context.connection.engine.url.database,
+        }
+
+        self.active_requests.labels(**labels).dec()
+        self.requests_total.labels(**labels, sql_success="false").inc()
+        self.latency_seconds.labels(**labels, sql_success="false").observe(
+            perf_counter() - self.time_started
+        )
 
 
 class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):

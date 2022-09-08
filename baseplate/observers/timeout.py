@@ -29,7 +29,8 @@ class TimeoutBaseplateObserver(BaseplateObserver):
             {
                 "server_timeout": {
                     "default": config.Optional(
-                        config.TimespanOrInfinite, default=config.InfiniteTimespan,
+                        config.TimespanOrInfinite,
+                        default=config.InfiniteTimespan,
                     ),
                     "debug": config.Optional(config.Boolean, default=False),
                     "by_endpoint": config.DictOf(config.TimespanOrInfinite),
@@ -43,10 +44,22 @@ class TimeoutBaseplateObserver(BaseplateObserver):
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         timeout = self.config.by_endpoint.get(server_span.name, self.config.default)
+
+        min_timeout = None
         if timeout is not config.InfiniteTimespan:
-            observer = TimeoutServerSpanObserver(
-                server_span, timeout.total_seconds(), self.config.debug
-            )
+            min_timeout = timeout.total_seconds()
+
+        try:
+            deadline_budget = context.deadline_budget
+            if deadline_budget:
+                if not min_timeout or deadline_budget < min_timeout:
+                    min_timeout = deadline_budget
+        except AttributeError:
+            # no deadline budget in request header
+            pass
+
+        if min_timeout:
+            observer = TimeoutServerSpanObserver(server_span, min_timeout, self.config.debug)
             server_span.register(observer)
 
 

@@ -82,6 +82,7 @@ import requests
 
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
+from baseplate.server import EnvironmentInterpolation
 
 
 logger = logging.getLogger(__name__)
@@ -107,7 +108,7 @@ def fetch_instance_identity() -> str:
 
     """
     logger.debug("Fetching identity.")
-    resp = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7")
+    resp = requests.get("http://169.254.169.254/latest/dynamic/instance-identity/pkcs7", timeout=5)
     resp.raise_for_status()
     return resp.text
 
@@ -122,7 +123,7 @@ def load_nonce() -> Optional[str]:
     """Load the nonce from disk."""
     try:
         logger.debug("Loading nonce.")
-        with open(NONCE_FILENAME, "r") as f:
+        with open(NONCE_FILENAME, encoding="UTF-8") as f:
             return f.read()
     except OSError as exc:
         logger.debug("Nonce not found: %s.", exc)
@@ -187,7 +188,7 @@ class VaultClientFactory:
 
         """
         try:
-            with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE, "r") as f:
+            with open(K8S_SERVICE_ACCOUNT_TOKEN_FILE, encoding="UTF-8") as f:
                 token = f.read()
         except OSError:
             logger.error(
@@ -201,6 +202,7 @@ class VaultClientFactory:
         response = self.session.post(
             urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
+            timeout=5,  # seconds
         )
         response.raise_for_status()
         auth = response.json()["auth"]
@@ -245,6 +247,7 @@ class VaultClientFactory:
         response = self.session.post(
             urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
+            timeout=5,  # seconds
         )
         if response.status_code == 400:
             logger.error(REAUTHENTICATION_ERROR_MESSAGE)
@@ -300,6 +303,7 @@ class VaultClient:
             response = self.session.get(
                 urllib.parse.urljoin(self.base_url, posixpath.join("v1", secret_name)),
                 headers={"X-Vault-Token": self.token},
+                timeout=5,  # seconds
             )
             response.raise_for_status()
         except requests.HTTPError as e:
@@ -321,7 +325,7 @@ def fetch_secrets(
         secrets[secret_name], expiration = client.get_secret(secret_name)
         soonest_expiration = min(soonest_expiration, expiration)
 
-    with open(cfg.output.path + ".tmp", "w") as f:
+    with open(cfg.output.path + ".tmp", "w", encoding="UTF-8") as f:
         os.fchown(f.fileno(), cfg.output.owner, cfg.output.group)
         os.fchmod(f.fileno(), cfg.output.mode)
 
@@ -351,7 +355,7 @@ def trigger_callback(
         if last_proc and last_proc.poll() is None:
             logger.info("Previous callback process is still running. Skipping")
         else:
-            return subprocess.Popen([callback, secrets_file])
+            return subprocess.Popen([callback, secrets_file])  # pylint: disable=R1732
     return last_proc
 
 
@@ -377,7 +381,7 @@ def main() -> None:
         level = logging.INFO
 
     logging.basicConfig(format="%(asctime)s:%(levelname)s:%(message)s", level=level)
-    parser = configparser.RawConfigParser()
+    parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
     parser.read_file(args.config_file)
     fetcher_config = dict(parser.items("secret-fetcher"))
 

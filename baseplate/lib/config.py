@@ -24,7 +24,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     from baseplate import config
     from tempfile import NamedTemporaryFile
     config_parser = configparser.RawConfigParser()
-    config_parser.readfp(open("docs/config_example.ini"))
+    config_parser.read_file(open("docs/config_example.ini"))
 
     tempfile = NamedTemporaryFile()
     tempfile.write(b"cool")
@@ -238,7 +238,7 @@ def File(mode: str = "r") -> Callable[[str], IO]:  # noqa: D401
 
     def open_file(text: str) -> IO:
         try:
-            return open(text, mode=mode)
+            return open(text, mode=mode, encoding="UTF-8")  # pylint: disable=R1732
         except OSError:
             raise ValueError(f"could not open file: {text}")
 
@@ -540,7 +540,7 @@ class DictOf(Parser[ConfigNamespace]):
         import configparser
         from baseplate import config
         config_parser = configparser.RawConfigParser()
-        config_parser.readfp(open("docs/config_dictof_example.ini"))
+        config_parser.read_file(open("docs/config_dictof_example.ini"))
         raw_config = dict(config_parser.items("app:main"))
 
     .. doctest:: dictof_simple
@@ -570,7 +570,7 @@ class DictOf(Parser[ConfigNamespace]):
         import configparser
         from baseplate import config
         config_parser = configparser.RawConfigParser()
-        config_parser.readfp(open("docs/config_dictof_spec_example.ini"))
+        config_parser.read_file(open("docs/config_dictof_spec_example.ini"))
         raw_config = dict(config_parser.items("app:main"))
 
     .. doctest:: dictof_spec

@@ -15,6 +15,12 @@ part after is the "name". Baseplate looks for sections named ``main`` by
 default but can be overridden with the ``--server-name`` and ``--app-name``
 options.
 
+Shell-like environment variable references in configuration values will be
+expanded at server startup. For example, ``foo = $MY_PATH`` or ``foo =
+${MY_PATH}`` will result in the application seeing the value from the
+``$MY_PATH`` environment variable as the value of the ``foo`` setting as if it
+had been written in the config file directly.
+
 .. highlight:: ini
 
 The Server
@@ -126,6 +132,42 @@ An example command line::
 
 .. _Stripe's Einhorn socket manager: https://github.com/stripe/einhorn
 
+Graceful shutdown
+-----------------
+
+The flow of graceful shutdown while handling live traffic looks like this:
+
+* The server receives a ``SIGTERM`` from the infrastructure.
+* The server sets ``baseplate.server.SERVER_STATE.shutting_down`` to ``True``.
+* If the ``drain_time`` setting is set in the server configuration, the server
+  will wait the specified amount of time before continuing to the next step.
+  This gives your application a chance to use the ``shutting_down`` flag in
+  healthcheck responses.
+* The server begins graceful shutdown. No new connections will be accepted. The
+  server will continue processing the existing in-flight requests until they
+  are all done or ``stop_timeout`` time has elapsed.
+* The server exits and lets the infrastructure clean up.
+
+During the period between receiving the ``SIGTERM`` and the server exiting, the
+application may still be routed new requests. To ensure requests aren't lost
+during the graceful shutdown (where they won't be listened for) your
+application should set an appropriate ``drain_time`` and use the
+``SERVER_STATE.shutting_down`` flag to fail ``READINESS`` healthchecks.
+
+For example:
+
+.. code-block:: py
+
+   def is_healthy(self, context, healthcheck_request):
+       if healthcheck_request.probe == IsHealthyProbe.LIVENESS:
+           return True
+       elif healthcheck_request.probe == IsHealthyProbe.READINESS:
+           if SERVER_STATE.shutting_down:
+               return False
+           return True
+       return True
+
+
 Debug Signal
 ------------
 
@@ -143,6 +185,37 @@ Note that Einhorn will exit if you send it a ``SIGUSR1``. You can instead open u
    Successfully sent USR1s to 4 processes: [...]
 
 .. _runtime-metrics:
+
+Prometheus Exporter
+-------------------
+
+When enabled, ``baseplate-serve`` will start up a Prometheus exporter on HTTP
+port 6060. The exporter is designed for multiprocess use, like if running under
+Einhorn.  Each worker process writes its metrics to a file on disk and runs its
+own copy of the exporter, all listening on the same port. Any given worker can
+serve the metrics for all workers from the same pod. It doesn't matter which
+one is hit by the Prometheus collector.
+
+To enable the exporter, install the ``prometheus-client`` package from PyPI.
+
+.. code-block:: console
+
+   $ pip install prometheus-client
+
+The ``PROMETHEUS_MULTIPROC_DIR`` environment variable must be set to the path
+to an extant writeable directory. This is handled automatically in the official
+base Docker images.
+
+As long as the exporter is enabled, you can create Prometheus metrics in your
+application using the objects in ``prometheus-client`` and they will get
+exported without any extra configuration required.
+
+Note that for non-server jobs, like ``baseplate-script`` scripts, you will need
+to export metrics manually. See `exporting to a push gateway`_.
+
+.. _exporting to a push gateway: https://github.com/prometheus/client_python#exporting-to-a-pushgateway
+
+.. versionadded:: 2.3
 
 Process-level metrics
 ---------------------

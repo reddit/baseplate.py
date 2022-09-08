@@ -7,10 +7,15 @@ import kombu
 import pytest
 
 from gevent.server import StreamServer
+from prometheus_client import REGISTRY
 
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import ServerSpan
+from baseplate.frameworks.queue_consumer.kombu import AMQP_ACTIVE_MESSAGES
+from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSED_TOTAL
+from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSING_TIME
+from baseplate.frameworks.queue_consumer.kombu import AmqpConsumerPrometheusLabels
 from baseplate.frameworks.queue_consumer.kombu import FatalMessageHandlerError
 from baseplate.frameworks.queue_consumer.kombu import KombuConsumerWorker
 from baseplate.frameworks.queue_consumer.kombu import KombuMessageHandler
@@ -47,8 +52,13 @@ def name():
 
 
 class TestKombuMessageHandler:
+    def setup(self):
+        AMQP_PROCESSING_TIME.clear()
+        AMQP_PROCESSED_TOTAL.clear()
+        AMQP_ACTIVE_MESSAGES.clear()
+
     @pytest.fixture
-    def message(self):
+    def message(self, connection):
         msg = mock.Mock(spec=kombu.Message)
         msg.delivery_info = {
             "routing_key": "routing-key",
@@ -56,13 +66,21 @@ class TestKombuMessageHandler:
             "delivery_tag": "delivery-tag",
             "exchange": "exchange",
         }
+        msg.channel.connection.client = connection
         msg.decode.return_value = {"foo": "bar"}
         return msg
 
     def test_handle(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
         handler = KombuMessageHandler(baseplate, name, handler_fn)
+        prom_labels = AmqpConsumerPrometheusLabels(
+            amqp_address="hostname:port",
+            amqp_virtual_host="/",
+            amqp_exchange_name="exchange",
+            amqp_routing_key="routing-key",
+        )
         handler.handle(message)
+
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, name)
         baseplate.make_server_span().__enter__.assert_called_once()
@@ -78,6 +96,23 @@ class TestKombuMessageHandler:
         )
         handler_fn.assert_called_once_with(context, message.decode(), message)
         message.ack.assert_called_once()
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_PROCESSING_TIME._name}_bucket",
+                {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_PROCESSED_TOTAL._name}_total",
+                {**prom_labels._asdict(), **{"amqp_success": "true"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+        )
 
     @pytest.mark.parametrize(
         "err,expectation",
@@ -90,10 +125,52 @@ class TestKombuMessageHandler:
         def handler_fn(ctx, body, msg):
             raise err
 
-        handler = KombuMessageHandler(baseplate, name, handler_fn)
-        with expectation:
-            handler.handle(message)
-        message.requeue.assert_called_once()
+        prom_labels = AmqpConsumerPrometheusLabels(
+            amqp_address="hostname:port",
+            amqp_virtual_host="/",
+            amqp_exchange_name="exchange",
+            amqp_routing_key="routing-key",
+        )
+        mock_manager = mock.Mock()
+        with mock.patch.object(
+            AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
+            "inc",
+            wraps=AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
+        ) as active_inc_spy_method:
+            mock_manager.attach_mock(active_inc_spy_method, "inc")
+            with mock.patch.object(
+                AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
+                "dec",
+                wraps=AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
+            ) as active_dec_spy_method:
+                mock_manager.attach_mock(active_dec_spy_method, "dec")
+                handler = KombuMessageHandler(baseplate, name, handler_fn)
+                with expectation:
+                    handler.handle(message)
+                message.requeue.assert_called_once()
+
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_PROCESSING_TIME._name}_bucket",
+                        {**prom_labels._asdict(), **{"amqp_success": "false", "le": "+Inf"}},
+                    )
+                    == 1
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_PROCESSED_TOTAL._name}_total",
+                        {**prom_labels._asdict(), **{"amqp_success": "false"}},
+                    )
+                    == 1
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()
+                    )
+                    == 0
+                )
+                # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
+                assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     @pytest.mark.parametrize(
         "err,expectation",
@@ -110,17 +187,60 @@ class TestKombuMessageHandler:
 
         error_handler_fn = mock.Mock()
 
-        handler = KombuMessageHandler(baseplate, name, handler_fn, error_handler_fn)
-        with expectation:
-            handler.handle(message)
-        error_handler_fn.assert_called_once_with(context, message.decode(), message, err)
-        message.ack.assert_not_called()
-        message.requeue.assert_not_called()
+        prom_labels = AmqpConsumerPrometheusLabels(
+            amqp_address="hostname:port",
+            amqp_virtual_host="/",
+            amqp_exchange_name="exchange",
+            amqp_routing_key="routing-key",
+        )
+        mock_manager = mock.Mock()
+        with mock.patch.object(
+            AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
+            "inc",
+            wraps=AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
+        ) as active_inc_spy_method:
+            mock_manager.attach_mock(active_inc_spy_method, "inc")
+            with mock.patch.object(
+                AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
+                "dec",
+                wraps=AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
+            ) as active_dec_spy_method:
+                mock_manager.attach_mock(active_dec_spy_method, "dec")
+
+                handler = KombuMessageHandler(baseplate, name, handler_fn, error_handler_fn)
+                with expectation:
+                    handler.handle(message)
+                error_handler_fn.assert_called_once_with(context, message.decode(), message, err)
+                message.ack.assert_not_called()
+                message.requeue.assert_not_called()
+
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_PROCESSING_TIME._name}_bucket",
+                        {**prom_labels._asdict(), **{"amqp_success": "false", "le": "+Inf"}},
+                    )
+                    == 1
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_PROCESSED_TOTAL._name}_total",
+                        {**prom_labels._asdict(), **{"amqp_success": "false"}},
+                    )
+                    == 1
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()
+                    )
+                    == 0
+                )
+                # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
+                assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
 
 @pytest.fixture
 def connection():
-    return mock.Mock(spec=kombu.Connection)
+    return mock.Mock(spec=kombu.Connection, virtual_host="/", host="hostname:port")
 
 
 @pytest.fixture

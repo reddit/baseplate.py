@@ -13,7 +13,7 @@ services:
       - "memcached"
       - "redis"
       - "zookeeper"
-
+      - "redis-cluster-node"
   cassandra:
     image: "cassandra:3.11"
     environment:
@@ -25,3 +25,5 @@ services:
     image: "redis:4.0.9"
   zookeeper:
     image: "zookeeper:3.4.10"
+  redis-cluster-node:
+    image: docker.io/grokzen/redis-cluster:6.2.0

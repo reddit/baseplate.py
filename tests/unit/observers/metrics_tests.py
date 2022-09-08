@@ -120,3 +120,19 @@ class LocalSpanObserverTests(unittest.TestCase):
 
         observer.on_finish(exc_info=None)
         self.assertEqual(mock_timer.stop.call_count, 1)
+
+    def test_spans_under_local_spans(self):
+        mock_batch = mock.Mock(spec=Batch)
+
+        mock_local_span = mock.Mock(spec=LocalSpan)
+        mock_local_span.name = "example"
+        mock_local_span.component_name = "some_component"
+
+        mock_nested_span = mock.Mock(spec=LocalSpan)
+        mock_nested_span.name = "nested"
+        mock_nested_span.component_name = "some_component2"
+
+        observer = MetricsLocalSpanObserver(mock_batch, mock_local_span)
+        observer.on_child_span_created(mock_nested_span)
+
+        self.assertEqual(mock_nested_span.register.call_count, 1)

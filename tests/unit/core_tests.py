@@ -152,6 +152,26 @@ class SpanTests(unittest.TestCase):
             self.assertEqual(mock_observer.on_start.call_count, 1)
         self.assertEqual(mock_observer.on_finish.call_count, 1)
 
+    def test_context_with_tags(self):
+        mock_observer = mock.Mock(spec=SpanObserver)
+
+        span = make_test_span()
+        span.register(mock_observer)
+
+        tags = {
+            "k1": "v1",
+            "k2": "v2",
+        }
+        with span.with_tags(tags) as span:
+            self.assertEqual(mock_observer.on_start.call_count, 1)
+            mock_observer.on_set_tag.assert_has_calls(
+                [
+                    mock.call("k1", "v1"),
+                    mock.call("k2", "v2"),
+                ]
+            )
+        self.assertEqual(mock_observer.on_finish.call_count, 1)
+
     def test_context_with_exception(self):
         mock_observer = mock.Mock(spec=SpanObserver)
 

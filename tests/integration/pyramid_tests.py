@@ -79,9 +79,11 @@ class ConfiguratorTests(unittest.TestCase):
     def setUp(self):
         configurator = Configurator()
         configurator.add_route("example", "/example", request_method="GET")
+        configurator.add_route("route", "/route/{hello}/world", request_method="GET")
         configurator.add_route("trace_context", "/trace_context", request_method="GET")
 
         configurator.add_view(example_application, route_name="example", renderer="json")
+        configurator.add_view(example_application, route_name="route", renderer="json")
 
         configurator.add_view(
             local_tracing_within_context, route_name="trace_context", renderer="json"

@@ -112,14 +112,22 @@ class NullTransport(Transport):
 class RawTransport(Transport):
     """A transport which sends messages on a socket."""
 
-    def __init__(self, endpoint: config.EndpointConfiguration):
+    def __init__(
+        self,
+        endpoint: config.EndpointConfiguration,
+        swallow_network_errors: bool = False,
+    ):
+        self.swallow_network_errors = swallow_network_errors
         self.socket = socket.socket(endpoint.family, socket.SOCK_DGRAM)
         self.socket.connect(endpoint.address)
 
     def send(self, serialized_metric: bytes) -> None:
         try:
             self.socket.sendall(serialized_metric)
-        except socket.error as exc:
+        except OSError as exc:
+            if self.swallow_network_errors:
+                logger.exception("Failed to send to metrics collector")
+                return
             if exc.errno == errno.EMSGSIZE:
                 raise MessageTooBigTransportError(len(serialized_metric))
             raise TransportError(exc)
@@ -248,7 +256,7 @@ class Batch(BaseClient):
             )
             logger.warning(
                 "Metrics batch of %d bytes is too large to send, flush more often or reduce "
-                "amount done in this request. See https://git.io/JJscR. Top counters: %s",
+                "amount done in this request. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-metrics-batch-of-n-bytes-is-too-large-to-send. Top counters: %s",
                 exc.message_size,
                 ", ".join(f"{c.name.decode()}={c.total:.0f}" for c in counters_by_total[:10]),
             )
@@ -284,7 +292,10 @@ class Timer:
     """
 
     def __init__(
-        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
+        self,
+        transport: Transport,
+        name: bytes,
+        tags: Optional[Dict[str, Any]] = None,
     ):
         self.transport = transport
         self.name = name
@@ -456,7 +467,10 @@ class Histogram:
     """
 
     def __init__(
-        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
+        self,
+        transport: Transport,
+        name: bytes,
+        tags: Optional[Dict[str, Any]] = None,
     ) -> None:
         self.transport = transport
         self.name = name
@@ -488,7 +502,10 @@ class Gauge:
     """
 
     def __init__(
-        self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None,
+        self,
+        transport: Transport,
+        name: bytes,
+        tags: Optional[Dict[str, Any]] = None,
     ):
         self.transport = transport
         self.name = name
@@ -517,13 +534,18 @@ class Gauge:
 
 
 def make_client(
-    namespace: str, endpoint: config.EndpointConfiguration, log_if_unconfigured: bool
+    namespace: str,
+    endpoint: config.EndpointConfiguration,
+    log_if_unconfigured: bool,
+    swallow_network_errors: bool = False,
 ) -> Client:
     """Return a configured client.
 
     :param namespace: The root key to prefix all metrics with.
     :param endpoint: The endpoint to send metrics to or :py:data:`None`.  If
         :py:data:`None`, the returned client will discard all metrics.
+    :param swallow_network_errors: Swallow (log) network errors during sending
+        to metrics collector.
     :return: A configured client.
 
     .. seealso:: :py:func:`baseplate.lib.metrics.metrics_client_from_config`.
@@ -532,7 +554,7 @@ def make_client(
     transport: Transport
 
     if endpoint:
-        transport = RawTransport(endpoint)
+        transport = RawTransport(endpoint, swallow_network_errors=swallow_network_errors)
     else:
         transport = NullTransport(log_if_unconfigured)
     return Client(transport, namespace)
@@ -551,6 +573,11 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
     `metrics.log_if_unconfigured``
         Whether to log metrics when there is no unconfigured endpoint.
         Defaults to false.
+    `metrics.swallow_network_errors``
+        When false, network errors during sending to metrics collector will
+        cause an exception to be thrown. When true, those exceptions are logged
+        and swallowed instead.
+        Defaults to false.
 
     :param raw_config: The application configuration which should have
         settings for the metrics client.
@@ -564,9 +591,15 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
                 "namespace": config.Optional(config.String, default=""),
                 "endpoint": config.Optional(config.Endpoint),
                 "log_if_unconfigured": config.Optional(config.Boolean, default=False),
+                "swallow_network_errors": config.Optional(config.Boolean, default=False),
             }
         },
     )
 
     # pylint: disable=maybe-no-member
-    return make_client(cfg.metrics.namespace, cfg.metrics.endpoint, cfg.metrics.log_if_unconfigured)
+    return make_client(
+        namespace=cfg.metrics.namespace,
+        endpoint=cfg.metrics.endpoint,
+        log_if_unconfigured=cfg.metrics.log_if_unconfigured,
+        swallow_network_errors=cfg.metrics.swallow_network_errors,
+    )

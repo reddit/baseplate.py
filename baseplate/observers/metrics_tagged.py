@@ -160,6 +160,18 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
 
+    def on_child_span_created(self, span: Span) -> None:
+        observer: SpanObserver
+        if isinstance(span, LocalSpan):
+            observer = TaggedMetricsLocalSpanObserver(
+                self.batch, span, self.allowlist, self.sample_rate
+            )
+        else:
+            observer = TaggedMetricsClientSpanObserver(
+                self.batch, span, self.allowlist, self.sample_rate
+            )
+        span.register(observer)
+
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.allowlist}
 
@@ -170,7 +182,8 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
         self.timer.stop()
 
         self.batch.counter(
-            f"{self.base_name}.rate", {**filtered_tags, "success": not exc_info},
+            f"{self.base_name}.rate",
+            {**filtered_tags, "success": not exc_info},
         ).increment(sample_rate=self.sample_rate)
 
         self.batch.flush()
@@ -209,7 +222,8 @@ class TaggedMetricsClientSpanObserver(SpanObserver):
         self.timer.stop()
 
         self.batch.counter(
-            f"{self.base_name}.rate", {**filtered_tags, "success": not exc_info},
+            f"{self.base_name}.rate",
+            {**filtered_tags, "success": not exc_info},
         ).increment(sample_rate=self.sample_rate)
 
         self.batch.flush()

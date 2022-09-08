@@ -1,10 +1,15 @@
+# This file is just used to set up baseplate.py's test environment. It is not
+# indicative of the versions you must use in your applications.
+#
+# See install_requires and extras_require in setup.py for the range of versions
+# supported.
 advocate==1.0.0
 alabaster==0.7.12
 amqp==2.6.1
 appdirs==1.4.4
 aspy.refactor-imports==2.1.1
 attrs==20.3.0
-Babel==2.9.0
+Babel==2.9.1
 beautifulsoup4==4.9.3
 cached-property==1.5.2
 cassandra-driver==3.24.0
@@ -31,15 +36,17 @@ kombu==4.6.11
 lazy-object-proxy==1.4.3
 MarkupSafe==1.1.1
 mccabe==0.6.1
+moto==3.1.4
 mypy-extensions==0.4.3
 ndg-httpsclient==0.5.1
 netifaces==0.10.9
 objgraph==3.5.0
 packaging==20.9
 PasteDeploy==2.1.1
-pathspec==0.8.1
+pathspec==0.9.0
 plaster==1.0
 plaster-pastedeploy==0.7
+platformdirs==2.4.0
 pluggy==0.13.1
 posix-ipc==1.0.5
 py==1.10.0
@@ -56,11 +63,13 @@ pyramid==1.10.5
 python-json-logger==2.0.1
 reddit-cqlmapper==0.3.0
 redis==3.5.3
+redis-py-cluster==2.1.2
 regex==2020.11.13
 requests==2.25.1
 sentry-sdk==0.20.1
 six==1.15.0
 snowballstemmer==2.1.0
+sortedcontainers==2.4.0
 soupsieve==2.2
 sphinxcontrib-applehelp==1.0.2
 sphinxcontrib-devhelp==1.0.2
@@ -68,16 +77,16 @@ sphinxcontrib-htmlhelp==1.0.3
 sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
-SQLAlchemy==1.3.23
+SQLAlchemy==1.4.12
 thrift-unofficial==0.14.1
 toml==0.10.2
+tomli==1.2.2
 translationstring==1.4
-typed-ast==1.4.2
-typing-extensions==3.7.4.3
-urllib3==1.26.3
+typing-extensions==3.10.0.2
+urllib3==1.26.6
 venusian==3.0.0
 vine==1.3.0
-waitress==1.4.4
+waitress==2.1.1
 WebOb==1.8.6
 wrapt==1.12.1
 zope.deprecation==4.4.0

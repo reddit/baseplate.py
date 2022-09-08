@@ -23,6 +23,7 @@ import time
 from typing import Any
 from typing import Generator
 from typing import Optional
+from typing import Type
 from typing import TYPE_CHECKING
 
 from thrift.protocol import THeaderProtocol
@@ -42,7 +43,7 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    ProtocolPool = queue.Queue[TProtocolBase]  # pylint: disable=unsubscriptable-object
+    ProtocolPool = Type[queue.Queue[TProtocolBase]]  # pylint: disable=unsubscriptable-object
 else:
     ProtocolPool = queue.Queue
 
@@ -75,6 +76,7 @@ def thrift_pool_from_config(
 
     * ``endpoint`` (required): A ``host:port`` pair, e.g. ``localhost:2014``,
         where the Thrift server can be found.
+    * ``fifo_queue``: True will enable use of a FIFO queue instead of the default LIFO queue.
     * ``size``: The size of the connection pool.
     * ``max_age``: The oldest a connection can be before it's recycled and
         replaced with a new one. Written as a
@@ -93,6 +95,7 @@ def thrift_pool_from_config(
     parser = config.SpecParser(
         {
             "endpoint": config.Endpoint,
+            "fifo_queue": config.Optional(config.Boolean, default=False),
             "size": config.Optional(config.Integer, default=10),
             "max_age": config.Optional(config.Timespan, default=config.Timespan("1 minute")),
             "timeout": config.Optional(config.Timespan, default=config.Timespan("1 second")),
@@ -102,6 +105,8 @@ def thrift_pool_from_config(
     )
     options = parser.parse(prefix[:-1], app_config)
 
+    if options.fifo_queue:
+        kwargs.setdefault("queue_cls", queue.Queue)
     if options.size is not None:
         kwargs.setdefault("size", options.size)
     if options.max_age is not None:
@@ -137,6 +142,7 @@ class ThriftConnectionPool:
     :param protocol_factory: The factory to use for creating protocols from
         transports. This is useful for talking to services that don't support
         THeaderProtocol.
+    :param queue_cls: A stdlib compatible queue class.
 
     All exceptions raised by this class derive from
     :py:exc:`~thrift.transport.TTransport.TTransportException`.
@@ -152,9 +158,10 @@ class ThriftConnectionPool:
         endpoint: config.EndpointConfiguration,
         size: int = 10,
         max_age: int = 120,
-        timeout: int = 1,
+        timeout: float = 1,
         max_connection_attempts: int = 3,
         protocol_factory: TProtocolFactory = _DEFAULT_PROTOCOL_FACTORY,
+        queue_cls: ProtocolPool = queue.LifoQueue,
     ):
         self.endpoint = endpoint
         self.max_age = max_age
@@ -163,7 +170,8 @@ class ThriftConnectionPool:
         self.protocol_factory = protocol_factory
 
         self.size = size
-        self.pool: ProtocolPool = queue.LifoQueue()
+
+        self.pool = queue_cls()
         for _ in range(size):
             self.pool.put(None)
 
@@ -236,7 +244,7 @@ class ThriftConnectionPool:
                 raise TTransportException(
                     type=TTransportException.TIMED_OUT, message="timed out interacting with socket"
                 )
-            except socket.error as exc:
+            except OSError as exc:
                 raise TTransportException(type=TTransportException.UNKNOWN, message=str(exc))
         except (TApplicationException, TProtocolException, TTransportException):
             # these exceptions usually indicate something low-level went wrong,

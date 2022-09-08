@@ -1,12 +1,18 @@
 import base64
 import ipaddress
+import sys
+import time
 
 from typing import Any
+from typing import Optional
 from typing import Type
 from typing import Union
 
 from advocate import AddrValidator
 from advocate import ValidatingHTTPAdapter
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 from requests import PreparedRequest
 from requests import Request
 from requests import Response
@@ -16,6 +22,8 @@ from requests.adapters import HTTPAdapter
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 
 
 def http_adapter_from_config(
@@ -100,6 +108,35 @@ def http_adapter_from_config(
     return ValidatingHTTPAdapter(**kwargs)
 
 
+PROM_NAMESPACE = "http_client"
+HTTP_LABELS_COMMON = [
+    "http_method",
+    "http_client_name",
+]
+HTTP_LABELS_TERMINAL = [*HTTP_LABELS_COMMON, "http_success"]
+
+# Latency histogram of HTTP calls made by clients
+# buckets are defined above (from 100µs to ~14.9s)
+LATENCY_SECONDS = Histogram(
+    f"{PROM_NAMESPACE}_latency_seconds",
+    "Latency histogram of HTTP calls made by clients",
+    HTTP_LABELS_TERMINAL,
+    buckets=default_latency_buckets,
+)
+# Counter counting total HTTP requests started by a given client
+REQUESTS_TOTAL = Counter(
+    f"{PROM_NAMESPACE}_requests_total",
+    "Total number of HTTP requests started by a given client",
+    [*HTTP_LABELS_TERMINAL, "http_response_code"],
+)
+# Gauge showing current number of active requests by a given client
+ACTIVE_REQUESTS = Gauge(
+    f"{PROM_NAMESPACE}_active_requests",
+    "Number of active requests for a given client",
+    HTTP_LABELS_COMMON,
+)
+
+
 class BaseplateSession:
     """A proxy for :py:class:`requests.Session`.
 
@@ -107,10 +144,13 @@ class BaseplateSession:
 
     """
 
-    def __init__(self, adapter: HTTPAdapter, name: str, span: Span) -> None:
+    def __init__(
+        self, adapter: HTTPAdapter, name: str, span: Span, client_name: Optional[str] = None
+    ) -> None:
         self.adapter = adapter
         self.name = name
         self.span = span
+        self.client_name = client_name
 
     def delete(self, url: str, **kwargs: Any) -> Response:
         """Send a DELETE request.
@@ -200,24 +240,55 @@ class BaseplateSession:
 
     def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
         """Send a :py:class:`~requests.PreparedRequest`."""
-        with self.span.make_child(f"{self.name}.request") as span:
-            span.set_tag("http.method", request.method)
-            span.set_tag("http.url", request.url)
+        active_request_label_values = {
+            "http_method": request.method.lower() if request.method else "",
+            "http_client_name": self.client_name if self.client_name is not None else self.name,
+        }
+        start_time = time.perf_counter()
 
-            self._add_span_context(span, request)
+        try:
+            with self.span.make_child(f"{self.name}.request").with_tags(
+                {
+                    "http.url": request.url,
+                    "http.method": request.method.lower() if request.method else "",
+                    "http.slug": self.client_name if self.client_name is not None else self.name,
+                }
+            ) as span, ACTIVE_REQUESTS.labels(**active_request_label_values).track_inprogress():
+                self._add_span_context(span, request)
 
-            # we cannot re-use the same session every time because sessions re-use the same
-            # CookieJar and so we'd muddle cookies cross-request. if the application wants
-            # to keep track of cookies, it should do so itself.
-            #
-            # note: we're still getting connection pooling because we're re-using the adapter.
-            session = Session()
-            session.mount("http://", self.adapter)
-            session.mount("https://", self.adapter)
-            response = session.send(request, **kwargs)
+                # we cannot re-use the same session every time because sessions re-use the same
+                # CookieJar and so we'd muddle cookies cross-request. if the application wants
+                # to keep track of cookies, it should do so itself.
+                #
+                # note: we're still getting connection pooling because we're re-using the adapter.
+                session = Session()
+                session.mount("http://", self.adapter)
+                session.mount("https://", self.adapter)
+                response = session.send(request, **kwargs)
 
-            span.set_tag("http.status_code", response.status_code)
-        return response
+                http_status_code = response.status_code
+                span.set_tag("http.status_code", http_status_code)
+
+            return response
+        finally:
+            if sys.exc_info()[0] is not None:
+                status_code = ""
+                http_success = "false"
+            elif response and response.status_code:
+                http_success = getHTTPSuccessLabel(response.status_code)
+                status_code = str(response.status_code)
+            else:
+                status_code = ""
+                http_success = ""
+
+            latency_label_values = {**active_request_label_values, "http_success": http_success}
+            requests_total_label_values = {
+                **latency_label_values,
+                "http_response_code": str(status_code),
+            }
+
+            LATENCY_SECONDS.labels(**latency_label_values).observe(time.perf_counter() - start_time)
+            REQUESTS_TOTAL.labels(**requests_total_label_values).inc()
 
 
 class InternalBaseplateSession(BaseplateSession):
@@ -257,15 +328,23 @@ class RequestsContextFactory(ContextFactory):
         :py:func:`http_adapter_from_config`.
     :param session_cls: The type for the actual session object to put on the
         request context.
+    :param client_name: Custom name to be emitted under the http_client_name label
+        for prometheus metrics. Defaults back to session_cls.name if None
 
     """
 
-    def __init__(self, adapter: HTTPAdapter, session_cls: Type[BaseplateSession]) -> None:
+    def __init__(
+        self,
+        adapter: HTTPAdapter,
+        session_cls: Type[BaseplateSession],
+        client_name: Optional[str] = None,
+    ) -> None:
         self.adapter = adapter
         self.session_cls = session_cls
+        self.client_name = client_name
 
     def make_object_for_context(self, name: str, span: Span) -> BaseplateSession:
-        return self.session_cls(self.adapter, name, span)
+        return self.session_cls(self.adapter, name, span, client_name=self.client_name)
 
 
 class InternalRequestsClient(config.Parser):
@@ -288,9 +367,13 @@ class InternalRequestsClient(config.Parser):
 
     See :py:func:`http_adapter_from_config` for available configuration settings.
 
+    :param client_name: Custom name to be emitted under the http_client_name label
+        for prometheus metrics. Defaults back to session_cls.name if None
+
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, client_name: Optional[str] = None, **kwargs: Any) -> None:
+        self.client_name = client_name
         self.kwargs = kwargs
 
         if "validator" in kwargs:
@@ -300,10 +383,15 @@ class InternalRequestsClient(config.Parser):
         # use advocate to ensure this client only ever gets used
         # with internal services over the internal network.
         #
-        # the allowlist takes precedence. allow loopback and 10./8 private
-        # addresses, deny the rest.
+        # the allowlist takes precedence. allow loopback and private addresses,
+        # deny the rest.
         validator = AddrValidator(
-            ip_whitelist={ipaddress.ip_network("127.0.0.0/8"), ipaddress.ip_network("10.0.0.0/8")},
+            ip_whitelist={
+                ipaddress.ip_network("127.0.0.0/8"),
+                ipaddress.ip_network("10.0.0.0/8"),
+                ipaddress.ip_network("172.16.0.0/12"),
+                ipaddress.ip_network("192.168.0.0/16"),
+            },
             ip_blacklist={ipaddress.ip_network("0.0.0.0/0")},
             port_blacklist=[0],  # disable the default allowlist by giving an explicit denylist
             allow_ipv6=False,
@@ -312,7 +400,9 @@ class InternalRequestsClient(config.Parser):
         adapter = http_adapter_from_config(
             raw_config, prefix=f"{key_path}.", validator=validator, **self.kwargs
         )
-        return RequestsContextFactory(adapter, session_cls=InternalBaseplateSession)
+        return RequestsContextFactory(
+            adapter, session_cls=InternalBaseplateSession, client_name=self.client_name
+        )
 
 
 class ExternalRequestsClient(config.Parser):
@@ -327,11 +417,17 @@ class ExternalRequestsClient(config.Parser):
 
     See :py:func:`http_adapter_from_config` for available configuration settings.
 
+    :param client_name: Custom name to be emitted under the http_client_name label
+        for prometheus metrics. Defaults back to session_cls.name if None
+
     """
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(self, client_name: Optional[str] = None, **kwargs: Any) -> None:
+        self.client_name = client_name
         self.kwargs = kwargs
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> RequestsContextFactory:
         adapter = http_adapter_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return RequestsContextFactory(adapter, session_cls=BaseplateSession)
+        return RequestsContextFactory(
+            adapter, session_cls=BaseplateSession, client_name=self.client_name
+        )

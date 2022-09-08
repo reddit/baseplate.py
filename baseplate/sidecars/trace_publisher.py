@@ -16,6 +16,7 @@ from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.observers.tracing import MAX_QUEUE_SIZE
 from baseplate.observers.tracing import MAX_SPAN_SIZE
+from baseplate.server import EnvironmentInterpolation
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import RawJSONBatch
 from baseplate.sidecars import SerializedBatch
@@ -99,9 +100,10 @@ class ZipkinPublisher:
                 response = getattr(exc, "response", None)
                 if response is not None:
                     logger.exception("HTTP Request failed. Error: %s", response.text)
-                    # If client error, crash
+                    # If client error, skip retries
                     if response.status_code < 500:
-                        raise
+                        self.metrics.counter("error.http.client").increment()
+                        return
                 else:
                     logger.exception("HTTP Request failed. Response not available")
             except OSError:
@@ -143,7 +145,7 @@ def publish_traces() -> None:
         level = logging.WARNING
     logging.basicConfig(level=level)
 
-    config_parser = configparser.RawConfigParser()
+    config_parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
     config_parser.read_file(args.config_file)
 
     publisher_raw_cfg = dict(config_parser.items("trace-publisher:" + args.queue_name))

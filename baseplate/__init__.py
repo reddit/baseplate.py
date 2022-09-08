@@ -244,7 +244,9 @@ class RequestContext:
 
 class ReusedContextObjectError(Exception):
     def __init__(self) -> None:
-        super().__init__("Context objects cannot be re-used. See https://git.io/JtEKq")
+        super().__init__(
+            "Context objects cannot be re-used. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-context-objects-cannot-be-re-used"
+        )
 
 
 class Baseplate:
@@ -338,6 +340,7 @@ class Baseplate:
                     self._app_config, self._metrics_client
                 )
             )
+
         elif "metrics.namespace" in self._app_config:
             from baseplate.lib.metrics import metrics_client_from_config
             from baseplate.observers.metrics import MetricsBaseplateObserver
@@ -348,6 +351,7 @@ class Baseplate:
                     self._app_config, self._metrics_client
                 )
             )
+
         else:
             skipped.append("metrics")
 
@@ -652,11 +656,25 @@ class Span:
         """Return a child Span whose parent is this Span."""
         raise NotImplementedError
 
+    def with_tags(self, tags: Dict[str, Any]) -> "Span":
+        """Declare a set of tags to be added to a span before starting it in the context manager.
+
+        Can be used as follow:
+        tags = {...}
+        with self.span.make_child("...").with_tags(tags) as span:
+            ...
+
+        :param tags: Dict of tags to be set on the span at creation time.
+        `"""
+        for k, v in tags.items():
+            self.set_tag(k, v)
+        return self
+
 
 class ParentSpanAlreadyFinishedError(Exception):
     def __init__(self) -> None:
         super().__init__(
-            "Cannot make child span of parent that already finished. See https://git.io/JTeqT"
+            "Cannot make child span of parent that already finished. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-cannot-make-child-span-of-parent-that-already-finished"
         )
 
 

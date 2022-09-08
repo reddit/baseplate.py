@@ -1,3 +1,4 @@
+from time import perf_counter
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -8,11 +9,16 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 from pymemcache.client.base import PooledClient
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
+from baseplate.lib import metrics
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 
 
 Serializer = Callable[[str, Any], Tuple[bytes, int]]
@@ -111,7 +117,7 @@ class MemcacheClient(config.Parser):
             serializer=self.serializer,
             deserializer=self.deserializer,
         )
-        return MemcacheContextFactory(pool)
+        return MemcacheContextFactory(pool, key_path)
 
 
 class MemcacheContextFactory(ContextFactory):
@@ -128,14 +134,92 @@ class MemcacheContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, pooled_client: PooledClient):
+    PROM_PREFIX = "memcached_client_pool"
+    PROM_LABELS = ["memcached_pool"]
+
+    pool_size_gauge = Gauge(
+        f"{PROM_PREFIX}_max_size",
+        "Maximum number of connections allowed in this pool",
+        PROM_LABELS,
+    )
+
+    used_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_active_connections",
+        "Number of connections in this pool currently in use",
+        PROM_LABELS,
+    )
+
+    free_connections_gauge = Gauge(
+        f"{PROM_PREFIX}_idle_connections",
+        "Number of free connections in this pool",
+        PROM_LABELS,
+    )
+
+    def __init__(self, pooled_client: PooledClient, name: str = "default"):
         self.pooled_client = pooled_client
+        self.name = name
+
+    def report_memcache_runtime_metrics(self, batch: metrics.Client) -> None:
+        pool = self.pooled_client.client_pool
+        self.pool_size_gauge.labels(self.name).set(pool.max_size)
+        self.free_connections_gauge.labels(self.name).set(len(pool.free))
+        self.used_connections_gauge.labels(self.name).set(len(pool.used))
+
+        batch.gauge("pool.in_use").replace(len(pool.used))
+        batch.gauge("pool.open_and_available").replace(len(pool.free))
+        batch.gauge("pool.size").replace(pool.max_size)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredMemcacheConnection":
         return MonitoredMemcacheConnection(name, span, self.pooled_client)
 
 
 Key = Union[str, bytes]
+
+PROM_NAMESPACE = "memcached"
+LABELS_COMMON = [
+    f"{PROM_NAMESPACE}_address",
+    f"{PROM_NAMESPACE}_command",
+]
+LATENCY_SECONDS = Histogram(
+    f"{PROM_NAMESPACE}_client_latency_seconds",
+    "Latency histogram of outoing memcached requests",
+    [*LABELS_COMMON, f"{PROM_NAMESPACE}_success"],
+    buckets=default_latency_buckets,
+)
+REQUESTS_TOTAL = Counter(
+    f"{PROM_NAMESPACE}_client_requests_total",
+    "Total number of memcached requests",
+    [*LABELS_COMMON, f"{PROM_NAMESPACE}_success"],
+)
+ACTIVE_REQUESTS = Gauge(
+    f"{PROM_NAMESPACE}_client_active_requests",
+    "Number of active requests",
+    LABELS_COMMON,
+)
+
+
+def _prom_instrument(func: Any) -> Any:
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        labels_common = {
+            f"{PROM_NAMESPACE}_address": str(self.pooled_client.server),
+            f"{PROM_NAMESPACE}_command": func.__name__,
+        }
+        success = "true"
+        start_time = perf_counter()
+
+        try:
+            with ACTIVE_REQUESTS.labels(**labels_common).track_inprogress():
+                return func(self, *args, **kwargs)
+        except:  # noqa
+            success = "false"
+            raise
+        finally:
+            REQUESTS_TOTAL.labels(**{**labels_common, f"{PROM_NAMESPACE}_success": success}).inc()
+            LATENCY_SECONDS.labels(
+                **{**labels_common, f"{PROM_NAMESPACE}_success": success}
+            ).observe(perf_counter() - start_time)
+
+    return wrapper
 
 
 class MonitoredMemcacheConnection:
@@ -154,10 +238,12 @@ class MonitoredMemcacheConnection:
         self.server_span = server_span
         self.pooled_client = pooled_client
 
+    @_prom_instrument
     def close(self) -> None:
         with self._make_span("close"):
             return self.pooled_client.close()
 
+    @_prom_instrument
     def set(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("set") as span:
             span.set_tag("key", key)
@@ -165,6 +251,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("noreply", noreply)
             return self.pooled_client.set(key, value, expire=expire, noreply=noreply)
 
+    @_prom_instrument
     def set_many(
         self, values: Dict[Key, Any], expire: int = 0, noreply: Optional[bool] = None
     ) -> List[str]:
@@ -175,6 +262,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("noreply", noreply)
             return self.pooled_client.set_many(values, expire=expire, noreply=noreply)
 
+    @_prom_instrument
     def replace(
         self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None
     ) -> bool:
@@ -184,6 +272,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("noreply", noreply)
             return self.pooled_client.replace(key, value, expire=expire, noreply=noreply)
 
+    @_prom_instrument
     def append(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("append") as span:
             span.set_tag("key", key)
@@ -191,6 +280,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("noreply", noreply)
             return self.pooled_client.append(key, value, expire=expire, noreply=noreply)
 
+    @_prom_instrument
     def prepend(
         self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None
     ) -> bool:
@@ -200,6 +290,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("noreply", noreply)
             return self.pooled_client.prepend(key, value, expire=expire, noreply=noreply)
 
+    @_prom_instrument
     def cas(
         self, key: Key, value: Any, cas: int, expire: int = 0, noreply: Optional[bool] = None
     ) -> Optional[bool]:
@@ -210,6 +301,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("noreply", noreply)
             return self.pooled_client.cas(key, value, cas, expire=expire, noreply=noreply)
 
+    @_prom_instrument
     def get(self, key: Key, default: Any = None) -> Any:
         with self._make_span("get") as span:
             span.set_tag("key", key)
@@ -218,12 +310,14 @@ class MonitoredMemcacheConnection:
                 kwargs["default"] = default
             return self.pooled_client.get(key, **kwargs)
 
+    @_prom_instrument
     def get_many(self, keys: Sequence[Key]) -> Dict[Key, Any]:
         with self._make_span("get_many") as span:
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
             return self.pooled_client.get_many(keys)
 
+    @_prom_instrument
     def gets(
         self, key: Key, default: Optional[Any] = None, cas_default: Optional[Any] = None
     ) -> Tuple[Any, Any]:
@@ -231,18 +325,21 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             return self.pooled_client.gets(key, default=default, cas_default=cas_default)
 
+    @_prom_instrument
     def gets_many(self, keys: Sequence[Key]) -> Dict[Key, Tuple[Any, Any]]:
         with self._make_span("gets_many") as span:
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
             return self.pooled_client.gets_many(keys)
 
+    @_prom_instrument
     def delete(self, key: Key, noreply: Optional[bool] = None) -> bool:
         with self._make_span("delete") as span:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
             return self.pooled_client.delete(key, noreply=noreply)
 
+    @_prom_instrument
     def delete_many(self, keys: Sequence[Key], noreply: Optional[bool] = None) -> bool:
         with self._make_span("delete_many") as span:
             span.set_tag("key_count", len(keys))
@@ -250,6 +347,7 @@ class MonitoredMemcacheConnection:
             span.set_tag("keys", make_keys_str(keys))
             return self.pooled_client.delete_many(keys, noreply=noreply)
 
+    @_prom_instrument
     def add(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("add") as span:
             span.set_tag("key", key)
@@ -257,18 +355,21 @@ class MonitoredMemcacheConnection:
             span.set_tag("noreply", noreply)
             return self.pooled_client.add(key, value, expire=expire, noreply=noreply)
 
+    @_prom_instrument
     def incr(self, key: Key, value: int, noreply: Optional[bool] = False) -> Optional[int]:
         with self._make_span("incr") as span:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
             return self.pooled_client.incr(key, value, noreply=noreply)
 
+    @_prom_instrument
     def decr(self, key: Key, value: int, noreply: Optional[bool] = False) -> Optional[int]:
         with self._make_span("decr") as span:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
             return self.pooled_client.decr(key, value, noreply=noreply)
 
+    @_prom_instrument
     def touch(self, key: Key, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("touch") as span:
             span.set_tag("key", key)
@@ -276,16 +377,19 @@ class MonitoredMemcacheConnection:
             span.set_tag("noreply", noreply)
             return self.pooled_client.touch(key, expire=expire, noreply=noreply)
 
+    @_prom_instrument
     def stats(self, *args: str) -> Dict[str, Any]:
         with self._make_span("stats"):
             return self.pooled_client.stats(*args)
 
+    @_prom_instrument
     def flush_all(self, delay: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("flush_all") as span:
             span.set_tag("delay", delay)
             span.set_tag("noreply", noreply)
             return self.pooled_client.flush_all(delay=delay, noreply=noreply)
 
+    @_prom_instrument
     def quit(self) -> None:
         with self._make_span("quit"):
             return self.pooled_client.quit()

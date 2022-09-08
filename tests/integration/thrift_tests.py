@@ -6,8 +6,7 @@ from importlib import reload
 from unittest import mock
 
 import gevent.monkey
-
-from thrift.Thrift import TApplicationException
+import pytest
 
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
@@ -18,10 +17,14 @@ from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
+from baseplate.observers.timeout import ServerTimeout
+from baseplate.observers.timeout import TimeoutBaseplateObserver
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 from baseplate.thrift import BaseplateService
 from baseplate.thrift import BaseplateServiceV2
+from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
 
@@ -30,9 +33,10 @@ from .test_thrift import TestService
 
 
 @contextlib.contextmanager
-def serve_thrift(handler, server_spec, server_span_observer=None):
+def serve_thrift(handler, server_spec, server_span_observer=None, baseplate_observer=None):
     # create baseplate root
     baseplate = Baseplate()
+
     if server_span_observer:
 
         class TestBaseplateObserver(BaseplateObserver):
@@ -41,11 +45,16 @@ def serve_thrift(handler, server_spec, server_span_observer=None):
 
         baseplate.register(TestBaseplateObserver())
 
+    if baseplate_observer:
+        baseplate.register(baseplate_observer)
+
     # set up the server's processor
     logger = mock.Mock(spec=logging.Logger)
     edge_context_factory = FakeEdgeContextFactory()
     processor = server_spec.Processor(handler)
-    processor = baseplateify_processor(processor, logger, baseplate, edge_context_factory)
+    processor = baseplateify_processor(
+        processor, logger, baseplate, edge_context_factory, convert_to_baseplate_error=True
+    )
 
     # bind a server socket on an available port
     server_bind_endpoint = config.Endpoint("127.0.0.1:0")
@@ -72,13 +81,19 @@ def raw_thrift_client(endpoint, client_spec):
 
 
 @contextlib.contextmanager
-def baseplate_thrift_client(endpoint, client_spec, client_span_observer=None):
-    baseplate = Baseplate(
-        app_config={
-            "baseplate.service_name": "fancy test client",
-            "example_service.endpoint": str(endpoint),
-        }
-    )
+def baseplate_thrift_client(
+    endpoint,
+    client_spec,
+    client_span_observer=None,
+    timeout=None,
+):
+    app_config = {
+        "baseplate.service_name": "fancy test client",
+        "example_service.endpoint": str(endpoint),
+    }
+    if timeout:
+        app_config["example_service.timeout"] = timeout
+    baseplate = Baseplate(app_config=app_config)
 
     if client_span_observer:
 
@@ -116,6 +131,7 @@ class GeventPatchedTestCase(unittest.TestCase):
         import socket
 
         reload(socket)
+        gevent.monkey.saved.clear()
 
 
 class ThriftTraceHeaderTests(GeventPatchedTestCase):
@@ -133,7 +149,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
             with baseplate_thrift_client(server.endpoint, TestService) as context:
                 context.example_service.example()
 
-        server_span_observer.on_set_tag.assert_called_once_with("peer.service", "fancy test client")
+        server_span_observer.on_set_tag.assert_called()
 
     def test_no_headers(self):
         """We should accept requests without headers and generate a trace."""
@@ -224,6 +240,30 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         self.assertEqual(handler.server_span.sampled, False)
         self.assertTrue(client_result)
 
+    def test_budget_header(self):
+        """Test that the budget header is set in the headers if the client sets it."""
+        budget = "1234"
+
+        class Handler(TestService.Iface):
+            def __init__(self):
+                self.server_span = None
+
+            def example(self, context):
+                self.server_span = context.span
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"Deadline-Budget", budget.encode())
+                client_result = client.example()
+
+        self.assertEqual(handler.context.headers.get(b"Deadline-Budget").decode(), budget)
+        self.assertTrue(client_result)
+
 
 class ThriftEdgeRequestHeaderTests(GeventPatchedTestCase):
     def _test(self, header_name=None):
@@ -312,7 +352,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase):
         server_span_observer = mock.Mock(spec=ServerSpanObserver)
         with serve_thrift(handler, TestService, server_span_observer) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
-                with self.assertRaises(TApplicationException):
+                with self.assertRaises(Error):
                     client.example()
 
         server_span_observer.on_start.assert_called_once_with()
@@ -378,13 +418,13 @@ class ThriftClientSpanTests(GeventPatchedTestCase):
             with baseplate_thrift_client(
                 server.endpoint, TestService, client_span_observer
             ) as context:
-                with self.assertRaises(TApplicationException):
+                with self.assertRaises(Error):
                     context.example_service.example()
 
         client_span_observer.on_start.assert_called_once_with()
         self.assertEqual(client_span_observer.on_finish.call_count, 1)
         _, captured_exc, _ = client_span_observer.on_finish.call_args[0][0]
-        self.assertIsInstance(captured_exc, TApplicationException)
+        self.assertIsInstance(captured_exc, Error)
 
 
 class ThriftEndToEndTests(GeventPatchedTestCase):
@@ -405,6 +445,105 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
                 context.example_service.example()
 
         assert handler.edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
+
+    def test_budget_header_pool_timeout(self):
+        """Test that the budget header is set in the headers with the pool timeout."""
+        retry_timeout_seconds = 100.0
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1 second"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds
+                ) as svc:
+                    svc.example()
+
+        # this should be 1 second (1000 ms) for the pool timeout
+        self.assertAlmostEqual(handler.context.deadline_budget, 1.0)
+
+    def test_budget_header_retry_timeout(self):
+        """Test that the budget header is set in the headers with the retry timeout."""
+        retry_timeout_seconds = 0.1
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1000 seconds"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds
+                ) as svc:
+                    svc.example()
+
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
+
+    def test_budget_header_budget_and_backoff(self):
+        """Test that the budget header is set in the headers with the backoff timeout."""
+        retry_timeout_seconds = 1.0
+        backoff = 1.0
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1000 seconds"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds, backoff=backoff
+                ) as svc:
+                    svc.example()
+
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
+
+    def test_budget_timeout_from_client(self):
+        """Test that the server times out when passed a short timeout from the client."""
+        retry_timeout_seconds = 0.25
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                self.context = context
+                with pytest.raises(ServerTimeout):
+                    gevent.sleep(1)
+                return True
+
+        handler = Handler()
+
+        span_observer = mock.Mock(spec=SpanObserver)
+        timeout_observer = TimeoutBaseplateObserver.from_config(
+            {"server_timeout.default": "1 hour"}
+        )
+        with serve_thrift(handler, TestService, baseplate_observer=timeout_observer) as server:
+            with baseplate_thrift_client(
+                server.endpoint, TestService, span_observer, timeout="1000 seconds"
+            ) as context:
+                with context.example_service.retrying(
+                    attempts=3, budget=retry_timeout_seconds
+                ) as svc:
+                    svc.example()
+
+        self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
 
 
 class ThriftHealthcheck(GeventPatchedTestCase):
@@ -446,3 +585,48 @@ class ThriftHealthcheck(GeventPatchedTestCase):
                 )
                 self.assertTrue(healthy)
                 self.assertEqual(handler.probe, IsHealthyProbe.LIVENESS)
+
+
+class ThriftErrorReplacementTests(GeventPatchedTestCase):
+    def test_server_replaces_unhandled_errors(self):
+        """The server span should start/stop appropriately."""
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise Exception("foo")
+
+        handler = Handler()
+
+        server_span_observer = mock.Mock(spec=ServerSpanObserver)
+        with serve_thrift(handler, TestService, server_span_observer) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                with self.assertRaises(Error) as exc_info:
+                    client.example()
+        self.assertEqual(exc_info.exception.code, ErrorCode.INTERNAL_SERVER_ERROR)
+
+
+class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
+    def reset_metrics(self, metrics):
+        if not metrics:
+            return
+
+        try:
+            metrics.get_active_requests_metric().clear()
+            metrics.get_latency_seconds_metric().clear()
+            metrics.get_requests_total_metric().clear()
+        except Exception:
+            pass
+
+    def assert_correct_metric(
+        self, metric, want_count, want_sample, want_name, want_labels, want_value
+    ):
+        m = metric.collect()
+        self.assertEqual(len(m), 1)
+        self.assertEqual(len(m[0].samples), want_count)
+        sample = m[0].samples[want_sample]
+        got_name = sample[0]
+        self.assertEqual(got_name, want_name)
+        got_labels = sample[1]
+        self.assertEqual(got_labels, want_labels)
+        got_value = sample[2]
+        self.assertEqual(got_value, want_value)

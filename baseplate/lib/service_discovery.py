@@ -67,7 +67,7 @@ class _Inventory(NamedTuple):
 def _parse(watched_file: IO) -> _Inventory:
     backends = []
     for d in json.load(watched_file):
-        endpoint = Endpoint("%s:%d" % (d["host"], d["port"]))
+        endpoint = Endpoint(f"{d['host']}:{d['port']:d}")
         weight = d["weight"] if d["weight"] is not None else 1
         backend = Backend(d["id"], d["name"], endpoint, weight)
         backends.append(backend)

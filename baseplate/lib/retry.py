@@ -90,10 +90,10 @@ class MaximumAttemptsRetryPolicy(RetryPolicy):
         self.attempts = attempts
 
     def yield_attempts(self) -> Iterator[Optional[float]]:
-        for i, remaining in enumerate(self.subpolicy):
-            if i == self.attempts:
+        for attempt_number, time_remaining in enumerate(self.subpolicy):
+            if attempt_number == self.attempts:
                 break
-            yield remaining
+            yield time_remaining
 
 
 class TimeBudgetRetryPolicy(RetryPolicy):

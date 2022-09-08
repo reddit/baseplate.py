@@ -4,8 +4,9 @@ This command serves your application from the given configuration file.
 
 """
 import argparse
+import code
 import configparser
-import fcntl
+import enum
 import gc
 import importlib
 import inspect
@@ -14,15 +15,23 @@ import os
 import signal
 import socket
 import sys
+import syslog
 import threading
+import time
 import traceback
 import warnings
 
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from rlcompleter import Completer
 from types import FrameType
 from typing import Any
 from typing import Callable
 from typing import Dict
 from typing import List
+from typing import Mapping
+from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
@@ -32,14 +41,37 @@ from typing import Tuple
 from gevent.server import StreamServer
 
 from baseplate import Baseplate
+from baseplate.lib import warn_deprecated
 from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
+from baseplate.lib.config import Optional as OptionalConfig
+from baseplate.lib.config import parse_config
+from baseplate.lib.config import Timespan
 from baseplate.lib.log_formatter import CustomJsonFormatter
 from baseplate.server import einhorn
 from baseplate.server import reloader
+from baseplate.server.net import bind_socket
 
 
 logger = logging.getLogger(__name__)
+
+
+class ServerLifecycle(Enum):
+    RUNNING = enum.auto()
+    SHUTTING_DOWN = enum.auto()
+
+
+@dataclass
+class ServerState:
+    state: ServerLifecycle = ServerLifecycle.RUNNING
+
+    @property
+    def shutting_down(self) -> bool:
+        warn_deprecated("SERVER_STATE.shutting_down is deprecated in favor of SERVER_STATE.state")
+        return self.state == ServerLifecycle.SHUTTING_DOWN
+
+
+SERVER_STATE = ServerState()
 
 
 def parse_args(args: Sequence[str]) -> argparse.Namespace:
@@ -83,6 +115,18 @@ def parse_args(args: Sequence[str]) -> argparse.Namespace:
     return parser.parse_args(args)
 
 
+class EnvironmentInterpolation(configparser.Interpolation):
+    def before_get(
+        self,
+        parser: MutableMapping[str, Mapping[str, str]],
+        section: str,
+        option: str,
+        value: str,
+        defaults: Mapping[str, str],
+    ) -> str:
+        return os.path.expandvars(value)
+
+
 class Configuration(NamedTuple):
     filename: str
     server: Optional[Dict[str, str]]
@@ -94,7 +138,7 @@ class Configuration(NamedTuple):
 def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) -> Configuration:
     # we use RawConfigParser to reduce surprise caused by interpolation and so
     # that config.Percent works more naturally (no escaping %).
-    parser = configparser.RawConfigParser()
+    parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
     parser.read_file(config_file)
 
     filename = config_file.name
@@ -119,9 +163,13 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     else:
         logging_level = logging.INFO
 
-    formatter = CustomJsonFormatter(
-        "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d %(threadName)s"
-    )
+    formatter: logging.Formatter
+    if not sys.stdin.isatty():
+        formatter = CustomJsonFormatter(
+            "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d %(threadName)s"
+        )
+    else:
+        formatter = logging.Formatter("%(levelname)-8s %(message)s")
 
     handler = logging.StreamHandler()
     handler.setFormatter(formatter)
@@ -129,6 +177,12 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     root_logger = logging.getLogger()
     root_logger.setLevel(logging_level)
     root_logger.addHandler(handler)
+
+    # add PID 1 stdout logging if we're containerized and not running under an init system
+    if _is_containerized() and not _has_PID1_parent():
+        file_handler = logging.FileHandler("/proc/1/fd/1", mode="w")
+        file_handler.setFormatter(formatter)
+        root_logger.addHandler(file_handler)
 
     if config.has_logging_options:
         logging.config.fileConfig(config.filename)
@@ -141,24 +195,7 @@ def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
         # we're not under einhorn or it didn't bind any sockets for us
         pass
 
-    sock = socket.socket(endpoint.family, socket.SOCK_STREAM)
-
-    # configure the socket to be auto-closed if we exec() e.g. on reload
-    flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFD)
-    fcntl.fcntl(sock.fileno(), fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
-
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-    # on linux, SO_REUSEPORT is supported for IPv4 and IPv6 but not other
-    # families. we prefer it when available because it more evenly spreads load
-    # among multiple processes sharing a port. (though it does have some
-    # downsides, specifically regarding behaviour during restarts)
-    if endpoint.family in (socket.AF_INET, socket.AF_INET6):
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-
-    sock.bind(endpoint.address)
-    sock.listen(128)
-    return sock
+    return bind_socket(endpoint)
 
 
 def _load_factory(url: str, default_name: Optional[str] = None) -> Callable:
@@ -233,8 +270,17 @@ def load_app_and_run_server() -> None:
     listener = make_listener(args.bind)
     server = make_server(config.server, listener, app)
 
+    cfg = parse_config(config.server, {"drain_time": OptionalConfig(Timespan)})
+
     if einhorn.is_worker():
         einhorn.ack_startup()
+
+    if "metrics.tagging" in config.app or "metrics.namespace" in config.app:
+        from baseplate.server.prometheus import start_prometheus_exporter
+
+        start_prometheus_exporter()
+    else:
+        logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     if args.reload:
         reloader.start_reload_watcher(extra_files=[args.config_file.name])
@@ -242,13 +288,20 @@ def load_app_and_run_server() -> None:
     # clean up leftovers from initialization before we get into requests
     gc.collect()
 
-    logger.info("Listening on %s, PID:%s", listener.getsockname(), os.getpid())
+    logger.info("Listening on %s", listener.getsockname())
     server.start()
     try:
         shutdown_event.wait()
-        logger.info("Finally stopping server, PID:%s", os.getpid())
+
+        SERVER_STATE.state = ServerLifecycle.SHUTTING_DOWN
+
+        if cfg.drain_time:
+            logger.debug("Draining inbound requests...")
+            time.sleep(cfg.drain_time.total_seconds())
     finally:
+        logger.debug("Gracefully shutting down...")
         server.stop()
+        logger.info("Exiting")
 
 
 def load_and_run_script() -> None:
@@ -362,10 +415,14 @@ def load_and_run_shell() -> None:
         setup = _load_factory(config.shell["setup"])
         setup(env, env_banner)
 
+    configure_logging(config, args.debug)
+
     # generate banner text
     banner = "Available Objects:\n"
     for var in sorted(env_banner.keys()):
-        banner += "\n  {:<12} {}".format(var, env_banner[var])
+        banner += f"\n  {var:<12} {env_banner[var]}"
+
+    console_logpath = _get_shell_log_path()
 
     try:
         # try to use IPython if possible
@@ -379,23 +436,112 @@ def load_and_run_shell() -> None:
             from IPython import Config
 
         ipython_config = Config()
+        ipython_config.InteractiveShellApp.exec_lines = [
+            # monkeypatch IPython's log-write() to enable formatted input logging, copying original code:
+            # https://github.com/ipython/ipython/blob/a54bf00feb5182fa821bd5457897b3b30a313436/IPython/core/logger.py#L187-L201
+            f"""
+            ip = get_ipython()
+            from functools import partial
+            def log_write(self, data, kind="input", message_id="IEXC"):
+                import datetime, os
+                if self.log_active and data:
+                    write = self.logfile.write
+                    if kind=='input':
+                        # Generate an RFC 5424 compliant syslog format
+                        write(f'<13>1 {{datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")}} {{os.uname().nodename}} baseplate-shell {{os.getpid()}} {{message_id}} - {{data}}')
+                    elif kind=='output' and self.log_output:
+                        odata = u'\\n'.join([u'#[Out]# %s' % s
+                                        for s in data.splitlines()])
+                        write(u'%s\\n' % odata)
+                    self.logfile.flush()
+            ip.logger.logstop = None
+            ip.logger.log_write = partial(log_write, ip.logger)
+            ip.magic('logstart {console_logpath} append')
+            ip.logger.log_write(data="Start IPython logging\\n", message_id="ISTR")
+            """
+        ]
         ipython_config.TerminalInteractiveShell.banner2 = banner
+        ipython_config.LoggingMagics.quiet = True
         start_ipython(argv=[], user_ns=env, config=ipython_config)
         raise SystemExit
     except ImportError:
-        import code
+        pass
 
-        newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
-        banner = newbanner + banner
+    newbanner = f"Baseplate Interactive Shell\nPython {sys.version}\n\n"
+    banner = newbanner + banner
 
-        # import this just for its side-effects (of enabling nice keyboard
-        # movement while editing text)
-        try:
-            import readline
+    try:
+        import readline
 
-            del readline
-        except ImportError:
-            pass
+        readline.set_completer(Completer(env).complete)
+        readline.parse_and_bind("tab: complete")
 
-        shell = code.InteractiveConsole(locals=env)
-        shell.interact(banner)
+    except ImportError:
+        pass
+
+    shell = LoggedInteractiveConsole(_locals=env, logpath=console_logpath)
+    shell.interact(banner)
+
+
+def _get_shell_log_path() -> str:
+    """Determine where to write shell audit logs."""
+    if _is_containerized():
+        # write to PID 1 stdout for log aggregation
+        return "/proc/1/fd/1"
+    # otherwise write to a local file
+    return "/var/log/baseplate-shell.log"
+
+
+def _is_containerized() -> bool:
+    """Determine if we're running in a container based on cgroup awareness for various container runtimes."""
+    if os.path.exists("/.dockerenv"):
+        return True
+
+    try:
+        with open("/proc/self/cgroup", encoding="UTF-8") as my_cgroups_file:
+            my_cgroups = my_cgroups_file.read()
+
+            for hint in ["kubepods", "docker", "containerd"]:
+                if hint in my_cgroups:
+                    return True
+    except OSError:
+        pass
+
+    return False
+
+
+def _has_PID1_parent() -> bool:
+    """Determine parent PIDs up the tree until PID 1 or 0 is reached, do this natively"""
+    parent_pid = os.getppid()
+    while parent_pid > 1:
+        with open(f"/proc/{parent_pid}/status", encoding="UTF-8") as proc_status:
+            for line in proc_status.readlines():
+                if line.startswith("PPid:"):
+                    parent_pid = int(line.replace("PPid:", ""))
+                    break
+    return bool(parent_pid)
+
+
+class LoggedInteractiveConsole(code.InteractiveConsole):
+    def __init__(self, _locals: Dict[str, Any], logpath: str) -> None:
+        code.InteractiveConsole.__init__(self, _locals)
+        self.output_file = logpath
+        self.pid = os.getpid()
+        self.pri = syslog.LOG_USER | syslog.LOG_NOTICE
+        self.hostname = os.uname().nodename
+        self.log_event(message="Start InteractiveConsole logging", message_id="CSTR")
+
+    def raw_input(self, prompt: Optional[str] = "") -> str:
+        data = input(prompt)
+        self.log_event(message=data, message_id="CEXC")
+        return data
+
+    def log_event(
+        self, message: str, message_id: Optional[str] = "-", structured: Optional[str] = "-"
+    ) -> None:
+        """Generate an RFC 5424 compliant syslog format."""
+        timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
+        with open(self.output_file, "w", encoding="UTF-8") as f:
+            print(prompt, file=f)
+            f.flush()

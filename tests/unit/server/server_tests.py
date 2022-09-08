@@ -1,8 +1,11 @@
+import io
 import socket
 import sys
 import unittest
 
 from unittest import mock
+
+import pytest
 
 from baseplate import server
 from baseplate.lib import config
@@ -170,3 +173,21 @@ class ParseBaseplateScriptArgs(unittest.TestCase):
         args, extra_args = server._parse_baseplate_script_args()
         self.assertEqual(args.app_name, "main")
         self.assertEqual(extra_args, ["extra_arg1", "extra_arg2"])
+
+
+@mock.patch.dict("os.environ", {"FOO_FROM_ENV": "environmental"})
+@pytest.mark.parametrize(
+    "config_text,expected",
+    (
+        ("", None),
+        ("foo = bar", "bar"),
+        ("foo = $FOO_FROM_ENV", "environmental"),
+        ("foo = ${FOO_FROM_ENV}", "environmental"),
+        ("foo = ${this:is:not:valid}", "${this:is:not:valid}"),
+    ),
+)
+def test_read_config(config_text, expected):
+    config_file = io.StringIO(f"[app:main]\n{config_text}\n")
+    config_file.name = "<test>"
+    config = server.read_config(config_file, server_name=None, app_name="main")
+    assert config.app.get("foo") == expected

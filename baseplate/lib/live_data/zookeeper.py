@@ -2,9 +2,11 @@
 from typing import Optional
 
 from kazoo.client import KazooClient
+from kazoo.handlers.gevent import SequentialGeventHandler
 
 from baseplate.lib import config
 from baseplate.lib.secrets import SecretsStore
+from baseplate.server.monkey import gevent_is_patched
 
 
 def zookeeper_client_from_config(
@@ -53,11 +55,18 @@ def zookeeper_client_from_config(
         credentials = secrets.get_simple(path)
         auth_data.append(("digest", credentials.decode("utf8")))
 
+    # Kazoo needs to use a different handler with gevent.
+    if gevent_is_patched():
+        handler = SequentialGeventHandler()
+    else:
+        handler = None
+
     return KazooClient(
         cfg.hosts,
         timeout=cfg.timeout.total_seconds(),
         auth_data=auth_data,
         read_only=read_only,
+        handler=handler,
         # this retry policy tells Kazoo how often it should attempt connections
         # to ZooKeeper from its worker thread/greenlet. when the connection is
         # lost during normal operation (i.e. after it was first established)
