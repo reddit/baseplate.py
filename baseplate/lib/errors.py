@@ -2,6 +2,9 @@ from abc import abstractmethod
 
 
 class KnownException(Exception):
+    """A base class for exceptions expected by queue consumer,
+    that signals to the consumer whether it should be retried or not.
+    """
     @abstractmethod
     def is_recoverable(self) -> bool:
         pass

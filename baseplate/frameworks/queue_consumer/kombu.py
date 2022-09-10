@@ -24,8 +24,8 @@ from prometheus_client import Histogram
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate.clients.kombu import KombuSerializer
-from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.errors import KnownException
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.server.queue_consumer import HealthcheckCallback
 from baseplate.server.queue_consumer import make_simple_healthchecker
 from baseplate.server.queue_consumer import MessageHandler
