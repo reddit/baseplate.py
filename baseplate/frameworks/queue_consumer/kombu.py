@@ -3,6 +3,7 @@ import queue
 import socket
 import time
 
+from enum import Enum
 from typing import Any
 from typing import Callable
 from typing import Dict
@@ -24,6 +25,7 @@ from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate.clients.kombu import KombuSerializer
 from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.errors import KnownException
 from baseplate.server.queue_consumer import HealthcheckCallback
 from baseplate.server.queue_consumer import make_simple_healthchecker
 from baseplate.server.queue_consumer import MessageHandler
@@ -51,12 +53,26 @@ AMQP_PROCESSED_TOTAL = Counter(
     AmqpConsumerPrometheusLabels._fields + ("amqp_success",),
 )
 
+AMQP_REPUBLISHED_TOTAL = Counter(
+    "amqp_consumer_messages_republished_total",
+    "total count of messages republished by this host",
+)
+
+AMQP_RETRY_LIMIT_REACHED_TOTAL = Counter(
+    "amqp_consumer_message_retry_limit_reached_total",
+    "total count of messages that reached the retry limit and were discarded by this host",
+)
+
+AMQP_TTL_REACHED_TOTAL = Counter(
+    "amqp_consumer_message_ttl_reached_total",
+    "total count of messages that reached the ttl and were discarded by this host",
+)
+
 AMQP_ACTIVE_MESSAGES = Gauge(
     "amqp_consumer_active_messages",
     "gauge that reflects the number of messages currently being processed",
     AmqpConsumerPrometheusLabels._fields,
 )
-
 
 if TYPE_CHECKING:
     WorkQueue = queue.Queue[kombu.Message]  # pylint: disable=unsubscriptable-object
@@ -82,6 +98,22 @@ class FatalMessageHandlerError(Exception):
     problems with the environment rather than the message itself.  For example,
     a node that cannot get its AWS credentials.
     """
+
+
+MESSAGE_HEADER_RETRY_COUNT = "x-retry-count"
+MESSAGE_HEADER_RETRY_LIMIT = "x-retry-limit"
+MESSAGE_HEADER_TTL = "x-ttl"
+
+
+class RetryMode(Enum):
+    """REQUEUE - backward compatible behavior; the message is returned into the queue.
+    RabbitMQ puts it into the head of a queue and attempts to send it to consumer ASAP.
+
+    REPUBLISH - message is acknowledged. New message is created, having identical content,
+    but incremented retry counter. It is published into the tail of a queue.
+    """
+    REQUEUE = (1,)
+    REPUBLISH = (2,)
 
 
 class KombuConsumerWorker(ConsumerMixin, PumpWorker):
@@ -124,21 +156,111 @@ class KombuMessageHandler(MessageHandler):
         name: str,
         handler_fn: Handler,
         error_handler_fn: Optional[ErrorHandler] = None,
+        retry_mode: RetryMode = RetryMode.REQUEUE,
+        retry_limit: Optional[int] = None,
     ):
         self.baseplate = baseplate
         self.name = name
         self.handler_fn = handler_fn
         self.error_handler_fn = error_handler_fn
+        self.retry_mode = retry_mode
+        self.retry_limit = retry_limit
+
+
+    def _terminate_server_if_needed(self, exc: Exception) -> None:
+        if isinstance(exc, FatalMessageHandlerError):
+            logger.info("Received a fatal error, terminating the server.")
+            raise
+
+    def _is_error_recoverable(self, exc: Exception) -> bool:
+        if isinstance(exc, KnownException):
+            return exc.is_recoverable()
+        return True  # for backward compatibility, retry unexpected errors
+
+    @staticmethod
+    def _safe_cast(val, to_type, default=None):
+        try:
+            return to_type(val)
+        except (ValueError, TypeError):
+            return default
+
+    def _handle_error(
+        self,
+        message: kombu.Message,
+        prometheus_labels: AmqpConsumerPrometheusLabels,
+        exc: Exception,
+    ) -> None:
+        if not self._is_error_recoverable(exc):
+            message.reject()
+            logger.exception(
+                "Unrecoverable error while trying to process a message.  The message has been discarded."
+            )
+            return
+
+        message_exchange = message.delivery_info.get("exchange")
+        message_routing_key = message.delivery_info.get("routing_key")
+        if not message_exchange or not message_routing_key or self.retry_mode == RetryMode.REQUEUE:
+            logger.exception(
+                "Recoverable error while trying to process a message. "
+                "The message has been returned to the queue broker."
+            )
+            message.requeue()
+            return
+
+        headers = message.headers or {}
+        retry_count = headers.get(MESSAGE_HEADER_RETRY_COUNT, 0)
+        retry_count = self._safe_cast(retry_count, int, 0)
+        retry_limit = headers.get(MESSAGE_HEADER_RETRY_LIMIT, None)
+        retry_limit = self._safe_cast(retry_limit, int, None)
+
+        if (self.retry_limit is not None and retry_count >= self.retry_limit) or (
+            retry_limit is not None and retry_count >= retry_limit
+        ):
+            logger.exception(
+                "Unhandled error while trying to process a message. "
+                "The message reached the retry limit."
+            )
+            AMQP_RETRY_LIMIT_REACHED_TOTAL.labels(**prometheus_labels._asdict()).inc()
+            message.reject()
+            return
+
+        headers[MESSAGE_HEADER_RETRY_COUNT] = retry_count + 1
+        message.ack()
+
+        new_message = message.channel.prepare_message(
+            message.body,
+            content_type=message.content_type,
+            content_encoding=message.content_encoding,
+            headers=headers,
+        )
+
+        message.channel.basic_publish(new_message, message_exchange, message_routing_key)
+        AMQP_REPUBLISHED_TOTAL.labels(**prometheus_labels._asdict()).inc()
+        logger.exception(
+            "Unhandled error while trying to process a message. "
+            "The retry message has been published to the queue broker."
+        )
+
+    def _is_ttl_over(self, message: kombu.Message) -> bool:
+        ttl = (message.headers or {}).get(MESSAGE_HEADER_TTL, 0)
+        return ttl and ttl < time.time()
 
     def handle(self, message: kombu.Message) -> None:
         start_time = time.perf_counter()
         prometheus_success = "true"
         prometheus_labels = AmqpConsumerPrometheusLabels(
-            amqp_address=message.channel.connection.client.host,  # note: localhost will be translated to 127.0.0.1 by the library
+            # note: localhost will be translated to 127.0.0.1 by the library
+            amqp_address=message.channel.connection.client.host,
             amqp_virtual_host=message.channel.connection.client.virtual_host,
             amqp_exchange_name=message.delivery_info.get("exchange", ""),
             amqp_routing_key=message.delivery_info.get("routing_key", ""),
         )
+        AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).inc()
+
+        if self._is_ttl_over(message):
+            message.reject()
+            AMQP_TTL_REACHED_TOTAL.labels(**prometheus_labels._asdict()).inc()
+            return
 
         context = self.baseplate.make_context_object()
         try:
@@ -161,18 +283,16 @@ class KombuMessageHandler(MessageHandler):
                 self.handler_fn(context, message_body, message)
         except Exception as exc:
             prometheus_success = "false"
-            logger.exception(
-                "Unhandled error while trying to process a message.  The message "
-                "has been returned to the queue broker."
-            )
+
+            # Custom error_handler_fn has priority over standard handler.
             if self.error_handler_fn:
+                logger.exception(
+                    "Unhandled error while trying to process a message. Custom handler invoked."
+                )
                 self.error_handler_fn(context, message_body, message, exc)
             else:
-                message.requeue()
-
-            if isinstance(exc, FatalMessageHandlerError):
-                logger.info("Recieved a fatal error, terminating the server.")
-                raise
+                self._handle_error(message, exc)
+                self._terminate_server_if_needed(exc)
         else:
             message.ack()
         finally:
@@ -182,6 +302,7 @@ class KombuMessageHandler(MessageHandler):
             AMQP_PROCESSED_TOTAL.labels(
                 **prometheus_labels._asdict(), amqp_success=prometheus_success
             ).inc()
+            AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).dec()
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):
@@ -205,6 +326,8 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
         worker_kwargs: Optional[Dict[str, Any]] = None,
+        retry_mode: RetryMode = RetryMode.REQUEUE,
+        retry_limit: Optional[int] = None,
     ):
         """`KombuQueueConsumerFactory` constructor.
 
@@ -225,6 +348,12 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         :param serializer: A `baseplate.clients.kombu.KombuSerializer` that should
             be used to decode the messages you are consuming.
         :param worker_kwargs: A dictionary of keyword arguments used to create queue consumers.
+        :param retry_mode: Either RetryMode.REQUEUE (default): return message into the head of a
+            queue, like old versions did. Or RetryMode.REPUBLISH: acknowledge the message and
+            publish a new one, with the same content, but incremented retry counter.
+        :param retry_limit: An number of retry attempts for the message. When the limit is reached,
+            the message is discarded. Retry limit for specific message could also be specified in
+            message's own header.
         """
         self.baseplate = baseplate
         self.connection = connection
@@ -235,6 +364,9 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         self.health_check_fn = health_check_fn
         self.serializer = serializer
         self.worker_kwargs = worker_kwargs
+        self.retry_mode = retry_mode
+        self.retry_limit = retry_limit
+
 
     @classmethod
     def new(
@@ -249,6 +381,8 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
         worker_kwargs: Optional[Dict[str, Any]] = None,
+        retry_mode: RetryMode = RetryMode.REQUEUE,
+        retry_limit: Optional[int] = None,
     ) -> "KombuQueueConsumerFactory":
         """Return a new `KombuQueueConsumerFactory`.
 
@@ -274,6 +408,11 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             be used to decode the messages you are consuming.
         :param worker_kwargs: A dictionary of keyword arguments used to configure a
             queue consumer.
+        :param retry_mode: Either RetryMode.REQUEUE (default): return message into the head of a
+            queue, like old versions did. Or RetryMode.REPUBLISH: acknowledge the message and
+            publish a new one, with the same content, but incremented retry counter.
+        :param retry_limit: An number of retry attempts for the message. When the limit is reached,
+            the message is discarded.
         """
         queues = []
         for routing_key in routing_keys:
@@ -288,6 +427,8 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             health_check_fn=health_check_fn,
             serializer=serializer,
             worker_kwargs=worker_kwargs,
+            retry_mode = retry_mode,
+            retry_limit = retry_limit,
         )
 
     def build_pump_worker(self, work_queue: WorkQueue) -> KombuConsumerWorker:
@@ -306,7 +447,24 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             self.name,
             self.handler_fn,
             self.error_handler_fn,
+            self.retry_mode,
+            self.retry_limit,
         )
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
         return make_simple_healthchecker(listener, callback=self.health_check_fn)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
