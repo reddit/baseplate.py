@@ -115,6 +115,7 @@ class RetryMode(Enum):
     REPUBLISH - message is acknowledged. New message is created, having identical content,
     but incremented retry counter. It is published into the tail of a queue.
     """
+
     REQUEUE = (1,)
     REPUBLISH = (2,)
 
@@ -168,7 +169,6 @@ class KombuMessageHandler(MessageHandler):
         self.error_handler_fn = error_handler_fn
         self.retry_mode = retry_mode
         self.retry_limit = retry_limit
-
 
     def _terminate_server_if_needed(self, exc: Exception) -> None:
         if isinstance(exc, FatalMessageHandlerError):
@@ -369,7 +369,6 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         self.retry_mode = retry_mode
         self.retry_limit = retry_limit
 
-
     @classmethod
     def new(
         cls,
@@ -429,8 +428,8 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
             health_check_fn=health_check_fn,
             serializer=serializer,
             worker_kwargs=worker_kwargs,
-            retry_mode = retry_mode,
-            retry_limit = retry_limit,
+            retry_mode=retry_mode,
+            retry_limit=retry_limit,
         )
 
     def build_pump_worker(self, work_queue: WorkQueue) -> KombuConsumerWorker:
