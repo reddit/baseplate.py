@@ -56,16 +56,19 @@ AMQP_PROCESSED_TOTAL = Counter(
 AMQP_REPUBLISHED_TOTAL = Counter(
     "amqp_consumer_messages_republished_total",
     "total count of messages republished by this host",
+    AmqpConsumerPrometheusLabels._fields,
 )
 
 AMQP_RETRY_LIMIT_REACHED_TOTAL = Counter(
     "amqp_consumer_message_retry_limit_reached_total",
     "total count of messages that reached the retry limit and were discarded by this host",
+    AmqpConsumerPrometheusLabels._fields,
 )
 
 AMQP_TTL_REACHED_TOTAL = Counter(
     "amqp_consumer_message_ttl_reached_total",
     "total count of messages that reached the ttl and were discarded by this host",
+    AmqpConsumerPrometheusLabels._fields,
 )
 
 AMQP_ACTIVE_MESSAGES = Gauge(
@@ -291,7 +294,7 @@ class KombuMessageHandler(MessageHandler):
                 )
                 self.error_handler_fn(context, message_body, message, exc)
             else:
-                self._handle_error(message, exc)
+                self._handle_error(message, prometheus_labels, exc)
                 self._terminate_server_if_needed(exc)
         else:
             message.ack()
@@ -453,18 +456,3 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
 
     def build_health_checker(self, listener: socket.socket) -> StreamServer:
         return make_simple_healthchecker(listener, callback=self.health_check_fn)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
