@@ -1,4 +1,5 @@
 import socket
+import time
 
 from queue import Queue
 from unittest import mock
@@ -12,14 +13,19 @@ from prometheus_client import REGISTRY
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import ServerSpan
-from baseplate.frameworks.queue_consumer.kombu import AMQP_ACTIVE_MESSAGES
+from baseplate.frameworks.queue_consumer.kombu import AMQP_ACTIVE_MESSAGES, RetryMode
 from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSED_TOTAL
 from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSING_TIME
+from baseplate.frameworks.queue_consumer.kombu import AMQP_REPUBLISHED_TOTAL
+from baseplate.frameworks.queue_consumer.kombu import AMQP_RETRY_LIMIT_REACHED_TOTAL
+from baseplate.frameworks.queue_consumer.kombu import AMQP_TTL_REACHED_TOTAL
 from baseplate.frameworks.queue_consumer.kombu import AmqpConsumerPrometheusLabels
 from baseplate.frameworks.queue_consumer.kombu import FatalMessageHandlerError
 from baseplate.frameworks.queue_consumer.kombu import KombuConsumerWorker
 from baseplate.frameworks.queue_consumer.kombu import KombuMessageHandler
 from baseplate.frameworks.queue_consumer.kombu import KombuQueueConsumerFactory
+from baseplate.lib.errors import RecoverableException
+from baseplate.lib.errors import UnrecoverableException
 
 from .... import does_not_raise
 
@@ -55,6 +61,9 @@ class TestKombuMessageHandler:
     def setup(self):
         AMQP_PROCESSING_TIME.clear()
         AMQP_PROCESSED_TOTAL.clear()
+        AMQP_REPUBLISHED_TOTAL.clear()
+        AMQP_RETRY_LIMIT_REACHED_TOTAL.clear()
+        AMQP_TTL_REACHED_TOTAL.clear()
         AMQP_ACTIVE_MESSAGES.clear()
 
     @pytest.fixture
@@ -67,6 +76,7 @@ class TestKombuMessageHandler:
             "exchange": "exchange",
         }
         msg.channel.connection.client = connection
+        msg.headers = {}
         msg.decode.return_value = {"foo": "bar"}
         return msg
 
@@ -111,17 +121,40 @@ class TestKombuMessageHandler:
             == 1
         )
         assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_REPUBLISHED_TOTAL._name}_total",
+                {**prom_labels._asdict()},
+            )
+            == None
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_RETRY_LIMIT_REACHED_TOTAL._name}_total",
+                {**prom_labels._asdict()},
+            )
+            == None
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_TTL_REACHED_TOTAL._name}_total",
+                {**prom_labels._asdict()},
+            )
+            == None
+        )
+        assert (
             REGISTRY.get_sample_value(f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
 
     @pytest.mark.parametrize(
-        "err,expectation",
+        "err,expectation,requeued",
         [
-            (ValueError(), does_not_raise()),
-            (FatalMessageHandlerError(), pytest.raises(FatalMessageHandlerError)),
+            (RecoverableException(), does_not_raise(), True),
+            (UnrecoverableException(), does_not_raise(), False),
+            (ValueError(), does_not_raise(), True),
+            (FatalMessageHandlerError(), pytest.raises(FatalMessageHandlerError), True),
         ],
     )
-    def test_errors(self, err, expectation, baseplate, name, message):
+    def test_errors(self, err, expectation, requeued, baseplate, name, message):
         def handler_fn(ctx, body, msg):
             raise err
 
@@ -147,7 +180,10 @@ class TestKombuMessageHandler:
                 handler = KombuMessageHandler(baseplate, name, handler_fn)
                 with expectation:
                     handler.handle(message)
-                message.requeue.assert_called_once()
+                if requeued:
+                    message.requeue.assert_called_once()
+                else:
+                    message.requeue.assert_not_called()
 
                 assert (
                     REGISTRY.get_sample_value(
@@ -169,6 +205,28 @@ class TestKombuMessageHandler:
                     )
                     == 0
                 )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_REPUBLISHED_TOTAL._name}_total",
+                        {**prom_labels._asdict()},
+                    )
+                    == None
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_RETRY_LIMIT_REACHED_TOTAL._name}_total",
+                        {**prom_labels._asdict()},
+                    )
+                    == None
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_TTL_REACHED_TOTAL._name}_total",
+                        {**prom_labels._asdict()},
+                    )
+                    == None
+                )
+
                 # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
                 assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
@@ -236,6 +294,219 @@ class TestKombuMessageHandler:
                 )
                 # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
                 assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
+
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_REPUBLISHED_TOTAL._name}_total",
+                        {**prom_labels._asdict()},
+                    )
+                    == None
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_RETRY_LIMIT_REACHED_TOTAL._name}_total",
+                        {**prom_labels._asdict()},
+                    )
+                    == None
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_TTL_REACHED_TOTAL._name}_total",
+                        {**prom_labels._asdict()},
+                    )
+                    == None
+                )
+
+
+    @pytest.mark.parametrize(
+        "err,expectation,attempt,limit,republished",
+        [
+            (RecoverableException(), does_not_raise(), None, None, True),
+            (RecoverableException(), does_not_raise(), 1, None, True),
+            (RecoverableException(), does_not_raise(), 5, None, False),
+            (RecoverableException(), does_not_raise(), 3, 3, False),
+            (UnrecoverableException(), does_not_raise(), None, None, False),
+            (ValueError(), does_not_raise(), None, None, True),
+            (FatalMessageHandlerError(), pytest.raises(FatalMessageHandlerError), None, None, True),
+        ],
+    )
+    def test_errors_with_republish(self, err, expectation, attempt, limit, republished, baseplate, name, message):
+        """Handler is configured with retries limit of 5. Message can contain its own limit too."""
+
+        def handler_fn(ctx, body, msg):
+            raise err
+
+        prom_labels = AmqpConsumerPrometheusLabels(
+            amqp_address="hostname:port",
+            amqp_virtual_host="/",
+            amqp_exchange_name="exchange",
+            amqp_routing_key="routing-key",
+        )
+        mock_manager = mock.Mock()
+        with mock.patch.object(
+            AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
+            "inc",
+            wraps=AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
+        ) as active_inc_spy_method:
+            mock_manager.attach_mock(active_inc_spy_method, "inc")
+            with mock.patch.object(
+                AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
+                "dec",
+                wraps=AMQP_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
+            ) as active_dec_spy_method:
+                mock_manager.attach_mock(active_dec_spy_method, "dec")
+                handler = KombuMessageHandler(baseplate, name, handler_fn, retry_mode=RetryMode.REPUBLISH, retry_limit=5)
+                if attempt:
+                    message.headers["x-retry-count"] = attempt
+                if limit:
+                    message.headers["x-retry-limit"] = limit
+                with expectation:
+                    handler.handle(message)
+
+                message.requeue.assert_not_called()
+                if republished:
+                    message.channel.prepare_message.assert_called_once()
+                    message.channel.basic_publish.assert_called_once()
+                    message.ack.assert_called_once()
+                    message.reject.assert_not_called()
+                else:
+                    message.channel.prepare_message.assert_not_called()
+                    message.channel.basic_publish.assert_not_called()
+                    message.ack.assert_not_called()
+                    message.reject.assert_called_once()
+
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_PROCESSING_TIME._name}_bucket",
+                        {**prom_labels._asdict(), **{"amqp_success": "false", "le": "+Inf"}},
+                    )
+                    == 1
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_PROCESSED_TOTAL._name}_total",
+                        {**prom_labels._asdict(), **{"amqp_success": "false"}},
+                    )
+                    == 1
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()
+                    )
+                    == 0
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_REPUBLISHED_TOTAL._name}_total",
+                        {**prom_labels._asdict()},
+                    )
+                    == (1 if republished else None)
+                )
+                retry_reached_expectation = None
+                if attempt:
+                    if attempt >= 5 or (limit and attempt >= limit):
+                        retry_reached_expectation = 1
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_RETRY_LIMIT_REACHED_TOTAL._name}_total",
+                        {**prom_labels._asdict()},
+                    )
+                    == retry_reached_expectation
+                )
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{AMQP_TTL_REACHED_TOTAL._name}_total",
+                        {**prom_labels._asdict()},
+                    )
+                    == None
+                )
+                # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
+                assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
+
+    @pytest.mark.parametrize(
+        "ttl_delta,handled",
+        [
+            (None, True),
+            (-60, False),
+            (60, True),
+        ],
+    )
+    def test_ttl(
+        self, ttl_delta, handled, context, span, baseplate, name, message
+    ):
+        handler_fn = mock.Mock()
+        handler = KombuMessageHandler(baseplate, name, handler_fn)
+        prom_labels = AmqpConsumerPrometheusLabels(
+            amqp_address="hostname:port",
+            amqp_virtual_host="/",
+            amqp_exchange_name="exchange",
+            amqp_routing_key="routing-key",
+        )
+        if ttl_delta:
+            message.headers["x-ttl"] = int(time.time()) + ttl_delta
+        handler.handle(message)
+
+        if handled:
+            baseplate.make_context_object.assert_called_once()
+            baseplate.make_server_span.assert_called_once_with(context, name)
+            baseplate.make_server_span().__enter__.assert_called_once()
+            span.set_tag.assert_has_calls(
+                [
+                    mock.call("kind", "consumer"),
+                    mock.call("amqp.routing_key", "routing-key"),
+                    mock.call("amqp.consumer_tag", "consumer-tag"),
+                    mock.call("amqp.delivery_tag", "delivery-tag"),
+                    mock.call("amqp.exchange", "exchange"),
+                ],
+                any_order=True,
+            )
+            handler_fn.assert_called_once_with(context, message.decode(), message)
+            message.ack.assert_called_once()
+            message.reject.assert_not_called()
+        else:
+            baseplate.make_context_object.assert_not_called()
+            baseplate.make_server_span.assert_not_called()
+            message.ack.assert_not_called()
+            message.reject.assert_called_once()
+
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_PROCESSING_TIME._name}_bucket",
+                {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
+            )
+            == (1 if handled else None)
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_PROCESSED_TOTAL._name}_total",
+                {**prom_labels._asdict(), **{"amqp_success": "true"}},
+            )
+            == (1 if handled else None)
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_REPUBLISHED_TOTAL._name}_total",
+                {**prom_labels._asdict()},
+            )
+            == None
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_RETRY_LIMIT_REACHED_TOTAL._name}_total",
+                {**prom_labels._asdict()},
+            )
+            == None
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{AMQP_TTL_REACHED_TOTAL._name}_total",
+                {**prom_labels._asdict()},
+            )
+            == (None if handled else 1)
+        )
+        assert (
+            REGISTRY.get_sample_value(f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == (0 if handled else None)
+        )
 
 
 @pytest.fixture

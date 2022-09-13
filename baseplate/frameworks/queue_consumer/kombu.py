@@ -258,7 +258,6 @@ class KombuMessageHandler(MessageHandler):
             amqp_exchange_name=message.delivery_info.get("exchange", ""),
             amqp_routing_key=message.delivery_info.get("routing_key", ""),
         )
-        AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).inc()
 
         if self._is_ttl_over(message):
             message.reject()
@@ -295,7 +294,8 @@ class KombuMessageHandler(MessageHandler):
                 self.error_handler_fn(context, message_body, message, exc)
             else:
                 self._handle_error(message, prometheus_labels, exc)
-                self._terminate_server_if_needed(exc)
+
+            self._terminate_server_if_needed(exc)
         else:
             message.ack()
         finally:
@@ -305,7 +305,6 @@ class KombuMessageHandler(MessageHandler):
             AMQP_PROCESSED_TOTAL.labels(
                 **prometheus_labels._asdict(), amqp_success=prometheus_success
             ).inc()
-            AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).dec()
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):
