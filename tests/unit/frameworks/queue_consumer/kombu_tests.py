@@ -102,34 +102,42 @@ class TestKombuMessageHandler:
             message.headers["x-ttl"] = int(time.time()) + ttl_delta
         handler.handle(message)
 
-        baseplate.make_context_object.assert_called_once()
-        baseplate.make_server_span.assert_called_once_with(context, name)
-        baseplate.make_server_span().__enter__.assert_called_once()
-        span.set_tag.assert_has_calls(
-            [
-                mock.call("kind", "consumer"),
-                mock.call("amqp.routing_key", "routing-key"),
-                mock.call("amqp.consumer_tag", "consumer-tag"),
-                mock.call("amqp.delivery_tag", "delivery-tag"),
-                mock.call("amqp.exchange", "exchange"),
-            ],
-            any_order=True,
-        )
-        handler_fn.assert_called_once_with(context, message.decode(), message)
-        message.ack.assert_called_once()
+        if handled:
+            baseplate.make_context_object.assert_called_once()
+            baseplate.make_server_span.assert_called_once_with(context, name)
+            baseplate.make_server_span().__enter__.assert_called_once()
+            span.set_tag.assert_has_calls(
+                [
+                    mock.call("kind", "consumer"),
+                    mock.call("amqp.routing_key", "routing-key"),
+                    mock.call("amqp.consumer_tag", "consumer-tag"),
+                    mock.call("amqp.delivery_tag", "delivery-tag"),
+                    mock.call("amqp.exchange", "exchange"),
+                ],
+                any_order=True,
+            )
+            handler_fn.assert_called_once_with(context, message.decode(), message)
+            message.ack.assert_called_once()
+            message.reject.assert_not_called()
+        else:
+            baseplate.make_context_object.assert_not_called()
+            baseplate.make_server_span.assert_not_called()
+            message.ack.assert_not_called()
+            message.reject.assert_called_once()
+
         assert (
             REGISTRY.get_sample_value(
                 f"{AMQP_PROCESSING_TIME._name}_bucket",
                 {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
             )
-            == 1
+            == (1 if handled else None)
         )
         assert (
             REGISTRY.get_sample_value(
                 f"{AMQP_PROCESSED_TOTAL._name}_total",
                 {**prom_labels._asdict(), **{"amqp_success": "true"}},
             )
-            == 1
+            == (1 if handled else None)
         )
         assert (
             REGISTRY.get_sample_value(
@@ -150,11 +158,11 @@ class TestKombuMessageHandler:
                 f"{AMQP_TTL_REACHED_TOTAL._name}_total",
                 {**prom_labels._asdict()},
             )
-            == None
+            == (None if handled else 1)
         )
-        assert (
-            REGISTRY.get_sample_value(f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
-        )
+        assert REGISTRY.get_sample_value(
+            f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()
+        ) == (0 if handled else None)
 
     @pytest.mark.parametrize(
         "err,expectation,requeued",
@@ -436,70 +444,6 @@ class TestKombuMessageHandler:
                 )
                 # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
                 assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
-
-        handler.handle(message)
-
-        if handled:
-            baseplate.make_context_object.assert_called_once()
-            baseplate.make_server_span.assert_called_once_with(context, name)
-            baseplate.make_server_span().__enter__.assert_called_once()
-            span.set_tag.assert_has_calls(
-                [
-                    mock.call("kind", "consumer"),
-                    mock.call("amqp.routing_key", "routing-key"),
-                    mock.call("amqp.consumer_tag", "consumer-tag"),
-                    mock.call("amqp.delivery_tag", "delivery-tag"),
-                    mock.call("amqp.exchange", "exchange"),
-                ],
-                any_order=True,
-            )
-            handler_fn.assert_called_once_with(context, message.decode(), message)
-            message.ack.assert_called_once()
-            message.reject.assert_not_called()
-        else:
-            baseplate.make_context_object.assert_not_called()
-            baseplate.make_server_span.assert_not_called()
-            message.ack.assert_not_called()
-            message.reject.assert_called_once()
-
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_PROCESSING_TIME._name}_bucket",
-                {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
-            )
-            == (1 if handled else None)
-        )
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_PROCESSED_TOTAL._name}_total",
-                {**prom_labels._asdict(), **{"amqp_success": "true"}},
-            )
-            == (1 if handled else None)
-        )
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_REPUBLISHED_TOTAL._name}_total",
-                {**prom_labels._asdict()},
-            )
-            == None
-        )
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_RETRY_LIMIT_REACHED_TOTAL._name}_total",
-                {**prom_labels._asdict()},
-            )
-            == None
-        )
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_TTL_REACHED_TOTAL._name}_total",
-                {**prom_labels._asdict()},
-            )
-            == (None if handled else 1)
-        )
-        assert REGISTRY.get_sample_value(
-            f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()
-        ) == (0 if handled else None)
 
 
 @pytest.fixture
