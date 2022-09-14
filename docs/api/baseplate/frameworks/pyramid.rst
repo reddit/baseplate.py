@@ -23,6 +23,9 @@ An abbreviated example of it in use::
 
         return configurator.make_wsgi_app()
 
+Exceptions
+------
+
 .. warning::
 
     Because of how Baseplate instruments Pyramid, you should not make an
@@ -38,6 +41,11 @@ An abbreviated example of it in use::
 
 .. autoclass:: StaticTrustHandler
     :members:
+
+**HTTP Exceptions**
+
+Pyramid contains HTTP exception classes that accept parameters and contain a response object. Read more about `pyramid HTTP exceptions <https://docs.pylonsproject.org/projects/pyramid/en/latest/api/httpexceptions.html>`_.
+Example usage of pyramid.httpexceptions can be found in `tests/integration/pyramid_tests.py <../../../../tests/integration/pyramid_tests.py>`_
 
 Events
 ------
