@@ -120,16 +120,34 @@ class RedisClient(config.Parser):
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
 
+    :param redis_client_name: The name of this Redis client. Prefer to use `client_name`
+    keyword argument to the `pool_from_config` function. Use this if your using a Redis
+    host or proxy that doesn't support the `CLIENT SETNAME` function.
+
     See :py:func:`pool_from_config` for available configuration settings.
 
     """
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, redis_client_name: str = "", **kwargs: Any):
+        # This is for backwards compatibility. Originally we asked clients to
+        # set the `client_name` attribute to get the `redis_client_name`
+        # tag to appear on Pjjjrometheus metrics. Unfortunately this broke clients
+        # that use a proxy to connect to Redis.
+        # See: https://github.com/redis/redis-py/issues/2384
+        client_name = redis_client_name
+        if client_name == "":
+            client_name = kwargs.get("client_name", "")
+
         self.kwargs = kwargs
+        self.redis_client_name = client_name
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "RedisContextFactory":
         connection_pool = pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return RedisContextFactory(connection_pool, key_path)
+        return RedisContextFactory(
+            connection_pool=connection_pool,
+            name=key_path,
+            redis_client_name=self.redis_client_name,
+        )
 
 
 class RedisContextFactory(ContextFactory):
@@ -146,9 +164,15 @@ class RedisContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, connection_pool: redis.ConnectionPool, name: str = "redis"):
+    def __init__(
+        self,
+        connection_pool: redis.ConnectionPool,
+        name: str = "redis",
+        redis_client_name: str = "",
+    ):
         self.connection_pool = connection_pool
         self.name = name
+        self.redis_client_name = redis_client_name
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
@@ -168,7 +192,12 @@ class RedisContextFactory(ContextFactory):
         batch.gauge("pool.open_and_available").replace(open_connections_num - in_use)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
-        return MonitoredRedisConnection(name, span, self.connection_pool)
+        return MonitoredRedisConnection(
+            context_name=name,
+            server_span=span,
+            connection_pool=self.connection_pool,
+            redis_client_name=self.redis_client_name,
+        )
 
 
 # pylint: disable=too-many-public-methods
@@ -184,9 +213,16 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     """
 
-    def __init__(self, context_name: str, server_span: Span, connection_pool: redis.ConnectionPool):
+    def __init__(
+        self,
+        context_name: str,
+        server_span: Span,
+        connection_pool: redis.ConnectionPool,
+        redis_client_name: str = "",
+    ):
         self.context_name = context_name
         self.server_span = server_span
+        self.redis_client_name = redis_client_name
 
         super().__init__(connection_pool=connection_pool)
 
@@ -196,9 +232,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
         labels = {
             f"{PROM_LABELS_PREFIX}_command": command,
-            f"{PROM_LABELS_PREFIX}_client_name": self.connection_pool.connection_kwargs.get(
-                "client_name", ""
-            ),
+            f"{PROM_LABELS_PREFIX}_client_name": self.redis_client_name,
             f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get("db", ""),
             f"{PROM_LABELS_PREFIX}_type": "standalone",
         }

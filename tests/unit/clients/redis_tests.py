@@ -94,7 +94,9 @@ class TestMonitoredRedisConnection:
 
     @pytest.fixture
     def monitored_redis_connection(self, span, connection_pool):
-        yield MonitoredRedisConnection("redis_context_name", span, connection_pool)
+        yield MonitoredRedisConnection(
+            "redis_context_name", span, connection_pool, redis_client_name="test_client"
+        )
 
     def test_execute_command_exc_redis_err(
         self, monitored_redis_connection, expected_labels, app_config
