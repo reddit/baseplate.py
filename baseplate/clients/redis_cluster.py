@@ -333,12 +333,19 @@ class ClusterRedisClient(config.Parser):
     See :py:func:`cluster_pool_from_config` for available configuration settings.
     """
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, redis_client_name: str = "", **kwargs: Any):
+        client_name = redis_client_name
+        if client_name == "":
+            client_name = kwargs.get("client_name", "")
+
         self.kwargs = kwargs
+        self.redis_client_name = client_name
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "ClusterRedisContextFactory":
         connection_pool = cluster_pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return ClusterRedisContextFactory(connection_pool, key_path)
+        return ClusterRedisContextFactory(
+            connection_pool, key_path, redis_client_name=self.redis_client_name
+        )
 
 
 class ClusterRedisContextFactory(ContextFactory):
@@ -353,9 +360,15 @@ class ClusterRedisContextFactory(ContextFactory):
     :param connection_pool: A connection pool.
     """
 
-    def __init__(self, connection_pool: rediscluster.ClusterConnectionPool, name: str = "redis"):
+    def __init__(
+        self,
+        connection_pool: rediscluster.ClusterConnectionPool,
+        name: str = "redis",
+        redis_client_name: str = "",
+    ):
         self.connection_pool = connection_pool
         self.name = name
+        self.redis_client_name = redis_client_name
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         if not isinstance(self.connection_pool, rediscluster.ClusterBlockingConnectionPool):
@@ -376,6 +389,7 @@ class ClusterRedisContextFactory(ContextFactory):
             self.connection_pool,
             getattr(self.connection_pool, "track_key_reads_sample_rate", 0),
             getattr(self.connection_pool, "track_key_writes_sample_rate", 0),
+            self.redis_client_name,
         )
 
 
@@ -396,6 +410,7 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
         connection_pool: rediscluster.ClusterConnectionPool,
         track_key_reads_sample_rate: float = 0,
         track_key_writes_sample_rate: float = 0,
+        redis_client_name: str = "",
     ):
         self.context_name = context_name
         self.server_span = server_span
@@ -404,6 +419,7 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
         self.hot_key_tracker = HotKeyTracker(
             self, self.track_key_reads_sample_rate, self.track_key_writes_sample_rate
         )
+        self.redis_client_name = redis_client_name
 
         super().__init__(
             connection_pool=connection_pool,
@@ -420,9 +436,7 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
             success = "true"
             labels = {
                 f"{PROM_LABELS_PREFIX}_command": command,
-                f"{PROM_LABELS_PREFIX}_client_name": self.connection_pool.connection_kwargs.get(
-                    "client_name", ""
-                ),
+                f"{PROM_LABELS_PREFIX}_client_name": self.redis_client_name,
                 f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
                     "db", ""
                 ),
@@ -462,6 +476,7 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
             self.response_callbacks,
             read_from_replicas=self.read_from_replicas,
             hot_key_tracker=self.hot_key_tracker,
+            redis_client_name=self.redis_client_name,
         )
 
     # No transaction support in redis-py-cluster
@@ -479,11 +494,13 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
         connection_pool: rediscluster.ClusterConnectionPool,
         response_callbacks: Dict,
         hot_key_tracker: Optional[HotKeyTracker],
+        redis_client_name: str = "",
         **kwargs: Any,
     ):
         self.trace_name = trace_name
         self.server_span = server_span
         self.hot_key_tracker = hot_key_tracker
+        self.redis_client_name = redis_client_name
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
@@ -501,9 +518,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
             start_time = perf_counter()
             labels = {
                 f"{PROM_LABELS_PREFIX}_command": "pipeline",
-                f"{PROM_LABELS_PREFIX}_client_name": self.connection_pool.connection_kwargs.get(
-                    "client_name", ""
-                ),
+                f"{PROM_LABELS_PREFIX}_client_name": self.redis_client_name,
                 f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
                     "db", ""
                 ),
