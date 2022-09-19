@@ -328,12 +328,21 @@ def cluster_pool_from_config(
 class ClusterRedisClient(config.Parser):
     """Configure a clustered Redis client.
 
+    :param redis_client_name: The name of this Redis client. Prefer to use `client_name`
+    keyword argument to the `pool_from_config` function. Use this if your using a Redis
+    host or proxy that doesn't support the `CLIENT SETNAME` function.
+
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
     See :py:func:`cluster_pool_from_config` for available configuration settings.
     """
 
     def __init__(self, redis_client_name: str = "", **kwargs: Any):
+        # This is for backwards compatibility. Originally we asked clients to
+        # set the `client_name` attribute to get the `redis_client_name`
+        # tag to appear on Prometheus metrics. Unfortunately this broke clients
+        # that use a proxy to connect to Redis.
+        # See: https://github.com/redis/redis-py/issues/2384/
         client_name = redis_client_name
         if client_name == "":
             client_name = kwargs.get("client_name", "")
