@@ -131,7 +131,7 @@ class RedisClient(config.Parser):
     def __init__(self, redis_client_name: str = "", **kwargs: Any):
         # This is for backwards compatibility. Originally we asked clients to
         # set the `client_name` attribute to get the `redis_client_name`
-        # tag to appear on Prometheus metrics. Unfortunately this broke clients
+        # tag to appear on Pjjjrometheus metrics. Unfortunately this broke clients
         # that use a proxy to connect to Redis.
         # See: https://github.com/redis/redis-py/issues/2384
         client_name = redis_client_name
@@ -277,6 +277,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
             self.response_callbacks,
             transaction=transaction,
             shard_hint=shard_hint,
+            redis_client_name=self.redis_client_name,
         )
 
     # these commands are not yet implemented, but probably not unimplementable
@@ -292,10 +293,12 @@ class MonitoredRedisPipeline(Pipeline):
         server_span: Span,
         connection_pool: redis.ConnectionPool,
         response_callbacks: Dict,
+        redis_client_name: str = "",
         **kwargs: Any,
     ):
         self.trace_name = trace_name
         self.server_span = server_span
+        self.redis_client_name = redis_client_name
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
     # pylint: disable=arguments-differ
@@ -305,9 +308,7 @@ class MonitoredRedisPipeline(Pipeline):
             start_time = perf_counter()
             labels = {
                 f"{PROM_LABELS_PREFIX}_command": "pipeline",
-                f"{PROM_LABELS_PREFIX}_client_name": self.connection_pool.connection_kwargs.get(
-                    "client_name", ""
-                ),
+                f"{PROM_LABELS_PREFIX}_client_name": self.redis_client_name,
                 f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
                     "db", ""
                 ),

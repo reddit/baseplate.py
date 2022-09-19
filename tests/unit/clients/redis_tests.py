@@ -80,9 +80,7 @@ class TestMonitoredRedisConnection:
 
     @pytest.fixture
     def connection_pool(self, app_config, connection):
-        yield pool_from_config(
-            app_config=app_config, prefix="redis.", client_name="test_client", **connection
-        )
+        yield pool_from_config(app_config=app_config, prefix="redis.", **connection)
 
     @pytest.fixture
     def context(self):
@@ -167,7 +165,11 @@ class TestMonitoredRedisConnection:
                 ), "Should have 0 (and not None) active requests"
 
     def test_pipeline_instrumentation_failing(
-        self, monitored_redis_connection, expected_labels, app_config
+        self,
+        monitored_redis_connection,
+        expected_labels,
+        app_config,
+        redis_client_name="test_client",
     ):
         active_labels = {**expected_labels, "redis_command": "pipeline"}
         mock_manager = mock.Mock()
