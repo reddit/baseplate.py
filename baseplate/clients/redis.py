@@ -131,7 +131,7 @@ class RedisClient(config.Parser):
     def __init__(self, redis_client_name: str = "", **kwargs: Any):
         # This is for backwards compatibility. Originally we asked clients to
         # set the `client_name` attribute to get the `redis_client_name`
-        # tag to appear on Pjjjrometheus metrics. Unfortunately this broke clients
+        # tag to appear on Prometheus metrics. Unfortunately this broke clients
         # that use a proxy to connect to Redis.
         # See: https://github.com/redis/redis-py/issues/2384
         client_name = redis_client_name
