@@ -7,9 +7,9 @@ except ImportError:
     raise unittest.SkipTest("redis-py is not installed")
 
 from baseplate.clients.redis import RedisClient
-from baseplate import Baseplate
 
-from . import TestBaseplateObserver, get_endpoint_or_skip_container
+from . import get_endpoint_or_skip_container
+from .redis_testcase import RedisIntegrationTestCase, redis_url
 
 from baseplate.clients.redis import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
@@ -18,16 +18,12 @@ from baseplate.lib.message_queue import TimedOutError
 redis_endpoint = get_endpoint_or_skip_container("redis", 6379)
 
 
-class RedisIntegrationTests(unittest.TestCase):
+class RedisIntegrationTests(RedisIntegrationTestCase):
     def setUp(self):
-        self.baseplate_observer = TestBaseplateObserver()
+        self.baseplate_app_config = {"redis.url": redis_url}
+        self.redis_client_builder = RedisClient
 
-        baseplate = Baseplate({"redis.url": f"redis://{redis_endpoint}/0"})
-        baseplate.register(self.baseplate_observer)
-        baseplate.configure_context({"redis": RedisClient()})
-
-        self.context = baseplate.make_context_object()
-        self.server_span = baseplate.make_server_span(self.context, "test")
+        super().setUp()
 
     def test_simple_command(self):
         with self.server_span:

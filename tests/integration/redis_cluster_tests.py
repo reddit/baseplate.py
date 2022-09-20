@@ -9,8 +9,9 @@ from baseplate.lib.config import ConfigurationError
 from baseplate.clients.redis_cluster import cluster_pool_from_config
 
 from baseplate.clients.redis_cluster import ClusterRedisClient
-from baseplate import Baseplate
-from . import TestBaseplateObserver, get_endpoint_or_skip_container
+from . import get_endpoint_or_skip_container
+from .redis_testcase import RedisIntegrationTestCase, redis_cluster_url
+
 
 redis_endpoint = get_endpoint_or_skip_container("redis-cluster-node", 7000)
 
@@ -24,7 +25,7 @@ class ClusterPoolFromConfigTests(unittest.TestCase):
             cluster_pool_from_config({})
 
     def test_basic_url(self):
-        pool = cluster_pool_from_config({"rediscluster.url": f"redis://{redis_endpoint}/0"})
+        pool = cluster_pool_from_config({"rediscluster.url": redis_cluster_url})
 
         self.assertEqual(pool.nodes.startup_nodes[0]["host"], "redis-cluster-node")
         self.assertEqual(pool.nodes.startup_nodes[0]["port"], "7000")
@@ -85,22 +86,17 @@ class ClusterPoolFromConfigTests(unittest.TestCase):
         self.assertTrue(any(node["port"] != 7000 for node in node_list))
 
 
-class RedisClusterIntegrationTests(unittest.TestCase):
+class RedisClusterIntegrationTests(RedisIntegrationTestCase):
     def setUp(self):
-        self.baseplate_observer = TestBaseplateObserver()
+        self.baseplate_app_config = {
+            "rediscluster.url": f"redis://{redis_endpoint}/0",
+            "rediscluster.timeout": "1 second",
+            "rediscluster.max_connections": "4",
+        }
+        self.redis_client_builder = ClusterRedisClient
+        self.redis_context_name = "rediscluster"
 
-        baseplate = Baseplate(
-            {
-                "rediscluster.url": f"redis://{redis_endpoint}/0",
-                "rediscluster.timeout": "1 second",
-                "rediscluster.max_connections": "4",
-            }
-        )
-        baseplate.register(self.baseplate_observer)
-        baseplate.configure_context({"rediscluster": ClusterRedisClient()})
-
-        self.context = baseplate.make_context_object()
-        self.server_span = baseplate.make_server_span(self.context, "test")
+        super().setUp()
 
     def test_simple_command(self):
         with self.server_span:
