@@ -56,4 +56,4 @@ def is_metrics_enabled(raw_config: Dict[str, str]) -> bool:
     if cfg.metrics.enabled is not None:
         return cfg.metrics.enabled
 
-    return "metrics.tagging" in raw_config or "metrics.namespace" in raw_config
+    return True
