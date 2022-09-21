@@ -33,11 +33,16 @@ class RedisIntegrationTestCase(unittest.TestCase):
                 "Unable to setup Redis client, 'redis_client_builder' not set",
             )
 
+        self.setup_baseplate_redis()
+
+    def setup_baseplate_redis(self, redis_client_kwargs={}):
         self.baseplate_observer = TestBaseplateObserver()
 
         baseplate = Baseplate(self.baseplate_app_config)
         baseplate.register(self.baseplate_observer)
-        baseplate.configure_context({self.redis_context_name: self.redis_client_builder()})
+        baseplate.configure_context(
+            {self.redis_context_name: self.redis_client_builder(**redis_client_kwargs)}
+        )
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
@@ -51,7 +56,7 @@ class RedisIntegrationTestCase(unittest.TestCase):
         redis_cluster_cli = redis.Redis.from_url(redis_cluster_url)
         redis_cluster_cli.flushall()
 
-        # Clear prometheus metrics
+        # Clear Prometheus metrics
         baseplate_redis.LATENCY_SECONDS.clear()
         baseplate_redis.REQUESTS_TOTAL.clear()
         baseplate_redis.ACTIVE_REQUESTS.clear()

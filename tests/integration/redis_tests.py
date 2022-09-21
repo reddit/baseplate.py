@@ -6,6 +6,9 @@ try:
 except ImportError:
     raise unittest.SkipTest("redis-py is not installed")
 
+from baseplate.clients.redis import ACTIVE_REQUESTS
+from baseplate.clients.redis import REQUESTS_TOTAL
+from baseplate.clients.redis import LATENCY_SECONDS
 from baseplate.clients.redis import RedisClient
 
 from . import get_endpoint_or_skip_container
@@ -13,7 +16,7 @@ from .redis_testcase import RedisIntegrationTestCase, redis_url
 
 from baseplate.clients.redis import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
-
+from prometheus_client import REGISTRY
 
 redis_endpoint = get_endpoint_or_skip_container("redis", 6379)
 
@@ -73,6 +76,48 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
+
+    def test_metrics(self):
+        client_name = "redisclient"
+        for client_name_kwarg_name in [
+            "redis_client_name",
+            "client_name",
+        ]:
+            with self.subTest():
+                self.setup_baseplate_redis(
+                    redis_client_kwargs={
+                        client_name_kwarg_name: client_name,
+                    },
+                )
+                expected_labels = {
+                    "redis_client_name": client_name,
+                    "redis_type": "standalone",
+                    "redis_command": "SET",
+                    "redis_database": "0",
+                }
+                with self.server_span:
+                    self.context.redis.set("prometheus", "rocks")
+
+                request_labels = {**expected_labels, "redis_success": "true"}
+                assert (
+                    REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", request_labels)
+                    == 1.0
+                ), "Unexpected value for REQUESTS_TOTAL metric. Expected one 'set' command"
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{LATENCY_SECONDS._name}_bucket", {**request_labels, "le": "+Inf"}
+                    )
+                    == 1.0
+                ), "Expected one 'set' latency request"
+                assert (
+                    REGISTRY.get_sample_value(
+                        ACTIVE_REQUESTS._name, {**expected_labels, "redis_type": "standalone"}
+                    )
+                    == 0.0
+                ), "Should have 0 (and not None) active requests"
+
+                # Each iteration of this loop is effectively a different testcase
+                self.tearDown()
 
 
 class RedisMessageQueueTests(unittest.TestCase):
