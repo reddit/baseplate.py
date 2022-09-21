@@ -196,12 +196,15 @@ own copy of the exporter, all listening on the same port. Any given worker can
 serve the metrics for all workers from the same pod. It doesn't matter which
 one is hit by the Prometheus collector.
 
-To enable the exporter, install the ``prometheus-client`` package from PyPI.
+To enable the exporter, install the ``prometheus-client`` package from PyPI:
 
 .. code-block:: console
 
    $ pip install prometheus-client
 
+If for some reason your service doesn't need Prometheus metrics exported, they can be disabled (they're on by default) with:
+
+   metrics.enabled = false
 The ``PROMETHEUS_MULTIPROC_DIR`` environment variable must be set to the path
 to an extant writeable directory. This is handled automatically in the official
 base Docker images.
