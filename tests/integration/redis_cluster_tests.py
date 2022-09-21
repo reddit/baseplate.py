@@ -1,7 +1,5 @@
 import unittest
 
-from typing import Any
-
 try:
     import rediscluster
 except ImportError:
@@ -244,5 +242,5 @@ class RedisClusterIntegrationTests(RedisIntegrationTestCase):
                     REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, {**expected_labels}) == 0.0
                 ), "Should have 0 (and not None) active requests"
 
-                # After each interation of teh loop we are starting a new testcase so we need to teardown
+                # Each iteration of this loop is effectively a different testcase
                 self.tearDown()
