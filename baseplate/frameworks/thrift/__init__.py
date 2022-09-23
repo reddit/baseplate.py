@@ -45,7 +45,7 @@ PROM_REQUESTS = Counter(
         "thrift_method",
         "thrift_success",
         "thrift_exception_type",
-        "thrift_baseplate_client_name",
+        "thrift_requester_service_name",
         "thrift_baseplate_status",
         "thrift_baseplate_status_code",
     ],
