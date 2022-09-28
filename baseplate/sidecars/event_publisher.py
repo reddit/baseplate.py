@@ -23,7 +23,7 @@ from typing import Any
 from typing import List
 from typing import Optional
 
-from gevent import sleep
+import gevent
 from prometheus_client import Counter, Histogram
 import requests
 
@@ -240,7 +240,8 @@ def publish_events() -> None:
     publisher = BatchPublisher(metrics_client, cfg)
 
     while True:
-        sleep(0)
+        # allow other routines to execute (specifically handling requests to /metrics)
+        gevent.sleep(0)
         message: Optional[bytes]
 
         try:
