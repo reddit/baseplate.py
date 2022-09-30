@@ -78,10 +78,10 @@ def start_prometheus_exporter(address: EndpointConfiguration = PROMETHEUS_EXPORT
 
 
 def start_prometheus_exporter_for_sidecar() -> None:
-    port = os.environ.get("BASEPLATE_SIDECAR_ADMIN_PORT")
+    port = os.environ.get("BASEPLATE_SIDECAR_METRICS_PORT")
     if port is None:
         logger.error(
-            "BASEPLATE_SIDECAR_ADMIN_PORT must be set for sidecar to expose Prometheus metrics."
+            "BASEPLATE_SIDECAR_METRICS_PORT must be set for sidecar to expose Prometheus metrics."
         )
     else:
         endpoint = Endpoint("0.0.0.0:" + port)
