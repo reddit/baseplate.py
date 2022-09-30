@@ -26,6 +26,7 @@ from prometheus_client import generate_latest
 from prometheus_client import multiprocess
 
 from baseplate.lib.config import Endpoint
+from baseplate.lib.config import EndpointConfiguration
 from baseplate.server.net import bind_socket
 
 
@@ -52,7 +53,7 @@ def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") 
     return [data]
 
 
-def start_prometheus_exporter() -> None:
+def start_prometheus_exporter(address: EndpointConfiguration = PROMETHEUS_EXPORTER_ADDRESS) -> None:
     if "PROMETHEUS_MULTIPROC_DIR" not in os.environ:
         logger.error(
             "prometheus-client is installed but PROMETHEUS_MULTIPROC_DIR is not set to a writeable directory."
@@ -61,7 +62,7 @@ def start_prometheus_exporter() -> None:
 
     atexit.register(multiprocess.mark_process_dead, os.getpid())
 
-    server_socket = bind_socket(PROMETHEUS_EXPORTER_ADDRESS)
+    server_socket = bind_socket(address)
     server = WSGIServer(
         server_socket,
         application=export_metrics,
@@ -70,7 +71,18 @@ def start_prometheus_exporter() -> None:
     )
     logger.info(
         "Prometheus metrics exported on server listening on %s%s",
-        PROMETHEUS_EXPORTER_ADDRESS,
+        address,
         METRICS_ENDPOINT,
     )
     server.start()
+
+
+def start_prometheus_exporter_for_sidecar() -> None:
+    port = os.environ.get("BASEPLATE_SIDECAR_METRICS_PORT")
+    if port is None:
+        logger.error(
+            "BASEPLATE_SIDECAR_METRICS_PORT must be set for sidecar to expose Prometheus metrics."
+        )
+    else:
+        endpoint = Endpoint("0.0.0.0:" + port)
+        start_prometheus_exporter(endpoint)

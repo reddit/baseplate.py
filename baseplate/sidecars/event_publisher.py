@@ -1,3 +1,16 @@
+# pylint: disable=wrong-import-position,wrong-import-order
+from gevent.monkey import patch_all
+
+from baseplate.server.monkey import patch_stdlib_queues
+
+# In order to allow Prometheus to scrape metrics, we need to concurrently
+# handle requests to '/metrics' along with the sidecar's execution.
+# Monkey patching is used to replace the stdlib sequential versions of functions
+# with concurrent versions. It must happen as soon as possible, before the
+# sequential versions are imported.
+patch_all()
+patch_stdlib_queues()
+
 import argparse
 import configparser
 import email.utils
@@ -10,6 +23,8 @@ from typing import Any
 from typing import List
 from typing import Optional
 
+import gevent
+from prometheus_client import Counter, Histogram
 import requests
 
 from baseplate import __version__ as baseplate_version
@@ -22,6 +37,7 @@ from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
+from baseplate.server.prometheus import start_prometheus_exporter_for_sidecar
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import SerializedBatch
@@ -98,6 +114,11 @@ class V2JBatch(V2Batch):
         return SerializedBatch(item_count=len(self._items), serialized=serialized)
 
 
+publishCountTotal = Counter("event_publish_total", "total count of published events")
+publishLatency = Histogram("event_publish_latency", "latency for publishing a batch of events")
+publishErrors = Counter("event_publish_errors", "total count of published events", ["error_type"])
+
+
 class BatchPublisher:
     def __init__(self, metrics_client: metrics.Client, cfg: Any):
         self.metrics = metrics_client
@@ -130,16 +151,18 @@ class BatchPublisher:
         for _ in RetryPolicy.new(budget=MAX_RETRY_TIME, backoff=RETRY_BACKOFF):
             try:
                 with self.metrics.timer("post"):
-                    response = self.session.post(
-                        self.url,
-                        headers=headers,
-                        data=compressed_payload,
-                        timeout=POST_TIMEOUT,
-                        # http://docs.python-requests.org/en/latest/user/advanced/#keep-alive
-                        stream=False,
-                    )
+                    with publishLatency.time():
+                        response = self.session.post(
+                            self.url,
+                            headers=headers,
+                            data=compressed_payload,
+                            timeout=POST_TIMEOUT,
+                            # http://docs.python-requests.org/en/latest/user/advanced/#keep-alive
+                            stream=False,
+                        )
                 response.raise_for_status()
             except requests.HTTPError as exc:
+                publishErrors.labels(error_type="http").inc()
                 self.metrics.counter("error.http").increment()
 
                 # we should crash if it's our fault
@@ -152,9 +175,11 @@ class BatchPublisher:
                 else:
                     logger.exception("HTTP Request failed.")
             except OSError:
+                publishErrors.labels(error_type="io").inc()
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
+                publishCountTotal.inc(payload.item_count)
                 self.metrics.counter("sent").increment(payload.item_count)
                 return
 
@@ -215,6 +240,8 @@ def publish_events() -> None:
     publisher = BatchPublisher(metrics_client, cfg)
 
     while True:
+        # allow other routines to execute (specifically handling requests to /metrics)
+        gevent.sleep(0)
         message: Optional[bytes]
 
         try:
@@ -238,4 +265,5 @@ def publish_events() -> None:
 
 
 if __name__ == "__main__":
+    start_prometheus_exporter_for_sidecar()
     publish_events()
