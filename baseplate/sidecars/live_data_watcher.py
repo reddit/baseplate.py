@@ -1,4 +1,15 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
+from gevent.monkey import patch_all
+from baseplate.server.monkey import patch_stdlib_queues
+
+# In order to allow Prometheus to scrape metrics, we need to concurrently
+# handle requests to '/metrics' along with the sidecar's execution.
+# Monkey patching is used to replace the stdlib sequential versions of functions
+# with concurrent versions. It must happen as soon as possible, before the
+# sequential versions are imported.
+patch_all()
+patch_stdlib_queues()
+
 import argparse
 import configparser
 import json
@@ -26,6 +37,7 @@ from baseplate.lib import config
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.server import EnvironmentInterpolation
+from baseplate.server.prometheus import start_prometheus_exporter_for_sidecar
 
 
 logger = logging.getLogger(__name__)
@@ -258,4 +270,5 @@ def main() -> NoReturn:
 
 
 if __name__ == "__main__":
+    start_prometheus_exporter_for_sidecar()
     main()
