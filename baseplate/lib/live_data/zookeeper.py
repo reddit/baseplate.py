@@ -1,14 +1,14 @@
 """Helpers for interacting with ZooKeeper."""
 from typing import Optional
 
-from kazoo.client import KazooClient, KazooState
+from kazoo.client import KazooClient
+from kazoo.client import KazooState
 from kazoo.handlers.gevent import SequentialGeventHandler
+from prometheus_client import Counter
 
 from baseplate.lib import config
 from baseplate.lib.secrets import SecretsStore
 from baseplate.server.monkey import gevent_is_patched
-
-from prometheus_client import Counter
 
 SESSION_LOST_TOTAL = Counter(
     "zookeeper_client_session_lost",

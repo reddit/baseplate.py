@@ -1,5 +1,6 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
 from gevent.monkey import patch_all
+
 from baseplate.server.monkey import patch_stdlib_queues
 
 # In order to allow Prometheus to scrape metrics, we need to concurrently
