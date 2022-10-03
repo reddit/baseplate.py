@@ -12,24 +12,26 @@ from baseplate.server.monkey import gevent_is_patched
 
 SESSION_LOST_TOTAL = Counter(
     "zookeeper_client_session_lost",
-    "The number of times a Zookeeper session as been lost for a client."
+    "The number of times a Zookeeper session as been lost for a client.",
 )
 
 SESSION_SUSPENDED_TOTAL = Counter(
     "zookeeper_client_session_suspended",
-    "The number of times a Zookeeper session as been suspended for a client."
+    "The number of times a Zookeeper session as been suspended for a client.",
 )
 
 SESSION_SUCCESSFUL_TOTAL = Counter(
     "zookeeper_client_session_connected",
-    "The number of times a Zookeeper session has successfully connected for a client."
+    "The number of times a Zookeeper session has successfully connected for a client.",
 )
 
+
 class SessionStatsListener:
-    """ A Kazoo listener that monitors changes in connection state.
+    """A Kazoo listener that monitors changes in connection state.
     Increments an event counter whenever connection state changes in a
     Zookeeper connection.
     """
+
     def __init__(self):
         pass
 
@@ -40,6 +42,7 @@ class SessionStatsListener:
             SESSION_SUSPENDED_TOTAL.inc()
         else:
             SESSION_SUCCESSFUL_TOTAL.inc()
+
 
 def zookeeper_client_from_config(
     secrets: SecretsStore, app_config: config.RawConfig, read_only: Optional[bool] = None
