@@ -50,6 +50,7 @@ ACTIVE_REQUESTS = Gauge(
     f"{PROM_PREFIX}_active_requests",
     "Number of active requests for a given client",
     PROM_SHARED_LABELS,
+    multiprocess_mode="livesum",
 )
 
 PROM_POOL_PREFIX = f"{PROM_PREFIX}_pool"
@@ -59,16 +60,19 @@ MAX_CONNECTIONS = Gauge(
     f"{PROM_POOL_PREFIX}_max_size",
     "Maximum number of connections allowed in this redis client connection pool",
     PROM_LABELS,
+    multiprocess_mode="livesum",
 )
 IDLE_CONNECTIONS = Gauge(
     f"{PROM_POOL_PREFIX}_idle_connections",
     "Number of idle connections in this redis client connection pool",
     PROM_LABELS,
+    multiprocess_mode="livesum",
 )
 OPEN_CONNECTIONS = Gauge(
     f"{PROM_POOL_PREFIX}_active_connections",
     "Number of open connections in this redis client connection pool",
     PROM_LABELS,
+    multiprocess_mode="livesum",
 )
 
 

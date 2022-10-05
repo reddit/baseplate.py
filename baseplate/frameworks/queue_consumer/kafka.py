@@ -65,6 +65,7 @@ KAFKA_ACTIVE_MESSAGES = Gauge(
     "kafka_consumer_active_messages",
     "gauge that reflects the number of messages currently being processed",
     KafkaConsumerPrometheusLabels._fields,
+    multiprocess_mode="livesum",
 )
 
 
