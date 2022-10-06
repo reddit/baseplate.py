@@ -255,7 +255,7 @@ def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
 
     if cfg.monitoring.connection_pool:
         reporters.append(_BaseplateReporter(baseplate.get_runtime_metric_reporters()))
-        logger.info("Set up conneciton pool monitoring")
+        logger.info("Set up connection pool monitoring")
 
     if cfg.monitoring.blocked_hub is not None:
         try:
