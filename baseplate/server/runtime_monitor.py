@@ -218,6 +218,7 @@ def _report_runtime_metrics_periodically(
             except Exception as exc:
                 logger.debug("Error while sending server metrics: %s", exc)
         else:
+            logger.info("triggering reporters")
             for reporter in reporters:
                 reporter.report(None)
 
@@ -250,31 +251,37 @@ def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
         observer = _ActiveRequestsObserver()
         reporters.append(observer)
         baseplate.register(observer)
+        logger.info("Set up concurrency monitoring")
 
     if cfg.monitoring.connection_pool:
         reporters.append(_BaseplateReporter(baseplate.get_runtime_metric_reporters()))
+        logger.info("Set up conneciton pool monitoring")
 
     if cfg.monitoring.blocked_hub is not None:
         try:
             reporters.append(_BlockedGeventHubReporter(cfg.monitoring.blocked_hub.total_seconds()))
+            logger.info("Set up blocked gevent monitoring")
         except Exception as exc:
             logger.info("monitoring.blocked_hub disabled: %s", exc)
 
     if cfg.monitoring.gc.stats:
         try:
             reporters.append(_GCStatsReporter())
+            logger.info("Set up gc monitoring")
         except Exception as exc:
             logger.info("monitoring.gc.stats disabled: %s", exc)
 
     if cfg.monitoring.gc.timing:
         try:
             reporters.append(_GCTimingReporter())
+            logger.info("Set up gc.timing monitoring")
         except Exception as exc:
             logger.info("monitoring.gc.timing disabled: %s", exc)
 
     if cfg.monitoring.gc.refcycle:
         try:
             reporters.append(_RefCycleReporter(cfg.monitoring.gc.refcycle))
+            logger.info("Set up gc.refcycle monitoring")
         except Exception as exc:
             logger.info("monitoring.gc.refcycle disabled: %s", exc)
 

@@ -5,6 +5,7 @@ from typing import Dict
 from typing import Optional
 
 import redis
+import logging
 
 # redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
 try:
@@ -23,6 +24,8 @@ from baseplate.lib import message_queue
 from baseplate.lib import metrics
 
 from baseplate.lib.prometheus_metrics import default_latency_buckets
+
+logger = logging.getLogger(__name__)
 
 PROM_PREFIX = "redis_client"
 PROM_LABELS_PREFIX = "redis"
@@ -177,6 +180,8 @@ class RedisContextFactory(ContextFactory):
     def report_runtime_metrics(self, batch: Optional[metrics.Client]) -> None:
         if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
             return
+
+        logger.info("reporting redis client runtime metrics")
 
         size = self.connection_pool.max_connections
         open_connections_num = len(self.connection_pool._connections)  # type: ignore
