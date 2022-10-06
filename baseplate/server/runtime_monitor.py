@@ -142,14 +142,15 @@ class _BaseplateReporter(_Reporter):
         self.reporters = reporters
 
     def report(self, batch: metrics.Batch) -> None:
-        if batch:
-            for name, reporter in self.reporters.items():
-                try:
+        for name, reporter in self.reporters.items():
+            try:
+                if batch:
                     batch.base_tags["client"] = name
-                    reporter(batch)
-                except Exception as exc:
-                    logger.exception("Error generating client metrics: %s: %s", name, exc)
-                finally:
+                reporter(batch)
+            except Exception as exc:
+                logger.exception("Error generating client metrics: %s: %s", name, exc)
+            finally:
+                if batch:
                     del batch.base_tags["client"]
 
 
@@ -218,7 +219,6 @@ def _report_runtime_metrics_periodically(
             except Exception as exc:
                 logger.debug("Error while sending server metrics: %s", exc)
         else:
-            logger.info("triggering reporters")
             for reporter in reporters:
                 reporter.report(None)
 

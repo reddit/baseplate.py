@@ -178,11 +178,8 @@ class RedisContextFactory(ContextFactory):
         self.redis_client_name = redis_client_name
 
     def report_runtime_metrics(self, batch: Optional[metrics.Client]) -> None:
-        logger.info("reporting redis client runtime metrics pre")
         if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
             return
-
-        logger.info("reporting redis client runtime metrics")
 
         size = self.connection_pool.max_connections
         open_connections_num = len(self.connection_pool._connections)  # type: ignore
