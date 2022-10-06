@@ -379,7 +379,7 @@ class ClusterRedisContextFactory(ContextFactory):
         self.name = name
         self.redis_client_name = redis_client_name
 
-    def report_runtime_metrics(self, batch: metrics.Client) -> None:
+    def report_runtime_metrics(self, batch: Optional[metrics.Client]) -> None:
         if not isinstance(self.connection_pool, rediscluster.ClusterBlockingConnectionPool):
             return
 
@@ -388,8 +388,9 @@ class ClusterRedisContextFactory(ContextFactory):
         MAX_CONNECTIONS.labels(self.name).set(size)
         OPEN_CONNECTIONS.labels(self.name).set(open_connections_num)
 
-        batch.gauge("pool.size").replace(size)
-        batch.gauge("pool.open_connections").replace(open_connections_num)
+        if batch:
+            batch.gauge("pool.size").replace(size)
+            batch.gauge("pool.open_connections").replace(open_connections_num)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisClusterConnection":
         return MonitoredRedisClusterConnection(

@@ -140,15 +140,17 @@ class ThriftContextFactory(ContextFactory):
             },
         )
 
-    def report_runtime_metrics(self, batch: metrics.Client) -> None:
-        pool_name = self.client_cls.__name__
-        self.max_connections_gauge.labels(pool_name).set(self.pool.size)
-        self.active_connections_gauge.labels(pool_name).set(self.pool.checkedout)
-        batch.gauge("pool.size").replace(self.pool.size)
-        batch.gauge("pool.in_use").replace(self.pool.checkedout)
+    def report_runtime_metrics(self, batch: Optional[metrics.Client]) -> None:
         # it's hard to report "open_and_available" currently because we can't
         # distinguish easily between available connection slots that aren't
         # instantiated and ones that have actual open connections.
+        pool_name = self.client_cls.__name__
+        self.max_connections_gauge.labels(pool_name).set(self.pool.size)
+        self.active_connections_gauge.labels(pool_name).set(self.pool.checkedout)
+
+        if batch: 
+            batch.gauge("pool.size").replace(self.pool.size)
+            batch.gauge("pool.in_use").replace(self.pool.checkedout)
 
     def make_object_for_context(self, name: str, span: Span) -> "_PooledClientProxy":
         return self.proxy_cls(self.client_cls, self.pool, span, name)

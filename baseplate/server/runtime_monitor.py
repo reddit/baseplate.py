@@ -43,8 +43,8 @@ class _OpenConnectionsReporter(_Reporter):
         self.pool = pool
 
     def report(self, batch: metrics.Batch) -> None:
-        batch.gauge("open_connections").replace(len(self.pool.greenlets))
-
+        if batch:
+            batch.gauge("open_connections").replace(len(self.pool.greenlets))
 
 class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
     def __init__(self) -> None:
@@ -63,8 +63,8 @@ class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
         ]
         for stale_request_id in stale_requests:
             self.live_requests.pop(stale_request_id, None)
-
-        batch.gauge("active_requests").replace(len(self.live_requests))
+        if batch:
+            batch.gauge("active_requests").replace(len(self.live_requests))
 
 
 class _ActiveRequestsServerSpanObserver(ServerSpanObserver):
@@ -105,10 +105,11 @@ class _BlockedGeventHubReporter(_Reporter):
 
 class _GCStatsReporter(_Reporter):
     def report(self, batch: metrics.Batch) -> None:
-        for generation, stats in enumerate(gc.get_stats()):
-            for name, value in stats.items():
-                gauge = batch.gauge(f"gc.{name}", tags={"generation": generation})
-                gauge.replace(value)
+        if batch:
+            for generation, stats in enumerate(gc.get_stats()):
+                for name, value in stats.items():
+                    gauge = batch.gauge(f"gc.{name}", tags={"generation": generation})
+                    gauge.replace(value)
 
 
 class _GCTimingReporter(_Reporter):
@@ -131,8 +132,9 @@ class _GCTimingReporter(_Reporter):
         gc_durations = self.gc_durations
         self.gc_durations = []
 
-        for gc_duration in gc_durations:
-            batch.timer("gc.elapsed").send(gc_duration)
+        if batch:
+            for gc_duration in gc_durations:
+                batch.timer("gc.elapsed").send(gc_duration)
 
 
 class _BaseplateReporter(_Reporter):
@@ -140,14 +142,15 @@ class _BaseplateReporter(_Reporter):
         self.reporters = reporters
 
     def report(self, batch: metrics.Batch) -> None:
-        for name, reporter in self.reporters.items():
-            try:
-                batch.base_tags["client"] = name
-                reporter(batch)
-            except Exception as exc:
-                logger.exception("Error generating client metrics: %s: %s", name, exc)
-            finally:
-                del batch.base_tags["client"]
+        if batch:
+            for name, reporter in self.reporters.items():
+                try:
+                    batch.base_tags["client"] = name
+                    reporter(batch)
+                except Exception as exc:
+                    logger.exception("Error generating client metrics: %s: %s", name, exc)
+                finally:
+                    del batch.base_tags["client"]
 
 
 class _RefCycleReporter(_Reporter):
@@ -185,7 +188,7 @@ class _RefCycleReporter(_Reporter):
 
 
 def _report_runtime_metrics_periodically(
-    metrics_client: metrics.Client, reporters: List[_Reporter]
+    metrics_client: Optional[metrics.Client], reporters: List[_Reporter]
 ) -> NoReturn:
     hostname = socket.gethostname()
     pid = str(os.getpid())
@@ -196,30 +199,32 @@ def _report_runtime_metrics_periodically(
         time_until_next_report = REPORT_INTERVAL_SECONDS - time_since_last_report
         time.sleep(time_until_next_report)
 
-        try:
-            with metrics_client.batch() as batch:
-                batch.namespace += b".runtime"
-                batch.base_tags["hostname"] = hostname
-                batch.base_tags["PID"] = pid
+        if metrics_client:
+            try:
+                with metrics_client.batch() as batch:
+                    batch.namespace += b".runtime"
+                    batch.base_tags["hostname"] = hostname
+                    batch.base_tags["PID"] = pid
 
-                for reporter in reporters:
-                    try:
-                        reporter.report(batch)
-                    except Exception as exc:
-                        logger.debug(
-                            "Error generating server metrics: %s: %s",
-                            reporter.__class__.__name__,
-                            exc,
-                        )
-        except Exception as exc:
-            logger.debug("Error while sending server metrics: %s", exc)
+                    for reporter in reporters:
+                        try:
+                            reporter.report(batch)
+                        except Exception as exc:
+                            logger.debug(
+                                "Error generating server metrics: %s: %s",
+                                reporter.__class__.__name__,
+                                exc,
+                            )
+            except Exception as exc:
+                logger.debug("Error while sending server metrics: %s", exc)
+        else:
+            reporter.report(None)
 
 
 def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
     baseplate: Baseplate = getattr(application, "baseplate", None)
     if not baseplate or not baseplate._metrics_client:
-        logger.info("No metrics client configured. Server metrics will not be sent.")
-        return
+        logger.info("No statsd metrics client configured. Statsd server metrics will not be sent.")
 
     cfg = config.parse_config(
         server_config,
@@ -275,7 +280,7 @@ def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
     thread = threading.Thread(
         name="Server Monitoring",
         target=_report_runtime_metrics_periodically,
-        args=(application.baseplate._metrics_client, reporters),
+        args=(application.baseplate._metrics_client or None, reporters),
     )
     thread.daemon = True
     thread.start()

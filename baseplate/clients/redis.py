@@ -174,7 +174,7 @@ class RedisContextFactory(ContextFactory):
         self.name = name
         self.redis_client_name = redis_client_name
 
-    def report_runtime_metrics(self, batch: metrics.Client) -> None:
+    def report_runtime_metrics(self, batch: Optional[metrics.Client]) -> None:
         if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
             return
 
@@ -187,9 +187,10 @@ class RedisContextFactory(ContextFactory):
         IDLE_CONNECTIONS.labels(self.name).set(available)
         OPEN_CONNECTIONS.labels(self.name).set(open_connections_num)
 
-        batch.gauge("pool.size").replace(size)
-        batch.gauge("pool.in_use").replace(in_use)
-        batch.gauge("pool.open_and_available").replace(open_connections_num - in_use)
+        if batch:
+            batch.gauge("pool.size").replace(size)
+            batch.gauge("pool.in_use").replace(in_use)
+            batch.gauge("pool.open_and_available").replace(open_connections_num - in_use)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
         return MonitoredRedisConnection(

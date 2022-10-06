@@ -340,7 +340,6 @@ class Baseplate:
                     self._app_config, self._metrics_client
                 )
             )
-
         elif "metrics.namespace" in self._app_config:
             from baseplate.lib.metrics import metrics_client_from_config
             from baseplate.observers.metrics import MetricsBaseplateObserver
@@ -351,9 +350,8 @@ class Baseplate:
                     self._app_config, self._metrics_client
                 )
             )
-
         else:
-            skipped.append("metrics")
+            skipped.append("statsd metrics")
 
         if "tracing.service_name" in self._app_config:
             from baseplate.observers.tracing import tracing_client_from_config

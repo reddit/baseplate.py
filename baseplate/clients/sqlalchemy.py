@@ -214,7 +214,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         event.listen(self.engine, "handle_error", self.on_error)
         self.time_started = 0.0
 
-    def report_runtime_metrics(self, batch: metrics.Client) -> None:
+    def report_runtime_metrics(self, batch: Optional[metrics.Client]) -> None:
         pool = self.engine.pool
         if not isinstance(pool, QueuePool):
             return
@@ -223,10 +223,11 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         self.checked_out_connections_gauge.labels(self.name).set(pool.checkedout())
         self.checked_in_connections_gauge.labels(self.name).set(pool.checkedin())
 
-        batch.gauge("pool.size").replace(pool.size())
-        batch.gauge("pool.open_and_available").replace(pool.checkedin())
-        batch.gauge("pool.in_use").replace(pool.checkedout())
-        batch.gauge("pool.overflow").replace(max(pool.overflow(), 0))
+        if batch:
+            batch.gauge("pool.size").replace(pool.size())
+            batch.gauge("pool.open_and_available").replace(pool.checkedin())
+            batch.gauge("pool.in_use").replace(pool.checkedout())
+            batch.gauge("pool.overflow").replace(max(pool.overflow(), 0))
 
     def make_object_for_context(self, name: str, span: Span) -> Engine:
         engine = self.engine.execution_options(context_name=name, server_span=span)
