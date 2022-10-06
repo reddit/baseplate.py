@@ -200,6 +200,7 @@ def _report_runtime_metrics_periodically(
         time.sleep(time_until_next_report)
 
         if metrics_client:
+            try:
                 with metrics_client.batch() as batch:
                     batch.namespace += b".runtime"
                     batch.base_tags["hostname"] = hostname
@@ -214,8 +215,8 @@ def _report_runtime_metrics_periodically(
                                 reporter.__class__.__name__,
                                 exc,
                             )
-                        except Exception as exc:
-                            logger.debug("Error while sending server metrics: %s", exc)
+            except Exception as exc:
+                logger.debug("Error while sending server metrics: %s", exc)
         else:
             for reporter in reporters:
                 reporter.report(None)
