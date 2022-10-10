@@ -28,6 +28,7 @@ greenlet==1.0.0
 hupper==1.10.2
 idna==2.10
 imagesize==1.2.0
+importlib-metadata==4.2.0
 iniconfig==1.1.1
 isort==5.7.0
 Jinja2==2.11.3
@@ -35,6 +36,7 @@ kazoo==2.8.0
 kombu==4.6.11
 lazy-object-proxy==1.4.3
 MarkupSafe==1.1.1
+mccabe==0.7.0
 moto==3.1.4
 mypy-extensions==0.4.3
 ndg-httpsclient==0.5.1
@@ -50,8 +52,10 @@ pluggy==0.13.1
 posix-ipc==1.0.5
 py==1.10.0
 pyasn1==0.4.8
+pycodestyle==2.9.1
 pycparser==2.20
 pyenchant==3.2.0
+pyflakes==2.5.0
 Pygments==2.7.4
 pymemcache==1.4.3
 pyOpenSSL==20.0.1
