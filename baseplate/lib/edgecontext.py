@@ -14,4 +14,3 @@ class EdgeContextFactory(ABC):
         :param header_value: The raw bytes of the header payload.
 
         """
-        ...
