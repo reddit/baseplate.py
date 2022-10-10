@@ -7,7 +7,7 @@
 black==21.10b0
 boto3==1.21.20
 flake8==5.0.4
-lxml==4.6.5
+lxml==4.9.1
 mypy==0.910
 prometheus-client==0.14.1
 pydocstyle==5.1.1
