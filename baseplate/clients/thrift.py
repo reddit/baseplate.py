@@ -148,7 +148,7 @@ class ThriftContextFactory(ContextFactory):
         self.max_connections_gauge.labels(pool_name).set(self.pool.size)
         self.active_connections_gauge.labels(pool_name).set(self.pool.checkedout)
 
-        if batch: 
+        if batch:
             batch.gauge("pool.size").replace(self.pool.size)
             batch.gauge("pool.in_use").replace(self.pool.checkedout)
 
