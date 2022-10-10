@@ -46,6 +46,7 @@ class _OpenConnectionsReporter(_Reporter):
         if batch:
             batch.gauge("open_connections").replace(len(self.pool.greenlets))
 
+
 class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
     def __init__(self) -> None:
         self.live_requests: Dict[str, float] = {}
