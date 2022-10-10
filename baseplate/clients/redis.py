@@ -1,4 +1,3 @@
-import redis
 import logging
 
 from math import ceil
@@ -6,6 +5,8 @@ from time import perf_counter
 from typing import Any
 from typing import Dict
 from typing import Optional
+
+import redis
 
 # redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
 try:
