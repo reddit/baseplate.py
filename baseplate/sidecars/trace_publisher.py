@@ -1,3 +1,16 @@
+# pylint: disable=wrong-import-position,wrong-import-order
+from gevent.monkey import patch_all
+
+from baseplate.server.monkey import patch_stdlib_queues
+
+# In order to allow Prometheus to scrape metrics, we need to concurrently
+# handle requests to '/metrics' along with the sidecar's execution.
+# Monkey patching is used to replace the stdlib sequential versions of functions
+# with concurrent versions. It must happen as soon as possible, before the
+# sequential versions are imported.
+patch_all()
+patch_stdlib_queues()
+
 import argparse
 import configparser
 import logging
@@ -5,6 +18,8 @@ import urllib.parse
 
 from typing import Optional
 
+import gevent
+from prometheus_client import Counter, Histogram
 import requests
 
 from baseplate import __version__ as baseplate_version
@@ -17,6 +32,7 @@ from baseplate.lib.retry import RetryPolicy
 from baseplate.observers.tracing import MAX_QUEUE_SIZE
 from baseplate.observers.tracing import MAX_SPAN_SIZE
 from baseplate.server import EnvironmentInterpolation
+from baseplate.server.prometheus import start_prometheus_exporter_for_sidecar
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import RawJSONBatch
 from baseplate.sidecars import SerializedBatch
@@ -45,6 +61,13 @@ class MaxRetriesError(Exception):
 class TraceBatch(RawJSONBatch):
     def __init__(self, max_size: int = MAX_BATCH_SIZE_DEFAULT):
         super().__init__(max_size)
+
+
+publishCountTotal = Counter("trace_publish_total", "total count of published traces")
+publishLatency = Histogram("trace_publish_latency", "latency for publishing a batch of traces")
+publishErrors = Counter(
+    "trace_publish_errors", "total count of errors when publishing traces", ["error_type"]
+)
 
 
 class ZipkinPublisher:
@@ -87,29 +110,34 @@ class ZipkinPublisher:
         for _ in RetryPolicy.new(attempts=self.retry_limit):
             try:
                 with self.metrics.timer("post"):
-                    response = self.session.post(
-                        self.endpoint,
-                        data=payload.serialized,
-                        headers=headers,
-                        timeout=self.post_timeout,
-                        stream=False,
-                    )
+                    with publishLatency.time():
+                        response = self.session.post(
+                            self.endpoint,
+                            data=payload.serialized,
+                            headers=headers,
+                            timeout=self.post_timeout,
+                            stream=False,
+                        )
                 response.raise_for_status()
             except requests.HTTPError as exc:
+                publishErrors.labels(error_type="http").inc()
                 self.metrics.counter("error.http").increment()
                 response = getattr(exc, "response", None)
                 if response is not None:
                     logger.exception("HTTP Request failed. Error: %s", response.text)
                     # If client error, skip retries
                     if response.status_code < 500:
+                        publishErrors.labels(error_type="http.client").inc()
                         self.metrics.counter("error.http.client").increment()
                         return
                 else:
                     logger.exception("HTTP Request failed. Response not available")
             except OSError:
+                publishErrors.labels(error_type="io").inc()
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
+                publishCountTotal.inc(payload.item_count)
                 self.metrics.counter("sent").increment(payload.item_count)
                 return
 
@@ -177,6 +205,8 @@ def publish_traces() -> None:
     )
 
     while True:
+        # allow other routines to execute (specifically handling requests to /metrics)
+        gevent.sleep(0)
         message: Optional[bytes]
 
         try:
@@ -194,4 +224,5 @@ def publish_traces() -> None:
 
 
 if __name__ == "__main__":
+    start_prometheus_exporter_for_sidecar()
     publish_traces()

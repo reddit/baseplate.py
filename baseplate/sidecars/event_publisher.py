@@ -116,7 +116,9 @@ class V2JBatch(V2Batch):
 
 publishCountTotal = Counter("event_publish_total", "total count of published events")
 publishLatency = Histogram("event_publish_latency", "latency for publishing a batch of events")
-publishErrors = Counter("event_publish_errors", "total count of published events", ["error_type"])
+publishErrors = Counter(
+    "event_publish_errors", "total count of errors when publishing events", ["error_type"]
+)
 
 
 class BatchPublisher:
