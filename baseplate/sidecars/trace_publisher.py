@@ -1,13 +1,29 @@
+# pylint: disable=wrong-import-position,wrong-import-order
+from gevent.monkey import patch_all
+
+from baseplate.server.monkey import patch_stdlib_queues
+
+# In order to allow Prometheus to scrape metrics, we need to concurrently
+# handle requests to '/metrics' along with the sidecar's execution.
+# Monkey patching is used to replace the stdlib sequential versions of functions
+# with concurrent versions. It must happen as soon as possible, before the
+# sequential versions are imported.
+patch_all()
+patch_stdlib_queues()
+
 import argparse
 import configparser
 import logging
-import urllib.parse
 
 from typing import Optional
 
+import gevent
 import requests
 
-from baseplate import __version__ as baseplate_version
+from prometheus_client import Counter
+
+from baseplate import Baseplate
+from baseplate.clients.requests import ExternalRequestsClient
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.message_queue import MessageQueue
@@ -17,6 +33,7 @@ from baseplate.lib.retry import RetryPolicy
 from baseplate.observers.tracing import MAX_QUEUE_SIZE
 from baseplate.observers.tracing import MAX_SPAN_SIZE
 from baseplate.server import EnvironmentInterpolation
+from baseplate.server.prometheus import start_prometheus_exporter_for_sidecar
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import RawJSONBatch
 from baseplate.sidecars import SerializedBatch
@@ -36,6 +53,8 @@ MAX_BATCH_AGE = 1
 
 # maximum number of retries when publishing traces
 RETRY_LIMIT_DEFAULT = 10
+
+PUBLISHES_COUNT_TOTAL = Counter("trace_publishes_total", "total count of published traces")
 
 
 class MaxRetriesError(Exception):
@@ -58,14 +77,15 @@ class ZipkinPublisher:
         retry_limit: int = RETRY_LIMIT_DEFAULT,
         num_conns: int = 5,
     ):
-
-        adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
-        parsed_url = urllib.parse.urlparse(zipkin_api_url)
-        self.session = requests.Session()
-        self.session.headers[
-            "User-Agent"
-        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
-        self.session.mount(f"{parsed_url.scheme}://", adapter)
+        bp = Baseplate()
+        bp.configure_context(
+            {
+                "http_client": ExternalRequestsClient(
+                    "trace_collector", pool_connections=num_conns, pool_maxsize=num_conns
+                ),
+            }
+        )
+        self.baseplate = bp
         self.endpoint = f"{zipkin_api_url}/spans"
         self.metrics = metrics_client
         self.post_timeout = post_timeout
@@ -86,14 +106,14 @@ class ZipkinPublisher:
         }
         for _ in RetryPolicy.new(attempts=self.retry_limit):
             try:
-                with self.metrics.timer("post"):
-                    response = self.session.post(
-                        self.endpoint,
-                        data=payload.serialized,
-                        headers=headers,
-                        timeout=self.post_timeout,
-                        stream=False,
-                    )
+                with self.baseplate.server_context("post") as context:
+                    with self.metrics.timer("post"):
+                        response = context.http_client.post(
+                            self.endpoint,
+                            data=payload.serialized,
+                            headers=headers,
+                            timeout=self.post_timeout,
+                        )
                 response.raise_for_status()
             except requests.HTTPError as exc:
                 self.metrics.counter("error.http").increment()
@@ -110,6 +130,7 @@ class ZipkinPublisher:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
+                PUBLISHES_COUNT_TOTAL.inc(payload.item_count)
                 self.metrics.counter("sent").increment(payload.item_count)
                 return
 
@@ -177,6 +198,8 @@ def publish_traces() -> None:
     )
 
     while True:
+        # allow other routines to execute (specifically handling requests to /metrics)
+        gevent.sleep(0)
         message: Optional[bytes]
 
         try:
@@ -186,12 +209,19 @@ def publish_traces() -> None:
 
         try:
             batcher.add(message)
+            continue
         except BatchFull:
-            serialized = batcher.serialize()
+            pass
+
+        serialized = batcher.serialize()
+        try:
             publisher.publish(serialized)
-            batcher.reset()
-            batcher.add(message)
+        except Exception:
+            logger.exception("Traces publishing failed.")
+        batcher.reset()
+        batcher.add(message)
 
 
 if __name__ == "__main__":
+    start_prometheus_exporter_for_sidecar()
     publish_traces()
