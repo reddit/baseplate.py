@@ -1,4 +1,5 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
+# pylint: disable=wrong-import-position,wrong-import-order
 from gevent.monkey import patch_all
 
 from baseplate.server.monkey import patch_stdlib_queues
@@ -24,8 +25,8 @@ from typing import Any
 from typing import NoReturn
 from typing import Optional
 
-import gevent
 import boto3  # type: ignore
+import gevent
 
 from botocore import UNSIGNED  # type: ignore
 from botocore.client import ClientError  # type: ignore
