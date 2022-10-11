@@ -25,6 +25,7 @@ from typing import Any
 from typing import NoReturn
 from typing import Optional
 
+import gevent
 import boto3  # type: ignore
 
 from botocore import UNSIGNED  # type: ignore
