@@ -218,6 +218,14 @@ def _report_runtime_metrics_periodically(
 
 def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
     baseplate: Baseplate = getattr(application, "baseplate", None)
+    # As of October 1, 2022 Reddit uses Prometheus to track metrics, not Statsd
+    # this checks to see if Prometheus metrics are enabled and uses this to determine
+    # if runtime metrics should be reported. Prometheus metrics default to "on".
+    # As of October 12, 2022 some teams still have permission to use Statsd for metrics
+    # reporting so we still need runtime metrics to be sent to Statsd sometimes, therefore
+    # we can't remove Statsd from runtime reporter functions all together yet, instead we stub 
+    # out the metrics Statsd client in the case there is none. There will be no Statsd client
+    # in the case of teams that have fully moved from Statsd to Promtheus.
     if not baseplate or not prometheus_metrics.is_metrics_enabled(server_config):
         logger.info("No metrics client configured. Server metrics will not be sent.")
         return
