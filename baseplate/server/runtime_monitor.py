@@ -223,7 +223,7 @@ def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
     # if runtime metrics should be reported. Prometheus metrics default to "on".
     # As of October 12, 2022 some teams still have permission to use Statsd for metrics
     # reporting so we still need runtime metrics to be sent to Statsd sometimes, therefore
-    # we can't remove Statsd from runtime reporter functions all together yet, instead we stub 
+    # we can't remove Statsd from runtime reporter functions all together yet, instead we stub
     # out the metrics Statsd client in the case there is none. There will be no Statsd client
     # in the case of teams that have fully moved from Statsd to Prometheus.
     if not baseplate or not prometheus_metrics.is_metrics_enabled(server_config):
