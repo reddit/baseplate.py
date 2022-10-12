@@ -255,7 +255,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
                 REQUESTS_TOTAL.labels(**result_labels).inc()
                 LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
 
-    # pylint: disable=arguments-differ
+    # pylint: disable=arguments-renamed
     def pipeline(  # type: ignore
         self, name: str, transaction: bool = True, shard_hint: Optional[str] = None
     ) -> "MonitoredRedisPipeline":
