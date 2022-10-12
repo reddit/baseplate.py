@@ -114,7 +114,11 @@ class V2JBatch(V2Batch):
         return SerializedBatch(item_count=len(self._items), serialized=serialized)
 
 class BatchPublisher:
-    def __init__(self, bp: Baseplate, metrics_client: metrics.Client, cfg: Any):
+    def __init__(self, metrics_client: metrics.Client, cfg: Any):
+        bp = Baseplate()
+        bp.configure_context({
+            "http_client": ExternalRequestsClient("event_collector"),
+        })
         self.baseplate = bp
         self.metrics = metrics_client
         self.url = f"{cfg.collector.scheme}://{cfg.collector.hostname}/v{cfg.collector.version}"
@@ -148,8 +152,6 @@ class BatchPublisher:
                             headers=headers,
                             data=compressed_payload,
                             timeout=POST_TIMEOUT,
-                            # http://docs.python-requests.org/en/latest/user/advanced/#keep-alive
-                            stream=False,
                         )
                 response.raise_for_status()
             except requests.HTTPError as exc:
@@ -214,11 +216,6 @@ def publish_events() -> None:
         },
     )
 
-    bp = Baseplate()
-    bp.configure_context({
-        "http_client": ExternalRequestsClient(),
-    })
-
     metrics_client = metrics_client_from_config(raw_config)
 
     event_queue = MessageQueue(
@@ -230,7 +227,7 @@ def publish_events() -> None:
     # pylint: disable=maybe-no-member
     serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
-    publisher = BatchPublisher(bp, metrics_client, cfg)
+    publisher = BatchPublisher(metrics_client, cfg)
 
     while True:
         # allow other routines to execute (specifically handling requests to /metrics)

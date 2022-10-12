@@ -14,15 +14,15 @@ patch_stdlib_queues()
 import argparse
 import configparser
 import logging
-import urllib.parse
 
 from typing import Optional
 
 import gevent
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter
 import requests
 
-from baseplate import __version__ as baseplate_version
+from baseplate import Baseplate
+from baseplate.clients.requests import ExternalRequestsClient
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.message_queue import MessageQueue
@@ -63,11 +63,7 @@ class TraceBatch(RawJSONBatch):
         super().__init__(max_size)
 
 
-publishCountTotal = Counter("trace_publish_total", "total count of published traces")
-publishLatency = Histogram("trace_publish_latency", "latency for publishing a batch of traces")
-publishErrors = Counter(
-    "trace_publish_errors", "total count of errors when publishing traces", ["error_type"]
-)
+PUBLISH_COUNT_TOTAL = Counter("trace_publishes_total", "total count of published traces")
 
 
 class ZipkinPublisher:
@@ -81,14 +77,11 @@ class ZipkinPublisher:
         retry_limit: int = RETRY_LIMIT_DEFAULT,
         num_conns: int = 5,
     ):
-
-        adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
-        parsed_url = urllib.parse.urlparse(zipkin_api_url)
-        self.session = requests.Session()
-        self.session.headers[
-            "User-Agent"
-        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
-        self.session.mount(f"{parsed_url.scheme}://", adapter)
+        bp = Baseplate()
+        bp.configure_context({
+            "http_client": ExternalRequestsClient("trace_collector", pool_connections=num_conns, pool_maxsize=num_conns),
+        })
+        self.baseplate = bp
         self.endpoint = f"{zipkin_api_url}/spans"
         self.metrics = metrics_client
         self.post_timeout = post_timeout
@@ -109,35 +102,31 @@ class ZipkinPublisher:
         }
         for _ in RetryPolicy.new(attempts=self.retry_limit):
             try:
-                with self.metrics.timer("post"):
-                    with publishLatency.time():
-                        response = self.session.post(
+                with self.baseplate.server_context("post") as context:
+                    with self.metrics.timer("post"):
+                        response = context.http_client.post(
                             self.endpoint,
                             data=payload.serialized,
                             headers=headers,
                             timeout=self.post_timeout,
-                            stream=False,
                         )
                 response.raise_for_status()
             except requests.HTTPError as exc:
-                publishErrors.labels(error_type="http").inc()
                 self.metrics.counter("error.http").increment()
                 response = getattr(exc, "response", None)
                 if response is not None:
                     logger.exception("HTTP Request failed. Error: %s", response.text)
                     # If client error, skip retries
                     if response.status_code < 500:
-                        publishErrors.labels(error_type="http.client").inc()
                         self.metrics.counter("error.http.client").increment()
                         return
                 else:
                     logger.exception("HTTP Request failed. Response not available")
             except OSError:
-                publishErrors.labels(error_type="io").inc()
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
-                publishCountTotal.inc(payload.item_count)
+                PUBLISH_COUNT_TOTAL.inc(payload.item_count)
                 self.metrics.counter("sent").increment(payload.item_count)
                 return
 
@@ -216,11 +205,17 @@ def publish_traces() -> None:
 
         try:
             batcher.add(message)
+            continue
         except BatchFull:
-            serialized = batcher.serialize()
+            pass
+
+        serialized = batcher.serialize()
+        try:
             publisher.publish(serialized)
-            batcher.reset()
-            batcher.add(message)
+        except Exception:
+            logger.exception("Traces publishing failed.")
+        batcher.reset()
+        batcher.add(message)
 
 
 if __name__ == "__main__":
