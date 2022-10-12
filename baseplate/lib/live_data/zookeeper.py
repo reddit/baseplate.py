@@ -11,17 +11,17 @@ from baseplate.lib.secrets import SecretsStore
 from baseplate.server.monkey import gevent_is_patched
 
 SESSION_LOST_TOTAL = Counter(
-    "zookeeper_client_session_lost_total",
+    "live_data_fetcher_lost_sessions_total",
     "The number of times a Zookeeper client has had a session be lost.",
 )
 
 SESSION_SUSPENDED_TOTAL = Counter(
-    "zookeeper_client_session_suspended_total",
+    "live_data_fetcher_suspended_sessions_total",
     "The number of times a Zookeeper client has had a session be suspended.",
 )
 
 SESSION_SUCCESSFUL_TOTAL = Counter(
-    "zookeeper_client_session_connected_total",
+    "live_data_fetcher_connected_sessions_total",
     "The number of times a Zookeeper client has successfully established a session.",
 )
 
