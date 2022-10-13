@@ -39,6 +39,7 @@ from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
+from baseplate.server.prometheus import start_prometheus_exporter_for_sidecar
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import SerializedBatch
@@ -263,4 +264,5 @@ def publish_events() -> None:
 
 
 if __name__ == "__main__":
+    start_prometheus_exporter_for_sidecar()
     publish_events()
