@@ -51,6 +51,9 @@ MAX_BATCH_SIZE_DEFAULT = 500 * 1024
 # messages to batch
 MAX_BATCH_AGE = 1
 
+# max number of connections to Zipkin server
+MAX_NUM_CONNS = 5
+
 # maximum number of retries when publishing traces
 RETRY_LIMIT_DEFAULT = 10
 
@@ -71,20 +74,12 @@ class ZipkinPublisher:
 
     def __init__(
         self,
+        bp: Baseplate,
         zipkin_api_url: str,
         metrics_client: metrics.Client,
         post_timeout: int = POST_TIMEOUT_DEFAULT,
         retry_limit: int = RETRY_LIMIT_DEFAULT,
-        num_conns: int = 5,
     ):
-        bp = Baseplate()
-        bp.configure_context(
-            {
-                "http_client": ExternalRequestsClient(
-                    "trace_collector", pool_connections=num_conns, pool_maxsize=num_conns
-                ),
-            }
-        )
         self.baseplate = bp
         self.endpoint = f"{zipkin_api_url}/spans"
         self.metrics = metrics_client
@@ -187,11 +182,21 @@ def publish_traces() -> None:
         max_message_size=MAX_SPAN_SIZE,
     )
 
+    bp = Baseplate()
+    bp.configure_context(
+        {
+            "http_client": ExternalRequestsClient(
+                "trace_collector", pool_connections=MAX_NUM_CONNS, pool_maxsize=MAX_NUM_CONNS
+            ),
+        }
+    )
+
     # pylint: disable=maybe-no-member
     inner_batch = TraceBatch(max_size=publisher_cfg.max_batch_size)
     batcher = TimeLimitedBatch(inner_batch, MAX_BATCH_AGE)
     metrics_client = metrics_client_from_config(publisher_raw_cfg)
     publisher = ZipkinPublisher(
+        bp,
         publisher_cfg.zipkin_api_url.address,
         metrics_client,
         post_timeout=publisher_cfg.post_timeout,

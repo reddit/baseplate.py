@@ -118,13 +118,7 @@ class V2JBatch(V2Batch):
 
 
 class BatchPublisher:
-    def __init__(self, metrics_client: metrics.Client, cfg: Any):
-        bp = Baseplate()
-        bp.configure_context(
-            {
-                "http_client": ExternalRequestsClient("event_collector"),
-            }
-        )
+    def __init__(self, bp: Baseplate, metrics_client: metrics.Client, cfg: Any):
         self.baseplate = bp
         self.metrics = metrics_client
         self.url = f"{cfg.collector.scheme}://{cfg.collector.hostname}/v{cfg.collector.version}"
@@ -231,10 +225,17 @@ def publish_events() -> None:
         max_message_size=MAX_EVENT_SIZE,
     )
 
+    bp = Baseplate()
+    bp.configure_context(
+        {
+            "http_client": ExternalRequestsClient("event_collector"),
+        }
+    )
+
     # pylint: disable=maybe-no-member
     serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
-    publisher = BatchPublisher(metrics_client, cfg)
+    publisher = BatchPublisher(bp, metrics_client, cfg)
 
     while True:
         # allow other routines to execute (specifically handling requests to /metrics)
