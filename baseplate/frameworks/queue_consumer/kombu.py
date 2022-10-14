@@ -172,11 +172,6 @@ class KombuMessageHandler(MessageHandler):
         self.retry_mode = retry_mode
         self.retry_limit = retry_limit
 
-    def _terminate_server_if_needed(self, exc: Exception) -> None:
-        if isinstance(exc, FatalMessageHandlerError):
-            logger.info("Received a fatal error, terminating the server.")
-            raise
-
     def _is_error_recoverable(self, exc: Exception) -> bool:
         if isinstance(exc, KnownException):
             return exc.is_recoverable()
@@ -301,7 +296,9 @@ class KombuMessageHandler(MessageHandler):
             else:
                 self._handle_error(message, prometheus_labels, exc)
 
-            self._terminate_server_if_needed(exc)
+            if isinstance(exc, FatalMessageHandlerError):
+                logger.info("Received a fatal error, terminating the server.")
+                raise
         else:
             message.ack()
         finally:
