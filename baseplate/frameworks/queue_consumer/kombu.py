@@ -177,13 +177,6 @@ class KombuMessageHandler(MessageHandler):
             return exc.is_recoverable()
         return True  # for backward compatibility, retry unexpected errors
 
-    @staticmethod
-    def _safe_cast(val, to_type, default=None):
-        try:
-            return to_type(val)
-        except (ValueError, TypeError):
-            return default
-
     def _handle_error(
         self,
         message: kombu.Message,
@@ -208,10 +201,17 @@ class KombuMessageHandler(MessageHandler):
             return
 
         headers = message.headers or {}
-        retry_count = headers.get(MESSAGE_HEADER_RETRY_COUNT, 0)
-        retry_count = self._safe_cast(retry_count, int, 0)
-        retry_limit = headers.get(MESSAGE_HEADER_RETRY_LIMIT, None)
-        retry_limit = self._safe_cast(retry_limit, int, None)
+        retry_count_val = headers.get(MESSAGE_HEADER_RETRY_COUNT, 0)
+        try:
+            retry_count = int(retry_count_val)
+        except (ValueError, TypeError):
+            retry_count = 0
+
+        retry_limit_val = headers.get(MESSAGE_HEADER_RETRY_LIMIT, None)
+        try:
+            retry_limit = int(retry_limit_val)
+        except (ValueError, TypeError):
+            retry_limit = None
 
         if (self.retry_limit is not None and retry_count >= self.retry_limit) or (
             retry_limit is not None and retry_count >= retry_limit
