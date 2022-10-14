@@ -208,6 +208,7 @@ class KombuMessageHandler(MessageHandler):
             retry_count = 0
 
         retry_limit_val = headers.get(MESSAGE_HEADER_RETRY_LIMIT, None)
+        retry_limit: Optional[int]
         try:
             retry_limit = int(retry_limit_val)
         except (ValueError, TypeError):
