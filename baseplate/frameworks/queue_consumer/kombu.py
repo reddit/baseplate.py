@@ -59,10 +59,12 @@ AMQP_REPUBLISHED_TOTAL = Counter(
     AmqpConsumerPrometheusLabels._fields,
 )
 
-AMQP_RETRY_LIMIT_REACHED_TOTAL = Counter(
-    "amqp_consumer_message_retry_limit_reached_total",
-    "total count of messages that reached the retry limit and were discarded by this host",
-    AmqpConsumerPrometheusLabels._fields,
+AMQP_REJECTED_REASON_TTL = "ttl"
+AMQP_REJECTED_REASON_RETRIES = "retries"
+AMQP_REJECTED_TOTAL = Counter(
+    "amqp_consumer_messages_rejected_total",
+    "total count of messages that were rejected by this host",
+    AmqpConsumerPrometheusLabels._fields + ("reason_code",),
 )
 
 AMQP_TTL_REACHED_TOTAL = Counter(
@@ -223,7 +225,9 @@ class KombuMessageHandler(MessageHandler):
                 "Unhandled error while trying to process a message. "
                 "The message reached the retry limit."
             )
-            AMQP_RETRY_LIMIT_REACHED_TOTAL.labels(**prometheus_labels._asdict()).inc()
+            AMQP_REJECTED_TOTAL.labels(
+                **prometheus_labels._asdict(), reason_code=AMQP_REJECTED_REASON_RETRIES
+            ).inc()
             message.reject()
             return
 
@@ -261,7 +265,9 @@ class KombuMessageHandler(MessageHandler):
 
         if self._is_ttl_over(message):
             message.reject()
-            AMQP_TTL_REACHED_TOTAL.labels(**prometheus_labels._asdict()).inc()
+            AMQP_REJECTED_TOTAL.labels(
+                **prometheus_labels._asdict(), reason_code=AMQP_REJECTED_REASON_TTL
+            ).inc()
             return
 
         context = self.baseplate.make_context_object()
@@ -288,7 +294,7 @@ class KombuMessageHandler(MessageHandler):
 
             # Custom error_handler_fn has priority over standard handler.
             if self.error_handler_fn:
-                logger.exception(
+                logger.debug(
                     "Unhandled error while trying to process a message. Custom handler invoked."
                 )
                 self.error_handler_fn(context, message_body, message, exc)

@@ -143,15 +143,13 @@ class TestKombuMessageHandler:
             REGISTRY.get_sample_value(
                 f"{AMQP_REPUBLISHED_TOTAL._name}_total",
                 {**prom_labels._asdict()},
-            )
-            == None
+            ) is None
         )
         assert (
             REGISTRY.get_sample_value(
                 f"{AMQP_RETRY_LIMIT_REACHED_TOTAL._name}_total",
                 {**prom_labels._asdict()},
-            )
-            == None
+            ) is None
         )
         assert (
             REGISTRY.get_sample_value(
@@ -228,22 +226,19 @@ class TestKombuMessageHandler:
                     REGISTRY.get_sample_value(
                         f"{AMQP_REPUBLISHED_TOTAL._name}_total",
                         {**prom_labels._asdict()},
-                    )
-                    == None
+                    ) is None
                 )
                 assert (
                     REGISTRY.get_sample_value(
                         f"{AMQP_RETRY_LIMIT_REACHED_TOTAL._name}_total",
                         {**prom_labels._asdict()},
-                    )
-                    == None
+                    ) is None
                 )
                 assert (
                     REGISTRY.get_sample_value(
                         f"{AMQP_TTL_REACHED_TOTAL._name}_total",
                         {**prom_labels._asdict()},
-                    )
-                    == None
+                    ) is None
                 )
 
                 # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
@@ -318,22 +313,19 @@ class TestKombuMessageHandler:
                     REGISTRY.get_sample_value(
                         f"{AMQP_REPUBLISHED_TOTAL._name}_total",
                         {**prom_labels._asdict()},
-                    )
-                    == None
+                    ) is None
                 )
                 assert (
                     REGISTRY.get_sample_value(
                         f"{AMQP_RETRY_LIMIT_REACHED_TOTAL._name}_total",
                         {**prom_labels._asdict()},
-                    )
-                    == None
+                    ) is None
                 )
                 assert (
                     REGISTRY.get_sample_value(
                         f"{AMQP_TTL_REACHED_TOTAL._name}_total",
                         {**prom_labels._asdict()},
-                    )
-                    == None
+                    ) is None
                 )
 
     @pytest.mark.parametrize(
@@ -439,8 +431,7 @@ class TestKombuMessageHandler:
                     REGISTRY.get_sample_value(
                         f"{AMQP_TTL_REACHED_TOTAL._name}_total",
                         {**prom_labels._asdict()},
-                    )
-                    == None
+                    ) is None
                 )
                 # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
                 assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
