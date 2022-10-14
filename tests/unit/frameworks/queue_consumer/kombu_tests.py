@@ -16,10 +16,10 @@ from baseplate import ServerSpan
 from baseplate.frameworks.queue_consumer.kombu import AMQP_ACTIVE_MESSAGES
 from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSED_TOTAL
 from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSING_TIME
-from baseplate.frameworks.queue_consumer.kombu import AMQP_REPUBLISHED_TOTAL
 from baseplate.frameworks.queue_consumer.kombu import AMQP_REJECTED_REASON_RETRIES
 from baseplate.frameworks.queue_consumer.kombu import AMQP_REJECTED_REASON_TTL
 from baseplate.frameworks.queue_consumer.kombu import AMQP_REJECTED_TOTAL
+from baseplate.frameworks.queue_consumer.kombu import AMQP_REPUBLISHED_TOTAL
 from baseplate.frameworks.queue_consumer.kombu import AmqpConsumerPrometheusLabels
 from baseplate.frameworks.queue_consumer.kombu import FatalMessageHandlerError
 from baseplate.frameworks.queue_consumer.kombu import KombuConsumerWorker
