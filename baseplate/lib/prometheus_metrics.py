@@ -1,3 +1,8 @@
+from typing import Dict
+
+from baseplate.lib import config
+
+
 # default_latency_buckets creates the default bucket values for time based histogram metrics.
 # we want this to match the baseplate.go default_buckets
 # bp.go v0 ref: https://github.com/reddit/baseplate.go/blob/master/prometheusbp/metrics.go.
@@ -36,3 +41,19 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     The HTTP success label is "true" if the status code is 2xx or 3xx, "false" otherwise.
     """
     return str(200 <= httpStatusCode < 400).lower()
+
+
+def is_metrics_enabled(raw_config: Dict[str, str]) -> bool:
+    cfg = config.parse_config(
+        raw_config,
+        {
+            "metrics": {
+                "enabled": config.Optional(config.Boolean),
+            }
+        },
+    )
+
+    if cfg.metrics.enabled is not None:
+        return cfg.metrics.enabled
+
+    return True

@@ -85,7 +85,6 @@ class TestMonitoredRedisConnection:
         return cluster_pool_from_config(
             app_config=app_config,
             prefix="redis.",
-            client_name="test_client",
             init_slot_cache=False,
             startup_nodes=[
                 {
@@ -107,7 +106,9 @@ class TestMonitoredRedisConnection:
     @pytest.fixture
     @mock.patch("rediscluster.RedisCluster", new=mock.MagicMock())
     def monitored_redis_connection(self, span, connection_pool):
-        return MonitoredRedisClusterConnection("redis_context_name", span, connection_pool)
+        return MonitoredRedisClusterConnection(
+            "redis_context_name", span, connection_pool, redis_client_name="test_client"
+        )
 
     # NOTE: a successful execute_command() call is difficult to mock
     def test_execute_command_exc_redis_err(
