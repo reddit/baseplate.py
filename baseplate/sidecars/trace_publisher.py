@@ -57,7 +57,7 @@ MAX_NUM_CONNS = 5
 # maximum number of retries when publishing traces
 RETRY_LIMIT_DEFAULT = 10
 
-PUBLISHES_COUNT_TOTAL = Counter("trace_publishes_total", "total count of published traces")
+PUBLISHES_COUNT_TOTAL = Counter("zipkin_trace_publishes_total", "total count of published traces")
 
 
 class MaxRetriesError(Exception):

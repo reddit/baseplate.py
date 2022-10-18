@@ -61,7 +61,7 @@ MAX_BATCH_AGE = 1
 # maximum size (in bytes) of a batch of events
 MAX_BATCH_SIZE = 500 * 1024
 
-PUBLISHES_COUNT_TOTAL = Counter("event_publishes_total", "total count of published events")
+PUBLISHES_COUNT_TOTAL = Counter("eventv2_publishes_total", "total count of published events")
 
 
 class MaxRetriesError(Exception):
