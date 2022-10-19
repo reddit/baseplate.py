@@ -50,6 +50,7 @@ REQUEST_ACTIVE = Gauge(
     "cassandra_client_active_requests",
     "Current number of active cassandra queries",
     CassandraPrometheusLabels._fields,
+    multiprocess_mode="livesum",
 )
 REQUEST_TOTAL = Counter(
     "cassandra_client_requests_total",

@@ -55,6 +55,7 @@ AMQP_ACTIVE_MESSAGES = Gauge(
     "amqp_consumer_active_messages",
     "gauge that reflects the number of messages currently being processed",
     AmqpConsumerPrometheusLabels._fields,
+    multiprocess_mode="livesum",
 )
 
 

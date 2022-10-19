@@ -134,6 +134,7 @@ ACTIVE_REQUESTS = Gauge(
     f"{PROM_NAMESPACE}_active_requests",
     "Number of active requests for a given client",
     HTTP_LABELS_COMMON,
+    multiprocess_mode="livesum",
 )
 
 
