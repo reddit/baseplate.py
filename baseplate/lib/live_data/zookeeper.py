@@ -32,10 +32,7 @@ class SessionStatsListener:
     Zookeeper connection.
     """
 
-    def __init__(self):
-        pass
-
-    def __call__(self, state):
+    def __call__(self, state: KazooState) -> None:
         if state == KazooState.LOST:
             SESSION_LOST_TOTAL.inc()
         elif state == KazooState.SUSPENDED:
