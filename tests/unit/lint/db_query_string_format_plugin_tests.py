@@ -18,7 +18,7 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
         self.checker.visit_assign(assign_node_a)
         self.checker.visit_call(call_node_b)
         self.assertAddsMessages(
-            pylint.testutils.Message(msg_id="database-query-string-format", node=call_node_b)
+            pylint.testutils.MessageTest(msg_id="database-query-string-format", node=call_node_b)
         )
 
     def test_finds_variable_call_string_format_query(self):
@@ -32,7 +32,7 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
         self.checker.visit_assign(assign_node_a)
         self.checker.visit_call(call_node_b)
         self.assertAddsMessages(
-            pylint.testutils.Message(msg_id="database-query-string-format", node=call_node_b)
+            pylint.testutils.MessageTest(msg_id="database-query-string-format", node=call_node_b)
         )
 
     def test_finds_binop_string_format_query(self):
@@ -44,7 +44,7 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
 
         self.checker.visit_call(call_node_a)
         self.assertAddsMessages(
-            pylint.testutils.Message(msg_id="database-query-string-format", node=call_node_a)
+            pylint.testutils.MessageTest(msg_id="database-query-string-format", node=call_node_a)
         )
 
     def test_finds_call_string_format_query(self):
@@ -56,7 +56,7 @@ class TestNoCQLStringFormatChecker(pylint.testutils.CheckerTestCase):
 
         self.checker.visit_call(call_node_a)
         self.assertAddsMessages(
-            pylint.testutils.Message(msg_id="database-query-string-format", node=call_node_a)
+            pylint.testutils.MessageTest(msg_id="database-query-string-format", node=call_node_a)
         )
 
     def test_ignores_variable_non_string_format_query(self):

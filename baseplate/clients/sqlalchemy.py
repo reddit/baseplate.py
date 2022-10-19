@@ -302,9 +302,10 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     def on_error(self, context: ExceptionContext) -> None:
         """Handle the event which happens on exceptions during execution."""
-        exc_info = (type(context.original_exception), context.original_exception, None)
-        context.connection.info["span"].finish(exc_info=exc_info)
-        context.connection.info["span"] = None
+        if "span" in context.connection.info and context.connection.info["span"] is not None:
+            exc_info = (type(context.original_exception), context.original_exception, None)
+            context.connection.info["span"].finish(exc_info=exc_info)
+            context.connection.info["span"] = None
 
         labels = {
             "sql_pool": self.name,

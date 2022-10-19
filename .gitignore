@@ -10,3 +10,5 @@ build/
 dist/
 .eggs/
 .mypy_cache/
+
+.idea/

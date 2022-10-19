@@ -1,7 +1,5 @@
 import unittest
 
-from typing import Any
-
 try:
     import rediscluster
 except ImportError:
@@ -13,11 +11,13 @@ from baseplate.lib.config import ConfigurationError
 from baseplate.clients.redis_cluster import cluster_pool_from_config
 
 from baseplate.clients.redis_cluster import ClusterRedisClient
-from baseplate import Baseplate
-from . import TestBaseplateObserver, get_endpoint_or_skip_container
-from baseplate.clients.redis_cluster import ACTIVE_REQUESTS
-from baseplate.clients.redis_cluster import LATENCY_SECONDS
-from baseplate.clients.redis_cluster import REQUESTS_TOTAL
+from baseplate.clients.redis import REQUESTS_TOTAL
+from baseplate.clients.redis import LATENCY_SECONDS
+from baseplate.clients.redis import ACTIVE_REQUESTS
+
+from . import get_endpoint_or_skip_container
+from .redis_testcase import RedisIntegrationTestCase, redis_cluster_url
+
 
 redis_endpoint = get_endpoint_or_skip_container("redis-cluster-node", 7000)
 
@@ -31,7 +31,7 @@ class ClusterPoolFromConfigTests(unittest.TestCase):
             cluster_pool_from_config({})
 
     def test_basic_url(self):
-        pool = cluster_pool_from_config({"rediscluster.url": f"redis://{redis_endpoint}/0"})
+        pool = cluster_pool_from_config({"rediscluster.url": redis_cluster_url})
 
         self.assertEqual(pool.nodes.startup_nodes[0]["host"], "redis-cluster-node")
         self.assertEqual(pool.nodes.startup_nodes[0]["port"], "7000")
@@ -92,29 +92,17 @@ class ClusterPoolFromConfigTests(unittest.TestCase):
         self.assertTrue(any(node["port"] != 7000 for node in node_list))
 
 
-class RedisClusterIntegrationTests(unittest.TestCase):
+class RedisClusterIntegrationTests(RedisIntegrationTestCase):
     def setUp(self):
-        self.setup_baseplate_redis(
-            {
-                "redis_client_name": "test_client",
-            },
-        )
+        self.baseplate_app_config = {
+            "rediscluster.url": f"redis://{redis_endpoint}/0",
+            "rediscluster.timeout": "1 second",
+            "rediscluster.max_connections": "4",
+        }
+        self.redis_client_builder = ClusterRedisClient
+        self.redis_context_name = "rediscluster"
 
-    def setup_baseplate_redis(self, redis_cluster_kwargs: dict[str, Any] = {}):
-        self.baseplate_observer = TestBaseplateObserver()
-
-        baseplate = Baseplate(
-            {
-                "rediscluster.url": f"redis://{redis_endpoint}/0",
-                "rediscluster.timeout": "1 second",
-                "rediscluster.max_connections": "4",
-            }
-        )
-        baseplate.register(self.baseplate_observer)
-        baseplate.configure_context({"rediscluster": ClusterRedisClient(**redis_cluster_kwargs)})
-
-        self.context = baseplate.make_context_object()
-        self.server_span = baseplate.make_server_span(self.context, "test")
+        super().setUp()
 
     def test_simple_command(self):
         with self.server_span:
@@ -179,14 +167,10 @@ class RedisClusterIntegrationTests(unittest.TestCase):
         ]:
             with self.subTest():
                 self.setup_baseplate_redis(
-                    redis_cluster_kwargs={
-                        client_name_kwarg_name: client_name,
+                    redis_client_kwargs={
+                        "redis_client_name": client_name,
                     },
                 )
-                # Clear preometheus metrics
-                ACTIVE_REQUESTS.clear()
-                REQUESTS_TOTAL.clear()
-                LATENCY_SECONDS.clear()
                 expected_labels = {
                     "redis_client_name": client_name,
                     "redis_type": "cluster",
@@ -211,6 +195,9 @@ class RedisClusterIntegrationTests(unittest.TestCase):
                     REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, {**expected_labels}) == 0.0
                 ), "Should have 0 (and not None) active requests"
 
+                # Each iteration of this loop is effectively a different testcase
+                self.tearDown()
+
     def test_pipeline_metrics(self):
         client_name = "test_client"
         for client_name_kwarg_name in [
@@ -219,14 +206,10 @@ class RedisClusterIntegrationTests(unittest.TestCase):
         ]:
             with self.subTest():
                 self.setup_baseplate_redis(
-                    redis_cluster_kwargs={
-                        client_name_kwarg_name: client_name,
+                    redis_client_kwargs={
+                        "redis_client_name": client_name,
                     },
                 )
-                # Clear preometheus metrics
-                ACTIVE_REQUESTS.clear()
-                REQUESTS_TOTAL.clear()
-                LATENCY_SECONDS.clear()
                 expected_labels = {
                     "redis_client_name": client_name,
                     "redis_type": "cluster",
@@ -258,3 +241,6 @@ class RedisClusterIntegrationTests(unittest.TestCase):
                 assert (
                     REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, {**expected_labels}) == 0.0
                 ), "Should have 0 (and not None) active requests"
+
+                # Each iteration of this loop is effectively a different testcase
+                self.tearDown()

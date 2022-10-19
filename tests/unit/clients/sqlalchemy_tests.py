@@ -200,6 +200,7 @@ class EngineContextFactoryTest(unittest.TestCase):
         exception_context = mock.MagicMock()
         exception_context.connection.engine.url.host = "test_hostname"
         exception_context.connection.engine.url.database = "test_database"
+        exception_context.connection.info["span"] = None
         self.factory.on_error(exception_context)
 
         prom_labels = {
