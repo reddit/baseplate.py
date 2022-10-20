@@ -68,4 +68,4 @@ this update you can check if the service works in Snoodev.
 
 > **Warning**
 > Never deploy this change to production. Production should always use a Baseplate
-> version that has been released and published to pypi. 
+> semantic version that has been tagged, and released.
