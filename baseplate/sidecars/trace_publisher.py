@@ -23,7 +23,7 @@ import requests
 from prometheus_client import Counter
 
 from baseplate import Baseplate
-from baseplate.clients.requests import ExternalRequestsClient
+from baseplate.clients.requests import InternalRequestsClient
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.message_queue import MessageQueue
@@ -185,7 +185,7 @@ def publish_traces() -> None:
     bp = Baseplate()
     bp.configure_context(
         {
-            "http_client": ExternalRequestsClient(
+            "http_client": InternalRequestsClient(
                 "trace_collector", pool_connections=MAX_NUM_CONNS, pool_maxsize=MAX_NUM_CONNS
             ),
         }
