@@ -53,6 +53,7 @@ PROM_ACTIVE = Gauge(
     f"{PROM_NAMESPACE}_active_requests",
     "The number of in-flight requests being handled by the service",
     ["thrift_method"],
+    multiprocess_mode="livesum",
 )
 
 

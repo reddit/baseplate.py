@@ -168,17 +168,20 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         f"{PROM_POOL_PREFIX}_max_size",
         "Maximum number of connections allowed in this pool",
         PROM_POOL_LABELS,
+        multiprocess_mode="livesum",
     )
 
     checked_out_connections_gauge = Gauge(
         f"{PROM_POOL_PREFIX}_active_connections",
         "Number of connections in use by this pool (checked out + overflow)",
         PROM_POOL_LABELS,
+        multiprocess_mode="livesum",
     )
     checked_in_connections_gauge = Gauge(
         f"{PROM_POOL_PREFIX}_idle_connections",
         "Number of connections not in use by this pool (unused pool connections)",
         PROM_POOL_LABELS,
+        multiprocess_mode="livesum",
     )
 
     PROM_LABELS = [
@@ -198,6 +201,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         f"{PROM_PREFIX}_active_requests",
         "total requests that are in-flight",
         PROM_LABELS,
+        multiprocess_mode="livesum",
     )
 
     requests_total = Counter(
@@ -298,9 +302,10 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     def on_error(self, context: ExceptionContext) -> None:
         """Handle the event which happens on exceptions during execution."""
-        exc_info = (type(context.original_exception), context.original_exception, None)
-        context.connection.info["span"].finish(exc_info=exc_info)
-        context.connection.info["span"] = None
+        if "span" in context.connection.info and context.connection.info["span"] is not None:
+            exc_info = (type(context.original_exception), context.original_exception, None)
+            context.connection.info["span"].finish(exc_info=exc_info)
+            context.connection.info["span"] = None
 
         labels = {
             "sql_pool": self.name,

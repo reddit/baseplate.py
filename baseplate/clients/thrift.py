@@ -62,6 +62,7 @@ ACTIVE_REQUESTS = Gauge(
     f"{PROM_NAMESPACE}_active_requests",
     "number of in-flight requests",
     PROM_COMMON_LABELS,
+    multiprocess_mode="livesum",
 )
 
 

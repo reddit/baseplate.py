@@ -115,6 +115,7 @@ ACTIVE_REQUESTS = Gauge(
         "http_method",
         "http_endpoint",
     ],
+    multiprocess_mode="livesum",
 )
 
 
