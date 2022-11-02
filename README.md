@@ -48,7 +48,7 @@ Specific hooks can be [temporarily disabled](https://pre-commit.com/#temporarily
 
 You can install hooks only for a specific step (i.e. [pre-push](https://pre-commit.com/#pre-commit-during-push)).
 
-# Testing in Snoodev
+## Testing in Snoodev
 
 You can upgrade any service to use in development Baseplate code in Snoodev by
 editing the requirements file for the service you would like to use for testing.
