@@ -118,6 +118,7 @@ class CassandraSessionAdapterTests(unittest.TestCase):
                     "cassandra_client_name": "test",  # client name defaults to name when not provided
                     "cassandra_keyspace": "keyspace",
                     "cassandra_query_name": "",
+                    "cassandra_cluster_name": "",
                 },
             ),
             1,
@@ -134,6 +135,7 @@ class CassandraSessionAdapterTests(unittest.TestCase):
                     "cassandra_client_name": "test",
                     "cassandra_keyspace": "keyspace",
                     "cassandra_query_name": "foo_bar",
+                    "cassandra_cluster_name": "",
                 },
             ),
             1,
@@ -157,6 +159,7 @@ class CassandraSessionAdapterTests(unittest.TestCase):
                     "cassandra_client_name": "test_client_name",
                     "cassandra_keyspace": "keyspace",
                     "cassandra_query_name": "",
+                    "cassandra_cluster_name": "",
                 },
             ),
             1,
@@ -180,6 +183,57 @@ class CassandraSessionAdapterTests(unittest.TestCase):
                     "cassandra_client_name": "",
                     "cassandra_keyspace": "keyspace",
                     "cassandra_query_name": "",
+                    "cassandra_cluster_name": "",
+                },
+            ),
+            1,
+        )
+
+    def test_execute_async_prom_metrics_cluster_name_specified(self):
+        self.adapter = CassandraSessionAdapter(
+            "test",
+            self.mock_server_span,
+            self.session,
+            self.prepared_statements,
+            prometheus_client_name="",
+            prometheus_cluster_name="test_cluster_name",
+        )
+        self.session.keyspace = "keyspace"  # mocking keyspace name
+        self.adapter.execute_async("SELECT foo from bar;")
+
+        self.assertEqual(
+            REGISTRY.get_sample_value(
+                "cassandra_client_active_requests",
+                {
+                    "cassandra_client_name": "",
+                    "cassandra_keyspace": "keyspace",
+                    "cassandra_query_name": "",
+                    "cassandra_cluster_name": "test_cluster_name",
+                },
+            ),
+            1,
+        )
+
+    def test_execute_async_prom_metrics_cluster_name_empty(self):
+        self.adapter = CassandraSessionAdapter(
+            "test",
+            self.mock_server_span,
+            self.session,
+            self.prepared_statements,
+            prometheus_client_name="",
+            prometheus_cluster_name="",
+        )
+        self.session.keyspace = "keyspace"  # mocking keyspace name
+        self.adapter.execute_async("SELECT foo from bar;")
+
+        self.assertEqual(
+            REGISTRY.get_sample_value(
+                "cassandra_client_active_requests",
+                {
+                    "cassandra_client_name": "",
+                    "cassandra_keyspace": "keyspace",
+                    "cassandra_query_name": "",
+                    "cassandra_cluster_name": "",
                 },
             ),
             1,
@@ -202,6 +256,7 @@ class CassandraTests(unittest.TestCase):
             cassandra_client_name="test_client_name",
             cassandra_keyspace="keyspace",
             cassandra_query_name="",
+            cassandra_cluster_name="",
         )
 
         _on_execute_complete(
@@ -243,6 +298,7 @@ class CassandraTests(unittest.TestCase):
             cassandra_client_name="test_client_name",
             cassandra_keyspace="keyspace",
             cassandra_query_name="",
+            cassandra_cluster_name="",
         )
 
         _on_execute_failed(

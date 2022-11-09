@@ -160,6 +160,11 @@ class CassandraTests(unittest.TestCase):
         span_observer = server_span_observer.get_only_child()
         self.assertFalse(span_observer.on_finish_called)
 
+    def test_cluster_name_from_metadata(self):
+        with self.server_span:
+            name = self.context.cassandra.prometheus_cluster_name
+            self.assertEqual(name, "Test Cluster")
+
 
 class CassandraConcurrentTests(unittest.TestCase):
     def setUp(self):
