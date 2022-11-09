@@ -10,17 +10,24 @@ from baseplate.sidecars import trace_publisher
 
 
 class ZipkinPublisherTest(unittest.TestCase):
-    @mock.patch("requests.Session", autospec=True)
-    def setUp(self, mock_Session):
-        self.session = mock_Session.return_value
-        self.session.headers = {}
+    @mock.patch("baseplate.clients.requests.BaseplateSession", autospec=True)
+    @mock.patch("baseplate.RequestContext", autospec=True)
+    @mock.patch("baseplate.Baseplate", autospec=True)
+    def setUp(self, bp, context, session):
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
         self.zipkin_api_url = "http://test.local/api/v2"
-        self.publisher = trace_publisher.ZipkinPublisher(self.zipkin_api_url, self.metrics_client)
+
+        bp.server_context.return_value.__enter__.return_value = context
+        context.http_client = session
+        self.baseplate = bp
+        self.session = session
+
+        self.publisher = trace_publisher.ZipkinPublisher(
+            bp, self.zipkin_api_url, self.metrics_client
+        )
 
     def test_initialization(self):
         self.assertEqual(self.publisher.endpoint, f"{self.zipkin_api_url}/spans")
-        self.publisher.session.mount.assert_called_with("http://", mock.ANY)
 
     def test_empty_batch(self):
         self.publisher.publish(SerializedBatch(item_count=0, serialized=b""))

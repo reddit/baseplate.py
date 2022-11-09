@@ -23,7 +23,7 @@ class TestNoReassignmentChecker(pylint.testutils.CheckerTestCase):
         self.checker.visit_assign(assign_node_a)
         self.checker.visit_assign(assign_node_b)
         self.assertAddsMessages(
-            pylint.testutils.Message(msg_id="reassigned-variable", node=assign_node_a)
+            pylint.testutils.MessageTest(msg_id="reassigned-variable", node=assign_node_a)
         )
 
     def test_ignores_no_reassigned_variable(self):

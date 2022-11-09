@@ -1,11 +1,23 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
+# pylint: disable=wrong-import-position,wrong-import-order
+from gevent.monkey import patch_all
+
+from baseplate.server.monkey import patch_stdlib_queues
+
+# In order to allow Prometheus to scrape metrics, we need to concurrently
+# handle requests to '/metrics' along with the sidecar's execution.
+# Monkey patching is used to replace the stdlib sequential versions of functions
+# with concurrent versions. It must happen as soon as possible, before the
+# sequential versions are imported.
+patch_all()
+patch_stdlib_queues()
+
 import argparse
 import configparser
 import json
 import logging
 import os
 import sys
-import time
 
 from enum import Enum
 from pathlib import Path
@@ -14,8 +26,11 @@ from typing import NoReturn
 from typing import Optional
 
 import boto3  # type: ignore
+import gevent
 
+from botocore import UNSIGNED  # type: ignore
 from botocore.client import ClientError  # type: ignore
+from botocore.client import Config
 from botocore.exceptions import EndpointConnectionError  # type: ignore
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
@@ -24,6 +39,7 @@ from baseplate.lib import config
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.server import EnvironmentInterpolation
+from baseplate.server.prometheus import start_prometheus_exporter_for_sidecar
 
 
 logger = logging.getLogger(__name__)
@@ -135,10 +151,23 @@ def _load_from_s3(data: bytes) -> bytes:
         )
         raise LoaderException from e
 
-    s3_client = boto3.client(
-        "s3",
-        region_name=region_name,
-    )
+    if loader_config.get("anon") is True:
+        # Client needs to be anonymous/unsigned or boto3 will try to read the local credentials
+        # on the service pods. And - due to an AWS quirk - any request that comes in signed with
+        # credentials will profile for permissions for the resource being requested EVEN if the
+        # resource is public. In other words, this means that a given service cannot access
+        # a public resource belonging to another cluster/AWS account unless the request credentials
+        # are unsigned.
+        s3_client = boto3.client(
+            "s3",
+            config=Config(signature_version=UNSIGNED),
+            region_name=region_name,
+        )
+    else:
+        s3_client = boto3.client(
+            "s3",
+            region_name=region_name,
+        )
 
     try:
         s3_object = s3_client.get_object(**s3_kwargs)
@@ -172,7 +201,7 @@ def watch_zookeeper_nodes(zookeeper: KazooClient, nodes: Any) -> NoReturn:
     # all the interesting stuff is now happening in the Kazoo worker thread
     # and so we'll just spin and periodically heartbeat to prove we're alive.
     while True:
-        time.sleep(HEARTBEAT_INTERVAL)
+        gevent.sleep(HEARTBEAT_INTERVAL)
 
         # see the comment in baseplate.live_data.zookeeper for explanation of
         # how reconnects work with the background thread.
@@ -243,4 +272,5 @@ def main() -> NoReturn:
 
 
 if __name__ == "__main__":
+    start_prometheus_exporter_for_sidecar()
     main()

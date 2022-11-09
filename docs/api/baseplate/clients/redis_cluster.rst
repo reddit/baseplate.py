@@ -71,7 +71,7 @@ Classes
 .. autoclass:: ClusterRedisContextFactory
    :members:
 
-.. autoclass:: MonitoredClusterRedisConnection
+.. autoclass:: MonitoredRedisClusterConnection
    :members:
 
 Runtime Metrics
