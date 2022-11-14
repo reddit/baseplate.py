@@ -38,6 +38,7 @@ class CassandraPrometheusLabels(NamedTuple):
     cassandra_client_name: str
     cassandra_keyspace: str
     cassandra_query_name: str
+    cassandra_cluster_name: str
 
 
 REQUEST_TIME = Histogram(
@@ -141,7 +142,11 @@ class CassandraClient(config.Parser):
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "CassandraContextFactory":
         cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
         session = cluster.connect(keyspace=self.keyspace)
-        return CassandraContextFactory(session, prometheus_client_name=self.client_name)
+
+        cluster_name = cluster.metadata.cluster_name if cluster.metadata is not None else ""
+        return CassandraContextFactory(
+            session, prometheus_client_name=self.client_name, prometheus_cluster_name=cluster_name
+        )
 
 
 class CassandraContextFactory(ContextFactory):
@@ -159,10 +164,16 @@ class CassandraContextFactory(ContextFactory):
 
     """
 
-    def __init__(self, session: Session, prometheus_client_name: Optional[str] = None):
+    def __init__(
+        self,
+        session: Session,
+        prometheus_client_name: Optional[str] = None,
+        prometheus_cluster_name: Optional[str] = None,
+    ):
         self.session = session
         self.prepared_statements: Dict[str, PreparedStatement] = {}
         self.prometheus_client_name = prometheus_client_name
+        self.prometheus_cluster_name = prometheus_cluster_name
 
     def make_object_for_context(self, name: str, span: Span) -> "CassandraSessionAdapter":
         return CassandraSessionAdapter(
@@ -171,6 +182,7 @@ class CassandraContextFactory(ContextFactory):
             self.session,
             self.prepared_statements,
             prometheus_client_name=self.prometheus_client_name,
+            prometheus_cluster_name=self.prometheus_cluster_name,
         )
 
 
@@ -321,12 +333,14 @@ class CassandraSessionAdapter:
         session: Session,
         prepared_statements: Dict[str, PreparedStatement],
         prometheus_client_name: Optional[str] = None,
+        prometheus_cluster_name: Optional[str] = None,
     ):
         self.context_name = context_name
         self.server_span = server_span
         self.session = session
         self.prepared_statements = prepared_statements
         self.prometheus_client_name = prometheus_client_name
+        self.prometheus_cluster_name = prometheus_cluster_name
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.session, name)
@@ -357,6 +371,9 @@ class CassandraSessionAdapter:
             else self.context_name,
             cassandra_keyspace=self.session.keyspace,
             cassandra_query_name=query_name if query_name is not None else "",
+            cassandra_cluster_name=self.prometheus_cluster_name
+            if self.prometheus_cluster_name is not None
+            else "",
         )
 
         REQUEST_ACTIVE.labels(**prom_labels._asdict()).inc()
