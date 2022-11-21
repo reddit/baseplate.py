@@ -265,6 +265,13 @@ def load_app_and_run_server() -> None:
         config = read_config(args.config_file, args.server_name, args.app_name)
     assert config.server
 
+    if is_metrics_enabled(config.app):
+        from baseplate.server.prometheus import start_prometheus_exporter
+
+        start_prometheus_exporter()
+    else:
+        logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
+
     configure_logging(config, args.debug)
 
     app = make_app(config.app)
@@ -273,13 +280,6 @@ def load_app_and_run_server() -> None:
 
     if einhorn.is_worker():
         einhorn.ack_startup()
-
-    if is_metrics_enabled(config.app):
-        from baseplate.server.prometheus import start_prometheus_exporter
-
-        start_prometheus_exporter()
-    else:
-        logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     if args.reload:
         reloader.start_reload_watcher(extra_files=[args.config_file.name])
