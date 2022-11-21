@@ -42,11 +42,11 @@ PROMETHEUS_EXPORTER_ADDRESS = Endpoint("0.0.0.0:6060")
 METRICS_ENDPOINT = "/metrics"
 
 
-def processId():
-    id = str(os.getpid())
-    if "MULTIPROCESS_WORKER_ID" in os.environ:
-        id = os.environ.get("MULTIPROCESS_WORKER_ID")
-    return id
+def worker_id() -> str:
+    worker = os.environ.get("MULTIPROCESS_WORKER_ID")
+    if worker is None:
+        worker = str(os.getpid())
+    return worker
 
 
 def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") -> Iterable[bytes]:
@@ -69,8 +69,8 @@ def start_prometheus_exporter(address: EndpointConfiguration = PROMETHEUS_EXPORT
         )
         sys.exit(1)
 
-    values.ValueClass = MultiProcessValue(processId)
-    atexit.register(multiprocess.mark_process_dead, processId())
+    values.ValueClass = MultiProcessValue(worker_id)
+    atexit.register(multiprocess.mark_process_dead, worker_id())
 
     server_socket = bind_socket(address)
     server = WSGIServer(
