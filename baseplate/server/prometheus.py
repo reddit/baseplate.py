@@ -20,11 +20,11 @@ from typing import TYPE_CHECKING
 
 from gevent.pywsgi import LoggingLogAdapter
 from gevent.pywsgi import WSGIServer
-from prometheus_client import values
 from prometheus_client import CollectorRegistry
 from prometheus_client import CONTENT_TYPE_LATEST
 from prometheus_client import generate_latest
 from prometheus_client import multiprocess
+from prometheus_client import values
 from prometheus_client.values import MultiProcessValue
 
 from baseplate.lib.config import Endpoint
@@ -45,8 +45,9 @@ METRICS_ENDPOINT = "/metrics"
 def processId():
     id = str(os.getpid())
     if "MULTIPROCESS_WORKER_ID" in os.environ:
-        id = os.environ.get('MULTIPROCESS_WORKER_ID')
+        id = os.environ.get("MULTIPROCESS_WORKER_ID")
     return id
+
 
 def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") -> Iterable[bytes]:
     if environ["PATH_INFO"] != METRICS_ENDPOINT:
