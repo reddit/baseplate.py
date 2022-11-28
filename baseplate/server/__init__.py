@@ -265,6 +265,8 @@ def load_app_and_run_server() -> None:
         config = read_config(args.config_file, args.server_name, args.app_name)
     assert config.server
 
+    # Prom exporter needs to start before the app starts because
+    # we need to set the prometheus id before we generate any stats
     if is_metrics_enabled(config.app):
         from baseplate.server.prometheus import start_prometheus_exporter
 
