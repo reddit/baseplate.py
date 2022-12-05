@@ -60,19 +60,6 @@ with the JSON file as its first and only argument. This allows you to read in th
 write to a new file in whatever format needed, and restart other services if necessary.
 
 """
-# pylint: disable=wrong-import-position,wrong-import-order
-from gevent.monkey import patch_all
-
-from baseplate.server.monkey import patch_stdlib_queues
-
-# In order to allow Prometheus to scrape metrics, we need to concurrently
-# handle requests to '/metrics' along with the sidecar's execution.
-# Monkey patching is used to replace the stdlib sequential versions of functions
-# with concurrent versions. It must happen as soon as possible, before the
-# sequential versions are imported.
-patch_all()
-patch_stdlib_queues()
-
 import argparse
 import configparser
 import datetime
@@ -81,6 +68,7 @@ import logging
 import os
 import posixpath
 import subprocess
+import time
 import urllib.parse
 import uuid
 
@@ -90,13 +78,11 @@ from typing import Dict
 from typing import Optional
 from typing import Tuple
 
-import gevent
 import requests
 
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.server import EnvironmentInterpolation
-from baseplate.server.prometheus import start_prometheus_exporter_for_sidecar
 
 
 logger = logging.getLogger(__name__)
@@ -441,9 +427,8 @@ def main() -> None:
             last_proc = trigger_callback(cfg.callback, cfg.output.path, last_proc)
             time_til_expiration = soonest_expiration - datetime.datetime.utcnow()
             time_to_sleep = time_til_expiration - VAULT_TOKEN_PREFETCH_TIME
-            gevent.sleep(max(int(time_to_sleep.total_seconds()), 1))
+            time.sleep(max(int(time_to_sleep.total_seconds()), 1))
 
 
 if __name__ == "__main__":
-    start_prometheus_exporter_for_sidecar()
     main()

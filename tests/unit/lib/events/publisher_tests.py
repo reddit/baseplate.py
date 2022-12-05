@@ -76,10 +76,8 @@ class V2JBatchTests(unittest.TestCase):
 
 
 class PublisherTests(unittest.TestCase):
-    @mock.patch("baseplate.clients.requests.BaseplateSession", autospec=True)
-    @mock.patch("baseplate.RequestContext", autospec=True)
-    @mock.patch("baseplate.Baseplate", autospec=True)
-    def setUp(self, bp, context, session):
+    @mock.patch("requests.Session", autospec=True)
+    def setUp(self, Session):
         self.config = config.ConfigNamespace()
         self.config.collector = config.ConfigNamespace()
         self.config.collector.hostname = "test.local"
@@ -89,14 +87,12 @@ class PublisherTests(unittest.TestCase):
         self.config.key.name = "TestKey"
         self.config.key.secret = b"hunter2"
 
-        bp.server_context.return_value.__enter__.return_value = context
-        context.http_client = session
-        self.baseplate = bp
-        self.session = session
+        self.session = Session.return_value
+        self.session.headers = {}
 
         self.metrics_client = mock.MagicMock(autospec=metrics.Client)
 
-        self.publisher = event_publisher.BatchPublisher(bp, self.metrics_client, self.config)
+        self.publisher = event_publisher.BatchPublisher(self.metrics_client, self.config)
 
     def test_empty_batch(self):
         self.publisher.publish(SerializedBatch(item_count=0, serialized=b""))
@@ -118,7 +114,7 @@ class PublisherTests(unittest.TestCase):
             "key=TestKey, mac=7c46d56b99cd4cb05e08238c1d4c10a2f330795e9d7327f17cc66fd206bf1179",
         )
 
-    @mock.patch("gevent.sleep")
+    @mock.patch("time.sleep")
     def test_fail_on_client_error(self, mock_sleep):
         self.session.post.side_effect = [
             requests.HTTPError(400, response=mock.Mock(status_code=400))
