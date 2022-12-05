@@ -1,23 +1,11 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
-# pylint: disable=wrong-import-position,wrong-import-order
-from gevent.monkey import patch_all
-
-from baseplate.server.monkey import patch_stdlib_queues
-
-# In order to allow Prometheus to scrape metrics, we need to concurrently
-# handle requests to '/metrics' along with the sidecar's execution.
-# Monkey patching is used to replace the stdlib sequential versions of functions
-# with concurrent versions. It must happen as soon as possible, before the
-# sequential versions are imported.
-patch_all()
-patch_stdlib_queues()
-
 import argparse
 import configparser
 import json
 import logging
 import os
 import sys
+import time
 
 from enum import Enum
 from pathlib import Path
@@ -26,7 +14,6 @@ from typing import NoReturn
 from typing import Optional
 
 import boto3  # type: ignore
-import gevent
 
 from botocore import UNSIGNED  # type: ignore
 from botocore.client import ClientError  # type: ignore
@@ -39,7 +26,6 @@ from baseplate.lib import config
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.server import EnvironmentInterpolation
-from baseplate.server.prometheus import start_prometheus_exporter_for_sidecar
 
 
 logger = logging.getLogger(__name__)
@@ -201,7 +187,7 @@ def watch_zookeeper_nodes(zookeeper: KazooClient, nodes: Any) -> NoReturn:
     # all the interesting stuff is now happening in the Kazoo worker thread
     # and so we'll just spin and periodically heartbeat to prove we're alive.
     while True:
-        gevent.sleep(HEARTBEAT_INTERVAL)
+        time.sleep(HEARTBEAT_INTERVAL)
 
         # see the comment in baseplate.live_data.zookeeper for explanation of
         # how reconnects work with the background thread.
@@ -272,5 +258,4 @@ def main() -> NoReturn:
 
 
 if __name__ == "__main__":
-    start_prometheus_exporter_for_sidecar()
     main()
