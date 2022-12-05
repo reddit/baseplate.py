@@ -24,6 +24,8 @@ from prometheus_client import CollectorRegistry
 from prometheus_client import CONTENT_TYPE_LATEST
 from prometheus_client import generate_latest
 from prometheus_client import multiprocess
+from prometheus_client import values
+from prometheus_client.values import MultiProcessValue
 
 from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
@@ -38,6 +40,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 PROMETHEUS_EXPORTER_ADDRESS = Endpoint("0.0.0.0:6060")
 METRICS_ENDPOINT = "/metrics"
+
+
+def worker_id() -> str:
+    worker = os.environ.get("MULTIPROCESS_WORKER_ID")
+    if worker is None:
+        worker = str(os.getpid())
+    return worker
 
 
 def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") -> Iterable[bytes]:
@@ -60,7 +69,8 @@ def start_prometheus_exporter(address: EndpointConfiguration = PROMETHEUS_EXPORT
         )
         sys.exit(1)
 
-    atexit.register(multiprocess.mark_process_dead, os.getpid())
+    values.ValueClass = MultiProcessValue(worker_id)
+    atexit.register(multiprocess.mark_process_dead, worker_id())
 
     server_socket = bind_socket(address)
     server = WSGIServer(
