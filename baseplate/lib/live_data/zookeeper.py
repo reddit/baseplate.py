@@ -2,43 +2,11 @@
 from typing import Optional
 
 from kazoo.client import KazooClient
-from kazoo.client import KazooState
 from kazoo.handlers.gevent import SequentialGeventHandler
-from prometheus_client import Counter
 
 from baseplate.lib import config
 from baseplate.lib.secrets import SecretsStore
 from baseplate.server.monkey import gevent_is_patched
-
-SESSION_LOST_TOTAL = Counter(
-    "live_data_fetcher_lost_sessions_total",
-    "The number of times a Zookeeper client has had a session be lost.",
-)
-
-SESSION_SUSPENDED_TOTAL = Counter(
-    "live_data_fetcher_suspended_sessions_total",
-    "The number of times a Zookeeper client has had a session be suspended.",
-)
-
-SESSION_SUCCESSFUL_TOTAL = Counter(
-    "live_data_fetcher_connected_sessions_total",
-    "The number of times a Zookeeper client has successfully established a session.",
-)
-
-
-class SessionStatsListener:
-    """A Kazoo listener that monitors changes in connection state.
-    Increments an event counter whenever connection state changes in a
-    Zookeeper connection.
-    """
-
-    def __call__(self, state: KazooState) -> None:
-        if state == KazooState.LOST:
-            SESSION_LOST_TOTAL.inc()
-        elif state == KazooState.SUSPENDED:
-            SESSION_SUSPENDED_TOTAL.inc()
-        else:
-            SESSION_SUCCESSFUL_TOTAL.inc()
 
 
 def zookeeper_client_from_config(
@@ -93,7 +61,7 @@ def zookeeper_client_from_config(
     else:
         handler = None
 
-    client = KazooClient(
+    return KazooClient(
         cfg.hosts,
         timeout=cfg.timeout.total_seconds(),
         auth_data=auth_data,
@@ -122,8 +90,3 @@ def zookeeper_client_from_config(
             max_delay=60,  # never wait longer than this
         ),
     )
-
-    listener = SessionStatsListener()
-    client.add_listener(listener)
-
-    return client

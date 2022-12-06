@@ -1,16 +1,3 @@
-# pylint: disable=wrong-import-position,wrong-import-order
-from gevent.monkey import patch_all
-
-from baseplate.server.monkey import patch_stdlib_queues
-
-# In order to allow Prometheus to scrape metrics, we need to concurrently
-# handle requests to '/metrics' along with the sidecar's execution.
-# Monkey patching is used to replace the stdlib sequential versions of functions
-# with concurrent versions. It must happen as soon as possible, before the
-# sequential versions are imported.
-patch_all()
-patch_stdlib_queues()
-
 import argparse
 import configparser
 import email.utils
@@ -23,13 +10,9 @@ from typing import Any
 from typing import List
 from typing import Optional
 
-import gevent
 import requests
 
-from prometheus_client import Counter
-
-from baseplate import Baseplate
-from baseplate.clients.requests import ExternalRequestsClient
+from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
@@ -39,7 +22,6 @@ from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
-from baseplate.server.prometheus import start_prometheus_exporter_for_sidecar
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import SerializedBatch
@@ -60,8 +42,6 @@ MAX_RETRY_TIME = 5 * 60
 MAX_BATCH_AGE = 1
 # maximum size (in bytes) of a batch of events
 MAX_BATCH_SIZE = 500 * 1024
-
-PUBLISHES_COUNT_TOTAL = Counter("eventv2_publishes_total", "total count of published events")
 
 
 class MaxRetriesError(Exception):
@@ -119,12 +99,15 @@ class V2JBatch(V2Batch):
 
 
 class BatchPublisher:
-    def __init__(self, bp: Baseplate, metrics_client: metrics.Client, cfg: Any):
-        self.baseplate = bp
+    def __init__(self, metrics_client: metrics.Client, cfg: Any):
         self.metrics = metrics_client
         self.url = f"{cfg.collector.scheme}://{cfg.collector.hostname}/v{cfg.collector.version}"
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
+        self.session = requests.Session()
+        self.session.headers[
+            "User-Agent"
+        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
 
     def _sign_payload(self, payload: bytes) -> str:
         digest = hmac.new(self.key_secret, payload, hashlib.sha256).hexdigest()
@@ -146,14 +129,15 @@ class BatchPublisher:
 
         for _ in RetryPolicy.new(budget=MAX_RETRY_TIME, backoff=RETRY_BACKOFF):
             try:
-                with self.baseplate.server_context("post") as context:
-                    with self.metrics.timer("post"):
-                        response = context.http_client.post(
-                            self.url,
-                            headers=headers,
-                            data=compressed_payload,
-                            timeout=POST_TIMEOUT,
-                        )
+                with self.metrics.timer("post"):
+                    response = self.session.post(
+                        self.url,
+                        headers=headers,
+                        data=compressed_payload,
+                        timeout=POST_TIMEOUT,
+                        # http://docs.python-requests.org/en/latest/user/advanced/#keep-alive
+                        stream=False,
+                    )
                 response.raise_for_status()
             except requests.HTTPError as exc:
                 self.metrics.counter("error.http").increment()
@@ -171,7 +155,6 @@ class BatchPublisher:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
             else:
-                PUBLISHES_COUNT_TOTAL.inc(payload.item_count)
                 self.metrics.counter("sent").increment(payload.item_count)
                 return
 
@@ -226,21 +209,12 @@ def publish_events() -> None:
         max_message_size=MAX_EVENT_SIZE,
     )
 
-    bp = Baseplate()
-    bp.configure_context(
-        {
-            "http_client": ExternalRequestsClient("event_collector"),
-        }
-    )
-
     # pylint: disable=maybe-no-member
     serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
-    publisher = BatchPublisher(bp, metrics_client, cfg)
+    publisher = BatchPublisher(metrics_client, cfg)
 
     while True:
-        # allow other routines to execute (specifically handling requests to /metrics)
-        gevent.sleep(0)
         message: Optional[bytes]
 
         try:
@@ -264,5 +238,4 @@ def publish_events() -> None:
 
 
 if __name__ == "__main__":
-    start_prometheus_exporter_for_sidecar()
     publish_events()
