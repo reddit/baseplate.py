@@ -93,8 +93,10 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
 
     """
 
-    def __init__(self, name: str, event_serializer: Callable[[T], bytes], use_in_memory_queue: bool = False):
-        if use_in_memory_queue: 
+    def __init__(
+        self, name: str, event_serializer: Callable[[T], bytes], use_in_memory_queue: bool = False
+    ):
+        if use_in_memory_queue:
             self.queue = InMemoryMessageQueue("/events-" + name, max_messages=MAX_QUEUE_SIZE)
         else:
             self.queue = PosixMessageQueue(

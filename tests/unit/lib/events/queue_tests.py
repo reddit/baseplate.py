@@ -42,12 +42,15 @@ class PosixEventQueueTests(unittest.TestCase):
         with self.assertRaises(EventQueueFullError):
             self.queue.put(object())
 
+
 class InMemoryEventQueueTests(unittest.TestCase):
     @mock.patch("baseplate.lib.events.InMemoryMessageQueue", autospec=InMemoryMessageQueue)
     def setUp(self, InMemoryMessageQueue):
         self.message_queue = InMemoryMessageQueue.return_value
         self.mock_serializer = mock.Mock()
-        self.queue = EventQueue("test", event_serializer=self.mock_serializer, use_in_memory_queue=True)
+        self.queue = EventQueue(
+            "test", event_serializer=self.mock_serializer, use_in_memory_queue=True
+        )
 
     def test_send_event(self):
         self.mock_serializer.return_value = "i_am_serialized"

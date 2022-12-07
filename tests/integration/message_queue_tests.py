@@ -82,9 +82,10 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
             queue.unlink()
             queue.close()
 
+
 class TestInMemoryMessageQueueCreation(unittest.TestCase):
     qname = "/baseplate-test-queue"
-    
+
     def test_create_queue(self):
         message_queue = InMemoryMessageQueue(self.qname, max_messages=1)
 

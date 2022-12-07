@@ -575,9 +575,7 @@ class SidecarRecorder(Recorder):
         try:
             self.queue.put(serialized_str, timeout=0)
         except TimedOutError:
-            logger.warning(
-                "Trace queue %s is full. Is trace sidecar healthy?", self.queue.name
-            )
+            logger.warning("Trace queue %s is full. Is trace sidecar healthy?", self.queue.name)
 
 
 def tracing_client_from_config(

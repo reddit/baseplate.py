@@ -12,7 +12,6 @@ lxml==4.6.5
 mypy==0.910
 prometheus-client==0.14.1
 pydocstyle==5.1.1
-
 pylint==2.11.1
 pytest==6.2.2
 pytest-cov==2.11.1
