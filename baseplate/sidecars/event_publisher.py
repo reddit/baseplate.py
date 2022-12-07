@@ -17,7 +17,7 @@ from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
-from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import InMemoryMessageQueue, PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
@@ -175,6 +175,11 @@ def publish_events() -> None:
         help="name of event queue / publisher config (default: main)",
     )
     arg_parser.add_argument(
+        "--use-in-memory-queue",
+        default=False,
+        help="use an in memory queue instead of a posix queue",
+    )
+    arg_parser.add_argument(
         "--debug", default=False, action="store_true", help="enable debug logging"
     )
     args = arg_parser.parse_args()
@@ -203,11 +208,17 @@ def publish_events() -> None:
 
     metrics_client = metrics_client_from_config(raw_config)
 
-    event_queue = MessageQueue(
-        "/events-" + args.queue_name,
-        max_messages=cfg.max_queue_size,
-        max_message_size=MAX_EVENT_SIZE,
-    )
+    if args.use_in_memory_queue:
+        event_queue = InMemoryMessageQueue(
+            "/events-" + args.queue_name,
+            max_messages=cfg.max_queue_size,
+        )
+    else: 
+        event_queue = PosixMessageQueue(
+            "/events-" + args.queue_name,
+            max_messages=cfg.max_queue_size,
+            max_message_size=MAX_EVENT_SIZE,
+        )
 
     # pylint: disable=maybe-no-member
     serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()

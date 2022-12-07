@@ -10,7 +10,7 @@ import requests
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
-from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import InMemoryMessageQueue, PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
@@ -129,6 +129,11 @@ def publish_traces() -> None:
         help="name of trace queue / publisher config (default: main)",
     )
     arg_parser.add_argument(
+        "--use-in-memory-queue",
+        default=False,
+        help="use in memory queue instead of a posix queue",
+    )
+    arg_parser.add_argument(
         "--debug", default=False, action="store_true", help="enable debug logging"
     )
     arg_parser.add_argument(
@@ -160,11 +165,17 @@ def publish_traces() -> None:
         },
     )
 
-    trace_queue = MessageQueue(
-        "/traces-" + args.queue_name,
-        max_messages=publisher_cfg.max_queue_size,
-        max_message_size=MAX_SPAN_SIZE,
-    )
+    if args.use_in_memory_queue:
+        trace_queue = InMemoryMessageQueue(
+            "/traces-" + args.queue_name,
+            max_messages=publisher_cfg.max_queue_size,
+        )
+    else:
+        trace_queue = PosixMessageQueue(
+            "/traces-" + args.queue_name,
+            max_messages=publisher_cfg.max_queue_size,
+            max_message_size=MAX_SPAN_SIZE,
+        )
 
     # pylint: disable=maybe-no-member
     inner_batch = TraceBatch(max_size=publisher_cfg.max_batch_size)

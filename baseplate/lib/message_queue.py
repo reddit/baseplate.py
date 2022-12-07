@@ -1,4 +1,6 @@
 """A Gevent-friendly POSIX message queue."""
+from abc import abstractmethod
+import queue
 import select
 
 from typing import Optional
@@ -34,8 +36,78 @@ class MessageQueueOSError(OSError):
     def __init__(self, inner: Exception):
         super().__init__(f"{inner} (check `ulimit -q`?)")
 
-
 class MessageQueue:
+    @abstractmethod
+    def __init__(self, name: str, max_messages: int, max_message_size: int):
+        pass
+
+    @abstractmethod
+    def get(self, timeout: Optional[float] = None) -> bytes:
+        """Read a message from the queue.
+
+        :param timeout: If the queue is empty, the call will block up to
+            ``timeout`` seconds or forever if ``None``.
+        :raises: :py:exc:`TimedOutError` The queue was empty for the allowed
+            duration of the call.
+
+        """
+        pass
+
+    @abstractmethod
+    def put(self, message: bytes, timeout: Optional[float] = None) -> None:
+        """Add a message to the queue.
+
+        :param timeout: If the queue is full, the call will block up to
+            ``timeout`` seconds or forever if ``None``.
+        :raises: :py:exc:`TimedOutError` The queue was full for the allowed
+            duration of the call.
+
+        """
+        pass
+
+class InMemoryMessageQueue(MessageQueue): 
+    def __init__(self, name: str, max_messages: int):
+        self.queue = queue.Queue(max_messages)
+        self.max_messages = max_messages
+        self.name = name
+
+    def get(self, timeout: Optional[float] = None) -> bytes:
+        """Read a message from the queue.
+
+        :param timeout: If the queue is empty, the call will block up to
+            ``timeout`` seconds or forever if ``None``.
+        :raises: :py:exc:`TimedOutError` The queue was empty for the allowed
+            duration of the call.
+
+        """
+        try: 
+            message = self.queue.get(timeout=timeout)
+            self.queue.task_done()
+            return message
+        except queue.Empty:
+            raise TimedOutError
+        
+    def put(self, message: bytes, timeout: Optional[float] = None) -> None:
+        """Add a message to the queue.
+
+        :param timeout: If the queue is full, the call will block up to
+            ``timeout`` seconds or forever if ``None``.
+        :raises: :py:exc:`TimedOutError` The queue was full for the allowed
+            duration of the call.
+
+        """
+        try: 
+            return self.queue.put(message, timeout=timeout)
+        except queue.Full:
+            raise TimedOutError
+
+    def unlink(self) -> None:
+        pass
+
+    def close(self) -> None: 
+        pass
+
+class PosixMessageQueue(MessageQueue):
     """A Gevent-friendly (but not required) inter process message queue.
 
     ``name`` should be a string of up to 255 characters consisting of an
@@ -47,7 +119,6 @@ class MessageQueue:
     support this.
 
     """
-
     def __init__(self, name: str, max_messages: int, max_message_size: int):
         try:
             self.queue = posix_ipc.MessageQueue(
@@ -101,7 +172,7 @@ class MessageQueue:
                 select.select([], [self.queue.mqd], [], time_remaining)
 
         raise TimedOutError
-
+    
     def unlink(self) -> None:
         """Remove the queue from the system.
 
@@ -119,6 +190,7 @@ class MessageQueue:
 
         """
         self.queue.close()
+    
 
 
 def queue_tool() -> None:
@@ -140,6 +212,7 @@ def queue_tool() -> None:
         help="if creating the queue, what to set the maximum message size to",
     )
     parser.add_argument("queue_name", help="the name of the queue to consume")
+    parser.add_argument("use_in_memory_queue", default=False, help="whether to use an in-memory queue or a posix queue")
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
@@ -166,7 +239,10 @@ def queue_tool() -> None:
 
     args = parser.parse_args()
 
-    queue = MessageQueue(args.queue_name, args.max_messages, args.max_message_size)
+    if args.use_in_memory_queue:
+        queue = InMemoryMessageQueue(args.queue_name, args.max_messages)
+    else: 
+        queue = PosixMessageQueue(args.queue_name, args.max_messages, args.max_message_size)
 
     if args.mode == "read":
         while True:

@@ -29,7 +29,7 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import config
 from baseplate.lib import warn_deprecated
-from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import InMemoryMessageQueue, PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.observers.timeout import ServerTimeout
 
@@ -539,18 +539,24 @@ class TraceQueueFullError(Exception):
 
 
 class SidecarRecorder(Recorder):
-    """Interface for recording spans to a POSIX message queue.
+    """Interface for recording spans to a message queue.
 
     The SidecarRecorder serializes spans to a string representation before
     adding them to the queue.
     """
 
-    def __init__(self, queue_name: str):
-        self.queue = MessageQueue(
-            "/traces-" + queue_name,
-            max_messages=MAX_QUEUE_SIZE,
-            max_message_size=MAX_SPAN_SIZE,
-        )
+    def __init__(self, queue_name: str, use_in_memory_queue: bool = False):
+        if use_in_memory_queue:
+            self.queue = InMemoryMessageQueue(
+                "/traces-" + queue_name,
+                max_messages=MAX_QUEUE_SIZE,
+            )
+        else:
+            self.queue = PosixMessageQueue(
+                "/traces-" + queue_name,
+                max_messages=MAX_QUEUE_SIZE,
+                max_message_size=MAX_SPAN_SIZE,
+            )
 
     def send(self, span: TraceSpanObserver) -> None:
         # Don't raise exceptions from here. This is called in the
