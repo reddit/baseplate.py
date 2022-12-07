@@ -164,11 +164,9 @@ class InMemoryMessageQueue(MessageQueue):
 
     def unlink(self) -> None:
         """Not implemented for in-memory queue"""
-        pass
 
     def close(self) -> None:
         """Not implemented for in-memory queue"""
-        pass
 
 
 def queue_tool() -> None:
