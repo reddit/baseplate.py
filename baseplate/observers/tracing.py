@@ -567,7 +567,7 @@ class SidecarRecorder(Recorder):
                 "Trace too big. Traces published to %s are not allowed to be larger "
                 "than %d bytes. Received trace is %d bytes. This can be caused by "
                 "an excess amount of tags or a large amount of child spans.",
-                self.queue.queue.name,
+                self.queue.name,
                 MAX_SPAN_SIZE,
                 len(serialized_str),
             )
@@ -576,7 +576,7 @@ class SidecarRecorder(Recorder):
             self.queue.put(serialized_str, timeout=0)
         except TimedOutError:
             logger.warning(
-                "Trace queue %s is full. Is trace sidecar healthy?", self.queue.queue.name
+                "Trace queue %s is full. Is trace sidecar healthy?", self.queue.name
             )
 
 

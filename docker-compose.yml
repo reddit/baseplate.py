@@ -21,12 +21,6 @@ services:
     command: "pytest -v tests/"
     volumes:
       - ".:/src"
-    # links:
-    #   - "cassandra"
-    #   - "memcached"
-    #   - "redis"
-    #   - "zookeeper"
-    #   - "redis-cluster-node"
   cassandra:
     image: "cassandra:3.11"
     environment:

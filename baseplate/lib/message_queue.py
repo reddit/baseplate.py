@@ -65,7 +65,18 @@ class MessageQueue:
         """
         pass
 
-class InMemoryMessageQueue(MessageQueue): 
+class InMemoryMessageQueue(MessageQueue):
+    """An in-memory inter process message queue.
+
+    ``name`` should be a string of up to 255 characters consisting of an
+    initial slash, followed by one or more characters, none of which are
+    slashes.
+
+    Note: This relies on POSIX message queues being available and
+    select(2)-able like other file descriptors. Not all operating systems
+    support this.
+
+    """
     def __init__(self, name: str, max_messages: int):
         self.queue = queue.Queue(max_messages)
         self.max_messages = max_messages
@@ -102,9 +113,11 @@ class InMemoryMessageQueue(MessageQueue):
             raise TimedOutError
 
     def unlink(self) -> None:
+        """Not implemented for in-memory queue"""
         pass
 
-    def close(self) -> None: 
+    def close(self) -> None:
+        """Not implemented for in-memory queue"""
         pass
 
 class PosixMessageQueue(MessageQueue):
@@ -133,6 +146,7 @@ class PosixMessageQueue(MessageQueue):
         except OSError as exc:
             raise MessageQueueOSError(exc)
         self.queue.block = False
+        self.name = name
 
     def get(self, timeout: Optional[float] = None) -> bytes:
         """Read a message from the queue.
