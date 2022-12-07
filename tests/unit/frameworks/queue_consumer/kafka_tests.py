@@ -7,12 +7,17 @@ import confluent_kafka
 import pytest
 
 from gevent.server import StreamServer
+from prometheus_client import REGISTRY
 
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import ServerSpan
 from baseplate.frameworks.queue_consumer.kafka import FastConsumerFactory
 from baseplate.frameworks.queue_consumer.kafka import InOrderConsumerFactory
+from baseplate.frameworks.queue_consumer.kafka import KAFKA_ACTIVE_MESSAGES
+from baseplate.frameworks.queue_consumer.kafka import KAFKA_PROCESSED_TOTAL
+from baseplate.frameworks.queue_consumer.kafka import KAFKA_PROCESSING_TIME
+from baseplate.frameworks.queue_consumer.kafka import KafkaConsumerPrometheusLabels
 from baseplate.frameworks.queue_consumer.kafka import KafkaConsumerWorker
 from baseplate.frameworks.queue_consumer.kafka import KafkaMessageHandler
 from baseplate.lib import metrics
@@ -50,6 +55,11 @@ def name():
 
 
 class TestKafkaMessageHandler:
+    def setup(self):
+        KAFKA_PROCESSING_TIME.clear()
+        KAFKA_PROCESSED_TOTAL.clear()
+        KAFKA_ACTIVE_MESSAGES.clear()
+
     @pytest.fixture
     def message(self):
         msg = mock.Mock(spec=confluent_kafka.Message)
@@ -63,8 +73,15 @@ class TestKafkaMessageHandler:
         return msg
 
     @mock.patch("baseplate.frameworks.queue_consumer.kafka.time")
-    def test_handle(self, time, context, span, baseplate, name, message):
+    @pytest.mark.parametrize("prometheus_client_name", [None, "my_kafka_client_name"])
+    def test_handle(self, time, context, span, baseplate, name, message, prometheus_client_name):
         time.time.return_value = 2.0
+        time.perf_counter.side_effect = [1, 2]
+
+        prom_labels = KafkaConsumerPrometheusLabels(
+            kafka_client_name=prometheus_client_name if prometheus_client_name is not None else "",
+            kafka_topic="topic_1",
+        )
 
         handler_fn = mock.Mock()
         message_unpack_fn = mock.Mock(
@@ -78,8 +95,21 @@ class TestKafkaMessageHandler:
         mock_gauge = mock.Mock()
         context.metrics.gauge.return_value = mock_gauge
 
-        handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+        if prometheus_client_name is None:
+            handler = KafkaMessageHandler(
+                baseplate, name, handler_fn, message_unpack_fn, on_success_fn
+            )
+        else:
+            handler = KafkaMessageHandler(
+                baseplate,
+                name,
+                handler_fn,
+                message_unpack_fn,
+                on_success_fn,
+                prometheus_client_name=prometheus_client_name,
+            )
         handler.handle(message)
+
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
         baseplate.make_server_span().__enter__.assert_called_once()
@@ -108,6 +138,24 @@ class TestKafkaMessageHandler:
         context.metrics.gauge.assert_called_once_with(f"{name}.topic_1.offset.3")
         mock_gauge.replace.assert_called_once_with(33)
 
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSING_TIME._name}_bucket",
+                {**prom_labels._asdict(), **{"kafka_success": "true", "le": "+Inf"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSED_TOTAL._name}_total",
+                {**prom_labels._asdict(), **{"kafka_success": "true"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+        )
+
     def test_handle_no_endpoint_timestamp(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
         message_unpack_fn = mock.Mock(return_value={"body": "some text"})
@@ -116,8 +164,14 @@ class TestKafkaMessageHandler:
         mock_gauge = mock.Mock()
         context.metrics.gauge.return_value = mock_gauge
 
+        prom_labels = KafkaConsumerPrometheusLabels(
+            kafka_client_name="",
+            kafka_topic="topic_1",
+        )
+
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
         handler.handle(message)
+
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
         baseplate.make_server_span().__enter__.assert_called_once()
@@ -141,6 +195,24 @@ class TestKafkaMessageHandler:
         context.metrics.gauge.assert_called_once_with(f"{name}.topic_1.offset.3")
         mock_gauge.replace.assert_called_once_with(33)
 
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSING_TIME._name}_bucket",
+                {**prom_labels._asdict(), **{"kafka_success": "true", "le": "+Inf"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSED_TOTAL._name}_total",
+                {**prom_labels._asdict(), **{"kafka_success": "true"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+        )
+
     def test_handle_kafka_error(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
         message_unpack_fn = mock.Mock()
@@ -152,6 +224,11 @@ class TestKafkaMessageHandler:
         message.error.return_value = error_mock
 
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+
+        prom_labels = KafkaConsumerPrometheusLabels(
+            kafka_client_name="",
+            kafka_topic="topic_1",
+        )
 
         with pytest.raises(ValueError):
             handler.handle(message)
@@ -166,6 +243,24 @@ class TestKafkaMessageHandler:
         context.metrics.timer.assert_not_called()
         context.metrics.gauge.assert_not_called()
 
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSING_TIME._name}_bucket",
+                {**prom_labels._asdict(), **{"kafka_success": "false", "le": "+Inf"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSED_TOTAL._name}_total",
+                {**prom_labels._asdict(), **{"kafka_success": "false"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+        )
+
     def test_handle_unpack_error(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
         message_unpack_fn = mock.Mock(side_effect=ValueError("something bad happened"))
@@ -174,7 +269,14 @@ class TestKafkaMessageHandler:
         context.span = span
 
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+
+        prom_labels = KafkaConsumerPrometheusLabels(
+            kafka_client_name="",
+            kafka_topic="topic_1",
+        )
+
         handler.handle(message)
+
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
         baseplate.make_server_span().__enter__.assert_called_once()
@@ -196,6 +298,24 @@ class TestKafkaMessageHandler:
         context.metrics.timer.assert_not_called()
         context.metrics.gauge.assert_not_called()
 
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSING_TIME._name}_bucket",
+                {**prom_labels._asdict(), **{"kafka_success": "false", "le": "+Inf"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSED_TOTAL._name}_total",
+                {**prom_labels._asdict(), **{"kafka_success": "false"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+        )
+
     def test_handle_handler_error(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock(side_effect=ValueError("something went wrong"))
         message_unpack_fn = mock.Mock(
@@ -204,6 +324,11 @@ class TestKafkaMessageHandler:
         on_success_fn = mock.Mock()
 
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+
+        prom_labels = KafkaConsumerPrometheusLabels(
+            kafka_client_name="",
+            kafka_topic="topic_1",
+        )
 
         with pytest.raises(ValueError):
             handler.handle(message)
@@ -229,6 +354,24 @@ class TestKafkaMessageHandler:
         on_success_fn.assert_not_called()
         context.metrics.timer.assert_not_called()
         context.metrics.gauge.assert_not_called()
+
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSING_TIME._name}_bucket",
+                {**prom_labels._asdict(), **{"kafka_success": "false", "le": "+Inf"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(
+                f"{KAFKA_PROCESSED_TOTAL._name}_total",
+                {**prom_labels._asdict(), **{"kafka_success": "false"}},
+            )
+            == 1
+        )
+        assert (
+            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+        )
 
 
 @pytest.fixture

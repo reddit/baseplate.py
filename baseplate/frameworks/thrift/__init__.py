@@ -1,4 +1,5 @@
 import sys
+import time
 
 from logging import Logger
 from typing import Any
@@ -6,6 +7,9 @@ from typing import Callable
 from typing import Mapping
 from typing import Optional
 
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 from requests.structures import CaseInsensitiveDict
 from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
@@ -18,8 +22,39 @@ from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import TraceInfo
 from baseplate.lib.edgecontext import EdgeContextFactory
+from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
+
+
+PROM_NAMESPACE = "thrift_server"
+
+PROM_LATENCY = Histogram(
+    f"{PROM_NAMESPACE}_latency_seconds",
+    "Time spent processing requests",
+    [
+        "thrift_method",
+        "thrift_success",
+    ],
+    buckets=default_latency_buckets,
+)
+PROM_REQUESTS = Counter(
+    f"{PROM_NAMESPACE}_requests_total",
+    "Total RPC request count",
+    [
+        "thrift_method",
+        "thrift_success",
+        "thrift_exception_type",
+        "thrift_baseplate_status",
+        "thrift_baseplate_status_code",
+    ],
+)
+PROM_ACTIVE = Gauge(
+    f"{PROM_NAMESPACE}_active_requests",
+    "The number of in-flight requests being handled by the service",
+    ["thrift_method"],
+    multiprocess_mode="livesum",
+)
 
 
 class _ContextAwareHandler:
@@ -43,9 +78,12 @@ class _ContextAwareHandler:
 
             span = self.context.span
             span.set_tag("thrift.method", fn_name)
+            start_time = time.perf_counter()
+
             try:
                 span.start()
-                result = handler_fn(self.context, *args, **kwargs)
+                with PROM_ACTIVE.labels(fn_name).track_inprogress():
+                    result = handler_fn(self.context, *args, **kwargs)
             except (TApplicationException, TProtocolException, TTransportException):
                 # these are subclasses of TException but aren't ones that
                 # should be expected in the protocol
@@ -70,7 +108,7 @@ class _ContextAwareHandler:
                 # this is an expected exception, as defined in the IDL
                 span.finish()
                 raise
-            except:  # noqa: E722
+            except Exception:  # noqa: E722
                 # the handler crashed (or timed out)!
                 span.finish(exc_info=sys.exc_info())
                 if self.convert_to_baseplate_error:
@@ -83,6 +121,46 @@ class _ContextAwareHandler:
                 # a normal result
                 span.finish()
                 return result
+            finally:
+                thrift_success = "true"
+                exception_type = ""
+                baseplate_status_code = ""
+                baseplate_status = ""
+                exc_info = sys.exc_info()
+                if exc_info[0] is not None:
+                    thrift_success = "false"
+                    exception_type = exc_info[0].__name__
+                    current_exc = exc_info[1]
+                    try:
+                        # We want the following code to execute whenever the
+                        # service raises an instance of Baseplate's `Error` class.
+                        # Unfortunately, we cannot just rely on `isinstance` to do
+                        # what we want here because some services compile
+                        # Baseplate's thrift file on their own and import `Error`
+                        # from that. When this is done, `isinstance` will always
+                        # return `False` since it's technically a different class.
+                        # To fix this, we optimistically try to access `code` on
+                        # `current_exc` and just catch the `AttributeError` if the
+                        # `code` attribute is not present.
+                        # Note: if the error code was not originally defined in baseplate, or the
+                        # name associated with the error was overriden, this cannot reflect that
+                        # we will emit the status code in both cases
+                        # but the status will be blank in the first case, and the baseplate name
+                        # in the second
+                        baseplate_status_code = current_exc.code  # type: ignore
+                        baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
+                    except AttributeError:
+                        pass
+                PROM_REQUESTS.labels(
+                    thrift_method=fn_name,
+                    thrift_success=thrift_success,
+                    thrift_exception_type=exception_type,
+                    thrift_baseplate_status=baseplate_status,
+                    thrift_baseplate_status_code=baseplate_status_code,
+                ).inc()
+                PROM_LATENCY.labels(fn_name, thrift_success).observe(
+                    time.perf_counter() - start_time
+                )
 
         return call_with_context
 

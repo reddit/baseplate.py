@@ -4,16 +4,14 @@
 # See install_requires and extras_require in setup.py for the range of versions
 # supported.
 -r requirements-transitive.txt
-astroid==2.8.4
 black==21.10b0
 boto3==1.21.20
-flake8==3.8.4
+flake8==5.0.4
 lxml==4.6.5
 mypy==0.910
 prometheus-client==0.14.1
 pydocstyle==5.1.1
-
-pylint==2.11.1
+pylint==2.15.3
 pytest==6.2.2
 pytest-cov==2.11.1
 pytz==2021.1

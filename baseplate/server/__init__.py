@@ -48,6 +48,7 @@ from baseplate.lib.config import Optional as OptionalConfig
 from baseplate.lib.config import parse_config
 from baseplate.lib.config import Timespan
 from baseplate.lib.log_formatter import CustomJsonFormatter
+from baseplate.lib.prometheus_metrics import is_metrics_enabled
 from baseplate.server import einhorn
 from baseplate.server import reloader
 from baseplate.server.net import bind_socket
@@ -264,23 +265,23 @@ def load_app_and_run_server() -> None:
         config = read_config(args.config_file, args.server_name, args.app_name)
     assert config.server
 
+    # Prom exporter needs to start before the app starts because
+    # we need to set the prometheus id before we generate any stats
+    if is_metrics_enabled(config.app):
+        from baseplate.server.prometheus import start_prometheus_exporter
+
+        start_prometheus_exporter()
+    else:
+        logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
+
     configure_logging(config, args.debug)
 
     app = make_app(config.app)
     listener = make_listener(args.bind)
     server = make_server(config.server, listener, app)
 
-    cfg = parse_config(config.server, {"drain_time": OptionalConfig(Timespan)})
-
     if einhorn.is_worker():
         einhorn.ack_startup()
-
-    if "metrics.tagging" in config.app or "metrics.namespace" in config.app:
-        from baseplate.server.prometheus import start_prometheus_exporter
-
-        start_prometheus_exporter()
-    else:
-        logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     if args.reload:
         reloader.start_reload_watcher(extra_files=[args.config_file.name])
@@ -295,6 +296,7 @@ def load_app_and_run_server() -> None:
 
         SERVER_STATE.state = ServerLifecycle.SHUTTING_DOWN
 
+        cfg = parse_config(config.server, {"drain_time": OptionalConfig(Timespan)})
         if cfg.drain_time:
             logger.debug("Draining inbound requests...")
             time.sleep(cfg.drain_time.total_seconds())

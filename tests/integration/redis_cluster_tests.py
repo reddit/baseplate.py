@@ -5,12 +5,19 @@ try:
 except ImportError:
     raise unittest.SkipTest("redis-py-cluster is not installed")
 
+from prometheus_client import REGISTRY
+
 from baseplate.lib.config import ConfigurationError
 from baseplate.clients.redis_cluster import cluster_pool_from_config
 
 from baseplate.clients.redis_cluster import ClusterRedisClient
-from baseplate import Baseplate
-from . import TestBaseplateObserver, get_endpoint_or_skip_container
+from baseplate.clients.redis import REQUESTS_TOTAL
+from baseplate.clients.redis import LATENCY_SECONDS
+from baseplate.clients.redis import ACTIVE_REQUESTS
+
+from . import get_endpoint_or_skip_container
+from .redis_testcase import RedisIntegrationTestCase, redis_cluster_url
+
 
 redis_endpoint = get_endpoint_or_skip_container("redis-cluster-node", 7000)
 
@@ -24,7 +31,7 @@ class ClusterPoolFromConfigTests(unittest.TestCase):
             cluster_pool_from_config({})
 
     def test_basic_url(self):
-        pool = cluster_pool_from_config({"rediscluster.url": f"redis://{redis_endpoint}/0"})
+        pool = cluster_pool_from_config({"rediscluster.url": redis_cluster_url})
 
         self.assertEqual(pool.nodes.startup_nodes[0]["host"], "redis-cluster-node")
         self.assertEqual(pool.nodes.startup_nodes[0]["port"], "7000")
@@ -85,22 +92,17 @@ class ClusterPoolFromConfigTests(unittest.TestCase):
         self.assertTrue(any(node["port"] != 7000 for node in node_list))
 
 
-class RedisClusterIntegrationTests(unittest.TestCase):
+class RedisClusterIntegrationTests(RedisIntegrationTestCase):
     def setUp(self):
-        self.baseplate_observer = TestBaseplateObserver()
+        self.baseplate_app_config = {
+            "rediscluster.url": f"redis://{redis_endpoint}/0",
+            "rediscluster.timeout": "1 second",
+            "rediscluster.max_connections": "4",
+        }
+        self.redis_client_builder = ClusterRedisClient
+        self.redis_context_name = "rediscluster"
 
-        baseplate = Baseplate(
-            {
-                "rediscluster.url": f"redis://{redis_endpoint}/0",
-                "rediscluster.timeout": "1 second",
-                "rediscluster.max_connections": "4",
-            }
-        )
-        baseplate.register(self.baseplate_observer)
-        baseplate.configure_context({"rediscluster": ClusterRedisClient()})
-
-        self.context = baseplate.make_context_object()
-        self.server_span = baseplate.make_server_span(self.context, "test")
+        super().setUp()
 
     def test_simple_command(self):
         with self.server_span:
@@ -156,3 +158,89 @@ class RedisClusterIntegrationTests(unittest.TestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
+
+    def test_metrics(self):
+        client_name = "redis_test"
+        for client_name_kwarg_name in [
+            "redis_client_name",
+            "client_name",
+        ]:
+            with self.subTest():
+                self.setup_baseplate_redis(
+                    redis_client_kwargs={
+                        "redis_client_name": client_name,
+                    },
+                )
+                expected_labels = {
+                    "redis_client_name": client_name,
+                    "redis_type": "cluster",
+                    "redis_command": "SET",
+                    "redis_database": "0",
+                }
+                with self.server_span:
+                    self.context.rediscluster.set("prometheus", "rocks")
+
+                request_labels = {**expected_labels, "redis_success": "true"}
+                assert (
+                    REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", request_labels)
+                    == 1.0
+                ), "Unexpected value for REQUESTS_TOTAL metric. Expected one 'set' command"
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{LATENCY_SECONDS._name}_bucket", {**request_labels, "le": "+Inf"}
+                    )
+                    == 1.0
+                ), "Expected one 'set' latency request"
+                assert (
+                    REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, {**expected_labels}) == 0.0
+                ), "Should have 0 (and not None) active requests"
+
+                # Each iteration of this loop is effectively a different testcase
+                self.tearDown()
+
+    def test_pipeline_metrics(self):
+        client_name = "test_client"
+        for client_name_kwarg_name in [
+            "redis_client_name",
+            "client_name",
+        ]:
+            with self.subTest():
+                self.setup_baseplate_redis(
+                    redis_client_kwargs={
+                        "redis_client_name": client_name,
+                    },
+                )
+                expected_labels = {
+                    "redis_client_name": client_name,
+                    "redis_type": "cluster",
+                    "redis_command": "pipeline",
+                    "redis_database": "0",
+                }
+                with self.server_span:
+                    with self.context.rediscluster.pipeline("foo") as pipeline:
+                        pipeline.set("foo", "bar")
+                        pipeline.get("foo")
+                        pipeline.get("foo")
+                        pipeline.get("foo")
+                        pipeline.get("foo")
+                        pipeline.get("foo")
+                        pipeline.delete("foo")
+                        pipeline.execute()
+
+                request_labels = {**expected_labels, "redis_success": "true"}
+                assert (
+                    REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", request_labels)
+                    == 1.0
+                ), "Unexpected value for REQUESTS_TOTAL metric. Expected one 'set' command"
+                assert (
+                    REGISTRY.get_sample_value(
+                        f"{LATENCY_SECONDS._name}_bucket", {**request_labels, "le": "+Inf"}
+                    )
+                    == 1.0
+                ), "Expected one 'set' latency request"
+                assert (
+                    REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, {**expected_labels}) == 0.0
+                ), "Should have 0 (and not None) active requests"
+
+                # Each iteration of this loop is effectively a different testcase
+                self.tearDown()

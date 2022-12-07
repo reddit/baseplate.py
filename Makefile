@@ -43,7 +43,10 @@ linkcheck:
 
 .PHONY: test
 test: doctest
-	pytest -v tests/
+	# Some files use gevent to monkey patch stdlib functions. This causes problems
+	# if it happens after importing the sequential versions of some of these. Thus
+	# we need to do it as early as possible.
+	python -m gevent.monkey --module pytest -v tests/
 
 .PHONY: fmt
 fmt:
