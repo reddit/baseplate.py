@@ -1,8 +1,8 @@
 """A Gevent-friendly POSIX message queue."""
-import queue
+import abc
+import queue as q
 import select
 
-from abc import abstractmethod
 from typing import Optional
 
 import posix_ipc
@@ -37,14 +37,10 @@ class MessageQueueOSError(OSError):
         super().__init__(f"{inner} (check `ulimit -q`?)")
 
 
-class MessageQueue:
+class MessageQueue(abc.ABC):
     """Abstract class for an inter-process message queue."""
 
-    @abstractmethod
-    def __init__(self, name: str, max_messages: int, max_message_size: int):
-        pass
-
-    @abstractmethod
+    @abc.abstractmethod
     def get(self, timeout: Optional[float] = None) -> bytes:
         """Read a message from the queue.
 
@@ -54,9 +50,8 @@ class MessageQueue:
             duration of the call.
 
         """
-        pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def put(self, message: bytes, timeout: Optional[float] = None) -> None:
         """Add a message to the queue.
 
@@ -66,18 +61,16 @@ class MessageQueue:
             duration of the call.
 
         """
-        pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def unlink(self) -> None:
         """Remove the queue from the system.
 
         The queue will not leave until the last active user closes it.
 
         """
-        pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def close(self) -> None:
         """Close the queue, freeing related resources.
 
@@ -86,7 +79,6 @@ class MessageQueue:
         Python.
 
         """
-        pass
 
 
 class PosixMessageQueue(MessageQueue):
@@ -152,7 +144,7 @@ class InMemoryMessageQueue(MessageQueue):
     """An in-memory inter process message queue."""
 
     def __init__(self, name: str, max_messages: int):
-        self.queue = queue.Queue(max_messages)
+        self.queue = q.Queue(max_messages)
         self.max_messages = max_messages
         self.name = name
 
@@ -161,13 +153,13 @@ class InMemoryMessageQueue(MessageQueue):
             message = self.queue.get(timeout=timeout)
             self.queue.task_done()
             return message
-        except queue.Empty:
+        except q.Empty:
             raise TimedOutError
 
     def put(self, message: bytes, timeout: Optional[float] = None) -> None:
         try:
             return self.queue.put(message, timeout=timeout)
-        except queue.Full:
+        except q.Full:
             raise TimedOutError
 
     def unlink(self) -> None:
