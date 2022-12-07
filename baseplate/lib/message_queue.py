@@ -1,8 +1,8 @@
 """A Gevent-friendly POSIX message queue."""
-from abc import abstractmethod
 import queue
 import select
 
+from abc import abstractmethod
 from typing import Optional
 
 import posix_ipc
