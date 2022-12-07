@@ -1,11 +1,10 @@
 from math import ceil
+from time import perf_counter
 from typing import Any
 from typing import Dict
 from typing import Optional
 
 import redis
-
-from prometheus_client import Gauge
 
 # redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
 try:
@@ -13,11 +12,68 @@ try:
 except ImportError:
     from redis.client import Pipeline
 
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
 from baseplate.lib import metrics
+
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+
+PROM_PREFIX = "redis_client"
+PROM_LABELS_PREFIX = "redis"
+
+PROM_SHARED_LABELS = [
+    f"{PROM_LABELS_PREFIX}_command",
+    f"{PROM_LABELS_PREFIX}_database",
+    f"{PROM_LABELS_PREFIX}_client_name",
+    f"{PROM_LABELS_PREFIX}_type",
+]
+LATENCY_SECONDS = Histogram(
+    f"{PROM_PREFIX}_latency_seconds",
+    "Latency histogram for calls made by clients",
+    [*PROM_SHARED_LABELS, f"{PROM_LABELS_PREFIX}_success"],
+    buckets=default_latency_buckets,
+)
+
+REQUESTS_TOTAL = Counter(
+    f"{PROM_PREFIX}_requests_total",
+    "Total number of requests made by client",
+    [*PROM_SHARED_LABELS, f"{PROM_LABELS_PREFIX}_success"],
+)
+
+ACTIVE_REQUESTS = Gauge(
+    f"{PROM_PREFIX}_active_requests",
+    "Number of active requests for a given client",
+    PROM_SHARED_LABELS,
+    multiprocess_mode="livesum",
+)
+
+PROM_POOL_PREFIX = f"{PROM_PREFIX}_pool"
+PROM_LABELS = ["redis_pool"]
+
+MAX_CONNECTIONS = Gauge(
+    f"{PROM_POOL_PREFIX}_max_size",
+    "Maximum number of connections allowed in this redis client connection pool",
+    PROM_LABELS,
+    multiprocess_mode="livesum",
+)
+IDLE_CONNECTIONS = Gauge(
+    f"{PROM_POOL_PREFIX}_idle_connections",
+    "Number of idle connections in this redis client connection pool",
+    PROM_LABELS,
+    multiprocess_mode="livesum",
+)
+OPEN_CONNECTIONS = Gauge(
+    f"{PROM_POOL_PREFIX}_active_connections",
+    "Number of open connections in this redis client connection pool",
+    PROM_LABELS,
+    multiprocess_mode="livesum",
+)
 
 
 def pool_from_config(
@@ -68,16 +124,34 @@ class RedisClient(config.Parser):
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
 
+    :param redis_client_name: The name of this Redis client. Prefer to use `client_name`
+    keyword argument to the `pool_from_config` function. Use this if your using a Redis
+    host or proxy that doesn't support the `CLIENT SETNAME` function.
+
     See :py:func:`pool_from_config` for available configuration settings.
 
     """
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, redis_client_name: str = "", **kwargs: Any):
+        # This is for backwards compatibility. Originally we asked clients to
+        # set the `client_name` attribute to get the `redis_client_name`
+        # tag to appear on Prometheus metrics. Unfortunately this broke clients
+        # that use a proxy to connect to Redis.
+        # See: https://github.com/redis/redis-py/issues/2384
+        client_name = redis_client_name
+        if client_name == "":
+            client_name = kwargs.get("client_name", "")
+
         self.kwargs = kwargs
+        self.redis_client_name = client_name
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "RedisContextFactory":
         connection_pool = pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return RedisContextFactory(connection_pool, key_path)
+        return RedisContextFactory(
+            connection_pool=connection_pool,
+            name=key_path,
+            redis_client_name=self.redis_client_name,
+        )
 
 
 class RedisContextFactory(ContextFactory):
@@ -94,48 +168,40 @@ class RedisContextFactory(ContextFactory):
 
     """
 
-    PROM_PREFIX = "bp_redis_pool"
-    PROM_LABELS = ["pool"]
-
-    max_connections = Gauge(
-        f"{PROM_PREFIX}_max_size",
-        "Maximum number of connections allowed in this redisbp pool",
-        PROM_LABELS,
-    )
-    idle_connections = Gauge(
-        f"{PROM_PREFIX}_idle_connections",
-        "Number of idle connections in this redisbp pool",
-        PROM_LABELS,
-    )
-    open_connections = Gauge(
-        f"{PROM_PREFIX}_active_connections",
-        "Number of open connections in this redisbp pool",
-        PROM_LABELS,
-    )
-
-    def __init__(self, connection_pool: redis.ConnectionPool, name: str = "redis"):
+    def __init__(
+        self,
+        connection_pool: redis.ConnectionPool,
+        name: str = "redis",
+        redis_client_name: str = "",
+    ):
         self.connection_pool = connection_pool
         self.name = name
+        self.redis_client_name = redis_client_name
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         if not isinstance(self.connection_pool, redis.BlockingConnectionPool):
             return
 
         size = self.connection_pool.max_connections
-        open_connections = len(self.connection_pool._connections)  # type: ignore
+        open_connections_num = len(self.connection_pool._connections)  # type: ignore
         available = self.connection_pool.pool.qsize()
         in_use = size - available
 
-        self.max_connections.labels(self.name).set(size)
-        self.idle_connections.labels(self.name).set(available)
-        self.open_connections.labels(self.name).set(open_connections)
+        MAX_CONNECTIONS.labels(self.name).set(size)
+        IDLE_CONNECTIONS.labels(self.name).set(available)
+        OPEN_CONNECTIONS.labels(self.name).set(open_connections_num)
 
         batch.gauge("pool.size").replace(size)
         batch.gauge("pool.in_use").replace(in_use)
-        batch.gauge("pool.open_and_available").replace(open_connections - in_use)
+        batch.gauge("pool.open_and_available").replace(open_connections_num - in_use)
 
     def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
-        return MonitoredRedisConnection(name, span, self.connection_pool)
+        return MonitoredRedisConnection(
+            context_name=name,
+            server_span=span,
+            connection_pool=self.connection_pool,
+            redis_client_name=self.redis_client_name,
+        )
 
 
 # pylint: disable=too-many-public-methods
@@ -151,9 +217,16 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
     """
 
-    def __init__(self, context_name: str, server_span: Span, connection_pool: redis.ConnectionPool):
+    def __init__(
+        self,
+        context_name: str,
+        server_span: Span,
+        connection_pool: redis.ConnectionPool,
+        redis_client_name: str = "",
+    ):
         self.context_name = context_name
         self.server_span = server_span
+        self.redis_client_name = redis_client_name
 
         super().__init__(connection_pool=connection_pool)
 
@@ -161,10 +234,32 @@ class MonitoredRedisConnection(redis.StrictRedis):
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
-        with self.server_span.make_child(trace_name):
-            return super().execute_command(command, *args[1:], **kwargs)
+        labels = {
+            f"{PROM_LABELS_PREFIX}_command": command,
+            f"{PROM_LABELS_PREFIX}_client_name": self.redis_client_name,
+            f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get("db", ""),
+            f"{PROM_LABELS_PREFIX}_type": "standalone",
+        }
+        with self.server_span.make_child(trace_name), ACTIVE_REQUESTS.labels(
+            **labels
+        ).track_inprogress():
+            start_time = perf_counter()
+            success = "true"
 
-    # pylint: disable=arguments-differ
+            try:
+                res = super().execute_command(command, *args[1:], **kwargs)
+                if isinstance(res, redis.RedisError):
+                    success = "false"
+                return res
+            except:  # noqa: E722
+                success = "false"
+                raise
+            finally:
+                result_labels = {**labels, f"{PROM_LABELS_PREFIX}_success": success}
+                REQUESTS_TOTAL.labels(**result_labels).inc()
+                LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
+
+    # pylint: disable=arguments-renamed
     def pipeline(  # type: ignore
         self, name: str, transaction: bool = True, shard_hint: Optional[str] = None
     ) -> "MonitoredRedisPipeline":
@@ -186,6 +281,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
             self.response_callbacks,
             transaction=transaction,
             shard_hint=shard_hint,
+            redis_client_name=self.redis_client_name,
         )
 
     # these commands are not yet implemented, but probably not unimplementable
@@ -201,16 +297,43 @@ class MonitoredRedisPipeline(Pipeline):
         server_span: Span,
         connection_pool: redis.ConnectionPool,
         response_callbacks: Dict,
+        redis_client_name: str = "",
         **kwargs: Any,
     ):
         self.trace_name = trace_name
         self.server_span = server_span
+        self.redis_client_name = redis_client_name
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         with self.server_span.make_child(self.trace_name):
-            return super().execute(**kwargs)
+            success = "true"
+            start_time = perf_counter()
+            labels = {
+                f"{PROM_LABELS_PREFIX}_command": "pipeline",
+                f"{PROM_LABELS_PREFIX}_client_name": self.redis_client_name,
+                f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
+                    "db", ""
+                ),
+                f"{PROM_LABELS_PREFIX}_type": "standalone",
+            }
+
+            ACTIVE_REQUESTS.labels(**labels).inc()
+
+            try:
+                return super().execute(**kwargs)
+            except:  # noqa: E722
+                success = "false"
+                raise
+            finally:
+                ACTIVE_REQUESTS.labels(**labels).dec()
+                result_labels = {
+                    **labels,
+                    f"{PROM_LABELS_PREFIX}_success": success,
+                }
+                REQUESTS_TOTAL.labels(**result_labels).inc()
+                LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
 
 
 class MessageQueue:

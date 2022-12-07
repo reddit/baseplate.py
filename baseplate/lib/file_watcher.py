@@ -2,6 +2,11 @@
 
 The contents of the file are re-loaded and parsed only when necessary.
 
+Warning! Writes to watched files must be atomic, otherwise the client might read
+a currupt or partly written data file. One way to avoid this issue is to write all
+the desired data to a temporary file and move the complete temp file over the old
+file.
+
 For example, a JSON file like the following:
 
 .. highlight:: ini

@@ -3,13 +3,11 @@ import unittest
 
 from unittest import mock
 
-from prometheus_client import REGISTRY
 from pyramid.response import Response
 
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
-from baseplate.observers.prometheus import PrometheusBaseplateObserver
 
 from . import FakeEdgeContextFactory
 
@@ -21,6 +19,7 @@ try:
     from baseplate.frameworks.pyramid import ServerSpanInitialized
     from baseplate.frameworks.pyramid import StaticTrustHandler
     from pyramid.config import Configurator
+    from pyramid.httpexceptions import HTTPInternalServerError
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
@@ -63,7 +62,7 @@ def example_application(request):
 
 
 def render_exception_view(request):
-    return
+    return HTTPInternalServerError(title="a fancy title", body="a fancy explanation")
 
 
 def render_bad_exception_view(request):
@@ -206,11 +205,12 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertIsInstance(captured_exc, TestException)
 
     def test_control_flow_exception_not_caught(self):
-        self.test_app.get("/example?control_flow_exception")
+        response = self.test_app.get("/example?control_flow_exception", status=500)
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
         self.assertTrue(self.context_init_event_subscriber.called)
+        self.assertTrue(b"a fancy explanation", response.body)
         args, _ = self.server_observer.on_finish.call_args
         self.assertEqual(args[0], None)
 
@@ -279,70 +279,3 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_finish.called)
 
         response.app_iter.close()
-
-    def test_prometheus_metrics(self):
-        self.baseplate.register(PrometheusBaseplateObserver())
-        self.test_app.get("/route/random/world")
-
-        self.assertEqual(
-            0.0,
-            REGISTRY.get_sample_value(
-                "http_server_active_requests",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                },
-            ),
-        )
-
-        self.assertEqual(
-            1.0,
-            REGISTRY.get_sample_value(
-                "http_server_requests_total",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                    "http_success": "true",
-                    "http_response_code": "200",
-                },
-            ),
-        )
-
-        self.assertEqual(
-            1.0,
-            REGISTRY.get_sample_value(
-                "http_server_latency_seconds_bucket",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                    "http_success": "true",
-                    "le": "+Inf",
-                },
-            ),
-        )
-
-        self.assertEqual(
-            1.0,
-            REGISTRY.get_sample_value(
-                "http_server_request_size_bytes_bucket",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                    "http_success": "true",
-                    "le": "+Inf",
-                },
-            ),
-        )
-
-        self.assertEqual(
-            1.0,
-            REGISTRY.get_sample_value(
-                "http_server_response_size_bytes_bucket",
-                {
-                    "http_method": "GET",
-                    "http_endpoint": "/route/{hello}/world",
-                    "http_success": "true",
-                    "le": "+Inf",
-                },
-            ),
-        )
