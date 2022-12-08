@@ -10,9 +10,9 @@ from baseplate.clients.redis import ACTIVE_REQUESTS
 from baseplate.clients.redis import REQUESTS_TOTAL
 from baseplate.clients.redis import LATENCY_SECONDS
 from baseplate.clients.redis import RedisClient
-from baseplate import Baseplate
 
-from . import TestBaseplateObserver, get_endpoint_or_skip_container
+from . import get_endpoint_or_skip_container
+from .redis_testcase import RedisIntegrationTestCase, redis_url
 
 from baseplate.clients.redis import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
@@ -21,19 +21,12 @@ from prometheus_client import REGISTRY
 redis_endpoint = get_endpoint_or_skip_container("redis", 6379)
 
 
-class RedisIntegrationTests(unittest.TestCase):
+class RedisIntegrationTests(RedisIntegrationTestCase):
     def setUp(self):
-        self.setup_baseplate_redis()
+        self.baseplate_app_config = {"redis.url": redis_url}
+        self.redis_client_builder = RedisClient
 
-    def setup_baseplate_redis(self, redis_client_kwargs={}):
-        self.baseplate_observer = TestBaseplateObserver()
-
-        baseplate = Baseplate({"redis.url": f"redis://{redis_endpoint}/0"})
-        baseplate.register(self.baseplate_observer)
-        baseplate.configure_context({"redis": RedisClient(**redis_client_kwargs)})
-
-        self.context = baseplate.make_context_object()
-        self.server_span = baseplate.make_server_span(self.context, "test")
+        super().setUp()
 
     def test_simple_command(self):
         with self.server_span:
@@ -96,10 +89,6 @@ class RedisIntegrationTests(unittest.TestCase):
                         client_name_kwarg_name: client_name,
                     },
                 )
-                # Clear preometheus metrics
-                ACTIVE_REQUESTS.clear()
-                REQUESTS_TOTAL.clear()
-                LATENCY_SECONDS.clear()
                 expected_labels = {
                     "redis_client_name": client_name,
                     "redis_type": "standalone",
@@ -126,6 +115,9 @@ class RedisIntegrationTests(unittest.TestCase):
                     )
                     == 0.0
                 ), "Should have 0 (and not None) active requests"
+
+                # Each iteration of this loop is effectively a different testcase
+                self.tearDown()
 
 
 class RedisMessageQueueTests(unittest.TestCase):
