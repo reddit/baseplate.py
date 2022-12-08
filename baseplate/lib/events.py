@@ -100,7 +100,7 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
         if use_in_memory_queue:
             self.queue = InMemoryMessageQueue("/events-" + name, max_messages=MAX_QUEUE_SIZE)
         else:
-            self.queue = PosixMessageQueue(
+            self.queue = PosixMessageQueue(  # type: ignore
                 "/events-" + name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE
             )
         self.serialize_event = event_serializer

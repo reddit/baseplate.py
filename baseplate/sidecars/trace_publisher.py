@@ -172,7 +172,7 @@ def publish_traces() -> None:
             max_messages=publisher_cfg.max_queue_size,
         )
     else:
-        trace_queue = PosixMessageQueue(
+        trace_queue = PosixMessageQueue(  # type: ignore
             "/traces-" + args.queue_name,
             max_messages=publisher_cfg.max_queue_size,
             max_message_size=MAX_SPAN_SIZE,

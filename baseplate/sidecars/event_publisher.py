@@ -215,7 +215,7 @@ def publish_events() -> None:
             max_messages=cfg.max_queue_size,
         )
     else:
-        event_queue = PosixMessageQueue(
+        event_queue = PosixMessageQueue(  # type: ignore
             "/events-" + args.queue_name,
             max_messages=cfg.max_queue_size,
             max_message_size=MAX_EVENT_SIZE,

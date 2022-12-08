@@ -553,7 +553,7 @@ class SidecarRecorder(Recorder):
                 max_messages=MAX_QUEUE_SIZE,
             )
         else:
-            self.queue = PosixMessageQueue(
+            self.queue = PosixMessageQueue(  # type: ignore
                 "/traces-" + queue_name,
                 max_messages=MAX_QUEUE_SIZE,
                 max_message_size=MAX_SPAN_SIZE,

@@ -144,7 +144,7 @@ class InMemoryMessageQueue(MessageQueue):
     """An in-memory inter process message queue."""
 
     def __init__(self, name: str, max_messages: int):
-        self.queue = q.Queue(max_messages)
+        self.queue: q.Queue = q.Queue(max_messages)
         self.max_messages = max_messages
         self.name = name
 
@@ -222,7 +222,9 @@ def queue_tool() -> None:
     if args.use_in_memory_queue:
         queue = InMemoryMessageQueue(args.queue_name, args.max_messages)
     else:
-        queue = PosixMessageQueue(args.queue_name, args.max_messages, args.max_message_size)
+        queue = PosixMessageQueue(  # type: ignore
+            args.queue_name, args.max_messages, args.max_message_size
+        )
 
     if args.mode == "read":
         while True:
