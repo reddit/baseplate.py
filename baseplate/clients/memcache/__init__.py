@@ -135,7 +135,7 @@ class MemcacheContextFactory(ContextFactory):
     """
 
     PROM_PREFIX = "memcached_client_pool"
-    PROM_LABELS = ["pool"]
+    PROM_LABELS = ["memcached_pool"]
 
     pool_size_gauge = Gauge(
         f"{PROM_PREFIX}_max_size",
@@ -150,7 +150,7 @@ class MemcacheContextFactory(ContextFactory):
     )
 
     free_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_free_connections",
+        f"{PROM_PREFIX}_idle_connections",
         "Number of free connections in this pool",
         PROM_LABELS,
     )
@@ -195,6 +195,7 @@ ACTIVE_REQUESTS = Gauge(
     f"{PROM_NAMESPACE}_client_active_requests",
     "Number of active requests",
     LABELS_COMMON,
+    multiprocess_mode="livesum",
 )
 
 
@@ -207,15 +208,13 @@ def _prom_instrument(func: Any) -> Any:
         success = "true"
         start_time = perf_counter()
 
-        ACTIVE_REQUESTS.labels(**labels_common).inc()
-
         try:
-            return func(self, *args, **kwargs)
+            with ACTIVE_REQUESTS.labels(**labels_common).track_inprogress():
+                return func(self, *args, **kwargs)
         except:  # noqa
             success = "false"
             raise
         finally:
-            ACTIVE_REQUESTS.labels(**labels_common).dec()
             REQUESTS_TOTAL.labels(**{**labels_common, f"{PROM_NAMESPACE}_success": success}).inc()
             LATENCY_SECONDS.labels(
                 **{**labels_common, f"{PROM_NAMESPACE}_success": success}

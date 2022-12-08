@@ -2,7 +2,8 @@ import unittest
 
 try:
     from sqlalchemy import Column, Integer, String
-    from sqlalchemy.exc import OperationalError
+    from sqlalchemy.dialects.sqlite import BOOLEAN
+    from sqlalchemy.exc import OperationalError, StatementError
     from sqlalchemy.ext.declarative import declarative_base
 except ImportError:
     raise unittest.SkipTest("sqlalchemy is not installed")
@@ -25,6 +26,7 @@ class TestObject(Base):
     __tablename__ = "test"
 
     id = Column(Integer, primary_key=True)
+    flag = Column(BOOLEAN)
     name = Column(String)
 
 
@@ -119,6 +121,15 @@ class SQLAlchemySessionTests(unittest.TestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
+
+    def test_error_before_query_execution(self):
+        with self.server_span:
+            with self.assertRaises(StatementError):
+                query = self.context.db.query(TestObject)
+                query.filter(TestObject.flag == {"v": 123}).all()
+
+        server_span_observer = self.baseplate_observer.get_only_child()
+        self.assertEqual(len(server_span_observer.children), 0)
 
 
 class SQLAlchemySessionConfigTests(unittest.TestCase):

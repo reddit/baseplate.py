@@ -62,6 +62,7 @@ ACTIVE_REQUESTS = Gauge(
     f"{PROM_NAMESPACE}_active_requests",
     "number of in-flight requests",
     PROM_COMMON_LABELS,
+    multiprocess_mode="livesum",
 )
 
 
@@ -207,15 +208,13 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         trace_name = f"{self.namespace}.{name}"
         last_error = None
 
-        try:
-            for time_remaining in self.retry_policy:
-                start_time = time.perf_counter()
-                ACTIVE_REQUESTS.labels(
-                    thrift_method=name,
-                    thrift_client_name=self.namespace,
-                ).inc()
+        for time_remaining in self.retry_policy:
+            try:
+                with self.pool.connection() as prot, ACTIVE_REQUESTS.labels(
+                    thrift_method=name, thrift_client_name=self.namespace
+                ).track_inprogress():
+                    start_time = time.perf_counter()
 
-                with self.pool.connection() as prot:
                     span = self.server_span.make_child(trace_name)
                     span.set_tag("slug", self.namespace)
 
@@ -266,7 +265,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         last_error = str(exc)
                         if exc.inner is not None:
                             last_error += f" ({exc.inner})"
-                        continue
+                        raise  # we need to raise all exceptions so that self.pool.connect() self-heals
                     except (TApplicationException, TProtocolException):
                         # these are subclasses of TException but aren't ones that
                         # should be expected in the protocol. this is an error!
@@ -292,43 +291,60 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         # a normal result
                         span.finish()
                         return result
+                    finally:
+                        thrift_success = "true"
+                        exception_type = ""
+                        baseplate_status = ""
+                        baseplate_status_code = ""
+                        exc_info = sys.exc_info()
+                        if exc_info[0] is not None:
+                            thrift_success = "false"
+                            exception_type = exc_info[0].__name__
+                            current_exc = exc_info[1]
+                            try:
+                                # We want the following code to execute whenever the
+                                # service raises an instance of Baseplate's `Error` class.
+                                # Unfortunately, we cannot just rely on `isinstance` to do
+                                # what we want here because some services compile
+                                # Baseplate's thrift file on their own and import `Error`
+                                # from that. When this is done, `isinstance` will always
+                                # return `False` since it's technically a different class.
+                                # To fix this, we optimistically try to access `code` on
+                                # `current_exc` and just catch the `AttributeError` if the
+                                # `code` attribute is not present.
+                                # Note: if the error code was not originally defined in baseplate, or the
+                                # name associated with the error was overriden, this cannot reflect that
+                                # we will emit the status code in both cases
+                                # but the status will be blank in the first case, and the baseplate name
+                                # in the second
+                                baseplate_status_code = current_exc.code  # type: ignore
+                                baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
+                            except AttributeError:
+                                pass
 
-            raise TTransportException(
-                type=TTransportException.TIMED_OUT,
-                message=f"retry policy exhausted while attempting {self.namespace}.{name}, last error was: {last_error}",
-            )
-        finally:
-            thrift_success = "true"
-            exception_type = ""
-            baseplate_status = ""
-            baseplate_status_code = ""
-            exc_info = sys.exc_info()
-            if exc_info[0] is not None:
-                thrift_success = "false"
-                exception_type = exc_info[0].__name__
-                current_exc = exc_info[1]
-                if isinstance(current_exc, Error):
-                    baseplate_status_code = current_exc.code
-                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")
+                        REQUEST_LATENCY.labels(
+                            thrift_method=name,
+                            thrift_client_name=self.namespace,
+                            thrift_success=thrift_success,
+                        ).observe(time.perf_counter() - start_time)
 
-            REQUEST_LATENCY.labels(
-                thrift_method=name,
-                thrift_client_name=self.namespace,
-                thrift_success=thrift_success,
-            ).observe(time.perf_counter() - start_time)
+                        REQUESTS_TOTAL.labels(
+                            thrift_method=name,
+                            thrift_client_name=self.namespace,
+                            thrift_success=thrift_success,
+                            thrift_exception_type=exception_type,
+                            thrift_baseplate_status_code=baseplate_status_code,
+                            thrift_baseplate_status=baseplate_status,
+                        ).inc()
 
-            REQUESTS_TOTAL.labels(
-                thrift_method=name,
-                thrift_client_name=self.namespace,
-                thrift_success=thrift_success,
-                thrift_exception_type=exception_type,
-                thrift_baseplate_status_code=baseplate_status_code,
-                thrift_baseplate_status=baseplate_status,
-            ).inc()
+            except TTransportException:
+                # swallow exception so we can retry on TTransportException (relies on the for loop)
+                continue
 
-            ACTIVE_REQUESTS.labels(
-                thrift_method=name,
-                thrift_client_name=self.namespace,
-            ).dec()
+        # this only happens if we exhaust the retry policy
+        raise TTransportException(
+            type=TTransportException.TIMED_OUT,
+            message=f"retry policy exhausted while attempting {self.namespace}.{name}, last error was: {last_error}",
+        )
 
     return _call_thrift_method

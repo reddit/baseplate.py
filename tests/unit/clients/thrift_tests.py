@@ -138,11 +138,12 @@ class TestPrometheusMetrics:
 
         proxy_method = _build_thrift_proxy_method("handle")
         pool = mock.MagicMock(timeout=None)
-        pool.__enter__.return_value = mock.MagicMock()
+        prot = mock.MagicMock()
+        pool.connection().__enter__.return_value = prot
         client_cls = mock.MagicMock()
         client_cls.handle = handle
         handler = mock.MagicMock(
-            retry_policy=[None],
+            retry_policy=[None, None],
             pool=pool,
             namespace="test_namespace",
         )
@@ -159,41 +160,50 @@ class TestPrometheusMetrics:
             "thrift_baseplate_status_code": status_code,
         }
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            ACTIVE_REQUESTS.labels(**prom_labels),
-            "inc",
-            wraps=ACTIVE_REQUESTS.labels(**prom_labels).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                ACTIVE_REQUESTS.labels(**prom_labels),
-                "dec",
-                wraps=ACTIVE_REQUESTS.labels(**prom_labels).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                with expectation:
-                    proxy_method(self=handler)
+        with expectation:
+            proxy_method(self=handler)
 
+        tries = 1 if exc_type != "TTransportException" else 2
         assert (
             REGISTRY.get_sample_value(
                 "thrift_client_requests_total",
                 {**prom_labels, **requests_total_prom_labels, "thrift_success": thrift_success},
             )
-            == 1
+            == tries
         )
         assert (
             REGISTRY.get_sample_value(
                 "thrift_client_latency_seconds_bucket",
                 {**prom_labels, "thrift_success": thrift_success, "le": "+Inf"},
             )
-            == 1
+            == tries
         )
         assert REGISTRY.get_sample_value("thrift_client_active_requests", prom_labels) == 0
-        assert mock_manager.mock_calls == [
-            mock.call.inc(),
-            mock.call.dec(),
-        ]  # ensures we first increase number of active requests
+
+    def test_build_thrift_proxy_method_fail_connection(self):
+        def handle(*args, **kwargs):
+            return 42
+
+        proxy_method = _build_thrift_proxy_method("handle")
+        pool = mock.MagicMock(timeout=None)
+        pool.connection().__enter__.side_effect = Exception("failed to establish connection")
+        client_cls = mock.MagicMock()
+        client_cls.handle = handle
+        handler = mock.MagicMock(
+            retry_policy=[None, None],
+            pool=pool,
+            namespace="test_namespace",
+        )
+        handler.client_cls.return_value = client_cls
+
+        with pytest.raises(Exception):
+            proxy_method(self=handler)
+
+        prom_labels = {
+            "thrift_method": "handle",
+            "thrift_client_name": "test_namespace",
+        }
+        assert REGISTRY.get_sample_value("thrift_client_active_requests", prom_labels) is None
 
 
 class TestThriftContextFactory:

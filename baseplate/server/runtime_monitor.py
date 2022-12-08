@@ -24,6 +24,7 @@ from baseplate import ServerSpan
 from baseplate import ServerSpanObserver
 from baseplate.lib import config
 from baseplate.lib import metrics
+from baseplate.lib import prometheus_metrics
 
 
 REPORT_INTERVAL_SECONDS = 10
@@ -217,7 +218,15 @@ def _report_runtime_metrics_periodically(
 
 def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
     baseplate: Baseplate = getattr(application, "baseplate", None)
-    if not baseplate or not baseplate._metrics_client:
+    # As of October 1, 2022 Reddit uses Prometheus to track metrics, not Statsd
+    # this checks to see if Prometheus metrics are enabled and uses this to determine
+    # if runtime metrics should be reported. Prometheus metrics default to "on".
+    # As of October 12, 2022 some teams still have permission to use Statsd for metrics
+    # reporting so we still need runtime metrics to be sent to Statsd sometimes, therefore
+    # we can't remove Statsd from runtime reporter functions all together yet, instead we stub
+    # out the metrics Statsd client in the case there is none. There will be no Statsd client
+    # in the case of teams that have fully moved from Statsd to Prometheus.
+    if not baseplate or not prometheus_metrics.is_metrics_enabled(server_config):
         logger.info("No metrics client configured. Server metrics will not be sent.")
         return
 
@@ -272,10 +281,18 @@ def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
         except Exception as exc:
             logger.info("monitoring.gc.refcycle disabled: %s", exc)
 
+    statsd_metrics_client = baseplate._metrics_client
+    if not statsd_metrics_client:
+        statsd_metrics_client = metrics.Client(
+            transport=metrics.NullTransport(log_if_unconfigured=False),
+            namespace="noop",
+        )
+
     thread = threading.Thread(
         name="Server Monitoring",
         target=_report_runtime_metrics_periodically,
-        args=(application.baseplate._metrics_client, reporters),
+        args=(statsd_metrics_client, reporters),
     )
+
     thread.daemon = True
     thread.start()

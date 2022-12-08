@@ -19,6 +19,7 @@ try:
     from baseplate.frameworks.pyramid import ServerSpanInitialized
     from baseplate.frameworks.pyramid import StaticTrustHandler
     from pyramid.config import Configurator
+    from pyramid.httpexceptions import HTTPInternalServerError
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
@@ -61,7 +62,7 @@ def example_application(request):
 
 
 def render_exception_view(request):
-    return
+    return HTTPInternalServerError(title="a fancy title", body="a fancy explanation")
 
 
 def render_bad_exception_view(request):
@@ -204,11 +205,12 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertIsInstance(captured_exc, TestException)
 
     def test_control_flow_exception_not_caught(self):
-        self.test_app.get("/example?control_flow_exception")
+        response = self.test_app.get("/example?control_flow_exception", status=500)
 
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
         self.assertTrue(self.context_init_event_subscriber.called)
+        self.assertTrue(b"a fancy explanation", response.body)
         args, _ = self.server_observer.on_finish.call_args
         self.assertEqual(args[0], None)
 

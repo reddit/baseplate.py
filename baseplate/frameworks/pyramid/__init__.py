@@ -115,6 +115,7 @@ ACTIVE_REQUESTS = Gauge(
         "http_method",
         "http_endpoint",
     ],
+    multiprocess_mode="livesum",
 )
 
 
@@ -122,13 +123,9 @@ def _make_baseplate_tween(
     handler: Callable[[Request], Response], _registry: Registry
 ) -> Callable[[Request], Response]:
     def baseplate_tween(request: Request) -> Response:
-        time_started = time.perf_counter()
-
         response: Optional[Response] = None
-        endpoint = request.matched_route.pattern if request.matched_route else ""
 
         try:
-            ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
             response = handler(request)
             if request.span:
                 request.span.set_tag("http.response_length", response.content_length)
@@ -143,44 +140,93 @@ def _make_baseplate_tween(
                 response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
                 response.content_length = content_length
         finally:
-            http_endpoint = endpoint
-            http_method = request.method.lower()
-            http_response_code = ""
-
-            if sys.exc_info() == (None, None, None):
-                http_success = (
-                    getHTTPSuccessLabel(int(response.status_code)) if response else "false"
-                )
-                http_response_code = response.status_code if response else ""
-            else:
-                http_success = "false"
-
-            histogram_labels = {
-                "http_method": http_method,
-                "http_endpoint": http_endpoint,
-                "http_success": http_success,
-            }
-            ACTIVE_REQUESTS.labels(http_method=http_method, http_endpoint=http_endpoint).dec()
-            REQUEST_LATENCY.labels(**histogram_labels).observe(time.perf_counter() - time_started)
-            REQUESTS_TOTAL.labels(
-                **{
-                    **histogram_labels,
-                    "http_response_code": http_response_code,
-                }
-            ).inc()
-            REQUEST_SIZE.labels(**histogram_labels).observe(request.content_length or 0)
-            if response:
-                try:
-                    if response.content_length is not None:
-                        RESPONSE_SIZE.labels(**histogram_labels).observe(response.content_length)
-                except Exception:
-                    pass
+            manually_close_request_metrics(request, response)
 
             # avoid a reference cycle
             request.start_server_span = None
         return response
 
     return baseplate_tween
+
+
+def manually_close_request_metrics(request: Request, response: Optional[Response] = None) -> None:
+    """
+    Close the request metrics and track the remaining bits of the request
+
+    This is called both from the tween, but also available as a mechanism for pyramid scripting
+    to mark that the request has finished.
+    """
+    # ensure any active counters have been incremented before decrementing them and tracking the
+    # rest of the request
+    if getattr(request, "reddit_prom_metrics_enabled", False):
+        http_endpoint = ""
+        if (
+            hasattr(request, "reddit_tracked_endpoint")
+            and request.reddit_tracked_endpoint is not None
+        ):
+            http_endpoint = request.reddit_tracked_endpoint
+        elif request.matched_route:
+            http_endpoint = (
+                request.matched_route.pattern
+                if (hasattr(request.matched_route, "pattern") and request.matched_route.pattern)
+                else request.matched_route.name
+            )
+        else:
+            http_endpoint = "404"
+
+        http_method = request.method.lower()
+        http_response_code = ""
+
+        if sys.exc_info() == (None, None, None):
+            if response:
+                http_success = (
+                    getHTTPSuccessLabel(int(response.status_code)) if response else "false"
+                )
+                http_response_code = response.status_code if response else ""
+            else:
+                http_success = "true"
+                http_response_code = "200"
+        else:
+            http_success = "false"
+
+        histogram_labels = {
+            "http_method": http_method,
+            "http_endpoint": http_endpoint,
+            "http_success": http_success,
+        }
+
+        ACTIVE_REQUESTS.labels(http_method=http_method, http_endpoint=http_endpoint).dec()
+        REQUESTS_TOTAL.labels(
+            **{
+                **histogram_labels,
+                "http_response_code": http_response_code,
+            }
+        ).inc()
+
+        if hasattr(request, "reddit_start_time") and request.reddit_start_time is not None:
+            # note this is set in _on_new_request
+            REQUEST_LATENCY.labels(**histogram_labels).observe(
+                time.perf_counter() - request.reddit_start_time
+            )
+
+        # do it this way for tests and for services that bastardize the request object
+        # for script execution where this may not be set
+        if hasattr(request, "content_length") and request.content_length is not None:
+            REQUEST_SIZE.labels(**histogram_labels).observe(request.content_length)
+
+        # response may not be set if this handler is called from a pyramid script handler
+        if response:
+            if hasattr(response, "content_length") and response.content_length is not None:
+                RESPONSE_SIZE.labels(**histogram_labels).observe(response.content_length)
+
+        # avoid missing a secondary request if the same request object is re-used in scripting
+        request.reddit_prom_metrics_enabled = False
+        request.reddit_start_time = None
+        request.reddit_tracked_endpoint = None
+    else:
+        logger.debug(
+            "Request metrics attempted to be closed but were never opened, no metrics will be tracked"
+        )
 
 
 class BaseplateEvent:
@@ -300,10 +346,23 @@ class BaseplateConfigurator:
 
     def _on_new_request(self, event: pyramid.events.ContextFound) -> None:
         request = event.request
+        endpoint = ""
+
+        if request.matched_route:
+            endpoint = (
+                request.matched_route.pattern
+                if (hasattr(request.matched_route, "pattern") and request.matched_route.pattern)
+                else request.matched_route.name
+            )
+        else:
+            endpoint = "404"
+        request.reddit_prom_metrics_enabled = True
+        request.reddit_tracked_endpoint = endpoint
+        request.reddit_start_time = time.perf_counter()
+        ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
 
         # this request didn't match a route we know
         if not request.matched_route:
-            # TODO: some metric for 404s would be good
             return
 
         trace_info = None
@@ -332,7 +391,6 @@ class BaseplateConfigurator:
         )
         span.set_tag("protocol", "http")
         span.set_tag("http.url", request.url)
-        span.set_tag("http.route", request.matched_route.pattern)
         span.set_tag("http.method", request.method)
         span.set_tag("peer.ipv4", request.remote_addr)
         span.start()
