@@ -29,7 +29,7 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import config
 from baseplate.lib import warn_deprecated
-from baseplate.lib.message_queue import InMemoryMessageQueue
+from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.observers.timeout import ServerTimeout
@@ -548,7 +548,7 @@ class SidecarRecorder(Recorder):
 
     def __init__(self, queue_name: str, use_in_memory_queue: bool = False):
         if use_in_memory_queue:
-            self.queue = InMemoryMessageQueue(
+            self.queue = RemoteMessageQueue(
                 "/traces-" + queue_name,
                 max_messages=MAX_QUEUE_SIZE,
             )

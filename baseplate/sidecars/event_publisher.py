@@ -12,7 +12,7 @@ from typing import Optional
 
 import requests
 
-from baseplate import __version__ as baseplate_version
+from baseplate import RequestContext, __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
@@ -23,10 +23,16 @@ from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
+from baseplate.thrift import RemoteMessageQueueService
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
+
+from thrift.Thrift import TServer
+from thrift.Thrift import TBinaryProtocol
+from thrift.Thrift import TSocket
+from thrift.transport import TTransport
 
 
 logger = logging.getLogger(__name__)
@@ -162,6 +168,21 @@ class BatchPublisher:
         raise MaxRetriesError("could not sent batch")
 
 
+
+class RemoteMessageQueueHandler: # From the sidecar, create the queue and define get/put using the InMemoryQueue implementation
+    def is_healthy(self, context: RequestContext) -> bool:
+        return True
+        
+    def __init__(self, name: str, max_messages: int):
+        self.queue = InMemoryMessageQueue(name, max_messages)
+
+    def get(self, timeout: Optional[float] = None) -> bytes: 
+        return self.queue.get(timeout)
+
+    def put(self, message: bytes, timeout: Optional[float] = None) -> None:
+        self.queue.put(message, timeout)
+
+
 SERIALIZER_BY_VERSION = {"2": V2Batch, "2j": V2JBatch}
 
 
@@ -210,10 +231,19 @@ def publish_events() -> None:
     metrics_client = metrics_client_from_config(raw_config)
 
     if args.use_in_memory_queue:
-        event_queue = InMemoryMessageQueue(
-            "/events-" + args.queue_name,
-            max_messages=cfg.max_queue_size,
-        )
+        # start a thrift server that will be used to communicate with the main baseplate app
+        # this should not happen here, where are sidecars running?
+        processor = RemoteMessageQueueService.processor(RemoteMessageQueueHandler())
+        transport = TSocket.TServerSocket(host='127.0.0.1', port=9090)
+        tfactory = TTransport.TBufferedTransportFactory()
+        pfactory = TBinaryProtocol.TBinaryProtocolFactory()
+
+        server = TServer.TSimpleServer(processor, transport, tfactory, pfactory)
+        print('Starting the Message Queue server...')
+        server.serve()
+        print('done.')
+
+
     else:
         event_queue = PosixMessageQueue(  # type: ignore
             "/events-" + args.queue_name,

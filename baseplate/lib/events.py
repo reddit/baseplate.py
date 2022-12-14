@@ -22,7 +22,7 @@ from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
-from baseplate.lib.message_queue import InMemoryMessageQueue
+from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
@@ -98,7 +98,7 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
         self, name: str, event_serializer: Callable[[T], bytes], use_in_memory_queue: bool = False
     ):
         if use_in_memory_queue:
-            self.queue = InMemoryMessageQueue("/events-" + name, max_messages=MAX_QUEUE_SIZE)
+            self.queue = RemoteMessageQueue("/events-" + name, max_messages=MAX_QUEUE_SIZE)
         else:
             self.queue = PosixMessageQueue(  # type: ignore
                 "/events-" + name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE

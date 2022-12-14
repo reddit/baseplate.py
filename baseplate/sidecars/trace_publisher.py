@@ -10,7 +10,7 @@ import requests
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
-from baseplate.lib.message_queue import InMemoryMessageQueue
+from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
@@ -167,7 +167,7 @@ def publish_traces() -> None:
     )
 
     if args.use_in_memory_queue:
-        trace_queue = InMemoryMessageQueue(
+        trace_queue = RemoteMessageQueue(
             "/traces-" + args.queue_name,
             max_messages=publisher_cfg.max_queue_size,
         )

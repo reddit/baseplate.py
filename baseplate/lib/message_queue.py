@@ -4,10 +4,15 @@ import queue as q
 import select
 
 from typing import Optional
+from baseplate.thrift import RemoteMessageQueueService
 
 import posix_ipc
 
 from baseplate.lib.retry import RetryPolicy
+
+from thrift.Thrift import TBinaryProtocol
+from thrift.Thrift import TSocket
+from thrift.transport import TTransport
 
 
 class MessageQueueError(Exception):
@@ -141,7 +146,7 @@ class PosixMessageQueue(MessageQueue):
 
 
 class InMemoryMessageQueue(MessageQueue):
-    """An in-memory inter process message queue."""
+    """An in-memory inter process message queue.""" # Used by the sidecar
 
     def __init__(self, name: str, max_messages: int):
         self.queue: q.Queue = q.Queue(max_messages)
@@ -158,7 +163,7 @@ class InMemoryMessageQueue(MessageQueue):
 
     def put(self, message: bytes, timeout: Optional[float] = None) -> None:
         try:
-            return self.queue.put(message, timeout=timeout)
+            self.queue.put(message, timeout=timeout)
         except q.Full:
             raise TimedOutError
 
@@ -167,6 +172,31 @@ class InMemoryMessageQueue(MessageQueue):
 
     def close(self) -> None:
         """Not implemented for in-memory queue"""
+
+
+class RemoteMessageQueue(MessageQueue): 
+    def __init__(self, max_messages: int): # Connect to the sidecar and instantiate a remote queue
+        transport = TSocket.TSocket( "localhost" , 9090) # todo: how do I connect to the sidecar? I dont think this is right
+        transport = TTransport.TBufferedTransport(transport)
+        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+
+        self.client = RemoteMessageQueueService.Client(protocol)
+        # todo: create queue?
+
+        # Connect to server
+        self.transport.open()
+
+    def get(self, timeout: Optional[float] = None) -> bytes: 
+        return self.client.get(timeout)
+
+    def put(self, message: bytes, timeout: Optional[float] = None) -> None: 
+        return self.client.put(message, timeout)
+
+    def unlink(self) -> None:
+        """Not implemented for remote queue"""
+
+    def close(self) -> None: 
+        self.transport.close()
 
 
 def queue_tool() -> None:
@@ -220,7 +250,7 @@ def queue_tool() -> None:
     args = parser.parse_args()
 
     if args.use_in_memory_queue:
-        queue = InMemoryMessageQueue(args.queue_name, args.max_messages)
+        queue = RemoteMessageQueue(args.queue_name, args.max_messages)
     else:
         queue = PosixMessageQueue(  # type: ignore
             args.queue_name, args.max_messages, args.max_message_size
