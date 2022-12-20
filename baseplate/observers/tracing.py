@@ -546,8 +546,8 @@ class SidecarRecorder(Recorder):
     adding them to the queue.
     """
 
-    def __init__(self, queue_name: str, use_in_memory_queue: bool = False):
-        if use_in_memory_queue:
+    def __init__(self, queue_name: str, queue_type: str = "posix"):
+        if queue_type == "in_memory":
             self.queue = RemoteMessageQueue(
                 "/traces-" + queue_name,
                 max_messages=MAX_QUEUE_SIZE,

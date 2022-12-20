@@ -130,9 +130,9 @@ def publish_traces() -> None:
         help="name of trace queue / publisher config (default: main)",
     )
     arg_parser.add_argument(
-        "--use-in-memory-queue",
+        "--queue-type",
         default=False,
-        help="use in memory queue instead of a posix queue",
+        help="Options: `in_memory` or `posix`. Default is posix",
     )
     arg_parser.add_argument(
         "--debug", default=False, action="store_true", help="enable debug logging"
@@ -166,7 +166,7 @@ def publish_traces() -> None:
         },
     )
 
-    if args.use_in_memory_queue:
+    if args.queue_type == "in_memory":
         trace_queue = RemoteMessageQueue(
             "/traces-" + args.queue_name,
             max_messages=publisher_cfg.max_queue_size,

@@ -4,14 +4,14 @@ import queue as q
 import select
 
 from typing import Optional
-from baseplate.thrift import RemoteMessageQueueService
+from baseplate.thrift.message_queue import RemoteMessageQueueService
 
 import posix_ipc
 
 from baseplate.lib.retry import RetryPolicy
 
-from thrift.Thrift import TBinaryProtocol
-from thrift.Thrift import TSocket
+from thrift.protocol import TBinaryProtocol
+from thrift.transport import TSocket
 from thrift.transport import TTransport
 
 
@@ -175,22 +175,30 @@ class InMemoryMessageQueue(MessageQueue):
 
 
 class RemoteMessageQueue(MessageQueue): 
-    def __init__(self, max_messages: int): # Connect to the sidecar and instantiate a remote queue
-        transport = TSocket.TSocket( "localhost" , 9090) # todo: how do I connect to the sidecar? I dont think this is right
-        transport = TTransport.TBufferedTransport(transport)
-        protocol = TBinaryProtocol.TBinaryProtocol(transport)
+    def __init__(self, name: str, max_messages: int):
+        # Establish a connection with the queue server and create a new queue
+        self.queue_name = name
+        
+        transport = TSocket.TSocket( "127.0.0.1" , 9090) # TODO: I dont think this is right
+        self.transport = TTransport.TBufferedTransport(transport)
+        protocol = TBinaryProtocol.TBinaryProtocol(self.transport)
 
         self.client = RemoteMessageQueueService.Client(protocol)
-        # todo: create queue?
 
         # Connect to server
         self.transport.open()
 
+        # If the server doesnt have this queue yet, create it
+        if not self.client.queue_exists(name):
+            self.queue = self.client.new_queue(name, max_messages)
+
     def get(self, timeout: Optional[float] = None) -> bytes: 
-        return self.client.get(timeout)
+        # Call the remote server and get an element for the correct queue
+        return self.client.get(self.queue_name, timeout)
 
     def put(self, message: bytes, timeout: Optional[float] = None) -> None: 
-        return self.client.put(message, timeout)
+        # Call the remote server and put an element on the correct queue
+        return self.client.put(self.queue_name, message, timeout)
 
     def unlink(self) -> None:
         """Not implemented for remote queue"""
@@ -219,8 +227,8 @@ def queue_tool() -> None:
     )
     parser.add_argument("queue_name", help="the name of the queue to consume")
     parser.add_argument(
-        "use_in_memory_queue",
-        default=False,
+        "queue_type",
+        default="posix",
         help="whether to use an in-memory queue or a posix queue",
     )
 
@@ -249,7 +257,7 @@ def queue_tool() -> None:
 
     args = parser.parse_args()
 
-    if args.use_in_memory_queue:
+    if args.queue_type == "in_memory":
         queue = RemoteMessageQueue(args.queue_name, args.max_messages)
     else:
         queue = PosixMessageQueue(  # type: ignore

@@ -18,20 +18,22 @@ from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
 from baseplate.lib.message_queue import InMemoryMessageQueue
+from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
-from baseplate.thrift import RemoteMessageQueueService
+from baseplate.thrift.message_queue import RemoteMessageQueueService
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
 
-from thrift.Thrift import TServer
-from thrift.Thrift import TBinaryProtocol
-from thrift.Thrift import TSocket
+from thrift.server import TServer
+from thrift.protocol import TBinaryProtocol
+from thrift.transport import TSocket
 from thrift.transport import TTransport
 
 
@@ -169,21 +171,67 @@ class BatchPublisher:
 
 
 
-class RemoteMessageQueueHandler: # From the sidecar, create the queue and define get/put using the InMemoryQueue implementation
+class RemoteMessageQueueHandler: # On the queue server, create the queue and define get/put using the InMemoryQueue implementation
     def is_healthy(self, context: RequestContext) -> bool:
         return True
         
     def __init__(self, name: str, max_messages: int):
-        self.queue = InMemoryMessageQueue(name, max_messages)
+        self.queues = {}
 
-    def get(self, timeout: Optional[float] = None) -> bytes: 
-        return self.queue.get(timeout)
+    def new_queue(self, name: str, max_messages: int) -> InMemoryMessageQueue: 
+        queue = InMemoryMessageQueue(name, max_messages)
+        self.queues[name] = InMemoryMessageQueue(name, max_messages)
+        return queue
 
-    def put(self, message: bytes, timeout: Optional[float] = None) -> None:
-        self.queue.put(message, timeout)
+    def queue_exists(self, queue_name: str) -> bool:
+        return self.queues.get(queue_name) is not None
+
+    def get(self, queue_name: str, timeout: Optional[float] = None) -> bytes: 
+        # If the queue has not been created yet, return None
+        if not self.queue_exists(queue_name):
+            return None
+
+        queue: InMemoryMessageQueue = self.queues.get(queue_name)
+        return queue.get(timeout)
+
+    def put(self, queue_name: str, message: bytes, timeout: Optional[float] = None) -> None:
+        queue: InMemoryMessageQueue = self.queues.get(queue_name)
+        queue.put(message, timeout)
 
 
 SERIALIZER_BY_VERSION = {"2": V2Batch, "2j": V2JBatch}
+
+def start_queue_server(host: str, port: int) -> None: 
+    # start a thrift server that will be used to communicate with the main baseplate app
+    # this should not happen here, where are sidecars running?
+    processor = RemoteMessageQueueService.processor(RemoteMessageQueueHandler())
+    transport = TSocket.TServerSocket(host='127.0.0.1', port=9090)
+    tfactory = TTransport.TBufferedTransportFactory()
+    pfactory = TBinaryProtocol.TBinaryProtocolFactory()
+
+    server = TServer.TSimpleServer(processor, transport, tfactory, pfactory)
+    print('Starting the Message Queue server...')
+    server.serve()
+
+
+def create_queue(queue_type: str, queue_name: str, max_queue_size: int) -> MessageQueue: 
+    if queue_type == "in_memory":
+        start_queue_server(host='127.0.0.1', port=9090)
+        print('server started.')
+
+        event_queue = RemoteMessageQueue(  # type: ignore
+            "/events-" + queue_name, 
+            max_queue_size
+        )
+
+    else:
+        event_queue = PosixMessageQueue(  # type: ignore
+            "/events-" + queue_name,
+            max_messages=max_queue_size,
+            max_message_size=MAX_EVENT_SIZE,
+        )
+    
+    return event_queue
 
 
 def publish_events() -> None:
@@ -195,11 +243,6 @@ def publish_events() -> None:
         "--queue-name",
         default="main",
         help="name of event queue / publisher config (default: main)",
-    )
-    arg_parser.add_argument(
-        "--use-in-memory-queue",
-        default=False,
-        help="use an in memory queue instead of a posix queue",
     )
     arg_parser.add_argument(
         "--debug", default=False, action="store_true", help="enable debug logging"
@@ -225,31 +268,13 @@ def publish_events() -> None:
             },
             "key": {"name": config.String, "secret": config.Base64},
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
+            "queue_type": config.Optional(config.String, default="in_memory")
         },
     )
 
     metrics_client = metrics_client_from_config(raw_config)
 
-    if args.use_in_memory_queue:
-        # start a thrift server that will be used to communicate with the main baseplate app
-        # this should not happen here, where are sidecars running?
-        processor = RemoteMessageQueueService.processor(RemoteMessageQueueHandler())
-        transport = TSocket.TServerSocket(host='127.0.0.1', port=9090)
-        tfactory = TTransport.TBufferedTransportFactory()
-        pfactory = TBinaryProtocol.TBinaryProtocolFactory()
-
-        server = TServer.TSimpleServer(processor, transport, tfactory, pfactory)
-        print('Starting the Message Queue server...')
-        server.serve()
-        print('done.')
-
-
-    else:
-        event_queue = PosixMessageQueue(  # type: ignore
-            "/events-" + args.queue_name,
-            max_messages=cfg.max_queue_size,
-            max_message_size=MAX_EVENT_SIZE,
-        )
+    event_queue: MessageQueue = create_queue(cfg.queue_type, args.queue_name, cfg.max_queue_size)
 
     # pylint: disable=maybe-no-member
     serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()

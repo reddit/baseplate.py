@@ -17,3 +17,4 @@ RUN pip install -r requirements.txt
 RUN touch /baseplate-py-dev-docker-image
 
 CMD ["/bin/bash"]
+# ENTRYPOINT ["tail", "-f", "/dev/null"]

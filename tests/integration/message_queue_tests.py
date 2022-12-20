@@ -6,6 +6,7 @@ import posix_ipc
 
 from baseplate.lib.message_queue import InMemoryMessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
 
@@ -138,3 +139,12 @@ class TestInMemoryMessageQueueCreation(unittest.TestCase):
 
             with self.assertRaises(TimedOutError):
                 mq.put(b"2", timeout=0)
+
+class TestRemoteMessageQueueCreation(unittest.TestCase):
+    qname = "/baseplate-test-queue"
+
+    def test_create_queue_remote(self):
+        message_queue = RemoteMessageQueue(self.qname, max_messages=1)
+
+        with contextlib.closing(message_queue) as mq:
+            message_queue.put("yero")
