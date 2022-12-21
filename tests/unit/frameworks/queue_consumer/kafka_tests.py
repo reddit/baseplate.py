@@ -73,13 +73,13 @@ class TestKafkaMessageHandler:
         return msg
 
     @mock.patch("baseplate.frameworks.queue_consumer.kafka.time")
-    @pytest.mark.parametrize("bootstrap_servers", [None, "127.0.0.1:9092"])
-    def test_handle(self, time, context, span, baseplate, name, message, bootstrap_servers):
+    @pytest.mark.parametrize("prometheus_client_name", [None, "my_kafka_client_name"])
+    def test_handle(self, time, context, span, baseplate, name, message, prometheus_client_name):
         time.time.return_value = 2.0
         time.perf_counter.side_effect = [1, 2]
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address=bootstrap_servers if bootstrap_servers is not None else "",
+            kafka_client_name=prometheus_client_name if prometheus_client_name is not None else "",
             kafka_topic="topic_1",
         )
 
@@ -95,34 +95,20 @@ class TestKafkaMessageHandler:
         mock_gauge = mock.Mock()
         context.metrics.gauge.return_value = mock_gauge
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-
-                if bootstrap_servers is None:
-                    handler = KafkaMessageHandler(
-                        baseplate, name, handler_fn, message_unpack_fn, on_success_fn
-                    )
-                else:
-                    handler = KafkaMessageHandler(
-                        baseplate,
-                        name,
-                        handler_fn,
-                        message_unpack_fn,
-                        on_success_fn,
-                        bootstrap_servers=bootstrap_servers,
-                    )
-                handler.handle(message)
+        if prometheus_client_name is None:
+            handler = KafkaMessageHandler(
+                baseplate, name, handler_fn, message_unpack_fn, on_success_fn
+            )
+        else:
+            handler = KafkaMessageHandler(
+                baseplate,
+                name,
+                handler_fn,
+                message_unpack_fn,
+                on_success_fn,
+                prometheus_client_name=prometheus_client_name,
+            )
+        handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -169,7 +155,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     def test_handle_no_endpoint_timestamp(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
@@ -180,28 +165,12 @@ class TestKafkaMessageHandler:
         context.metrics.gauge.return_value = mock_gauge
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address="",
+            kafka_client_name="",
             kafka_topic="topic_1",
         )
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-
-                handler = KafkaMessageHandler(
-                    baseplate, name, handler_fn, message_unpack_fn, on_success_fn
-                )
-                handler.handle(message)
+        handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+        handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -243,7 +212,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     def test_handle_kafka_error(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
@@ -258,25 +226,12 @@ class TestKafkaMessageHandler:
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address="",
+            kafka_client_name="",
             kafka_topic="topic_1",
         )
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                with pytest.raises(ValueError):
-                    handler.handle(message)
+        with pytest.raises(ValueError):
+            handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -305,7 +260,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     def test_handle_unpack_error(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock()
@@ -317,24 +271,11 @@ class TestKafkaMessageHandler:
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address="",
+            kafka_client_name="",
             kafka_topic="topic_1",
         )
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                handler.handle(message)
+        handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -374,7 +315,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     def test_handle_handler_error(self, context, span, baseplate, name, message):
         handler_fn = mock.Mock(side_effect=ValueError("something went wrong"))
@@ -386,25 +326,12 @@ class TestKafkaMessageHandler:
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_address="",
+            kafka_client_name="",
             kafka_topic="topic_1",
         )
 
-        mock_manager = mock.Mock()
-        with mock.patch.object(
-            KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-            "inc",
-            wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).inc,
-        ) as active_inc_spy_method:
-            mock_manager.attach_mock(active_inc_spy_method, "inc")
-            with mock.patch.object(
-                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()),
-                "dec",
-                wraps=KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).dec,
-            ) as active_dec_spy_method:
-                mock_manager.attach_mock(active_dec_spy_method, "dec")
-                with pytest.raises(ValueError):
-                    handler.handle(message)
+        with pytest.raises(ValueError):
+            handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
         baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
@@ -445,7 +372,6 @@ class TestKafkaMessageHandler:
         assert (
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
-        assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
 
 @pytest.fixture
@@ -585,7 +511,7 @@ class TestInOrderConsumerFactory:
         assert pump.consumer == factory.consumer
         assert pump.work_queue == work_queue
 
-    def test_build_message_handler(self, make_queue_consumer_factory, bootstrap_servers):
+    def test_build_message_handler(self, make_queue_consumer_factory):
         factory = make_queue_consumer_factory()
         handler = factory.build_message_handler()
         assert isinstance(handler, KafkaMessageHandler)
@@ -594,7 +520,6 @@ class TestInOrderConsumerFactory:
         assert handler.handler_fn == factory.handler_fn
         assert handler.message_unpack_fn == factory.message_unpack_fn
         assert handler.on_success_fn.__name__ == "commit_offset"
-        assert handler.bootstrap_servers == bootstrap_servers
 
     def test_build_multiple_message_handlers(self, make_queue_consumer_factory):
         factory = make_queue_consumer_factory()
@@ -705,7 +630,7 @@ class TestFastConsumerFactory:
     def make_queue_consumer_factory(self, name, baseplate, bootstrap_servers, group_id, topics):
         @mock.patch("confluent_kafka.Consumer")
         def _make_queue_consumer_factory(kafka_consumer, health_check_fn=None):
-            mock_consumer = mock.Mock(config={"bootstrap_servers": bootstrap_servers})
+            mock_consumer = mock.Mock()
             mock_consumer.list_topics.return_value = mock.Mock(
                 topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
             )
@@ -732,7 +657,7 @@ class TestFastConsumerFactory:
         assert pump.consumer == factory.consumer
         assert pump.work_queue == work_queue
 
-    def test_build_message_handler(self, make_queue_consumer_factory, bootstrap_servers):
+    def test_build_message_handler(self, make_queue_consumer_factory):
         factory = make_queue_consumer_factory()
         handler = factory.build_message_handler()
         assert isinstance(handler, KafkaMessageHandler)
@@ -741,7 +666,6 @@ class TestFastConsumerFactory:
         assert handler.handler_fn == factory.handler_fn
         assert handler.message_unpack_fn == factory.message_unpack_fn
         assert handler.on_success_fn is None
-        assert handler.bootstrap_servers == bootstrap_servers
 
     @pytest.mark.parametrize("health_check_fn", [None, lambda req: True])
     def test_build_health_checker(self, health_check_fn, make_queue_consumer_factory):

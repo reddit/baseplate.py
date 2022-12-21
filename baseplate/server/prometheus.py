@@ -24,8 +24,11 @@ from prometheus_client import CollectorRegistry
 from prometheus_client import CONTENT_TYPE_LATEST
 from prometheus_client import generate_latest
 from prometheus_client import multiprocess
+from prometheus_client import values
+from prometheus_client.values import MultiProcessValue
 
 from baseplate.lib.config import Endpoint
+from baseplate.lib.config import EndpointConfiguration
 from baseplate.server.net import bind_socket
 
 
@@ -37,6 +40,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 PROMETHEUS_EXPORTER_ADDRESS = Endpoint("0.0.0.0:6060")
 METRICS_ENDPOINT = "/metrics"
+
+
+def worker_id() -> str:
+    worker = os.environ.get("MULTIPROCESS_WORKER_ID")
+    if worker is None:
+        worker = str(os.getpid())
+    return worker
 
 
 def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") -> Iterable[bytes]:
@@ -52,16 +62,17 @@ def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") 
     return [data]
 
 
-def start_prometheus_exporter() -> None:
+def start_prometheus_exporter(address: EndpointConfiguration = PROMETHEUS_EXPORTER_ADDRESS) -> None:
     if "PROMETHEUS_MULTIPROC_DIR" not in os.environ:
         logger.error(
             "prometheus-client is installed but PROMETHEUS_MULTIPROC_DIR is not set to a writeable directory."
         )
         sys.exit(1)
 
-    atexit.register(multiprocess.mark_process_dead, os.getpid())
+    values.ValueClass = MultiProcessValue(worker_id)
+    atexit.register(multiprocess.mark_process_dead, worker_id())
 
-    server_socket = bind_socket(PROMETHEUS_EXPORTER_ADDRESS)
+    server_socket = bind_socket(address)
     server = WSGIServer(
         server_socket,
         application=export_metrics,
@@ -70,7 +81,18 @@ def start_prometheus_exporter() -> None:
     )
     logger.info(
         "Prometheus metrics exported on server listening on %s%s",
-        PROMETHEUS_EXPORTER_ADDRESS,
+        address,
         METRICS_ENDPOINT,
     )
     server.start()
+
+
+def start_prometheus_exporter_for_sidecar() -> None:
+    port = os.environ.get("BASEPLATE_SIDECAR_ADMIN_PORT")
+    if port is None:
+        logger.error(
+            "BASEPLATE_SIDECAR_ADMIN_PORT must be set for sidecar to expose Prometheus metrics."
+        )
+    else:
+        endpoint = Endpoint("0.0.0.0:" + port)
+        start_prometheus_exporter(endpoint)

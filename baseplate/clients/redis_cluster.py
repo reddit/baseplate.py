@@ -2,6 +2,7 @@ import logging
 import random
 
 from datetime import timedelta
+from time import perf_counter
 from typing import Any
 from typing import Dict
 from typing import List
@@ -9,14 +10,19 @@ from typing import Optional
 
 import rediscluster
 
-from prometheus_client import Gauge
+from redis import RedisError
 from rediscluster.pipeline import ClusterPipeline
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
+from baseplate.clients.redis import ACTIVE_REQUESTS
+from baseplate.clients.redis import LATENCY_SECONDS
+from baseplate.clients.redis import MAX_CONNECTIONS
+from baseplate.clients.redis import OPEN_CONNECTIONS
+from baseplate.clients.redis import PROM_LABELS_PREFIX
+from baseplate.clients.redis import REQUESTS_TOTAL
 from baseplate.lib import config
 from baseplate.lib import metrics
-
 
 logger = logging.getLogger(__name__)
 randomizer = random.SystemRandom()
@@ -322,24 +328,40 @@ def cluster_pool_from_config(
 class ClusterRedisClient(config.Parser):
     """Configure a clustered Redis client.
 
+    :param redis_client_name: The name of this Redis client. Prefer to use `client_name`
+    keyword argument to the `pool_from_config` function. Use this if your using a Redis
+    host or proxy that doesn't support the `CLIENT SETNAME` function.
+
     This is meant to be used with
     :py:meth:`baseplate.Baseplate.configure_context`.
     See :py:func:`cluster_pool_from_config` for available configuration settings.
     """
 
-    def __init__(self, **kwargs: Any):
+    def __init__(self, redis_client_name: str = "", **kwargs: Any):
+        # This is for backwards compatibility. Originally we asked clients to
+        # set the `client_name` attribute to get the `redis_client_name`
+        # tag to appear on Prometheus metrics. Unfortunately this broke clients
+        # that use a proxy to connect to Redis.
+        # See: https://github.com/redis/redis-py/issues/2384/
+        client_name = redis_client_name
+        if client_name == "":
+            client_name = kwargs.get("client_name", "")
+
         self.kwargs = kwargs
+        self.redis_client_name = client_name
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "ClusterRedisContextFactory":
         connection_pool = cluster_pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
-        return ClusterRedisContextFactory(connection_pool, key_path)
+        return ClusterRedisContextFactory(
+            connection_pool, key_path, redis_client_name=self.redis_client_name
+        )
 
 
 class ClusterRedisContextFactory(ContextFactory):
     """Cluster Redis client context factory.
 
     This factory will attach a
-    :py:class:`~baseplate.clients.redis.MonitoredClusterRedisConnection` to an
+    :py:class:`~baseplate.clients.redis.MonitoredRedisClusterConnection` to an
     attribute on the :py:class:`~baseplate.RequestContext`. When Redis commands
     are executed via this connection object, they will use connections from the
     provided :py:class:`rediscluster.ClusterConnectionPool` and automatically record
@@ -347,55 +369,46 @@ class ClusterRedisContextFactory(ContextFactory):
     :param connection_pool: A connection pool.
     """
 
-    PROM_PREFIX = "bp_redis_cluster_pool"
-    PROM_LABELS = ["pool"]
-
-    max_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_max_size",
-        "Maximum number of connections allowed in this redis cluster pool",
-        PROM_LABELS,
-    )
-    open_connections_gauge = Gauge(
-        f"{PROM_PREFIX}_open_connections",
-        "Number of open connections in this redis cluster pool",
-        PROM_LABELS,
-    )
-
     def __init__(
-        self, connection_pool: rediscluster.ClusterConnectionPool, name: str = "redis_cluster"
+        self,
+        connection_pool: rediscluster.ClusterConnectionPool,
+        name: str = "redis",
+        redis_client_name: str = "",
     ):
         self.connection_pool = connection_pool
         self.name = name
+        self.redis_client_name = redis_client_name
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         if not isinstance(self.connection_pool, rediscluster.ClusterBlockingConnectionPool):
             return
 
         size = self.connection_pool.max_connections
-        open_connections = len(self.connection_pool._connections)
-        self.max_connections_gauge.labels(self.name).set(size)
-        self.open_connections_gauge.labels(self.name).set(open_connections)
+        open_connections_num = len(self.connection_pool._connections)
+        MAX_CONNECTIONS.labels(self.name).set(size)
+        OPEN_CONNECTIONS.labels(self.name).set(open_connections_num)
 
         batch.gauge("pool.size").replace(size)
-        batch.gauge("pool.open_connections").replace(open_connections)
+        batch.gauge("pool.open_connections").replace(open_connections_num)
 
-    def make_object_for_context(self, name: str, span: Span) -> "MonitoredClusterRedisConnection":
-        return MonitoredClusterRedisConnection(
+    def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisClusterConnection":
+        return MonitoredRedisClusterConnection(
             name,
             span,
             self.connection_pool,
             getattr(self.connection_pool, "track_key_reads_sample_rate", 0),
             getattr(self.connection_pool, "track_key_writes_sample_rate", 0),
+            self.redis_client_name,
         )
 
 
-class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
+class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
     """Cluster Redis connection that collects diagnostic information.
 
     This connection acts like :py:class:`rediscluster.Redis` except that all
     operations are automatically wrapped with diagnostic collection.
     The interface is the same as that class except for the
-    :py:meth:`~baseplate.clients.redis.MonitoredClusterRedisConnection.pipeline`
+    :py:meth:`~baseplate.clients.redis.MonitoredRedisClusterConnection.pipeline`
     method.
     """
 
@@ -406,6 +419,7 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         connection_pool: rediscluster.ClusterConnectionPool,
         track_key_reads_sample_rate: float = 0,
         track_key_writes_sample_rate: float = 0,
+        redis_client_name: str = "",
     ):
         self.context_name = context_name
         self.server_span = server_span
@@ -414,6 +428,7 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         self.hot_key_tracker = HotKeyTracker(
             self, self.track_key_reads_sample_rate, self.track_key_writes_sample_rate
         )
+        self.redis_client_name = redis_client_name
 
         super().__init__(
             connection_pool=connection_pool,
@@ -426,7 +441,29 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
         trace_name = f"{self.context_name}.{command}"
 
         with self.server_span.make_child(trace_name):
-            res = super().execute_command(command, *args[1:], **kwargs)
+            start_time = perf_counter()
+            success = "true"
+            labels = {
+                f"{PROM_LABELS_PREFIX}_command": command,
+                f"{PROM_LABELS_PREFIX}_client_name": self.redis_client_name,
+                f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
+                    "db", ""
+                ),
+                f"{PROM_LABELS_PREFIX}_type": "cluster",
+            }
+
+            try:
+                with ACTIVE_REQUESTS.labels(**labels).track_inprogress():
+                    res = super().execute_command(command, *args[1:], **kwargs)
+                if isinstance(res, RedisError):
+                    success = "false"
+            except:  # noqa: E722
+                success = "false"
+                raise
+            finally:
+                result_labels = {**labels, f"{PROM_LABELS_PREFIX}_success": success}
+                REQUESTS_TOTAL.labels(**result_labels).inc()
+                LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
 
         self.hot_key_tracker.maybe_track_key_usage(list(args))
 
@@ -448,6 +485,7 @@ class MonitoredClusterRedisConnection(rediscluster.RedisCluster):
             self.response_callbacks,
             read_from_replicas=self.read_from_replicas,
             hot_key_tracker=self.hot_key_tracker,
+            redis_client_name=self.redis_client_name,
         )
 
     # No transaction support in redis-py-cluster
@@ -465,11 +503,13 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
         connection_pool: rediscluster.ClusterConnectionPool,
         response_callbacks: Dict,
         hot_key_tracker: Optional[HotKeyTracker],
+        redis_client_name: str = "",
         **kwargs: Any,
     ):
         self.trace_name = trace_name
         self.server_span = server_span
         self.hot_key_tracker = hot_key_tracker
+        self.redis_client_name = redis_client_name
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
@@ -483,4 +523,29 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         with self.server_span.make_child(self.trace_name):
-            return super().execute(**kwargs)
+            success = "true"
+            start_time = perf_counter()
+            labels = {
+                f"{PROM_LABELS_PREFIX}_command": "pipeline",
+                f"{PROM_LABELS_PREFIX}_client_name": self.redis_client_name,
+                f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get(
+                    "db", ""
+                ),
+                f"{PROM_LABELS_PREFIX}_type": "cluster",
+            }
+
+            ACTIVE_REQUESTS.labels(**labels).inc()
+
+            try:
+                return super().execute(**kwargs)
+            except:  # noqa: E722
+                success = "false"
+                raise
+            finally:
+                ACTIVE_REQUESTS.labels(**labels).dec()
+                result_labels = {
+                    **labels,
+                    f"{PROM_LABELS_PREFIX}_success": success,
+                }
+                REQUESTS_TOTAL.labels(**result_labels).inc()
+                LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
