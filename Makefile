@@ -7,7 +7,7 @@ all: thrift
 THRIFT=thrift
 THRIFT_OPTS=-strict -gen py:slots
 THRIFT_BUILDDIR=build/thrift
-THRIFT_SOURCE=baseplate/thrift/baseplate.thrift tests/integration/test.thrift
+THRIFT_SOURCE=baseplate/thrift/baseplate.thrift baseplate/thrift/message_queue/message_queue.thrift tests/integration/test.thrift
 THRIFT_BUILDSTAMPS=$(patsubst %,$(THRIFT_BUILDDIR)/%_buildstamp,$(THRIFT_SOURCE))
 
 thrift: $(THRIFT_BUILDSTAMPS)
@@ -20,6 +20,13 @@ $(THRIFT_BUILDDIR)/baseplate/thrift/baseplate.thrift_buildstamp: baseplate/thrif
 	cp -r $(THRIFT_BUILDDIR)/$</baseplate/thrift baseplate/
 	rm -f baseplate/thrift/BaseplateService-remote
 	rm -f baseplate/thrift/BaseplateServiceV2-remote
+	touch $@
+
+$(THRIFT_BUILDDIR)/baseplate/thrift/message_queue/message_queue.thrift_buildstamp: baseplate/thrift/message_queue/message_queue.thrift
+	mkdir -p $(THRIFT_BUILDDIR)/$<
+	$(THRIFT) $(THRIFT_OPTS) -out $(THRIFT_BUILDDIR)/$< $<
+	cp -r $(THRIFT_BUILDDIR)/$</message_queue/thrift/ baseplate/thrift/message_queue
+	rm -f baseplate/thrift/message_queue/RemoteMessageQueueService-remote
 	touch $@
 
 $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/test.thrift

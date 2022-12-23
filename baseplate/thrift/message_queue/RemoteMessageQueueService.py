@@ -3,7 +3,7 @@
 #
 # DO NOT EDIT UNLESS YOU ARE SURE THAT YOU KNOW WHAT YOU ARE DOING
 #
-#  options string: py
+#  options string: py:slots
 #
 
 from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
@@ -19,20 +19,18 @@ all_structs = []
 
 
 class Iface(object):
-    def put(self, request):
+    def put(self, queue_name, max_messages, message, timeout):
         """
         Parameters:
-         - request
+         - queue_name
+         - max_messages
+         - message
+         - timeout
 
         """
         pass
 
-    def get(self, request):
-        """
-        Parameters:
-         - request
-
-        """
+    def get(self):
         pass
 
 
@@ -43,19 +41,25 @@ class Client(Iface):
             self._oprot = oprot
         self._seqid = 0
 
-    def put(self, request):
+    def put(self, queue_name, max_messages, message, timeout):
         """
         Parameters:
-         - request
+         - queue_name
+         - max_messages
+         - message
+         - timeout
 
         """
-        self.send_put(request)
+        self.send_put(queue_name, max_messages, message, timeout)
         return self.recv_put()
 
-    def send_put(self, request):
+    def send_put(self, queue_name, max_messages, message, timeout):
         self._oprot.writeMessageBegin('put', TMessageType.CALL, self._seqid)
         args = put_args()
-        args.request = request
+        args.queue_name = queue_name
+        args.max_messages = max_messages
+        args.message = message
+        args.timeout = timeout
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
         self._oprot.trans.flush()
@@ -77,19 +81,13 @@ class Client(Iface):
             raise result.put_failed_error
         raise TApplicationException(TApplicationException.MISSING_RESULT, "put failed: unknown result")
 
-    def get(self, request):
-        """
-        Parameters:
-         - request
-
-        """
-        self.send_get(request)
+    def get(self):
+        self.send_get()
         return self.recv_get()
 
-    def send_get(self, request):
+    def send_get(self):
         self._oprot.writeMessageBegin('get', TMessageType.CALL, self._seqid)
         args = get_args()
-        args.request = request
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
         self._oprot.trans.flush()
@@ -146,7 +144,7 @@ class Processor(Iface, TProcessor):
         iprot.readMessageEnd()
         result = put_result()
         try:
-            result.success = self._handler.put(args.request)
+            result.success = self._handler.put(args.queue_name, args.max_messages, args.message, args.timeout)
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
@@ -172,7 +170,7 @@ class Processor(Iface, TProcessor):
         iprot.readMessageEnd()
         result = get_result()
         try:
-            result.success = self._handler.get(args.request)
+            result.success = self._handler.get()
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
@@ -198,13 +196,26 @@ class Processor(Iface, TProcessor):
 class put_args(object):
     """
     Attributes:
-     - request
+     - queue_name
+     - max_messages
+     - message
+     - timeout
 
     """
 
+    __slots__ = (
+        'queue_name',
+        'max_messages',
+        'message',
+        'timeout',
+    )
 
-    def __init__(self, request=None,):
-        self.request = request
+
+    def __init__(self, queue_name=None, max_messages=None, message=None, timeout=None,):
+        self.queue_name = queue_name
+        self.max_messages = max_messages
+        self.message = message
+        self.timeout = timeout
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -216,9 +227,23 @@ class put_args(object):
             if ftype == TType.STOP:
                 break
             if fid == 1:
-                if ftype == TType.STRUCT:
-                    self.request = PutRequest()
-                    self.request.read(iprot)
+                if ftype == TType.STRING:
+                    self.queue_name = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 2:
+                if ftype == TType.I64:
+                    self.max_messages = iprot.readI64()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 3:
+                if ftype == TType.STRING:
+                    self.message = iprot.readBinary()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 4:
+                if ftype == TType.DOUBLE:
+                    self.timeout = iprot.readDouble()
                 else:
                     iprot.skip(ftype)
             else:
@@ -231,9 +256,21 @@ class put_args(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin('put_args')
-        if self.request is not None:
-            oprot.writeFieldBegin('request', TType.STRUCT, 1)
-            self.request.write(oprot)
+        if self.queue_name is not None:
+            oprot.writeFieldBegin('queue_name', TType.STRING, 1)
+            oprot.writeString(self.queue_name.encode('utf-8') if sys.version_info[0] == 2 else self.queue_name)
+            oprot.writeFieldEnd()
+        if self.max_messages is not None:
+            oprot.writeFieldBegin('max_messages', TType.I64, 2)
+            oprot.writeI64(self.max_messages)
+            oprot.writeFieldEnd()
+        if self.message is not None:
+            oprot.writeFieldBegin('message', TType.STRING, 3)
+            oprot.writeBinary(self.message)
+            oprot.writeFieldEnd()
+        if self.timeout is not None:
+            oprot.writeFieldBegin('timeout', TType.DOUBLE, 4)
+            oprot.writeDouble(self.timeout)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -242,19 +279,29 @@ class put_args(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
+        L = ['%s=%r' % (key, getattr(self, key))
+             for key in self.__slots__]
         return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+        if not isinstance(other, self.__class__):
+            return False
+        for attr in self.__slots__:
+            my_val = getattr(self, attr)
+            other_val = getattr(other, attr)
+            if my_val != other_val:
+                return False
+        return True
 
     def __ne__(self, other):
         return not (self == other)
 all_structs.append(put_args)
 put_args.thrift_spec = (
     None,  # 0
-    (1, TType.STRUCT, 'request', [PutRequest, None], None, ),  # 1
+    (1, TType.STRING, 'queue_name', 'UTF8', None, ),  # 1
+    (2, TType.I64, 'max_messages', None, None, ),  # 2
+    (3, TType.STRING, 'message', 'BINARY', None, ),  # 3
+    (4, TType.DOUBLE, 'timeout', None, None, ),  # 4
 )
 
 
@@ -265,6 +312,11 @@ class put_result(object):
      - put_failed_error
 
     """
+
+    __slots__ = (
+        'success',
+        'put_failed_error',
+    )
 
 
     def __init__(self, success=None, put_failed_error=None,):
@@ -316,12 +368,19 @@ class put_result(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
+        L = ['%s=%r' % (key, getattr(self, key))
+             for key in self.__slots__]
         return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+        if not isinstance(other, self.__class__):
+            return False
+        for attr in self.__slots__:
+            my_val = getattr(self, attr)
+            other_val = getattr(other, attr)
+            if my_val != other_val:
+                return False
+        return True
 
     def __ne__(self, other):
         return not (self == other)
@@ -333,15 +392,10 @@ put_result.thrift_spec = (
 
 
 class get_args(object):
-    """
-    Attributes:
-     - request
 
-    """
+    __slots__ = (
+    )
 
-
-    def __init__(self, request=None,):
-        self.request = request
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -352,12 +406,6 @@ class get_args(object):
             (fname, ftype, fid) = iprot.readFieldBegin()
             if ftype == TType.STOP:
                 break
-            if fid == 1:
-                if ftype == TType.STRUCT:
-                    self.request = GetRequest()
-                    self.request.read(iprot)
-                else:
-                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -368,10 +416,6 @@ class get_args(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin('get_args')
-        if self.request is not None:
-            oprot.writeFieldBegin('request', TType.STRUCT, 1)
-            self.request.write(oprot)
-            oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -379,19 +423,24 @@ class get_args(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
+        L = ['%s=%r' % (key, getattr(self, key))
+             for key in self.__slots__]
         return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+        if not isinstance(other, self.__class__):
+            return False
+        for attr in self.__slots__:
+            my_val = getattr(self, attr)
+            other_val = getattr(other, attr)
+            if my_val != other_val:
+                return False
+        return True
 
     def __ne__(self, other):
         return not (self == other)
 all_structs.append(get_args)
 get_args.thrift_spec = (
-    None,  # 0
-    (1, TType.STRUCT, 'request', [GetRequest, None], None, ),  # 1
 )
 
 
@@ -402,6 +451,11 @@ class get_result(object):
      - get_failed_error
 
     """
+
+    __slots__ = (
+        'success',
+        'get_failed_error',
+    )
 
 
     def __init__(self, success=None, get_failed_error=None,):
@@ -453,12 +507,19 @@ class get_result(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
+        L = ['%s=%r' % (key, getattr(self, key))
+             for key in self.__slots__]
         return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+        if not isinstance(other, self.__class__):
+            return False
+        for attr in self.__slots__:
+            my_val = getattr(self, attr)
+            other_val = getattr(other, attr)
+            if my_val != other_val:
+                return False
+        return True
 
     def __ne__(self, other):
         return not (self == other)
