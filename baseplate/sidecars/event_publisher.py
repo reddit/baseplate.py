@@ -16,34 +16,21 @@ from typing import Optional
 
 import requests
 
-from baseplate import RequestContext, __version__ as baseplate_version
+from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
-from baseplate.lib.message_queue import InMemoryMessageQueue
 from baseplate.lib.message_queue import MessageQueue
-from baseplate.lib.message_queue import PosixMessageQueue
-from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError as MessageQueueTimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
-from baseplate.server import make_listener
-from baseplate.server.thrift import make_server
-from baseplate.thrift.message_queue import RemoteMessageQueueService
-from baseplate.thrift.message_queue.ttypes import TimedOutError as ThriftTimedOutError
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
 from baseplate.sidecars import publisher_queue_utils
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
-
-from thrift.server import TServer
-from thrift.protocol import TBinaryProtocol
-from thrift.transport import TSocket
-from thrift.transport import TTransport
-
 
 logger = logging.getLogger(__name__)
 
