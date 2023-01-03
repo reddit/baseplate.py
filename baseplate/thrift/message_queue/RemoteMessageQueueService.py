@@ -30,7 +30,14 @@ class Iface(object):
         """
         pass
 
-    def get(self):
+    def get(self, queue_name, max_messages, timeout):
+        """
+        Parameters:
+         - queue_name
+         - max_messages
+         - timeout
+
+        """
         pass
 
 
@@ -77,17 +84,27 @@ class Client(Iface):
         iprot.readMessageEnd()
         if result.success is not None:
             return result.success
-        if result.put_failed_error is not None:
-            raise result.put_failed_error
+        if result.timed_out_error is not None:
+            raise result.timed_out_error
         raise TApplicationException(TApplicationException.MISSING_RESULT, "put failed: unknown result")
 
-    def get(self):
-        self.send_get()
+    def get(self, queue_name, max_messages, timeout):
+        """
+        Parameters:
+         - queue_name
+         - max_messages
+         - timeout
+
+        """
+        self.send_get(queue_name, max_messages, timeout)
         return self.recv_get()
 
-    def send_get(self):
+    def send_get(self, queue_name, max_messages, timeout):
         self._oprot.writeMessageBegin('get', TMessageType.CALL, self._seqid)
         args = get_args()
+        args.queue_name = queue_name
+        args.max_messages = max_messages
+        args.timeout = timeout
         args.write(self._oprot)
         self._oprot.writeMessageEnd()
         self._oprot.trans.flush()
@@ -105,8 +122,8 @@ class Client(Iface):
         iprot.readMessageEnd()
         if result.success is not None:
             return result.success
-        if result.get_failed_error is not None:
-            raise result.get_failed_error
+        if result.timed_out_error is not None:
+            raise result.timed_out_error
         raise TApplicationException(TApplicationException.MISSING_RESULT, "get failed: unknown result")
 
 
@@ -148,9 +165,9 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
-        except PutFailedError as put_failed_error:
+        except TimedOutError as timed_out_error:
             msg_type = TMessageType.REPLY
-            result.put_failed_error = put_failed_error
+            result.timed_out_error = timed_out_error
         except TApplicationException as ex:
             logging.exception('TApplication exception in handler')
             msg_type = TMessageType.EXCEPTION
@@ -170,13 +187,13 @@ class Processor(Iface, TProcessor):
         iprot.readMessageEnd()
         result = get_result()
         try:
-            result.success = self._handler.get()
+            result.success = self._handler.get(args.queue_name, args.max_messages, args.timeout)
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
-        except GetFailedError as get_failed_error:
+        except TimedOutError as timed_out_error:
             msg_type = TMessageType.REPLY
-            result.get_failed_error = get_failed_error
+            result.timed_out_error = timed_out_error
         except TApplicationException as ex:
             logging.exception('TApplication exception in handler')
             msg_type = TMessageType.EXCEPTION
@@ -309,19 +326,19 @@ class put_result(object):
     """
     Attributes:
      - success
-     - put_failed_error
+     - timed_out_error
 
     """
 
     __slots__ = (
         'success',
-        'put_failed_error',
+        'timed_out_error',
     )
 
 
-    def __init__(self, success=None, put_failed_error=None,):
+    def __init__(self, success=None, timed_out_error=None,):
         self.success = success
-        self.put_failed_error = put_failed_error
+        self.timed_out_error = timed_out_error
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -340,7 +357,7 @@ class put_result(object):
                     iprot.skip(ftype)
             elif fid == 1:
                 if ftype == TType.STRUCT:
-                    self.put_failed_error = PutFailedError.read(iprot)
+                    self.timed_out_error = TimedOutError.read(iprot)
                 else:
                     iprot.skip(ftype)
             else:
@@ -357,9 +374,9 @@ class put_result(object):
             oprot.writeFieldBegin('success', TType.STRUCT, 0)
             self.success.write(oprot)
             oprot.writeFieldEnd()
-        if self.put_failed_error is not None:
-            oprot.writeFieldBegin('put_failed_error', TType.STRUCT, 1)
-            self.put_failed_error.write(oprot)
+        if self.timed_out_error is not None:
+            oprot.writeFieldBegin('timed_out_error', TType.STRUCT, 1)
+            self.timed_out_error.write(oprot)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -387,15 +404,30 @@ class put_result(object):
 all_structs.append(put_result)
 put_result.thrift_spec = (
     (0, TType.STRUCT, 'success', [PutResponse, None], None, ),  # 0
-    (1, TType.STRUCT, 'put_failed_error', [PutFailedError, None], None, ),  # 1
+    (1, TType.STRUCT, 'timed_out_error', [TimedOutError, None], None, ),  # 1
 )
 
 
 class get_args(object):
+    """
+    Attributes:
+     - queue_name
+     - max_messages
+     - timeout
+
+    """
 
     __slots__ = (
+        'queue_name',
+        'max_messages',
+        'timeout',
     )
 
+
+    def __init__(self, queue_name=None, max_messages=None, timeout=None,):
+        self.queue_name = queue_name
+        self.max_messages = max_messages
+        self.timeout = timeout
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -406,6 +438,21 @@ class get_args(object):
             (fname, ftype, fid) = iprot.readFieldBegin()
             if ftype == TType.STOP:
                 break
+            if fid == 1:
+                if ftype == TType.STRING:
+                    self.queue_name = iprot.readString().decode('utf-8', errors='replace') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 2:
+                if ftype == TType.I64:
+                    self.max_messages = iprot.readI64()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 3:
+                if ftype == TType.DOUBLE:
+                    self.timeout = iprot.readDouble()
+                else:
+                    iprot.skip(ftype)
             else:
                 iprot.skip(ftype)
             iprot.readFieldEnd()
@@ -416,6 +463,18 @@ class get_args(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin('get_args')
+        if self.queue_name is not None:
+            oprot.writeFieldBegin('queue_name', TType.STRING, 1)
+            oprot.writeString(self.queue_name.encode('utf-8') if sys.version_info[0] == 2 else self.queue_name)
+            oprot.writeFieldEnd()
+        if self.max_messages is not None:
+            oprot.writeFieldBegin('max_messages', TType.I64, 2)
+            oprot.writeI64(self.max_messages)
+            oprot.writeFieldEnd()
+        if self.timeout is not None:
+            oprot.writeFieldBegin('timeout', TType.DOUBLE, 3)
+            oprot.writeDouble(self.timeout)
+            oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -441,6 +500,10 @@ class get_args(object):
         return not (self == other)
 all_structs.append(get_args)
 get_args.thrift_spec = (
+    None,  # 0
+    (1, TType.STRING, 'queue_name', 'UTF8', None, ),  # 1
+    (2, TType.I64, 'max_messages', None, None, ),  # 2
+    (3, TType.DOUBLE, 'timeout', None, None, ),  # 3
 )
 
 
@@ -448,19 +511,19 @@ class get_result(object):
     """
     Attributes:
      - success
-     - get_failed_error
+     - timed_out_error
 
     """
 
     __slots__ = (
         'success',
-        'get_failed_error',
+        'timed_out_error',
     )
 
 
-    def __init__(self, success=None, get_failed_error=None,):
+    def __init__(self, success=None, timed_out_error=None,):
         self.success = success
-        self.get_failed_error = get_failed_error
+        self.timed_out_error = timed_out_error
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -479,7 +542,7 @@ class get_result(object):
                     iprot.skip(ftype)
             elif fid == 1:
                 if ftype == TType.STRUCT:
-                    self.get_failed_error = GetFailedError.read(iprot)
+                    self.timed_out_error = TimedOutError.read(iprot)
                 else:
                     iprot.skip(ftype)
             else:
@@ -496,9 +559,9 @@ class get_result(object):
             oprot.writeFieldBegin('success', TType.STRUCT, 0)
             self.success.write(oprot)
             oprot.writeFieldEnd()
-        if self.get_failed_error is not None:
-            oprot.writeFieldBegin('get_failed_error', TType.STRUCT, 1)
-            self.get_failed_error.write(oprot)
+        if self.timed_out_error is not None:
+            oprot.writeFieldBegin('timed_out_error', TType.STRUCT, 1)
+            self.timed_out_error.write(oprot)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -526,7 +589,7 @@ class get_result(object):
 all_structs.append(get_result)
 get_result.thrift_spec = (
     (0, TType.STRUCT, 'success', [GetResponse, None], None, ),  # 0
-    (1, TType.STRUCT, 'get_failed_error', [GetFailedError, None], None, ),  # 1
+    (1, TType.STRUCT, 'timed_out_error', [TimedOutError, None], None, ),  # 1
 )
 fix_spec(all_structs)
 del all_structs

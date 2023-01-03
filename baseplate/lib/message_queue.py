@@ -2,9 +2,11 @@
 import abc
 import queue as q
 import select
+import gevent
 
 from typing import Optional
 from baseplate.thrift.message_queue import RemoteMessageQueueService
+from baseplate.thrift.message_queue.ttypes import TimedOutError as ThriftTimedOutError
 
 import posix_ipc
 
@@ -104,7 +106,7 @@ class PosixMessageQueue(MessageQueue):
             self.queue = posix_ipc.MessageQueue(
                 name,
                 flags=posix_ipc.O_CREAT,
-                mode=0o0644,
+                # mode=0o0644,
                 max_messages=max_messages,
                 max_message_size=max_message_size,
             )
@@ -175,30 +177,38 @@ class InMemoryMessageQueue(MessageQueue):
 
 
 class RemoteMessageQueue(MessageQueue): 
-    def __init__(self, name: str, max_messages: int):
-        # Establish a connection with the queue server and create a new queue
+    def __init__(self, name: str, max_messages: int, host: str="127.0.0.1", port: int=9090):
         self.queue_name = name
-        
-        transport = TSocket.TSocket( "127.0.0.1" , 9090) # TODO: I dont think this is right
+        self.max_messages = max_messages
+        self.host = host
+        self.port = port
+
+    def connect(self):
+        # Establish a connection with the queue server  
+        transport = TSocket.TSocket(self.host, self.port)
         self.transport = TTransport.TBufferedTransport(transport)
         protocol = TBinaryProtocol.TBinaryProtocol(self.transport)
-
         self.client = RemoteMessageQueueService.Client(protocol)
-
-        # Connect to server
         self.transport.open()
 
-        # If the server doesnt have this queue yet, create it
-        if not self.client.queue_exists(name):
-            self.queue = self.client.new_queue(name, max_messages)
-
     def get(self, timeout: Optional[float] = None) -> bytes: 
-        # Call the remote server and get an element for the correct queue
-        return self.client.get(self.queue_name, timeout)
+        # Call the remote server and get an element for the correct queue         
+        try:
+            self.connect()
+            print("trying get...")
+            return self.client.get(self.queue_name, self.max_messages, timeout).value
+        except ThriftTimedOutError:
+            raise TimedOutError
 
     def put(self, message: bytes, timeout: Optional[float] = None) -> None: 
         # Call the remote server and put an element on the correct queue
-        return self.client.put(self.queue_name, message, timeout)
+        # Will create the queue if it doesnt exist
+        try:
+            self.connect()
+            print("trying put:")
+            self.client.put(self.queue_name, self.max_messages, message, timeout)
+        except ThriftTimedOutError:
+            raise TimedOutError
 
     def unlink(self) -> None:
         """Not implemented for remote queue"""

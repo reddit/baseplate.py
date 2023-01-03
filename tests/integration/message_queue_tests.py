@@ -1,13 +1,18 @@
+from importlib import reload
+import pytest
 import contextlib
+import logging
 import time
 import unittest
+import gevent
 
 import posix_ipc
 
-from baseplate.lib.message_queue import InMemoryMessageQueue
+from baseplate.lib.message_queue import InMemoryMessageQueue, MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
+from baseplate.sidecars import event_publisher
 
 
 class TestPosixMessageQueueCreation(unittest.TestCase):
@@ -84,7 +89,6 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
             queue.unlink()
             queue.close()
 
-
 class TestInMemoryMessageQueueCreation(unittest.TestCase):
     qname = "/baseplate-test-queue"
 
@@ -140,11 +144,63 @@ class TestInMemoryMessageQueueCreation(unittest.TestCase):
             with self.assertRaises(TimedOutError):
                 mq.put(b"2", timeout=0)
 
-class TestRemoteMessageQueueCreation(unittest.TestCase):
+class GeventPatchedTestCase(unittest.TestCase):
+    def setUp(self):
+        gevent.monkey.patch_socket()
+
+    def tearDown(self):
+        import socket
+
+        reload(socket)
+        gevent.monkey.saved.clear()
+
+
+class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
     qname = "/baseplate-test-queue"
 
-    def test_create_queue_remote(self):
-        message_queue = RemoteMessageQueue(self.qname, max_messages=1)
+    def test_put_get(self):
+        with event_publisher.start_queue_server(host='127.0.0.1', port=9090) as server:
+            message_queue = RemoteMessageQueue(self.qname, max_messages=10)
+            
+            with contextlib.closing(message_queue) as mq:
+                mq.put(b"x", timeout=0)
+                message = mq.get()
+                self.assertEqual(message, b"x")
 
-        with contextlib.closing(message_queue) as mq:
-            message_queue.put("yero")
+    def test_multiple_queues(self):
+        with event_publisher.start_queue_server(host='127.0.0.1', port=9090) as server:
+            mq1 = RemoteMessageQueue(self.qname, max_messages=10)
+            mq2 = RemoteMessageQueue(self.qname+"2", max_messages=10)
+            
+            mq1.put(b"x", timeout=0)
+            mq2.put(b"a", timeout=0)
+            
+            # Check the queues in reverse order
+            self.assertEqual(mq2.get(), b"a")
+            self.assertEqual(mq1.get(), b"x")
+
+            mq1.close()
+            mq2.close()
+
+    def test_get_timeout(self):
+        with event_publisher.start_queue_server(host='127.0.0.1', port=9090) as server:
+            message_queue = RemoteMessageQueue(self.qname, max_messages=1)
+
+            with contextlib.closing(message_queue) as mq:
+                start = time.time()
+                with self.assertRaises(TimedOutError):
+                    mq.get(timeout=0.1)
+                elapsed = time.time() - start
+                self.assertAlmostEqual(elapsed, 0.1, places=2)
+
+    def test_put_timeout(self):
+        with event_publisher.start_queue_server(host='127.0.0.1', port=9090) as server:
+            message_queue = RemoteMessageQueue(self.qname, max_messages=1)
+
+            with contextlib.closing(message_queue) as mq:
+                mq.put(b"x")
+                start = time.time()
+                with self.assertRaises(TimedOutError):
+                    mq.put(b"x", timeout=0.1)
+                elapsed = time.time() - start
+                self.assertAlmostEqual(elapsed, 0.1, places=1)

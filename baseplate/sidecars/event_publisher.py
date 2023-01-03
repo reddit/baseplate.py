@@ -1,12 +1,16 @@
 import argparse
 import configparser
+import contextlib
 import email.utils
+import sys
+from baseplate.thrift.message_queue.ttypes import GetResponse, PutResponse
+import gevent
 import gzip
 import hashlib
 import hmac
 import logging
 
-from typing import Any
+from typing import Any, Tuple
 from typing import List
 from typing import Optional
 
@@ -21,13 +25,17 @@ from baseplate.lib.message_queue import InMemoryMessageQueue
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
-from baseplate.lib.message_queue import TimedOutError
+from baseplate.lib.message_queue import TimedOutError as MessageQueueTimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
+from baseplate.server import make_listener
+from baseplate.server.thrift import make_server
 from baseplate.thrift.message_queue import RemoteMessageQueueService
+from baseplate.thrift.message_queue.ttypes import TimedOutError as ThriftTimedOutError
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
+from baseplate.sidecars import publisher_queue_utils
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
 
@@ -106,7 +114,6 @@ class V2JBatch(V2Batch):
         serialized = self._header.encode() + b",".join(self._items) + self._end
         return SerializedBatch(item_count=len(self._items), serialized=serialized)
 
-
 class BatchPublisher:
     def __init__(self, metrics_client: metrics.Client, cfg: Any):
         self.metrics = metrics_client
@@ -170,69 +177,21 @@ class BatchPublisher:
         raise MaxRetriesError("could not sent batch")
 
 
+def build_batch(queue: MessageQueue, batcher: TimeLimitedBatch) -> bytes:
+    while True:
+        message: Optional[bytes]
+        try:
+            message = queue.get(timeout=0.2)
+        except MessageQueueTimedOutError:
+            message = None
 
-class RemoteMessageQueueHandler: # On the queue server, create the queue and define get/put using the InMemoryQueue implementation
-    def is_healthy(self, context: RequestContext) -> bool:
-        return True
-        
-    def __init__(self, name: str, max_messages: int):
-        self.queues = {}
-
-    def new_queue(self, name: str, max_messages: int) -> InMemoryMessageQueue: 
-        queue = InMemoryMessageQueue(name, max_messages)
-        self.queues[name] = InMemoryMessageQueue(name, max_messages)
-        return queue
-
-    def queue_exists(self, queue_name: str) -> bool:
-        return self.queues.get(queue_name) is not None
-
-    def get(self, queue_name: str, timeout: Optional[float] = None) -> bytes: 
-        # If the queue has not been created yet, return None
-        if not self.queue_exists(queue_name):
-            return None
-
-        queue: InMemoryMessageQueue = self.queues.get(queue_name)
-        return queue.get(timeout)
-
-    def put(self, queue_name: str, message: bytes, timeout: Optional[float] = None) -> None:
-        queue: InMemoryMessageQueue = self.queues.get(queue_name)
-        queue.put(message, timeout)
-
+        try:
+            batcher.add(message)
+            continue
+        except BatchFull:
+            return message
 
 SERIALIZER_BY_VERSION = {"2": V2Batch, "2j": V2JBatch}
-
-def start_queue_server(host: str, port: int) -> None: 
-    # start a thrift server that will be used to communicate with the main baseplate app
-    # this should not happen here, where are sidecars running?
-    processor = RemoteMessageQueueService.processor(RemoteMessageQueueHandler())
-    transport = TSocket.TServerSocket(host='127.0.0.1', port=9090)
-    tfactory = TTransport.TBufferedTransportFactory()
-    pfactory = TBinaryProtocol.TBinaryProtocolFactory()
-
-    server = TServer.TSimpleServer(processor, transport, tfactory, pfactory)
-    print('Starting the Message Queue server...')
-    server.serve()
-
-
-def create_queue(queue_type: str, queue_name: str, max_queue_size: int) -> MessageQueue: 
-    if queue_type == "in_memory":
-        start_queue_server(host='127.0.0.1', port=9090)
-        print('server started.')
-
-        event_queue = RemoteMessageQueue(  # type: ignore
-            "/events-" + queue_name, 
-            max_queue_size
-        )
-
-    else:
-        event_queue = PosixMessageQueue(  # type: ignore
-            "/events-" + queue_name,
-            max_messages=max_queue_size,
-            max_message_size=MAX_EVENT_SIZE,
-        )
-    
-    return event_queue
-
 
 def publish_events() -> None:
     arg_parser = argparse.ArgumentParser()
@@ -268,13 +227,14 @@ def publish_events() -> None:
             },
             "key": {"name": config.String, "secret": config.Base64},
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
-            "queue_type": config.Optional(config.String, default="in_memory")
+            "max_element_size": config.Optional(config.Integer, MAX_EVENT_SIZE),
+            "queue_type": config.Optional(config.String, default="posix")
         },
     )
 
     metrics_client = metrics_client_from_config(raw_config)
 
-    event_queue: MessageQueue = create_queue(cfg.queue_type, args.queue_name, cfg.max_queue_size)
+    event_queue: MessageQueue = publisher_utils.create_queue(cfg.queue_type, args.queue_name, cfg.max_queue_size, cfg.max_element_size)
 
     # pylint: disable=maybe-no-member
     serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()
@@ -282,27 +242,25 @@ def publish_events() -> None:
     publisher = BatchPublisher(metrics_client, cfg)
 
     while True:
-        message: Optional[bytes]
-
-        try:
-            message = event_queue.get(timeout=0.2)
-        except TimedOutError:
-            message = None
-
-        try:
-            batcher.add(message)
-            continue
-        except BatchFull:
-            pass
-
-        serialized = batcher.serialize()
-        try:
-            publisher.publish(serialized)
-        except Exception:
-            logger.exception("Events publishing failed.")
-        batcher.reset()
-        batcher.add(message)
-
+        if cfg.queue_type == "in_memory": 
+            with publisher_queue_utils.start_queue_server(host='127.0.0.1', port=9090) as server:
+                last_message = publisher_queue_utils.build_batch(event_queue, batcher)
+                serialized = batcher.serialize()
+                try:
+                    publisher.publish(serialized)
+                except Exception:
+                    logger.exception("Events publishing failed.")
+                batcher.reset()
+                batcher.add(last_message)
+        else: 
+            last_message = publisher_queue_utils.build_batch(event_queue, batcher)
+            serialized = batcher.serialize()
+            try:
+                publisher.publish(serialized)
+            except Exception:
+                logger.exception("Events publishing failed.")
+            batcher.reset()
+            batcher.add(last_message)
 
 if __name__ == "__main__":
     publish_events()

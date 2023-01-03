@@ -134,7 +134,7 @@ class GetResponse(object):
         return not (self == other)
 
 
-class PutFailedError(TException):
+class TimedOutError(TException):
 
     __slots__ = (
     )
@@ -169,71 +169,7 @@ class PutFailedError(TException):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('PutFailedError')
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __str__(self):
-        return repr(self)
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        for attr in self.__slots__:
-            my_val = getattr(self, attr)
-            other_val = getattr(other, attr)
-            if my_val != other_val:
-                return False
-        return True
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
-class GetFailedError(TException):
-
-    __slots__ = (
-    )
-
-
-    def __setattr__(self, *args):
-        raise TypeError("can't modify immutable instance")
-
-    def __delattr__(self, *args):
-        raise TypeError("can't modify immutable instance")
-
-    def __hash__(self):
-        return hash(self.__class__) ^ hash(())
-
-    @classmethod
-    def read(cls, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and cls.thrift_spec is not None:
-            return iprot._fast_decode(None, iprot, [cls, cls.thrift_spec])
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-        return cls(
-        )
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('GetFailedError')
+        oprot.writeStructBegin('TimedOutError')
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -268,11 +204,8 @@ GetResponse.thrift_spec = (
     None,  # 0
     (1, TType.STRING, 'value', 'BINARY', None, ),  # 1
 )
-all_structs.append(PutFailedError)
-PutFailedError.thrift_spec = (
-)
-all_structs.append(GetFailedError)
-GetFailedError.thrift_spec = (
+all_structs.append(TimedOutError)
+TimedOutError.thrift_spec = (
 )
 fix_spec(all_structs)
 del all_structs

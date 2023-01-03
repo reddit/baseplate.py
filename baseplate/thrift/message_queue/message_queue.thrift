@@ -8,9 +8,7 @@ struct GetResponse {
     1: binary value;
 }
 
-exception PutFailedError {}
-
-exception GetFailedError {}
+exception TimedOutError {}
 
 service RemoteMessageQueueService {
     PutResponse put(
@@ -19,10 +17,13 @@ service RemoteMessageQueueService {
         3: binary message
         4: double timeout
     ) throws (
-        1: PutFailedError put_failed_error
+        1: TimedOutError timed_out_error
     );
     GetResponse get(
+        1: string queue_name
+        2: i64 max_messages
+        3: double timeout
     ) throws (
-        1: GetFailedError get_failed_error
+        1: TimedOutError timed_out_error
     );
 }

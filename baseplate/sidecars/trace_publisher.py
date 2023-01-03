@@ -10,7 +10,7 @@ import requests
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
-from baseplate.lib.message_queue import RemoteMessageQueue
+from baseplate.lib.message_queue import MessageQueue, RemoteMessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
@@ -18,7 +18,7 @@ from baseplate.lib.retry import RetryPolicy
 from baseplate.observers.tracing import MAX_QUEUE_SIZE
 from baseplate.observers.tracing import MAX_SPAN_SIZE
 from baseplate.server import EnvironmentInterpolation
-from baseplate.sidecars import BatchFull
+from baseplate.sidecars import BatchFull, publisher_queue_utils
 from baseplate.sidecars import RawJSONBatch
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
@@ -163,20 +163,13 @@ def publish_traces() -> None:
             "max_batch_size": config.Optional(config.Integer, MAX_BATCH_SIZE_DEFAULT),
             "retry_limit": config.Optional(config.Integer, RETRY_LIMIT_DEFAULT),
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
+            "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
+            "max_element_size": config.Optional(config.Integer, MAX_SPAN_SIZE),
+            "queue_type": config.Optional(config.String, default="posix")
         },
     )
 
-    if args.queue_type == "in_memory":
-        trace_queue = RemoteMessageQueue(
-            "/traces-" + args.queue_name,
-            max_messages=publisher_cfg.max_queue_size,
-        )
-    else:
-        trace_queue = PosixMessageQueue(  # type: ignore
-            "/traces-" + args.queue_name,
-            max_messages=publisher_cfg.max_queue_size,
-            max_message_size=MAX_SPAN_SIZE,
-        )
+    trace_queue: MessageQueue = publisher_queue_utils.create_queue(publisher_cfg.queue_type, args.queue_name, publisher_cfg.max_queue_size, publisher_cfg.max_element_size)
 
     # pylint: disable=maybe-no-member
     inner_batch = TraceBatch(max_size=publisher_cfg.max_batch_size)
@@ -191,11 +184,18 @@ def publish_traces() -> None:
     while True:
         message: Optional[bytes]
 
-        try:
-            message = trace_queue.get(timeout=0.2)
-        except TimedOutError:
-            message = None
-
+        if publisher_cfg.queue_type == "in_memory": 
+            with publisher_queue_utils.start_queue_server(host='127.0.0.1', port=9090) as server:
+                try:
+                    message = trace_queue.get(timeout=0.2)
+                except TimedOutError:
+                    message = None
+        else: 
+            try:
+                message = trace_queue.get(timeout=0.2)
+            except TimedOutError:
+                message = None
+        
         try:
             batcher.add(message)
         except BatchFull:
