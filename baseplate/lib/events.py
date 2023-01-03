@@ -128,7 +128,7 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
         except TimedOutError:
             raise EventQueueFullError
 
-    def get(self): 
+    def get(self):
         return self.queue.get()
 
     def make_object_for_context(self, name: str, span: Span) -> "EventQueue[T]":

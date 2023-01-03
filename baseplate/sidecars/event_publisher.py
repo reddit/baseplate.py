@@ -1,16 +1,12 @@
 import argparse
 import configparser
-import contextlib
 import email.utils
-import sys
-from baseplate.thrift.message_queue.ttypes import GetResponse, PutResponse
-import gevent
 import gzip
 import hashlib
 import hmac
 import logging
 
-from typing import Any, Tuple
+from typing import Any
 from typing import List
 from typing import Optional
 
@@ -101,6 +97,7 @@ class V2JBatch(V2Batch):
         serialized = self._header.encode() + b",".join(self._items) + self._end
         return SerializedBatch(item_count=len(self._items), serialized=serialized)
 
+
 class BatchPublisher:
     def __init__(self, metrics_client: metrics.Client, cfg: Any):
         self.metrics = metrics_client
@@ -178,7 +175,9 @@ def build_batch(queue: MessageQueue, batcher: TimeLimitedBatch) -> bytes:
         except BatchFull:
             return message
 
+
 SERIALIZER_BY_VERSION = {"2": V2Batch, "2j": V2JBatch}
+
 
 def publish_events() -> None:
     arg_parser = argparse.ArgumentParser()
@@ -215,13 +214,15 @@ def publish_events() -> None:
             "key": {"name": config.String, "secret": config.Base64},
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
             "max_element_size": config.Optional(config.Integer, MAX_EVENT_SIZE),
-            "queue_type": config.Optional(config.String, default="posix")
+            "queue_type": config.Optional(config.String, default="posix"),
         },
     )
 
     metrics_client = metrics_client_from_config(raw_config)
 
-    event_queue: MessageQueue = publisher_utils.create_queue(cfg.queue_type, args.queue_name, cfg.max_queue_size, cfg.max_element_size)
+    event_queue: MessageQueue = publisher_queue_utils.create_queue(
+        cfg.queue_type, args.queue_name, cfg.max_queue_size, cfg.max_element_size
+    )
 
     # pylint: disable=maybe-no-member
     serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()
@@ -229,8 +230,8 @@ def publish_events() -> None:
     publisher = BatchPublisher(metrics_client, cfg)
 
     while True:
-        if cfg.queue_type == "in_memory": 
-            with publisher_queue_utils.start_queue_server(host='127.0.0.1', port=9090) as server:
+        if cfg.queue_type == "in_memory":
+            with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
                 last_message = publisher_queue_utils.build_batch(event_queue, batcher)
                 serialized = batcher.serialize()
                 try:
@@ -239,7 +240,7 @@ def publish_events() -> None:
                     logger.exception("Events publishing failed.")
                 batcher.reset()
                 batcher.add(last_message)
-        else: 
+        else:
             last_message = publisher_queue_utils.build_batch(event_queue, batcher)
             serialized = batcher.serialize()
             try:
@@ -248,6 +249,7 @@ def publish_events() -> None:
                 logger.exception("Events publishing failed.")
             batcher.reset()
             batcher.add(last_message)
+
 
 if __name__ == "__main__":
     publish_events()

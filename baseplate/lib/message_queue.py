@@ -2,19 +2,18 @@
 import abc
 import queue as q
 import select
-import gevent
-
 from typing import Optional
-from baseplate.thrift.message_queue import RemoteMessageQueueService
-from baseplate.thrift.message_queue.ttypes import TimedOutError as ThriftTimedOutError
 
+import gevent
 import posix_ipc
-
-from baseplate.lib.retry import RetryPolicy
 
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket
 from thrift.transport import TTransport
+
+from baseplate.lib.retry import RetryPolicy
+from baseplate.thrift.message_queue import RemoteMessageQueueService
+from baseplate.thrift.message_queue.ttypes import TimedOutError as ThriftTimedOutError
 
 
 class MessageQueueError(Exception):
@@ -70,14 +69,6 @@ class MessageQueue(abc.ABC):
         """
 
     @abc.abstractmethod
-    def unlink(self) -> None:
-        """Remove the queue from the system.
-
-        The queue will not leave until the last active user closes it.
-
-        """
-
-    @abc.abstractmethod
     def close(self) -> None:
         """Close the queue, freeing related resources.
 
@@ -102,11 +93,12 @@ class PosixMessageQueue(MessageQueue):
     """
 
     def __init__(self, name: str, max_messages: int, max_message_size: int):
+        super().__init__()
         try:
             self.queue = posix_ipc.MessageQueue(
                 name,
                 flags=posix_ipc.O_CREAT,
-                # mode=0o0644,
+                mode=0o0644,
                 max_messages=max_messages,
                 max_message_size=max_message_size,
             )
@@ -148,7 +140,7 @@ class PosixMessageQueue(MessageQueue):
 
 
 class InMemoryMessageQueue(MessageQueue):
-    """An in-memory inter process message queue.""" # Used by the sidecar
+    """An in-memory inter process message queue."""  # Used by the sidecar
 
     def __init__(self, name: str, max_messages: int):
         self.queue: q.Queue = q.Queue(max_messages)
@@ -169,51 +161,43 @@ class InMemoryMessageQueue(MessageQueue):
         except q.Full:
             raise TimedOutError
 
-    def unlink(self) -> None:
-        """Not implemented for in-memory queue"""
-
     def close(self) -> None:
         """Not implemented for in-memory queue"""
 
 
-class RemoteMessageQueue(MessageQueue): 
-    def __init__(self, name: str, max_messages: int, host: str="127.0.0.1", port: int=9090):
+class RemoteMessageQueue(MessageQueue):
+    def __init__(self, name: str, max_messages: int, host: str = "127.0.0.1", port: int = 9090):
         self.queue_name = name
         self.max_messages = max_messages
         self.host = host
         self.port = port
 
     def connect(self):
-        # Establish a connection with the queue server  
+        # Establish a connection with the queue server
         transport = TSocket.TSocket(self.host, self.port)
         self.transport = TTransport.TBufferedTransport(transport)
         protocol = TBinaryProtocol.TBinaryProtocol(self.transport)
         self.client = RemoteMessageQueueService.Client(protocol)
         self.transport.open()
 
-    def get(self, timeout: Optional[float] = None) -> bytes: 
-        # Call the remote server and get an element for the correct queue         
+    def get(self, timeout: Optional[float] = None) -> bytes:
+        # Call the remote server and get an element for the correct queue
         try:
             self.connect()
-            print("trying get...")
             return self.client.get(self.queue_name, self.max_messages, timeout).value
         except ThriftTimedOutError:
             raise TimedOutError
 
-    def put(self, message: bytes, timeout: Optional[float] = None) -> None: 
+    def put(self, message: bytes, timeout: Optional[float] = None) -> None:
         # Call the remote server and put an element on the correct queue
         # Will create the queue if it doesnt exist
         try:
             self.connect()
-            print("trying put:")
             self.client.put(self.queue_name, self.max_messages, message, timeout)
         except ThriftTimedOutError:
             raise TimedOutError
 
-    def unlink(self) -> None:
-        """Not implemented for remote queue"""
-
-    def close(self) -> None: 
+    def close(self) -> None:
         self.transport.close()
 
 
@@ -239,6 +223,7 @@ def queue_tool() -> None:
     parser.add_argument(
         "queue_type",
         default="posix",
+        choices=["posix", "in_memory"],
         help="whether to use an in-memory queue or a posix queue",
     )
 

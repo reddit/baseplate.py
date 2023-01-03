@@ -86,7 +86,6 @@ class PublisherTests(unittest.TestCase):
         self.config.key = config.ConfigNamespace()
         self.config.key.name = "TestKey"
         self.config.key.secret = b"hunter2"
-        # self.config.queue.type = "posix"
 
         self.session = Session.return_value
         self.session.headers = {}
@@ -127,5 +126,3 @@ class PublisherTests(unittest.TestCase):
 
         self.assertEqual(mock_sleep.call_count, 0)
         self.assertEqual(self.session.post.call_count, 1)
-
-
