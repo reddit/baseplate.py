@@ -222,7 +222,7 @@ def queue_tool() -> None:
     )
     parser.add_argument("queue_name", help="the name of the queue to consume")
     parser.add_argument(
-        "queue_type",
+        "--queue_type",
         default="posix",
         choices=["posix", "in_memory"],
         help="whether to use an in-memory queue or a posix queue",
