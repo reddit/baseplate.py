@@ -17,6 +17,7 @@ from baseplate.thrift.message_queue.ttypes import GetResponse
 from baseplate.thrift.message_queue.ttypes import PutResponse
 from baseplate.thrift.message_queue.ttypes import TimedOutError as ThriftTimedOutError
 
+
 class RemoteMessageQueueHandler:  # On the queue server, create the queue and define get/put using the InMemoryQueue implementation
     def is_healthy(self) -> bool:
         pass

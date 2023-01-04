@@ -1,4 +1,4 @@
-"""A Gevent-friendly POSIX message queue."""
+"""A message queue, with two implementations: POSIX-based, or in-memory using a Thrift server."""
 import abc
 import queue as q
 import select

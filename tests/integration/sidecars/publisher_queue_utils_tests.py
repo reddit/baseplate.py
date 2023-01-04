@@ -15,6 +15,7 @@ from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.sidecars import publisher_queue_utils
 from baseplate.thrift.message_queue.ttypes import GetResponse
 
+
 class GeventPatchedTestCase(unittest.TestCase):
     def setUp(self):
         gevent.monkey.patch_socket()

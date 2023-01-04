@@ -15,6 +15,7 @@ from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
+
 class TestPosixMessageQueueCreation(unittest.TestCase):
     qname = "/baseplate-test-queue"
 
