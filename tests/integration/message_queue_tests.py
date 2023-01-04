@@ -1,19 +1,19 @@
-from importlib import reload
-import pytest
 import contextlib
 import logging
 import time
 import unittest
+
+from importlib import reload
+
 import gevent
-
 import posix_ipc
+import pytest
 
-from baseplate.lib.message_queue import InMemoryMessageQueue, MessageQueue
+from baseplate.lib.message_queue import InMemoryMessageQueue
+from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
-from baseplate.sidecars import event_publisher
-
 
 class TestPosixMessageQueueCreation(unittest.TestCase):
     qname = "/baseplate-test-queue"

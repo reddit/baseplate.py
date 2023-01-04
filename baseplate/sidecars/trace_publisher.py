@@ -17,7 +17,8 @@ from baseplate.lib.retry import RetryPolicy
 from baseplate.observers.tracing import MAX_QUEUE_SIZE
 from baseplate.observers.tracing import MAX_SPAN_SIZE
 from baseplate.server import EnvironmentInterpolation
-from baseplate.sidecars import BatchFull, publisher_queue_utils
+from baseplate.sidecars import BatchFull
+from baseplate.sidecars import publisher_queue_utils
 from baseplate.sidecars import RawJSONBatch
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch

@@ -1,23 +1,19 @@
 import contextlib
-from importlib import reload
 import unittest
-from baseplate.thrift.message_queue.ttypes import GetResponse
-import gevent.monkey
+
+from importlib import reload
 from unittest import mock
 
-# from baseplate.lib.message_queue import InMemoryMessageQueue, MessageQueue, PosixMessageQueue
-from baseplate.lib.events import MAX_QUEUE_SIZE
-
+import gevent.monkey
 import posix_ipc
 
 from baseplate.lib import config
+from baseplate.lib.events import MAX_QUEUE_SIZE
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
-
-# from baseplate.lib.message_queue import TimedOutError
 from baseplate.sidecars import publisher_queue_utils
-
+from baseplate.thrift.message_queue.ttypes import GetResponse
 
 class GeventPatchedTestCase(unittest.TestCase):
     def setUp(self):

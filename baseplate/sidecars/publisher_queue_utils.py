@@ -1,18 +1,21 @@
 import contextlib
+
 from typing import Optional
 
 import gevent
+
 from baseplate.lib import config
-from baseplate.server import make_listener, make_server
-from baseplate.thrift.message_queue import RemoteMessageQueueService
-from baseplate.thrift.message_queue.ttypes import GetResponse, PutResponse
+from baseplate.lib.message_queue import InMemoryMessageQueue
+from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError as MessageQueueTimedOutError
+from baseplate.server import make_listener
+from baseplate.server import make_server
+from baseplate.thrift.message_queue import RemoteMessageQueueService
+from baseplate.thrift.message_queue.ttypes import GetResponse
+from baseplate.thrift.message_queue.ttypes import PutResponse
 from baseplate.thrift.message_queue.ttypes import TimedOutError as ThriftTimedOutError
-
-from baseplate.lib.message_queue import InMemoryMessageQueue, MessageQueue
-
 
 class RemoteMessageQueueHandler:  # On the queue server, create the queue and define get/put using the InMemoryQueue implementation
     def is_healthy(self) -> bool:

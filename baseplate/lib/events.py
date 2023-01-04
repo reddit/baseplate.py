@@ -22,8 +22,8 @@ from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
-from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
 
