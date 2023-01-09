@@ -17,7 +17,7 @@ from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
-from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import MessageQueue, QueueType, TimedOutError
 from baseplate.lib.message_queue import TimedOutError as MessageQueueTimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
@@ -42,6 +42,8 @@ MAX_RETRY_TIME = 5 * 60
 MAX_BATCH_AGE = 1
 # maximum size (in bytes) of a batch of events
 MAX_BATCH_SIZE = 500 * 1024
+# Seconds to wait for get/put operations on the event queue
+QUEUE_TIMEOUT = 0.2
 
 
 class MaxRetriesError(Exception):
@@ -161,12 +163,13 @@ class BatchPublisher:
         raise MaxRetriesError("could not sent batch")
 
 
-def build_batch_and_publish(event_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: BatchPublisher) -> bytes:
+def build_batch_and_publish(event_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: BatchPublisher, timeout: float) -> bytes:
+    # Helper that continuously polls for messages, then batches and publishes them
     while True:
         message: Optional[bytes]
 
         try:
-            message = event_queue.get(timeout=0.2)
+            message = event_queue.get(timeout)
         except TimedOutError:
             message = None
 
@@ -238,12 +241,12 @@ def publish_events() -> None:
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
     publisher = BatchPublisher(metrics_client, cfg)
 
-    if cfg.queue_type == "in_memory":
+    if cfg.queue_type == QueueType.IN_MEMORY.value:
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
-            build_batch_and_publish(event_queue, batcher, publisher)
+            build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
     else:
-        build_batch_and_publish(event_queue, batcher, publisher)
+        build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
 

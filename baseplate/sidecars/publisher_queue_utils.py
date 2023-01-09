@@ -5,7 +5,7 @@ from typing import Optional
 import gevent
 
 from baseplate.lib import config
-from baseplate.lib.message_queue import InMemoryMessageQueue
+from baseplate.lib.message_queue import InMemoryMessageQueue, QueueType
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
@@ -46,8 +46,9 @@ class RemoteMessageQueueHandler:  # On the queue server, create the queue and de
                 self.queues[queue_name] = queue
             # Get element from list, waiting if necessary
             result = queue.get(timeout)
-        except MessageQueueTimedOutError:
-            raise ThriftTimedOutError()
+        # If the queue timed out, raise a timeout as the server response
+        except MessageQueueTimedOutError as e:
+            raise ThriftTimedOutError from e
 
         return GetResponse(result)
 
@@ -57,8 +58,8 @@ class RemoteMessageQueueHandler:  # On the queue server, create the queue and de
         try:
             queue, _ = self.queues.get(queue_name)
             queue.put(message, timeout)
-        except MessageQueueTimedOutError:
-            raise ThriftTimedOutError()
+        except MessageQueueTimedOutError as e:
+            raise ThriftTimedOutError from e
         return PutResponse()
 
 
@@ -82,9 +83,9 @@ def start_queue_server(host: str, port: int) -> None:
 
 
 def create_queue(
-    queue_type: str, queue_name: str, max_queue_size: int, max_element_size: int, host: str = "127.0.0.1", port: int = 9090
+    queue_type: QueueType, queue_name: str, max_queue_size: int, max_element_size: int, host: str = "127.0.0.1", port: int = 9090
 ) -> MessageQueue:
-    if queue_type == "in_memory":
+    if queue_type == QueueType.IN_MEMORY:
         event_queue = RemoteMessageQueue(  # type: ignore
             "/events-" + queue_name, max_queue_size, host, port
         )

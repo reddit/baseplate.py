@@ -1,5 +1,6 @@
 """A message queue, with two implementations: POSIX-based, or in-memory using a Thrift server."""
 import abc
+from enum import Enum
 import queue as q
 import select
 
@@ -42,6 +43,11 @@ class InvalidParametersError(ValueError):
 class MessageQueueOSError(OSError):
     def __init__(self, inner: Exception):
         super().__init__(f"{inner} (check `ulimit -q`?)")
+
+
+class QueueType(Enum):
+    IN_MEMORY = "in_memory"
+    POSIX = "posix"
 
 
 class MessageQueue(abc.ABC):
@@ -167,6 +173,7 @@ class InMemoryMessageQueue(MessageQueue):
 
 
 class RemoteMessageQueue(MessageQueue):
+    """A message queue that connects to a remote server."""
     def __init__(self, name: str, max_messages: int, host: str = "127.0.0.1", port: int = 9090):
         # Connect to the remote queue server, and creeate the new queue
         self.queue_name = name
@@ -194,6 +201,7 @@ class RemoteMessageQueue(MessageQueue):
                 # we may get a timeout after re-connecting, and we want to catch that
                 self.connect()
                 return self.client.get(self.queue_name, timeout).value
+        # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue type
         except ThriftTimedOutError:
             raise TimedOutError
 
@@ -235,7 +243,7 @@ def queue_tool() -> None:
     parser.add_argument(
         "--queue_type",
         default="posix",
-        choices=["posix", "in_memory"],
+        choices=[qt.value for qt in QueueType],
         help="whether to use an in-memory queue or a posix queue",
     )
 
@@ -264,8 +272,8 @@ def queue_tool() -> None:
 
     args = parser.parse_args()
 
-    if args.queue_type == "in_memory":
-        queue = RemoteMessageQueue(args.queue_name, args.max_messages)
+    if args.queue_type == QueueType.IN_MEMORY.value:
+        queue = RemoteMessageQueue(args.queue_name, args.max_messages)  # type: ignore
     else:
         queue = PosixMessageQueue(  # type: ignore
             args.queue_name, args.max_messages, args.max_message_size

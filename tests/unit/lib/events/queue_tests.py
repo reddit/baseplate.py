@@ -6,7 +6,7 @@ from baseplate.lib.events import EventQueue
 from baseplate.lib.events import EventQueueFullError
 from baseplate.lib.events import EventTooLargeError
 from baseplate.lib.events import MAX_EVENT_SIZE
-from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import PosixMessageQueue, QueueType
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
@@ -50,7 +50,7 @@ class RemoteMessageQueueTests(unittest.TestCase):
         self.message_queue = RemoteMessageQueue.return_value
         self.mock_serializer = mock.Mock()
         self.queue = EventQueue(
-            "test", event_serializer=self.mock_serializer, queue_type="in_memory"
+            "test", event_serializer=self.mock_serializer, queue_type=QueueType.IN_MEMORY
         )
 
     def test_send_event(self):
