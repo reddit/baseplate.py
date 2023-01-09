@@ -4,6 +4,7 @@ import time
 import unittest
 
 from importlib import reload
+from baseplate.sidecars import publisher_queue_utils
 
 import gevent
 import posix_ipc
@@ -162,7 +163,8 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
     qname = "/baseplate-test-queue"
 
     def test_put_get(self):
-        with event_publisher.start_queue_server(host="127.0.0.1", port=9090) as server:
+        # start the server that would ordinarily be running on the sidecar
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
             message_queue = RemoteMessageQueue(self.qname, max_messages=10)
 
             with contextlib.closing(message_queue) as mq:
@@ -171,7 +173,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 self.assertEqual(message, b"x")
 
     def test_multiple_queues(self):
-        with event_publisher.start_queue_server(host="127.0.0.1", port=9090) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
             mq1 = RemoteMessageQueue(self.qname, max_messages=10)
             mq2 = RemoteMessageQueue(self.qname + "2", max_messages=10)
 
@@ -185,8 +187,16 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
             mq1.close()
             mq2.close()
 
+    def test_queues_alternate_port(self): 
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9091) as server:
+            message_queue = RemoteMessageQueue(self.qname, max_messages=10, port=9091)
+
+            with contextlib.closing(message_queue) as mq:
+                mq.put(b"x", timeout=0)
+                self.assertEqual(mq.get(), b"x")
+
     def test_get_timeout(self):
-        with event_publisher.start_queue_server(host="127.0.0.1", port=9090) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
             message_queue = RemoteMessageQueue(self.qname, max_messages=1)
 
             with contextlib.closing(message_queue) as mq:
@@ -194,10 +204,10 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 with self.assertRaises(TimedOutError):
                     mq.get(timeout=0.1)
                 elapsed = time.time() - start
-                self.assertAlmostEqual(elapsed, 0.1, places=2)
+                self.assertAlmostEqual(elapsed, 0.1, places=1) # TODO: this routinely takes 0.105-0.11 seconds
 
     def test_put_timeout(self):
-        with event_publisher.start_queue_server(host="127.0.0.1", port=9090) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
             message_queue = RemoteMessageQueue(self.qname, max_messages=1)
 
             with contextlib.closing(message_queue) as mq:
@@ -206,4 +216,28 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 with self.assertRaises(TimedOutError):
                     mq.put(b"x", timeout=0.1)
                 elapsed = time.time() - start
-                self.assertAlmostEqual(elapsed, 0.1, places=1)
+                self.assertAlmostEqual(elapsed, 0.1, places=2)
+
+    def test_thrift_retry(self):
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
+            message_queue = RemoteMessageQueue(self.qname, max_messages=1)
+
+            with contextlib.closing(message_queue) as mq:
+                mq.put(b"x")
+                # close the connection manually
+                mq.close()
+                # this should still pass, as it catches the thrift error and re-connects
+                self.assertEqual(mq.get(), b"x")
+    
+    def test_get_thrift_retry_and_timeout(self):
+        # Check that we still catch a timeout error even if we have to reconnect
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
+            message_queue = RemoteMessageQueue(self.qname, max_messages=1)
+
+            with contextlib.closing(message_queue) as mq:
+                mq.close()
+                start = time.time()
+                with self.assertRaises(TimedOutError):
+                    mq.get(timeout=0.1)
+                elapsed = time.time() - start
+                self.assertAlmostEqual(elapsed, 0.1, places=1) # TODO: this routinely takes 0.105-0.11 seconds

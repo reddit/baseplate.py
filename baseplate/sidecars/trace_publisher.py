@@ -118,6 +118,23 @@ class ZipkinPublisher:
             f"ZipkinPublisher exhausted allowance of {self.retry_limit:d} retries."
         )
 
+def build_and_publish_batch(trace_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: ZipkinPublisher) -> None: 
+    while True:
+        message: Optional[bytes]
+
+        try:
+            message = trace_queue.get(timeout=0.2)
+        except TimedOutError:
+            message = None
+
+        try:
+            batcher.add(message)
+        except BatchFull:
+            serialized = batcher.serialize()
+            publisher.publish(serialized)
+            batcher.reset()
+            batcher.add(message)
+
 
 def publish_traces() -> None:
     arg_parser = argparse.ArgumentParser()
@@ -187,28 +204,11 @@ def publish_traces() -> None:
         post_timeout=publisher_cfg.post_timeout,
     )
 
-    while True:
-        message: Optional[bytes]
-
-        if publisher_cfg.queue_type == "in_memory":
-            with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
-                try:
-                    message = trace_queue.get(timeout=0.2)
-                except TimedOutError:
-                    message = None
-        else:
-            try:
-                message = trace_queue.get(timeout=0.2)
-            except TimedOutError:
-                message = None
-
-        try:
-            batcher.add(message)
-        except BatchFull:
-            serialized = batcher.serialize()
-            publisher.publish(serialized)
-            batcher.reset()
-            batcher.add(message)
+    if publisher_cfg.queue_type == "in_memory":
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
+            build_and_publish_batch(trace_queue, batcher, publisher)
+    else: 
+        build_and_publish_batch(trace_queue, batcher, publisher)
 
 
 if __name__ == "__main__":

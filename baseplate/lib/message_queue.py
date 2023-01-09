@@ -168,10 +168,13 @@ class InMemoryMessageQueue(MessageQueue):
 
 class RemoteMessageQueue(MessageQueue):
     def __init__(self, name: str, max_messages: int, host: str = "127.0.0.1", port: int = 9090):
+        # Connect to the remote queue server, and creeate the new queue
         self.queue_name = name
         self.max_messages = max_messages
         self.host = host
         self.port = port
+        self.connect()
+        self.client.create_queue(name, max_messages)
 
     def connect(self):
         # Establish a connection with the queue server
@@ -184,8 +187,13 @@ class RemoteMessageQueue(MessageQueue):
     def get(self, timeout: Optional[float] = None) -> bytes:
         # Call the remote server and get an element for the correct queue
         try:
-            self.connect()
-            return self.client.get(self.queue_name, self.max_messages, timeout).value
+            try: 
+                return self.client.get(self.queue_name, timeout).value
+            except TSocket.TTransportException: 
+                # Try reconnecting once, we dont want this as another top-level except because 
+                # we may get a timeout after re-connecting, and we want to catch that
+                self.connect()
+                return self.client.get(self.queue_name, timeout).value
         except ThriftTimedOutError:
             raise TimedOutError
 
@@ -193,8 +201,11 @@ class RemoteMessageQueue(MessageQueue):
         # Call the remote server and put an element on the correct queue
         # Will create the queue if it doesnt exist
         try:
-            self.connect()
-            self.client.put(self.queue_name, self.max_messages, message, timeout)
+            try: 
+                self.client.put(self.queue_name, message, timeout)
+            except TSocket.TTransportException: # Try reconnecting once
+                self.connect()
+                self.client.put(self.queue_name, self.max_messages, message, timeout)
         except ThriftTimedOutError:
             raise TimedOutError
 

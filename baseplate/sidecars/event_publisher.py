@@ -161,19 +161,28 @@ class BatchPublisher:
         raise MaxRetriesError("could not sent batch")
 
 
-def build_batch(queue: MessageQueue, batcher: TimeLimitedBatch) -> bytes:
+def build_batch_and_publish(event_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: BatchPublisher) -> bytes:
     while True:
         message: Optional[bytes]
+
         try:
-            message = queue.get(timeout=0.2)
-        except MessageQueueTimedOutError:
+            message = event_queue.get(timeout=0.2)
+        except TimedOutError:
             message = None
 
         try:
             batcher.add(message)
             continue
         except BatchFull:
-            return message
+            pass
+
+        serialized = batcher.serialize()
+        try:
+            publisher.publish(serialized)
+        except Exception:
+            logger.exception("Events publishing failed.")
+        batcher.reset()
+        batcher.add(message)
 
 
 SERIALIZER_BY_VERSION = {"2": V2Batch, "2j": V2JBatch}
@@ -229,26 +238,13 @@ def publish_events() -> None:
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
     publisher = BatchPublisher(metrics_client, cfg)
 
-    while True:
-        if cfg.queue_type == "in_memory":
-            with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
-                last_message = publisher_queue_utils.build_batch(event_queue, batcher)
-                serialized = batcher.serialize()
-                try:
-                    publisher.publish(serialized)
-                except Exception:
-                    logger.exception("Events publishing failed.")
-                batcher.reset()
-                batcher.add(last_message)
-        else:
-            last_message = publisher_queue_utils.build_batch(event_queue, batcher)
-            serialized = batcher.serialize()
-            try:
-                publisher.publish(serialized)
-            except Exception:
-                logger.exception("Events publishing failed.")
-            batcher.reset()
-            batcher.add(last_message)
+    if cfg.queue_type == "in_memory":
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
+            build_batch_and_publish(event_queue, batcher, publisher)
+
+    else:
+        build_batch_and_publish(event_queue, batcher, publisher)
+
 
 
 if __name__ == "__main__":
