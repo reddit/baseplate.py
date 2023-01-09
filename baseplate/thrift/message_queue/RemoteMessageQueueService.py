@@ -226,7 +226,7 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
-        except TimedOutError as timed_out_error:
+        except ThriftTimedOutError as timed_out_error:
             msg_type = TMessageType.REPLY
             result.timed_out_error = timed_out_error
         except TApplicationException as ex:
@@ -252,7 +252,7 @@ class Processor(Iface, TProcessor):
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
-        except TimedOutError as timed_out_error:
+        except ThriftTimedOutError as timed_out_error:
             msg_type = TMessageType.REPLY
             result.timed_out_error = timed_out_error
         except TApplicationException as ex:
@@ -565,7 +565,7 @@ class put_result(object):
                     iprot.skip(ftype)
             elif fid == 1:
                 if ftype == TType.STRUCT:
-                    self.timed_out_error = TimedOutError.read(iprot)
+                    self.timed_out_error = ThriftTimedOutError.read(iprot)
                 else:
                     iprot.skip(ftype)
             else:
@@ -612,7 +612,7 @@ class put_result(object):
 all_structs.append(put_result)
 put_result.thrift_spec = (
     (0, TType.STRUCT, 'success', [PutResponse, None], None, ),  # 0
-    (1, TType.STRUCT, 'timed_out_error', [TimedOutError, None], None, ),  # 1
+    (1, TType.STRUCT, 'timed_out_error', [ThriftTimedOutError, None], None, ),  # 1
 )
 
 
@@ -738,7 +738,7 @@ class get_result(object):
                     iprot.skip(ftype)
             elif fid == 1:
                 if ftype == TType.STRUCT:
-                    self.timed_out_error = TimedOutError.read(iprot)
+                    self.timed_out_error = ThriftTimedOutError.read(iprot)
                 else:
                     iprot.skip(ftype)
             else:
@@ -785,7 +785,7 @@ class get_result(object):
 all_structs.append(get_result)
 get_result.thrift_spec = (
     (0, TType.STRUCT, 'success', [GetResponse, None], None, ),  # 0
-    (1, TType.STRUCT, 'timed_out_error', [TimedOutError, None], None, ),  # 1
+    (1, TType.STRUCT, 'timed_out_error', [ThriftTimedOutError, None], None, ),  # 1
 )
 fix_spec(all_structs)
 del all_structs

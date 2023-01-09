@@ -15,7 +15,7 @@ from thrift.transport import TTransport
 
 from baseplate.lib.retry import RetryPolicy
 from baseplate.thrift.message_queue import RemoteMessageQueueService
-from baseplate.thrift.message_queue.ttypes import TimedOutError as ThriftTimedOutError
+from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 
 
 class MessageQueueError(Exception):
@@ -174,6 +174,7 @@ class InMemoryMessageQueue(MessageQueue):
 
 class RemoteMessageQueue(MessageQueue):
     """A message queue that connects to a remote server."""
+
     def __init__(self, name: str, max_messages: int, host: str = "127.0.0.1", port: int = 9090):
         # Connect to the remote queue server, and creeate the new queue
         self.queue_name = name

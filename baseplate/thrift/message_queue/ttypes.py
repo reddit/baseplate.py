@@ -184,7 +184,7 @@ class GetResponse(object):
         return not (self == other)
 
 
-class TimedOutError(TException):
+class ThriftTimedOutError(TException):
 
     __slots__ = (
     )
@@ -219,7 +219,7 @@ class TimedOutError(TException):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('TimedOutError')
+        oprot.writeStructBegin('ThriftTimedOutError')
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -257,8 +257,8 @@ GetResponse.thrift_spec = (
     None,  # 0
     (1, TType.STRING, 'value', 'BINARY', None, ),  # 1
 )
-all_structs.append(TimedOutError)
-TimedOutError.thrift_spec = (
+all_structs.append(ThriftTimedOutError)
+ThriftTimedOutError.thrift_spec = (
 )
 fix_spec(all_structs)
 del all_structs

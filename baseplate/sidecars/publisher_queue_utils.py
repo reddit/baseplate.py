@@ -9,14 +9,14 @@ from baseplate.lib.message_queue import InMemoryMessageQueue, QueueType
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
-from baseplate.lib.message_queue import TimedOutError as MessageQueueTimedOutError
+from baseplate.lib.message_queue import TimedOutError
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 from baseplate.thrift.message_queue import RemoteMessageQueueService
 from baseplate.thrift.message_queue.ttypes import CreateResponse
 from baseplate.thrift.message_queue.ttypes import GetResponse
 from baseplate.thrift.message_queue.ttypes import PutResponse
-from baseplate.thrift.message_queue.ttypes import TimedOutError as ThriftTimedOutError
+from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 
 
 class RemoteMessageQueueHandler:  # On the queue server, create the queue and define get/put using the InMemoryQueue implementation
@@ -47,7 +47,7 @@ class RemoteMessageQueueHandler:  # On the queue server, create the queue and de
             # Get element from list, waiting if necessary
             result = queue.get(timeout)
         # If the queue timed out, raise a timeout as the server response
-        except MessageQueueTimedOutError as e:
+        except TimedOutError as e:
             raise ThriftTimedOutError from e
 
         return GetResponse(result)
@@ -58,7 +58,7 @@ class RemoteMessageQueueHandler:  # On the queue server, create the queue and de
         try:
             queue, _ = self.queues.get(queue_name)
             queue.put(message, timeout)
-        except MessageQueueTimedOutError as e:
+        except TimedOutError as e:
             raise ThriftTimedOutError from e
         return PutResponse()
 

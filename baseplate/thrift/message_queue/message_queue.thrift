@@ -10,7 +10,7 @@ struct GetResponse {
     1: binary value;
 }
 
-exception TimedOutError {}
+exception ThriftTimedOutError {}
 
 service RemoteMessageQueueService {
     CreateResponse create_queue(
@@ -22,12 +22,12 @@ service RemoteMessageQueueService {
         3: binary message
         4: double timeout
     ) throws (
-        1: TimedOutError timed_out_error
+        1: ThriftTimedOutError timed_out_error
     );
     GetResponse get(
         1: string queue_name
         3: double timeout
     ) throws (
-        1: TimedOutError timed_out_error
+        1: ThriftTimedOutError timed_out_error
     );
 }
