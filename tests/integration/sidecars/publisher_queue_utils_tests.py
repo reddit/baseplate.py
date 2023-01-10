@@ -1,7 +1,6 @@
 import unittest
 
 from importlib import reload
-from unittest import mock
 
 import gevent.monkey
 
