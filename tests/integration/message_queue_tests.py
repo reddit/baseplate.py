@@ -27,14 +27,14 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
             queue.close()
 
     def test_create_queue(self):
-        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1)
+        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1000)
 
         with contextlib.closing(message_queue) as mq:
             self.assertEqual(mq.queue.max_messages, 1)
-            self.assertEqual(mq.queue.max_message_size, 1)
+            self.assertEqual(mq.queue.max_message_size, 1000)
 
     def test_put_get(self):
-        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1)
+        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1000)
 
         with contextlib.closing(message_queue) as mq:
             mq.put(b"x")
@@ -42,7 +42,7 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
             self.assertEqual(message, b"x")
 
     def test_get_timeout(self):
-        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1)
+        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1000)
 
         with contextlib.closing(message_queue) as mq:
             start = time.time()
@@ -52,7 +52,7 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
             self.assertAlmostEqual(elapsed, 0.1, places=2)
 
     def test_put_timeout(self):
-        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1)
+        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1000)
 
         with contextlib.closing(message_queue) as mq:
             mq.put(b"x")
@@ -63,7 +63,7 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
             self.assertAlmostEqual(elapsed, 0.1, places=1)
 
     def test_put_zero_timeout(self):
-        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1)
+        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1000)
 
         with contextlib.closing(message_queue) as mq:
             mq.put(b"x", timeout=0)
@@ -71,7 +71,7 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
             self.assertEqual(message, b"x")
 
     def test_put_full_zero_timeout(self):
-        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1)
+        message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1000)
 
         with contextlib.closing(message_queue) as mq:
             mq.put(b"1", timeout=0)
@@ -203,7 +203,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 elapsed = time.time() - start
                 self.assertAlmostEqual(
                     elapsed, 0.1, places=1
-                )  # TODO: this routinely takes 0.105-0.11 seconds
+                )  # TODO: this routinely takes 0.105-0.11 seconds, is 1 place ok?
 
     def test_put_timeout(self):
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
@@ -239,6 +239,4 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 with self.assertRaises(TimedOutError):
                     mq.get(timeout=0.1)
                 elapsed = time.time() - start
-                self.assertAlmostEqual(
-                    elapsed, 0.1, places=1
-                )  # TODO: this routinely takes 0.105-0.11 seconds
+                self.assertAlmostEqual(elapsed, 0.1, places=1)

@@ -24,7 +24,9 @@ from baseplate.thrift.message_queue.ttypes import PutResponse
 from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 
 
-class RemoteMessageQueueHandler:  # On the queue server, create the queue and define get/put using the InMemoryQueue implementation
+class RemoteMessageQueueHandler:
+    """Create an InMemoryMessageQueue locally and expose get/put methods."""
+
     def is_healthy(self) -> bool:
         pass
 
@@ -60,15 +62,12 @@ class RemoteMessageQueueHandler:  # On the queue server, create the queue and de
 
 @contextlib.contextmanager
 def start_queue_server(host: str, port: int) -> Generator[StreamServer, None, None]:
-    # Start a thrift server that will house the remote queue data
+    # Start a thrift server that will store the queue data in memory
     processor = RemoteMessageQueueService.Processor(RemoteMessageQueueHandler())
     server_bind_endpoint = config.Endpoint(f"{host}:{port}")
     listener = make_listener(server_bind_endpoint)
     server = make_server(server_config={}, listener=listener, app=processor)
 
-    # figure out what port the server ended up on
-    server_address = listener.getsockname()
-    server.endpoint = config.Endpoint(f"{server_address[0]}:{server_address[1]}")
     # run the server until our caller is done with it
     server_greenlet = gevent.spawn(server.serve_forever)
     try:
@@ -79,18 +78,18 @@ def start_queue_server(host: str, port: int) -> Generator[StreamServer, None, No
 
 def create_queue(
     queue_type: QueueType,
-    queue_name: str,
+    queue_full_name: str,
     max_queue_size: int,
     max_element_size: int,
     host: str = "127.0.0.1",
     port: int = 9090,
 ) -> MessageQueue:
     if queue_type == QueueType.IN_MEMORY:
-        event_queue = RemoteMessageQueue("/events-" + queue_name, max_queue_size, host, port)
+        event_queue = RemoteMessageQueue(queue_full_name, max_queue_size, host, port)
 
     else:
         event_queue = PosixMessageQueue(  # type: ignore
-            "/events-" + queue_name,
+            queue_full_name,
             max_messages=max_queue_size,
             max_message_size=max_element_size,
         )

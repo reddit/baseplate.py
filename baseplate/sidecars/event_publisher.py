@@ -29,6 +29,7 @@ from baseplate.sidecars import publisher_queue_utils
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -236,7 +237,7 @@ def publish_events() -> None:
     metrics_client = metrics_client_from_config(raw_config)
 
     event_queue: MessageQueue = publisher_queue_utils.create_queue(
-        cfg.queue_type, args.queue_name, cfg.max_queue_size, cfg.max_element_size
+        cfg.queue_type, f"/events-{args.queue_name}", cfg.max_queue_size, cfg.max_element_size
     )
 
     # pylint: disable=maybe-no-member
@@ -245,6 +246,8 @@ def publish_events() -> None:
     publisher = BatchPublisher(metrics_client, cfg)
 
     if cfg.queue_type == QueueType.IN_MEMORY.value:
+        # Start the Thrift server that communicates with RemoteMessageQueues and stores
+        # data in a InMemoryMessageQueue
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 

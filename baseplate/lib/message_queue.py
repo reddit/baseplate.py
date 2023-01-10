@@ -139,6 +139,11 @@ class PosixMessageQueue(MessageQueue):
         raise TimedOutError
 
     def unlink(self) -> None:
+        """Remove the queue from the system.
+
+        The queue will not leave until the last active user closes it.
+
+        """
         self.queue.unlink()
 
     def close(self) -> None:
@@ -146,7 +151,18 @@ class PosixMessageQueue(MessageQueue):
 
 
 class InMemoryMessageQueue(MessageQueue):
-    """An in-memory inter process message queue."""  # Used by the sidecar
+    """An in-memory inter process message queue.
+
+    Uses a simple Python Queue to store data.
+
+    Used in conjunction with the RemoteMessageQueue to
+    provide an alternative to Posix queues, for systems
+    that don't have Posix available. The client will
+    instantitate a RemoteMessageQueue, which connect to
+    a Thrift server. The Thrift server internally uses an
+    InMemoryMessageQueue to store data.
+
+    """
 
     def __init__(self, name: str, max_messages: int):
         self.queue: q.Queue = q.Queue(max_messages)
@@ -172,7 +188,13 @@ class InMemoryMessageQueue(MessageQueue):
 
 
 class RemoteMessageQueue(MessageQueue):
-    """A message queue that connects to a remote server."""
+    """A message queue that uses a remote Thrift server.
+
+    Used in conjunction with the InMemoryMessageQueue to
+    provide an alternative to Posix queues, for systems
+    that don't have Posix available.
+
+    """
 
     def __init__(self, name: str, max_messages: int, host: str = "127.0.0.1", port: int = 9090):
         # Connect to the remote queue server, and creeate the new queue
@@ -201,7 +223,7 @@ class RemoteMessageQueue(MessageQueue):
                 # we may get a timeout after re-connecting, and we want to catch that
                 self.connect()
                 return self.client.get(self.name, timeout).value
-        # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue type
+        # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue
         except ThriftTimedOutError:
             raise TimedOutError
 
@@ -242,7 +264,7 @@ def queue_tool() -> None:
     parser.add_argument("queue_name", help="the name of the queue to consume")
     parser.add_argument(
         "--queue_type",
-        default="posix",
+        default=QueueType.POSIX.value,
         choices=[qt.value for qt in QueueType],
         help="whether to use an in-memory queue or a posix queue",
     )
@@ -273,6 +295,8 @@ def queue_tool() -> None:
     args = parser.parse_args()
 
     if args.queue_type == QueueType.IN_MEMORY.value:
+        # Start a remote queue, which connects to a Thrift server
+        # that manages an in-memory queue
         queue = RemoteMessageQueue(args.queue_name, args.max_messages)
     else:
         queue = PosixMessageQueue(  # type: ignore

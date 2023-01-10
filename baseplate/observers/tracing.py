@@ -549,6 +549,8 @@ class SidecarRecorder(Recorder):
 
     def __init__(self, queue_name: str, queue_type: QueueType = QueueType.POSIX):
         if queue_type == QueueType.IN_MEMORY:
+            # Start a remote queue, which connects to a Thrift server
+            # that manages an in-memory queue
             self.queue = RemoteMessageQueue(
                 "/traces-" + queue_name,
                 max_messages=MAX_QUEUE_SIZE,

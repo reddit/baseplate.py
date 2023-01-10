@@ -155,8 +155,8 @@ def publish_traces() -> None:
     )
     arg_parser.add_argument(
         "--queue-type",
-        default="posix",
-        choices=["posix", "in_memory"],
+        default=QueueType.POSIX.value,
+        choices=[qt.value for qt in QueueType],
         help="whether to use an in-memory queue or a posix queue",
     )
     arg_parser.add_argument(
@@ -190,13 +190,13 @@ def publish_traces() -> None:
             "retry_limit": config.Optional(config.Integer, RETRY_LIMIT_DEFAULT),
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
             "max_element_size": config.Optional(config.Integer, MAX_SPAN_SIZE),
-            "queue_type": config.Optional(config.String, default="posix"),
+            "queue_type": config.Optional(config.String, default=QueueType.POSIX.value),
         },
     )
 
     trace_queue: MessageQueue = publisher_queue_utils.create_queue(
         publisher_cfg.queue_type,
-        args.queue_name,
+        "/traces-" + args.queue_name,
         publisher_cfg.max_queue_size,
         publisher_cfg.max_element_size,
     )
