@@ -1,5 +1,4 @@
 import contextlib
-import logging
 import time
 import unittest
 
@@ -7,10 +6,8 @@ from importlib import reload
 
 import gevent
 import posix_ipc
-import pytest
 
 from baseplate.lib.message_queue import InMemoryMessageQueue
-from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
@@ -164,7 +161,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
 
     def test_put_get(self):
         # start the server that would ordinarily be running on the sidecar
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             message_queue = RemoteMessageQueue(self.qname, max_messages=10)
 
             with contextlib.closing(message_queue) as mq:
@@ -173,7 +170,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 self.assertEqual(message, b"x")
 
     def test_multiple_queues(self):
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             mq1 = RemoteMessageQueue(self.qname, max_messages=10)
             mq2 = RemoteMessageQueue(self.qname + "2", max_messages=10)
 
@@ -188,7 +185,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
             mq2.close()
 
     def test_queues_alternate_port(self):
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9091) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9091):
             message_queue = RemoteMessageQueue(self.qname, max_messages=10, port=9091)
 
             with contextlib.closing(message_queue) as mq:
@@ -196,7 +193,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 self.assertEqual(mq.get(), b"x")
 
     def test_get_timeout(self):
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             message_queue = RemoteMessageQueue(self.qname, max_messages=1)
 
             with contextlib.closing(message_queue) as mq:
@@ -209,7 +206,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 )  # TODO: this routinely takes 0.105-0.11 seconds
 
     def test_put_timeout(self):
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             message_queue = RemoteMessageQueue(self.qname, max_messages=1)
 
             with contextlib.closing(message_queue) as mq:
@@ -221,7 +218,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 self.assertAlmostEqual(elapsed, 0.1, places=2)
 
     def test_thrift_retry(self):
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             message_queue = RemoteMessageQueue(self.qname, max_messages=1)
 
             with contextlib.closing(message_queue) as mq:
@@ -233,7 +230,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
 
     def test_get_thrift_retry_and_timeout(self):
         # Check that we still catch a timeout error even if we have to reconnect
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090) as server:
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             message_queue = RemoteMessageQueue(self.qname, max_messages=1)
 
             with contextlib.closing(message_queue) as mq:

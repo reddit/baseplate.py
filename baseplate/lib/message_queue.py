@@ -6,7 +6,6 @@ import select
 from enum import Enum
 from typing import Optional
 
-import gevent
 import posix_ipc
 
 from thrift.protocol import TBinaryProtocol
