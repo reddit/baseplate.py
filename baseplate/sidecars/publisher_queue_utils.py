@@ -1,13 +1,18 @@
 import contextlib
 
+from typing import Dict
+from typing import Generator
 from typing import Optional
 
 import gevent
 
+from gevent.server import StreamServer
+
 from baseplate.lib import config
-from baseplate.lib.message_queue import InMemoryMessageQueue, QueueType
+from baseplate.lib.message_queue import InMemoryMessageQueue
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.server import make_listener
@@ -23,27 +28,19 @@ class RemoteMessageQueueHandler:  # On the queue server, create the queue and de
     def is_healthy(self) -> bool:
         pass
 
-    def __init__(self):
-        self.queues = {}
+    def __init__(self) -> None:
+        # Store the queue by name with its max messages
+        self.queues: Dict[str, MessageQueue] = {}
 
     def create_queue(self, queue_name: str, max_messages: int) -> CreateResponse:
         queue = InMemoryMessageQueue(queue_name, max_messages)
-        self.queues[queue_name] = (queue, max_messages)
+        self.queues[queue_name] = queue
 
         return CreateResponse()
 
-    def get(
-        self, queue_name: str, timeout: Optional[float] = None
-    ) -> GetResponse:
-        # Raises TimedOutError
+    def get(self, queue_name: str, timeout: Optional[float] = None) -> GetResponse:
         try:
-            # Create queue if doesnt exist
-            # We may need to create the queue on both get & put - if get() is called on a queue before it exists, we
-            # still want to wait the appropriate timeout in case anyone puts elements in it
-            queue, max_messages = self.queues.get(queue_name)
-            if not queue:
-                queue = InMemoryMessageQueue(queue_name, max_messages)
-                self.queues[queue_name] = queue
+            queue = self.queues[queue_name]
             # Get element from list, waiting if necessary
             result = queue.get(timeout)
         # If the queue timed out, raise a timeout as the server response
@@ -52,11 +49,9 @@ class RemoteMessageQueueHandler:  # On the queue server, create the queue and de
 
         return GetResponse(result)
 
-    def put(
-        self, queue_name: str, message: bytes, timeout: Optional[float] = None
-    ) -> PutResponse:
+    def put(self, queue_name: str, message: bytes, timeout: Optional[float] = None) -> PutResponse:
         try:
-            queue, _ = self.queues.get(queue_name)
+            queue = self.queues[queue_name]
             queue.put(message, timeout)
         except TimedOutError as e:
             raise ThriftTimedOutError from e
@@ -64,7 +59,7 @@ class RemoteMessageQueueHandler:  # On the queue server, create the queue and de
 
 
 @contextlib.contextmanager
-def start_queue_server(host: str, port: int) -> None:
+def start_queue_server(host: str, port: int) -> Generator[StreamServer, None, None]:
     # Start a thrift server that will house the remote queue data
     processor = RemoteMessageQueueService.Processor(RemoteMessageQueueHandler())
     server_bind_endpoint = config.Endpoint(f"{host}:{port}")
@@ -83,12 +78,15 @@ def start_queue_server(host: str, port: int) -> None:
 
 
 def create_queue(
-    queue_type: QueueType, queue_name: str, max_queue_size: int, max_element_size: int, host: str = "127.0.0.1", port: int = 9090
+    queue_type: QueueType,
+    queue_name: str,
+    max_queue_size: int,
+    max_element_size: int,
+    host: str = "127.0.0.1",
+    port: int = 9090,
 ) -> MessageQueue:
     if queue_type == QueueType.IN_MEMORY:
-        event_queue = RemoteMessageQueue(  # type: ignore
-            "/events-" + queue_name, max_queue_size, host, port
-        )
+        event_queue = RemoteMessageQueue("/events-" + queue_name, max_queue_size, host, port)
 
     else:
         event_queue = PosixMessageQueue(  # type: ignore

@@ -1,9 +1,9 @@
 """A message queue, with two implementations: POSIX-based, or in-memory using a Thrift server."""
 import abc
-from enum import Enum
 import queue as q
 import select
 
+from enum import Enum
 from typing import Optional
 
 import gevent
@@ -177,14 +177,14 @@ class RemoteMessageQueue(MessageQueue):
 
     def __init__(self, name: str, max_messages: int, host: str = "127.0.0.1", port: int = 9090):
         # Connect to the remote queue server, and creeate the new queue
-        self.queue_name = name
+        self.name = name
         self.max_messages = max_messages
         self.host = host
         self.port = port
         self.connect()
         self.client.create_queue(name, max_messages)
 
-    def connect(self):
+    def connect(self) -> None:
         # Establish a connection with the queue server
         transport = TSocket.TSocket(self.host, self.port)
         self.transport = TTransport.TBufferedTransport(transport)
@@ -195,13 +195,13 @@ class RemoteMessageQueue(MessageQueue):
     def get(self, timeout: Optional[float] = None) -> bytes:
         # Call the remote server and get an element for the correct queue
         try:
-            try: 
-                return self.client.get(self.queue_name, timeout).value
-            except TSocket.TTransportException: 
-                # Try reconnecting once, we dont want this as another top-level except because 
+            try:
+                return self.client.get(self.name, timeout).value
+            except TSocket.TTransportException:
+                # Try reconnecting once, we dont want this as another top-level except because
                 # we may get a timeout after re-connecting, and we want to catch that
                 self.connect()
-                return self.client.get(self.queue_name, timeout).value
+                return self.client.get(self.name, timeout).value
         # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue type
         except ThriftTimedOutError:
             raise TimedOutError
@@ -210,11 +210,11 @@ class RemoteMessageQueue(MessageQueue):
         # Call the remote server and put an element on the correct queue
         # Will create the queue if it doesnt exist
         try:
-            try: 
-                self.client.put(self.queue_name, message, timeout)
-            except TSocket.TTransportException: # Try reconnecting once
+            try:
+                self.client.put(self.name, message, timeout)
+            except TSocket.TTransportException:  # Try reconnecting once
                 self.connect()
-                self.client.put(self.queue_name, self.max_messages, message, timeout)
+                self.client.put(self.name, message, timeout)
         except ThriftTimedOutError:
             raise TimedOutError
 
@@ -274,7 +274,7 @@ def queue_tool() -> None:
     args = parser.parse_args()
 
     if args.queue_type == QueueType.IN_MEMORY.value:
-        queue = RemoteMessageQueue(args.queue_name, args.max_messages)  # type: ignore
+        queue = RemoteMessageQueue(args.queue_name, args.max_messages)
     else:
         queue = PosixMessageQueue(  # type: ignore
             args.queue_name, args.max_messages, args.max_message_size

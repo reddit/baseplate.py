@@ -17,8 +17,9 @@ from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
-from baseplate.lib.message_queue import MessageQueue, QueueType, TimedOutError
-from baseplate.lib.message_queue import TimedOutError as MessageQueueTimedOutError
+from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import QueueType
+from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
@@ -163,7 +164,9 @@ class BatchPublisher:
         raise MaxRetriesError("could not sent batch")
 
 
-def build_batch_and_publish(event_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: BatchPublisher, timeout: float) -> bytes:
+def build_batch_and_publish(
+    event_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: BatchPublisher, timeout: float
+) -> bytes:
     # Helper that continuously polls for messages, then batches and publishes them
     while True:
         message: Optional[bytes]
@@ -247,7 +250,6 @@ def publish_events() -> None:
 
     else:
         build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
-
 
 
 if __name__ == "__main__":

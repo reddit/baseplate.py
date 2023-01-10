@@ -6,7 +6,8 @@ from baseplate.lib.events import EventQueue
 from baseplate.lib.events import EventQueueFullError
 from baseplate.lib.events import EventTooLargeError
 from baseplate.lib.events import MAX_EVENT_SIZE
-from baseplate.lib.message_queue import PosixMessageQueue, QueueType
+from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 

@@ -5,25 +5,30 @@
 #
 #  options string: py:slots
 #
-
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
-from thrift.protocol.TProtocol import TProtocolException
-from thrift.TRecursive import fix_spec
-
 import sys
 
+from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
+from thrift.Thrift import TFrozenDict
+from thrift.Thrift import TMessageType
+from thrift.Thrift import TType
 from thrift.transport import TTransport
+from thrift.TRecursive import fix_spec
+
 all_structs = []
 
 
 class CreateResponse(object):
 
-    __slots__ = (
-    )
-
+    __slots__ = ()
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -40,7 +45,7 @@ class CreateResponse(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('CreateResponse')
+        oprot.writeStructBegin("CreateResponse")
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -48,9 +53,8 @@ class CreateResponse(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -68,12 +72,14 @@ class CreateResponse(object):
 
 class PutResponse(object):
 
-    __slots__ = (
-    )
-
+    __slots__ = ()
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -90,7 +96,7 @@ class PutResponse(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('PutResponse')
+        oprot.writeStructBegin("PutResponse")
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -98,9 +104,8 @@ class PutResponse(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -123,16 +128,20 @@ class GetResponse(object):
 
     """
 
-    __slots__ = (
-        'value',
-    )
+    __slots__ = ("value",)
 
-
-    def __init__(self, value=None,):
+    def __init__(
+        self,
+        value=None,
+    ):
         self.value = value
 
     def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and self.thrift_spec is not None
+        ):
             iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
             return
         iprot.readStructBegin()
@@ -154,9 +163,9 @@ class GetResponse(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('GetResponse')
+        oprot.writeStructBegin("GetResponse")
         if self.value is not None:
-            oprot.writeFieldBegin('value', TType.STRING, 1)
+            oprot.writeFieldBegin("value", TType.STRING, 1)
             oprot.writeBinary(self.value)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -166,9 +175,8 @@ class GetResponse(object):
         return
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -186,9 +194,7 @@ class GetResponse(object):
 
 class ThriftTimedOutError(TException):
 
-    __slots__ = (
-    )
-
+    __slots__ = ()
 
     def __setattr__(self, *args):
         raise TypeError("can't modify immutable instance")
@@ -201,7 +207,11 @@ class ThriftTimedOutError(TException):
 
     @classmethod
     def read(cls, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and cls.thrift_spec is not None:
+        if (
+            iprot._fast_decode is not None
+            and isinstance(iprot.trans, TTransport.CReadableTransport)
+            and cls.thrift_spec is not None
+        ):
             return iprot._fast_decode(None, iprot, [cls, cls.thrift_spec])
         iprot.readStructBegin()
         while True:
@@ -212,14 +222,13 @@ class ThriftTimedOutError(TException):
                 iprot.skip(ftype)
             iprot.readFieldEnd()
         iprot.readStructEnd()
-        return cls(
-        )
+        return cls()
 
     def write(self, oprot):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('ThriftTimedOutError')
+        oprot.writeStructBegin("ThriftTimedOutError")
         oprot.writeFieldStop()
         oprot.writeStructEnd()
 
@@ -230,9 +239,8 @@ class ThriftTimedOutError(TException):
         return repr(self)
 
     def __repr__(self):
-        L = ['%s=%r' % (key, getattr(self, key))
-             for key in self.__slots__]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -246,19 +254,24 @@ class ThriftTimedOutError(TException):
 
     def __ne__(self, other):
         return not (self == other)
+
+
 all_structs.append(CreateResponse)
-CreateResponse.thrift_spec = (
-)
+CreateResponse.thrift_spec = ()
 all_structs.append(PutResponse)
-PutResponse.thrift_spec = (
-)
+PutResponse.thrift_spec = ()
 all_structs.append(GetResponse)
 GetResponse.thrift_spec = (
     None,  # 0
-    (1, TType.STRING, 'value', 'BINARY', None, ),  # 1
+    (
+        1,
+        TType.STRING,
+        "value",
+        "BINARY",
+        None,
+    ),  # 1
 )
 all_structs.append(ThriftTimedOutError)
-ThriftTimedOutError.thrift_spec = (
-)
+ThriftTimedOutError.thrift_spec = ()
 fix_spec(all_structs)
 del all_structs

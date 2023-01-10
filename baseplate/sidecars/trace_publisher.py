@@ -10,7 +10,8 @@ import requests
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
-from baseplate.lib.message_queue import MessageQueue, QueueType
+from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
@@ -40,6 +41,7 @@ RETRY_LIMIT_DEFAULT = 10
 
 # Seconds to wait for get/put operations on the event queue
 QUEUE_TIMEOUT = 0.2
+
 
 class MaxRetriesError(Exception):
     pass
@@ -120,7 +122,10 @@ class ZipkinPublisher:
             f"ZipkinPublisher exhausted allowance of {self.retry_limit:d} retries."
         )
 
-def build_and_publish_batch(trace_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: ZipkinPublisher, timeout: float) -> None:
+
+def build_and_publish_batch(
+    trace_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: ZipkinPublisher, timeout: float
+) -> None:
     while True:
         message: Optional[bytes]
 
@@ -209,7 +214,7 @@ def publish_traces() -> None:
     if publisher_cfg.queue_type == QueueType.IN_MEMORY.value:
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             build_and_publish_batch(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
-    else: 
+    else:
         build_and_publish_batch(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
