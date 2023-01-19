@@ -16,6 +16,9 @@ from baseplate.lib.retry import RetryPolicy
 from baseplate.thrift.message_queue import RemoteMessageQueueService
 from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 
+DEFAULT_QUEUE_HOST = "127.0.0.1"
+DEFAULT_QUEUE_PORT = 9090
+
 
 class MessageQueueError(Exception):
     """Base exception for message queue related errors."""
@@ -155,19 +158,11 @@ class InMemoryMessageQueue(MessageQueue):
 
     Uses a simple Python Queue to store data.
 
-    Used in conjunction with the RemoteMessageQueue to
-    provide an alternative to Posix queues, for systems
-    that don't have Posix available. The client will
-    instantitate a RemoteMessageQueue, which connect to
-    a Thrift server. The Thrift server internally uses an
-    InMemoryMessageQueue to store data.
-
     """
 
-    def __init__(self, name: str, max_messages: int):
+    def __init__(self, max_messages: int):
         self.queue: q.Queue = q.Queue(max_messages)
         self.max_messages = max_messages
-        self.name = name
 
     def get(self, timeout: Optional[float] = None) -> bytes:
         try:
@@ -191,12 +186,18 @@ class RemoteMessageQueue(MessageQueue):
     """A message queue that uses a remote Thrift server.
 
     Used in conjunction with the InMemoryMessageQueue to
-    provide an alternative to Posix queues, for systems
-    that don't have Posix available.
+    provide an alternative to Posix queues, for use-cases
+    where Posix is not appropriate.
 
     """
 
-    def __init__(self, name: str, max_messages: int, host: str = "127.0.0.1", port: int = 9090):
+    def __init__(
+        self,
+        name: str,
+        max_messages: int,
+        host: str = DEFAULT_QUEUE_HOST,
+        port: int = DEFAULT_QUEUE_PORT,
+    ):
         # Connect to the remote queue server, and creeate the new queue
         self.name = name
         self.max_messages = max_messages
@@ -213,34 +214,55 @@ class RemoteMessageQueue(MessageQueue):
         self.client = RemoteMessageQueueService.Client(protocol)
         self.transport.open()
 
+    def _try_to_get(self, timeout: Optional[float]) -> bytes:
+        try:
+            return self.client.get(self.name, timeout).value
+        except TSocket.TTransportException:
+            self.connect()  # Try reconnecting once
+            return self.client.get(self.name, timeout).value
+
     def get(self, timeout: Optional[float] = None) -> bytes:
         # Call the remote server and get an element for the correct queue
         try:
-            try:
-                return self.client.get(self.name, timeout).value
-            except TSocket.TTransportException:
-                # Try reconnecting once, we dont want this as another top-level except because
-                # we may get a timeout after re-connecting, and we want to catch that
-                self.connect()
-                return self.client.get(self.name, timeout).value
+            return self._try_to_get(timeout)
         # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue
         except ThriftTimedOutError:
             raise TimedOutError
+
+    def _try_to_put(self, message: bytes, timeout: Optional[float]) -> None:
+        try:
+            self.client.put(self.name, message, timeout)
+        except TSocket.TTransportException:
+            self.connect()  # Try reconnecting once
+            self.client.put(self.name, message, timeout)
 
     def put(self, message: bytes, timeout: Optional[float] = None) -> None:
         # Call the remote server and put an element on the correct queue
         # Will create the queue if it doesnt exist
         try:
-            try:
-                self.client.put(self.name, message, timeout)
-            except TSocket.TTransportException:  # Try reconnecting once
-                self.connect()
-                self.client.put(self.name, message, timeout)
+            self._try_to_put(message, timeout)
         except ThriftTimedOutError:
             raise TimedOutError
 
     def close(self) -> None:
         self.transport.close()
+
+
+def create_queue(
+    queue_type: QueueType,
+    queue_name: str,
+    max_messages: int,
+    max_message_size: int,
+    queue_host: str,
+    queue_port: int,
+) -> MessageQueue:
+    if queue_type == QueueType.IN_MEMORY:
+        # Start a remote queue, which connects to a Thrift server
+        # that manages an in-memory queue
+        queue = RemoteMessageQueue(queue_name, max_messages, queue_host, queue_port)
+    else:
+        queue = PosixMessageQueue(queue_name, max_messages, max_message_size)  # type: ignore
+    return queue
 
 
 def queue_tool() -> None:
@@ -263,10 +285,22 @@ def queue_tool() -> None:
     )
     parser.add_argument("queue_name", help="the name of the queue to consume")
     parser.add_argument(
-        "--queue_type",
+        "--queue-type",
         default=QueueType.POSIX.value,
         choices=[qt.value for qt in QueueType],
-        help="whether to use an in-memory queue or a posix queue",
+        help="allows selection of the queue implementation",
+    )
+    parser.add_argument(
+        "--queue-host",
+        type=str,
+        default=DEFAULT_QUEUE_HOST,
+        help="for a remote queue, what host to use",
+    )
+    parser.add_argument(
+        "--queue-port",
+        type=int,
+        default=DEFAULT_QUEUE_PORT,
+        help="for a remote queue, what port to use",
     )
 
     group = parser.add_mutually_exclusive_group(required=True)
@@ -294,14 +328,14 @@ def queue_tool() -> None:
 
     args = parser.parse_args()
 
-    if args.queue_type == QueueType.IN_MEMORY.value:
-        # Start a remote queue, which connects to a Thrift server
-        # that manages an in-memory queue
-        queue = RemoteMessageQueue(args.queue_name, args.max_messages)
-    else:
-        queue = PosixMessageQueue(  # type: ignore
-            args.queue_name, args.max_messages, args.max_message_size
-        )
+    queue = create_queue(
+        args.queue_type,
+        args.queue_name,
+        args.max_messages,
+        args.max_message_size,
+        args.queue_host,
+        args.queue_port,
+    )
 
     if args.mode == "read":
         while True:

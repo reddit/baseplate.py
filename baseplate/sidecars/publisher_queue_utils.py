@@ -1,3 +1,4 @@
+"""Shared functions for the event & trace publisher sidecars and message queues."""
 import contextlib
 
 from typing import Dict
@@ -9,6 +10,8 @@ import gevent
 from gevent.server import StreamServer
 
 from baseplate.lib import config
+from baseplate.lib.message_queue import DEFAULT_QUEUE_HOST
+from baseplate.lib.message_queue import DEFAULT_QUEUE_PORT
 from baseplate.lib.message_queue import InMemoryMessageQueue
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
@@ -25,17 +28,19 @@ from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 
 
 class RemoteMessageQueueHandler:
-    """Create an InMemoryMessageQueue locally and expose get/put methods."""
+    """Create an InMemoryMessageQueue locally and expose get/put methods.
 
-    def is_healthy(self) -> bool:
-        pass
+    See this overview for more details:
+    https://docs.google.com/document/d/1soN0UP9P12u3ByUwH_t47Uw9GwdVZRDuRFT0MvR52Dk/
+
+    """
 
     def __init__(self) -> None:
         # Store the queue by name with its max messages
         self.queues: Dict[str, MessageQueue] = {}
 
     def create_queue(self, queue_name: str, max_messages: int) -> CreateResponse:
-        queue = InMemoryMessageQueue(queue_name, max_messages)
+        queue = InMemoryMessageQueue(max_messages)
         self.queues[queue_name] = queue
 
         return CreateResponse()
@@ -81,9 +86,11 @@ def create_queue(
     queue_full_name: str,
     max_queue_size: int,
     max_element_size: int,
-    host: str = "127.0.0.1",
-    port: int = 9090,
+    host: str = DEFAULT_QUEUE_HOST,
+    port: int = DEFAULT_QUEUE_PORT,
 ) -> MessageQueue:
+    # See this overview for the relationship between InMemoryMessageQueues & RemoteMessageQueues
+    # https://docs.google.com/document/d/1soN0UP9P12u3ByUwH_t47Uw9GwdVZRDuRFT0MvR52Dk/
     if queue_type == QueueType.IN_MEMORY:
         event_queue = RemoteMessageQueue(queue_full_name, max_queue_size, host, port)
 

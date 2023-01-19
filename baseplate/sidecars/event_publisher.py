@@ -17,6 +17,8 @@ from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
+from baseplate.lib.message_queue import DEFAULT_QUEUE_HOST
+from baseplate.lib.message_queue import DEFAULT_QUEUE_PORT
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import TimedOutError
@@ -230,7 +232,7 @@ def publish_events() -> None:
             "key": {"name": config.String, "secret": config.Base64},
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
             "max_element_size": config.Optional(config.Integer, MAX_EVENT_SIZE),
-            "queue_type": config.Optional(config.String, default="posix"),
+            "queue_type": config.Optional(config.String, default=QueueType.POSIX.value),
         },
     )
 
@@ -248,7 +250,9 @@ def publish_events() -> None:
     if cfg.queue_type == QueueType.IN_MEMORY.value:
         # Start the Thrift server that communicates with RemoteMessageQueues and stores
         # data in a InMemoryMessageQueue
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
+        with publisher_queue_utils.start_queue_server(
+            host=DEFAULT_QUEUE_HOST, port=DEFAULT_QUEUE_PORT
+        ):
             build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
     else:

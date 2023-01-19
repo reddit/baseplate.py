@@ -157,7 +157,7 @@ def publish_traces() -> None:
         "--queue-type",
         default=QueueType.POSIX.value,
         choices=[qt.value for qt in QueueType],
-        help="whether to use an in-memory queue or a posix queue",
+        help="allows selection of the queue implementation",
     )
     arg_parser.add_argument(
         "--debug", default=False, action="store_true", help="enable debug logging"

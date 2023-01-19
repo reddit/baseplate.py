@@ -22,9 +22,10 @@ from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
-from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import create_queue
+from baseplate.lib.message_queue import DEFAULT_QUEUE_HOST
+from baseplate.lib.message_queue import DEFAULT_QUEUE_PORT
 from baseplate.lib.message_queue import QueueType
-from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
 
@@ -92,6 +93,12 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
     :param event_serializer: A callable that takes an event object
         and returns serialized bytes ready to send on the wire. See below for
         options.
+    :param queue_type: A QueueType indicating which type of queue the publisher
+        should use.
+    :param queue_host: A string indicating the hostname of the queue server, if using
+        an in-memory remote queue.
+    :param queue_port: An int indicating what port should be used for the queue server,
+        if using an in-memory remote queue.
 
     """
 
@@ -100,13 +107,12 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
         name: str,
         event_serializer: Callable[[T], bytes],
         queue_type: QueueType = QueueType.POSIX,
+        queue_host: str = DEFAULT_QUEUE_HOST,
+        queue_port: int = DEFAULT_QUEUE_PORT,
     ):
-        if queue_type == QueueType.IN_MEMORY:
-            self.queue = RemoteMessageQueue("/events-" + name, max_messages=MAX_QUEUE_SIZE)
-        else:
-            self.queue = PosixMessageQueue(  # type: ignore
-                "/events-" + name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE
-            )
+        self.queue = create_queue(
+            queue_type, "/events-" + name, MAX_QUEUE_SIZE, MAX_EVENT_SIZE, queue_host, queue_port
+        )
         self.serialize_event = event_serializer
 
     def put(self, event: T) -> None:
@@ -133,6 +139,12 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
             raise EventQueueFullError
 
     def get(self) -> bytes:
+        """Get an event from the queue.
+
+        :returns bytes: The next event in the queue.
+        :raises: :py:exc:`TimedOutError` There were no elements in the queue.
+
+        """
         return self.queue.get()
 
     def make_object_for_context(self, name: str, span: Span) -> "EventQueue[T]":

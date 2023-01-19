@@ -29,9 +29,10 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import config
 from baseplate.lib import warn_deprecated
-from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import create_queue
+from baseplate.lib.message_queue import DEFAULT_QUEUE_HOST
+from baseplate.lib.message_queue import DEFAULT_QUEUE_PORT
 from baseplate.lib.message_queue import QueueType
-from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.observers.timeout import ServerTimeout
 
@@ -547,20 +548,16 @@ class SidecarRecorder(Recorder):
     adding them to the queue.
     """
 
-    def __init__(self, queue_name: str, queue_type: QueueType = QueueType.POSIX):
-        if queue_type == QueueType.IN_MEMORY:
-            # Start a remote queue, which connects to a Thrift server
-            # that manages an in-memory queue
-            self.queue = RemoteMessageQueue(
-                "/traces-" + queue_name,
-                max_messages=MAX_QUEUE_SIZE,
-            )
-        else:
-            self.queue = PosixMessageQueue(  # type: ignore
-                "/traces-" + queue_name,
-                max_messages=MAX_QUEUE_SIZE,
-                max_message_size=MAX_SPAN_SIZE,
-            )
+    def __init__(
+        self,
+        queue_name: str,
+        queue_type: QueueType = QueueType.POSIX,
+        host: str = DEFAULT_QUEUE_HOST,
+        port: int = DEFAULT_QUEUE_PORT,
+    ):
+        self.queue = create_queue(
+            queue_type, "/traves-" + queue_name, MAX_QUEUE_SIZE, MAX_SPAN_SIZE, host, port
+        )
 
     def send(self, span: TraceSpanObserver) -> None:
         # Don't raise exceptions from here. This is called in the
@@ -571,7 +568,7 @@ class SidecarRecorder(Recorder):
                 "Trace too big. Traces published to %s are not allowed to be larger "
                 "than %d bytes. Received trace is %d bytes. This can be caused by "
                 "an excess amount of tags or a large amount of child spans.",
-                self.queue.name,
+                self.queue.name,  # type: ignore
                 MAX_SPAN_SIZE,
                 len(serialized_str),
             )
@@ -579,7 +576,7 @@ class SidecarRecorder(Recorder):
         try:
             self.queue.put(serialized_str, timeout=0)
         except TimedOutError:
-            logger.warning("Trace queue %s is full. Is trace sidecar healthy?", self.queue.name)
+            logger.warning("Trace queue %s is full. Is trace sidecar healthy?", self.queue.name)  # type: ignore
 
 
 def tracing_client_from_config(

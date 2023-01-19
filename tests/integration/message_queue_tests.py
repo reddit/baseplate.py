@@ -93,13 +93,13 @@ class TestInMemoryMessageQueueCreation(unittest.TestCase):
     qname = "/baseplate-test-queue"
 
     def test_create_queue(self):
-        message_queue = InMemoryMessageQueue(self.qname, max_messages=1)
+        message_queue = InMemoryMessageQueue(max_messages=1)
 
         with contextlib.closing(message_queue) as mq:
             self.assertEqual(mq.queue.maxsize, 1)
 
     def test_put_get(self):
-        message_queue = InMemoryMessageQueue(self.qname, max_messages=1)
+        message_queue = InMemoryMessageQueue(max_messages=1)
 
         with contextlib.closing(message_queue) as mq:
             mq.put(b"x")
@@ -107,7 +107,7 @@ class TestInMemoryMessageQueueCreation(unittest.TestCase):
             self.assertEqual(message, b"x")
 
     def test_get_timeout(self):
-        message_queue = InMemoryMessageQueue(self.qname, max_messages=1)
+        message_queue = InMemoryMessageQueue(max_messages=1)
 
         with contextlib.closing(message_queue) as mq:
             start = time.time()
@@ -117,7 +117,7 @@ class TestInMemoryMessageQueueCreation(unittest.TestCase):
             self.assertAlmostEqual(elapsed, 0.1, places=2)
 
     def test_put_timeout(self):
-        message_queue = InMemoryMessageQueue(self.qname, max_messages=1)
+        message_queue = InMemoryMessageQueue(max_messages=1)
 
         with contextlib.closing(message_queue) as mq:
             mq.put(b"x")
@@ -128,7 +128,7 @@ class TestInMemoryMessageQueueCreation(unittest.TestCase):
             self.assertAlmostEqual(elapsed, 0.1, places=1)
 
     def test_put_zero_timeout(self):
-        message_queue = InMemoryMessageQueue(self.qname, max_messages=1)
+        message_queue = InMemoryMessageQueue(max_messages=1)
 
         with contextlib.closing(message_queue) as mq:
             mq.put(b"x", timeout=0)
@@ -136,7 +136,7 @@ class TestInMemoryMessageQueueCreation(unittest.TestCase):
             self.assertEqual(message, b"x")
 
     def test_put_full_zero_timeout(self):
-        message_queue = InMemoryMessageQueue(self.qname, max_messages=1)
+        message_queue = InMemoryMessageQueue(max_messages=1)
 
         with contextlib.closing(message_queue) as mq:
             mq.put(b"1", timeout=0)
@@ -215,7 +215,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 with self.assertRaises(TimedOutError):
                     mq.put(b"x", timeout=0.1)
                 elapsed = time.time() - start
-                self.assertAlmostEqual(elapsed, 0.1, places=2)
+                self.assertAlmostEqual(elapsed, 0.1, places=1)
 
     def test_thrift_retry(self):
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):

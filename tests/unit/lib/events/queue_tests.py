@@ -13,7 +13,7 @@ from baseplate.lib.message_queue import TimedOutError
 
 
 class PosixEventQueueTests(unittest.TestCase):
-    @mock.patch("baseplate.lib.events.PosixMessageQueue", autospec=PosixMessageQueue)
+    @mock.patch("baseplate.lib.message_queue.PosixMessageQueue", autospec=PosixMessageQueue)
     def setUp(self, PosixMessageQueue):
         self.message_queue = PosixMessageQueue.return_value
         self.mock_serializer = mock.Mock()
@@ -46,7 +46,7 @@ class PosixEventQueueTests(unittest.TestCase):
 
 
 class RemoteMessageQueueTests(unittest.TestCase):
-    @mock.patch("baseplate.lib.events.RemoteMessageQueue", autospec=RemoteMessageQueue)
+    @mock.patch("baseplate.lib.message_queue.RemoteMessageQueue", autospec=RemoteMessageQueue)
     def setUp(self, RemoteMessageQueue):
         self.message_queue = RemoteMessageQueue.return_value
         self.mock_serializer = mock.Mock()
