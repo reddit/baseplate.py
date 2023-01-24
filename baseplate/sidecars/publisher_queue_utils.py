@@ -79,26 +79,3 @@ def start_queue_server(host: str, port: int) -> Generator[StreamServer, None, No
         yield server
     finally:
         server_greenlet.kill()
-
-
-def create_queue(
-    queue_type: QueueType,
-    queue_full_name: str,
-    max_queue_size: int,
-    max_element_size: int,
-    host: str = DEFAULT_QUEUE_HOST,
-    port: int = DEFAULT_QUEUE_PORT,
-) -> MessageQueue:
-    # See this overview for the relationship between InMemoryMessageQueues & RemoteMessageQueues
-    # https://docs.google.com/document/d/1soN0UP9P12u3ByUwH_t47Uw9GwdVZRDuRFT0MvR52Dk/
-    if queue_type == QueueType.IN_MEMORY:
-        event_queue = RemoteMessageQueue(queue_full_name, max_queue_size, host, port)
-
-    else:
-        event_queue = PosixMessageQueue(  # type: ignore
-            queue_full_name,
-            max_messages=max_queue_size,
-            max_message_size=max_element_size,
-        )
-
-    return event_queue

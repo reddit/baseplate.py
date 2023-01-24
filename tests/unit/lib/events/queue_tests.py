@@ -2,12 +2,11 @@ import unittest
 
 from unittest import mock
 
-from baseplate.lib.events import EventQueue
+from baseplate.lib.events import MAX_QUEUE_SIZE, EventQueue
 from baseplate.lib.events import EventQueueFullError
 from baseplate.lib.events import EventTooLargeError
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.message_queue import PosixMessageQueue
-from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
@@ -17,7 +16,8 @@ class PosixEventQueueTests(unittest.TestCase):
     def setUp(self, PosixMessageQueue):
         self.message_queue = PosixMessageQueue.return_value
         self.mock_serializer = mock.Mock()
-        self.queue = EventQueue("test", event_serializer=self.mock_serializer)
+        queue = PosixMessageQueue("/test", 10, 100)
+        self.queue = EventQueue("test", event_serializer=self.mock_serializer, queue=queue)
 
     def test_send_event(self):
         self.mock_serializer.return_value = "i_am_serialized"
@@ -44,14 +44,21 @@ class PosixEventQueueTests(unittest.TestCase):
         with self.assertRaises(EventQueueFullError):
             self.queue.put(object())
 
+    @mock.patch("baseplate.lib.events.MAX_QUEUE_SIZE", 10)
+    @mock.patch("baseplate.lib.events.MAX_EVENT_SIZE", 100)
+    def test_default_queue(self):
+        queue = EventQueue("test", event_serializer=self.mock_serializer)
+        assert isinstance(queue.queue, PosixMessageQueue)
+
 
 class RemoteMessageQueueTests(unittest.TestCase):
     @mock.patch("baseplate.lib.message_queue.RemoteMessageQueue", autospec=RemoteMessageQueue)
     def setUp(self, RemoteMessageQueue):
         self.message_queue = RemoteMessageQueue.return_value
         self.mock_serializer = mock.Mock()
+        queue = RemoteMessageQueue("test", MAX_QUEUE_SIZE, "127.0.0.1", 9090)
         self.queue = EventQueue(
-            "test", event_serializer=self.mock_serializer, queue_type=QueueType.IN_MEMORY
+            "test", event_serializer=self.mock_serializer, queue=queue
         )
 
     def test_send_event(self):

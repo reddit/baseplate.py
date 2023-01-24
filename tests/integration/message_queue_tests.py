@@ -7,8 +7,11 @@ from importlib import reload
 import gevent
 import posix_ipc
 
+from baseplate.lib.message_queue import create_queue
 from baseplate.lib.message_queue import InMemoryMessageQueue
+from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.sidecars import publisher_queue_utils
@@ -26,7 +29,7 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
             queue.unlink()
             queue.close()
 
-    def test_create_queue(self):
+    def test_instantiate_queue(self):
         message_queue = PosixMessageQueue(self.qname, max_messages=1, max_message_size=1000)
 
         with contextlib.closing(message_queue) as mq:
@@ -92,7 +95,7 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
 class TestInMemoryMessageQueueCreation(unittest.TestCase):
     qname = "/baseplate-test-queue"
 
-    def test_create_queue(self):
+    def test_instantiate_queue(self):
         message_queue = InMemoryMessageQueue(max_messages=1)
 
         with contextlib.closing(message_queue) as mq:
@@ -240,3 +243,16 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                     mq.get(timeout=0.1)
                 elapsed = time.time() - start
                 self.assertAlmostEqual(elapsed, 0.1, places=1)
+
+
+class TestCreateQueue(GeventPatchedTestCase):
+    def test_posix_queue(self):
+        queue: MessageQueue = create_queue(QueueType.POSIX, "/test", 5, 1000)
+        assert isinstance(queue, PosixMessageQueue)
+
+    def test_in_memory_create_queue(self):
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
+            queue: MessageQueue = create_queue(
+                QueueType.IN_MEMORY, "/test", 5, 1000
+            )
+            assert isinstance(queue, RemoteMessageQueue)

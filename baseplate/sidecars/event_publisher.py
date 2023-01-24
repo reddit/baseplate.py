@@ -17,6 +17,7 @@ from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
+from baseplate.lib.message_queue import create_queue
 from baseplate.lib.message_queue import DEFAULT_QUEUE_HOST
 from baseplate.lib.message_queue import DEFAULT_QUEUE_PORT
 from baseplate.lib.message_queue import MessageQueue
@@ -238,7 +239,7 @@ def publish_events() -> None:
 
     metrics_client = metrics_client_from_config(raw_config)
 
-    event_queue: MessageQueue = publisher_queue_utils.create_queue(
+    event_queue: MessageQueue = create_queue(
         cfg.queue_type, f"/events-{args.queue_name}", cfg.max_queue_size, cfg.max_element_size
     )
 

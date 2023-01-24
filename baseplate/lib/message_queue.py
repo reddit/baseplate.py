@@ -5,6 +5,7 @@ import select
 
 from enum import Enum
 from typing import Optional
+# from baseplate.sidecars.publisher_queue_utils import create_queue
 
 import posix_ipc
 
@@ -250,19 +251,25 @@ class RemoteMessageQueue(MessageQueue):
 
 def create_queue(
     queue_type: QueueType,
-    queue_name: str,
-    max_messages: int,
-    max_message_size: int,
-    queue_host: str,
-    queue_port: int,
+    queue_full_name: str,
+    max_queue_size: int,
+    max_element_size: int,
+    host: str = DEFAULT_QUEUE_HOST,
+    port: int = DEFAULT_QUEUE_PORT,
 ) -> MessageQueue:
+    # See this overview for the relationship between InMemoryMessageQueues & RemoteMessageQueues
+    # https://docs.google.com/document/d/1soN0UP9P12u3ByUwH_t47Uw9GwdVZRDuRFT0MvR52Dk/
     if queue_type == QueueType.IN_MEMORY:
-        # Start a remote queue, which connects to a Thrift server
-        # that manages an in-memory queue
-        queue = RemoteMessageQueue(queue_name, max_messages, queue_host, queue_port)
+        event_queue = RemoteMessageQueue(queue_full_name, max_queue_size, host, port)
+
     else:
-        queue = PosixMessageQueue(queue_name, max_messages, max_message_size)  # type: ignore
-    return queue
+        event_queue = PosixMessageQueue(  # type: ignore
+            queue_full_name,
+            max_messages=max_queue_size,
+            max_message_size=max_element_size,
+        )
+
+    return event_queue
 
 
 def queue_tool() -> None:

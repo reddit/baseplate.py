@@ -10,7 +10,7 @@ import time
 import typing
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Union
 from typing import DefaultDict
 from typing import Dict
 from typing import List
@@ -29,10 +29,8 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import config
 from baseplate.lib import warn_deprecated
-from baseplate.lib.message_queue import create_queue
-from baseplate.lib.message_queue import DEFAULT_QUEUE_HOST
-from baseplate.lib.message_queue import DEFAULT_QUEUE_PORT
-from baseplate.lib.message_queue import QueueType
+from baseplate.lib.message_queue import PosixMessageQueue
+from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.observers.timeout import ServerTimeout
 
@@ -551,13 +549,11 @@ class SidecarRecorder(Recorder):
     def __init__(
         self,
         queue_name: str,
-        queue_type: QueueType = QueueType.POSIX,
-        host: str = DEFAULT_QUEUE_HOST,
-        port: int = DEFAULT_QUEUE_PORT,
+        queue: Union[MessageQueue, None],
     ):
-        self.queue = create_queue(
-            queue_type, "/traves-" + queue_name, MAX_QUEUE_SIZE, MAX_SPAN_SIZE, host, port
-        )
+        self.queue = queue
+        if not queue:
+            self.queue = PosixMessageQueue("/traces-" + queue_name, MAX_QUEUE_SIZE, MAX_SPAN_SIZE)
 
     def send(self, span: TraceSpanObserver) -> None:
         # Don't raise exceptions from here. This is called in the

@@ -11,7 +11,7 @@ by a separate daemon.
 """
 import logging
 
-from typing import Any
+from typing import Any, Optional, Union
 from typing import Callable
 from typing import Generic
 from typing import TypeVar
@@ -22,10 +22,8 @@ from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
-from baseplate.lib.message_queue import create_queue
-from baseplate.lib.message_queue import DEFAULT_QUEUE_HOST
-from baseplate.lib.message_queue import DEFAULT_QUEUE_PORT
-from baseplate.lib.message_queue import QueueType
+from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
 
@@ -106,13 +104,11 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
         self,
         name: str,
         event_serializer: Callable[[T], bytes],
-        queue_type: QueueType = QueueType.POSIX,
-        queue_host: str = DEFAULT_QUEUE_HOST,
-        queue_port: int = DEFAULT_QUEUE_PORT,
+        queue: Optional[MessageQueue] = None,
     ):
-        self.queue = create_queue(
-            queue_type, "/events-" + name, MAX_QUEUE_SIZE, MAX_EVENT_SIZE, queue_host, queue_port
-        )
+        self.queue = queue
+        if not queue:
+            self.queue = PosixMessageQueue("/events-" + name, MAX_QUEUE_SIZE, MAX_EVENT_SIZE)
         self.serialize_event = event_serializer
 
     def put(self, event: T) -> None:
