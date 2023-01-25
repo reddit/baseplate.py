@@ -63,7 +63,7 @@ class TimeLimitedBatch(Batch):
         if not self.batch_start:
             return 0
         return time.time() - self.batch_start
-    
+
     @property
     def is_ready(self) -> bool:
         if self.age >= self.max_age:
