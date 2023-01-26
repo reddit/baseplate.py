@@ -66,9 +66,7 @@ class TimeLimitedBatch(Batch):
 
     @property
     def is_ready(self) -> bool:
-        if self.age >= self.max_age:
-            return True
-        return False
+        return self.age >= self.max_age
 
     def add(self, item: Optional[bytes]) -> None:
         if self.age >= self.max_age:
