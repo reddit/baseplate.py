@@ -44,7 +44,7 @@ setup(
         "posix_ipc>=1.0.0,<2.0",
         "python-json-logger>=2.0,<3.0",
         "requests>=2.21.0,<3.0",
-        "thrift-unofficial>=0.14.1,<1.0",
+        "thrift-unofficial>=0.16.0,<1.0",
         "gevent>=20.5.0",
         "prometheus-client>=0.12.0",
     ],
