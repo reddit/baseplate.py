@@ -12,6 +12,11 @@ from baseplate.server.monkey import patch_stdlib_queues
 patch_all()
 patch_stdlib_queues()
 
+# grpc gevent patching
+import grpc.experimental.gevent as grpc_gevent  # noreorder
+
+grpc_gevent.init_gevent()
+
 from baseplate.server import load_and_run_script
 
 load_and_run_script()
