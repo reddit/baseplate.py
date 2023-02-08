@@ -12,10 +12,14 @@ from baseplate.server.monkey import patch_stdlib_queues
 patch_all()
 patch_stdlib_queues()
 
-# grpc gevent patching
-import grpc.experimental.gevent as grpc_gevent  # noreorder
-
-grpc_gevent.init_gevent()
+# grpc gevent patching.
+# only patch if server does have gRPC as a dependency as this is
+# not needed for thrift or http only servers.
+try:
+    import grpc.experimental.gevent as grpc_gevent  # noreorder
+    grpc_gevent.init_gevent()
+except ImportError:
+    pass
 
 from baseplate.server import load_and_run_shell
 
