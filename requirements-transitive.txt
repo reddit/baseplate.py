@@ -19,7 +19,7 @@ chardet==4.0.0
 click==7.1.2
 confluent-kafka==1.6.0
 coverage==5.4
-cryptography==3.4.4
+cryptography==39.0.1
 docutils==0.16
 geomet==0.2.1.post1
 gevent==21.1.2
