@@ -30,8 +30,8 @@ from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.lib import config
 from baseplate.lib import warn_deprecated
-from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.observers.timeout import ServerTimeout
 
