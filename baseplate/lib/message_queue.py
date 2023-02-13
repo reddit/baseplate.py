@@ -54,6 +54,7 @@ class QueueType(Enum):
 
 class MessageQueue(abc.ABC):
     """Abstract class for an inter-process message queue."""
+
     name: str
 
     @abc.abstractmethod

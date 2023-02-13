@@ -10,13 +10,8 @@ import gevent
 from gevent.server import StreamServer
 
 from baseplate.lib import config
-from baseplate.lib.message_queue import DEFAULT_QUEUE_HOST
-from baseplate.lib.message_queue import DEFAULT_QUEUE_PORT
 from baseplate.lib.message_queue import InMemoryMessageQueue
 from baseplate.lib.message_queue import MessageQueue
-from baseplate.lib.message_queue import PosixMessageQueue
-from baseplate.lib.message_queue import QueueType
-from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
