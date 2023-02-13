@@ -186,9 +186,13 @@ class InMemoryMessageQueue(MessageQueue):
 class RemoteMessageQueue(MessageQueue):
     """A message queue that uses a remote Thrift server.
 
-    Used in conjunction with the InMemoryMessageQueue to
-    provide an alternative to Posix queues, for use-cases
-    where Posix is not appropriate.
+    Used in conjunction with the InMemoryMessageQueue to provide an alternative
+    to Posix queues, for use-cases where Posix is not appropriate.
+
+    This implementation is a temporary compromise and should only be used
+    under very specific circumstances if the POSIX alternative is unavailable.
+    Specifically, using Thrift here has significant performance and/or
+    resource impacts.
 
     """
 
@@ -257,8 +261,8 @@ def create_queue(
     host: str = DEFAULT_QUEUE_HOST,
     port: int = DEFAULT_QUEUE_PORT,
 ) -> MessageQueue:
-    # See this overview for the relationship between InMemoryMessageQueues & RemoteMessageQueues
-    # https://docs.google.com/document/d/1soN0UP9P12u3ByUwH_t47Uw9GwdVZRDuRFT0MvR52Dk/
+    # The in-memory queue is initialized on the sidecar, so we use a remote queue
+    # from the main baseplate application to interact with it.
     if queue_type == QueueType.IN_MEMORY:
         event_queue = RemoteMessageQueue(queue_full_name, max_queue_size, host, port)
 

@@ -30,8 +30,10 @@ from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 class RemoteMessageQueueHandler:
     """Create an InMemoryMessageQueue locally and expose get/put methods.
 
-    See this overview for more details:
-    https://docs.google.com/document/d/1soN0UP9P12u3ByUwH_t47Uw9GwdVZRDuRFT0MvR52Dk/
+    This implementation is a temporary compromise and should only be used
+    under very specific circumstances if the POSIX alternative is unavailable.
+    Specifically, using Thrift here has significant performance and/or
+    resource impacts.
 
     """
 

@@ -91,12 +91,9 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
     :param event_serializer: A callable that takes an event object
         and returns serialized bytes ready to send on the wire. See below for
         options.
-    :param queue_type: A QueueType indicating which type of queue the publisher
-        should use.
-    :param queue_host: A string indicating the hostname of the queue server, if using
-        an in-memory remote queue.
-    :param queue_port: An int indicating what port should be used for the queue server,
-        if using an in-memory remote queue.
+    :param queue: An optional MessageQueue that will be used for queueing and
+        publishing messages. If no queue is provided, a PosixMessageQueue will
+        be used.
 
     """
 
