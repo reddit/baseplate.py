@@ -2,10 +2,11 @@ import unittest
 
 from unittest import mock
 
-from baseplate.lib.events import MAX_QUEUE_SIZE, EventQueue
+from baseplate.lib.events import EventQueue
 from baseplate.lib.events import EventQueueFullError
 from baseplate.lib.events import EventTooLargeError
 from baseplate.lib.events import MAX_EVENT_SIZE
+from baseplate.lib.events import MAX_QUEUE_SIZE
 from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
@@ -57,9 +58,7 @@ class RemoteMessageQueueTests(unittest.TestCase):
         self.message_queue = RemoteMessageQueue.return_value
         self.mock_serializer = mock.Mock()
         queue = RemoteMessageQueue("test", MAX_QUEUE_SIZE, "127.0.0.1", 9090)
-        self.queue = EventQueue(
-            "test", event_serializer=self.mock_serializer, queue=queue
-        )
+        self.queue = EventQueue("test", event_serializer=self.mock_serializer, queue=queue)
 
     def test_send_event(self):
         self.mock_serializer.return_value = "i_am_serialized"

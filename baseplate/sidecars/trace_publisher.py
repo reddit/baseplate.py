@@ -10,6 +10,7 @@ import requests
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import metrics
+from baseplate.lib import message_queue
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import TimedOutError
@@ -194,7 +195,7 @@ def publish_traces() -> None:
         },
     )
 
-    trace_queue: MessageQueue = publisher_queue_utils.create_queue(
+    trace_queue: MessageQueue = message_queue.create_queue(
         publisher_cfg.queue_type,
         "/traces-" + args.queue_name,
         publisher_cfg.max_queue_size,

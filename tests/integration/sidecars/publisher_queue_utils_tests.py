@@ -36,9 +36,7 @@ class PublisherQueueUtilTests(GeventPatchedTestCase):
 
     def test_in_memory_queue_get_put(self):
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
-            queue: MessageQueue = create_queue(
-                QueueType.IN_MEMORY, "/test", 5, 1000
-            )
+            queue: MessageQueue = create_queue(QueueType.IN_MEMORY, "/test", 5, 1000)
 
             test_message = bytes("message", "utf-8")
             test_message_2 = bytes("2nd message", "utf-8")
@@ -51,9 +49,7 @@ class PublisherQueueUtilTests(GeventPatchedTestCase):
 
     def test_in_memory_queue_alternate_port(self):
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9091):
-            queue: MessageQueue = create_queue(
-                QueueType.IN_MEMORY, "/test", 5, 1000, port=9091
-            )
+            queue: MessageQueue = create_queue(QueueType.IN_MEMORY, "/test", 5, 1000, port=9091)
 
             test_message = bytes("message", "utf-8")
             test_message_2 = bytes("2nd message", "utf-8")

@@ -5,7 +5,6 @@ import select
 
 from enum import Enum
 from typing import Optional
-# from baseplate.sidecars.publisher_queue_utils import create_queue
 
 import posix_ipc
 
@@ -55,6 +54,7 @@ class QueueType(Enum):
 
 class MessageQueue(abc.ABC):
     """Abstract class for an inter-process message queue."""
+    name: str
 
     @abc.abstractmethod
     def get(self, timeout: Optional[float] = None) -> bytes:

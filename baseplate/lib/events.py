@@ -11,9 +11,10 @@ by a separate daemon.
 """
 import logging
 
-from typing import Any, Optional, Union
+from typing import Any
 from typing import Callable
 from typing import Generic
+from typing import Optional
 from typing import TypeVar
 
 from thrift import TSerialization
@@ -103,9 +104,11 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
         event_serializer: Callable[[T], bytes],
         queue: Optional[MessageQueue] = None,
     ):
-        self.queue = queue
-        if not queue:
+        if queue:
+            self.queue = queue
+        else:
             self.queue = PosixMessageQueue("/events-" + name, MAX_QUEUE_SIZE, MAX_EVENT_SIZE)
+
         self.serialize_event = event_serializer
 
     def put(self, event: T) -> None:

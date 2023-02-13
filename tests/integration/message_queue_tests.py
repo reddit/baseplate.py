@@ -252,7 +252,5 @@ class TestCreateQueue(GeventPatchedTestCase):
 
     def test_in_memory_create_queue(self):
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
-            queue: MessageQueue = create_queue(
-                QueueType.IN_MEMORY, "/test", 5, 1000
-            )
+            queue: MessageQueue = create_queue(QueueType.IN_MEMORY, "/test", 5, 1000)
             assert isinstance(queue, RemoteMessageQueue)

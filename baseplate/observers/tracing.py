@@ -10,12 +10,13 @@ import time
 import typing
 
 from datetime import datetime
-from typing import Any, Union
+from typing import Any
 from typing import DefaultDict
 from typing import Dict
 from typing import List
 from typing import NamedTuple
 from typing import Optional
+from typing import Union
 
 import requests
 
@@ -549,10 +550,11 @@ class SidecarRecorder(Recorder):
     def __init__(
         self,
         queue_name: str,
-        queue: Union[MessageQueue, None],
+        queue: Optional[MessageQueue] = None,
     ):
-        self.queue = queue
-        if not queue:
+        if queue:
+            self.queue = queue
+        else:
             self.queue = PosixMessageQueue("/traces-" + queue_name, MAX_QUEUE_SIZE, MAX_SPAN_SIZE)
 
     def send(self, span: TraceSpanObserver) -> None:
@@ -564,7 +566,7 @@ class SidecarRecorder(Recorder):
                 "Trace too big. Traces published to %s are not allowed to be larger "
                 "than %d bytes. Received trace is %d bytes. This can be caused by "
                 "an excess amount of tags or a large amount of child spans.",
-                self.queue.name,  # type: ignore
+                self.queue.name,
                 MAX_SPAN_SIZE,
                 len(serialized_str),
             )
@@ -572,7 +574,7 @@ class SidecarRecorder(Recorder):
         try:
             self.queue.put(serialized_str, timeout=0)
         except TimedOutError:
-            logger.warning("Trace queue %s is full. Is trace sidecar healthy?", self.queue.name)  # type: ignore
+            logger.warning("Trace queue %s is full. Is trace sidecar healthy?", self.queue.name)
 
 
 def tracing_client_from_config(
