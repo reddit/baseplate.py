@@ -2,7 +2,6 @@
 import collections
 import json
 import logging
-import queue
 import random
 import socket
 import threading
@@ -10,6 +9,8 @@ import time
 import typing
 
 from datetime import datetime
+from queue import Empty
+from queue import Queue
 from typing import Any
 from typing import DefaultDict
 from typing import Dict
@@ -36,9 +37,9 @@ from baseplate.observers.timeout import ServerTimeout
 
 
 if typing.TYPE_CHECKING:
-    SpanQueue = queue.Queue["TraceSpanObserver"]  # pylint: disable=unsubscriptable-object
+    SpanQueue = Queue["TraceSpanObserver"]  # pylint: disable=unsubscriptable-object
 else:
-    SpanQueue = queue.Queue
+    SpanQueue = Queue
 
 
 logger = logging.getLogger(__name__)
@@ -422,7 +423,7 @@ class BaseBatchRecorder(Recorder):
     def __init__(
         self, max_queue_size: int, num_workers: int, max_span_batch: int, batch_wait_interval: float
     ):
-        self.span_queue: SpanQueue = queue.Queue(maxsize=max_queue_size)
+        self.span_queue: SpanQueue = Queue(maxsize=max_queue_size)
         self.batch_wait_interval = batch_wait_interval
         self.max_span_batch = max_span_batch
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -445,7 +446,7 @@ class BaseBatchRecorder(Recorder):
             try:
                 while len(spans) < self.max_span_batch:
                     spans.append(self.span_queue.get_nowait()._serialize())
-            except queue.Empty:
+            except Empty:
                 pass
             finally:
                 if spans:
