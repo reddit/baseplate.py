@@ -12,7 +12,6 @@ import posix_ipc
 
 from prometheus_client import Gauge
 from prometheus_client import Histogram
-
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket
 from thrift.transport import TTransport
@@ -25,6 +24,7 @@ from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 DEFAULT_QUEUE_HOST = "127.0.0.1"
 DEFAULT_QUEUE_PORT = 9090
 PROM_PREFIX = "message_queue"
+
 
 class MessageQueueError(Exception):
     """Base exception for message queue related errors."""
@@ -204,7 +204,7 @@ class RemoteMessageQueue(MessageQueue):
     """
 
     prom_labels = [
-        "timeout", 
+        "timeout",
         "queue_name",
         "queue_host",
         "queue_port",
@@ -277,19 +277,19 @@ class RemoteMessageQueue(MessageQueue):
                 queue_name=self.name,
                 queue_host=self.host,
                 queue_port=self.port,
-                queue_max_messages=self.max_messages
+                queue_max_messages=self.max_messages,
             ).inc()
             start_time = time.perf_counter()
 
             greenlet = gevent.spawn(self._try_to_get, timeout)
             gevent.joinall([greenlet])
-            
+
             self.remote_queue_get_latency.labels(
                 timeout=timeout,
                 queue_name=self.name,
                 queue_host=self.host,
                 queue_port=self.port,
-                queue_max_messages=self.max_messages
+                queue_max_messages=self.max_messages,
             ).observe(time.perf_counter() - start_time)
 
             self.remote_queue_gets_queued.labels(
@@ -297,7 +297,7 @@ class RemoteMessageQueue(MessageQueue):
                 queue_name=self.name,
                 queue_host=self.host,
                 queue_port=self.port,
-                queue_max_messages=self.max_messages
+                queue_max_messages=self.max_messages,
             ).dec()
 
             return greenlet.get()
@@ -322,20 +322,20 @@ class RemoteMessageQueue(MessageQueue):
                 queue_name=self.name,
                 queue_host=self.host,
                 queue_port=self.port,
-                queue_max_messages=self.max_messages
+                queue_max_messages=self.max_messages,
             ).inc()
             start_time = time.perf_counter()
 
             greenlet = gevent.spawn(self._try_to_put, message, timeout)
             gevent.joinall([greenlet])
-            
+
             # report latency and decrement in-flight counter
             self.remote_queue_put_latency.labels(
                 timeout=timeout,
                 queue_name=self.name,
                 queue_host=self.host,
                 queue_port=self.port,
-                queue_max_messages=self.max_messages
+                queue_max_messages=self.max_messages,
             ).observe(time.perf_counter() - start_time)
 
             self.remote_queue_puts_queued.labels(
@@ -343,7 +343,7 @@ class RemoteMessageQueue(MessageQueue):
                 queue_name=self.name,
                 queue_host=self.host,
                 queue_port=self.port,
-                queue_max_messages=self.max_messages
+                queue_max_messages=self.max_messages,
             ).dec()
 
             # reraise any exceptions encountered in processing
