@@ -2,15 +2,16 @@
 import abc
 import queue as q
 import select
+import time
 
 from enum import Enum
-import time
 from typing import Optional
-from prometheus_client import Gauge
-from prometheus_client import Histogram
 
 import gevent
 import posix_ipc
+
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket
