@@ -271,7 +271,6 @@ class RemoteMessageQueue(MessageQueue):
     def get(self, timeout: Optional[float] = None) -> bytes:
         # Call the remote server and get an element for the correct queue
         try:
-            start_time = time.perf_counter()
             self.remote_queue_gets_queued.labels(
                 timeout=timeout,
                 queue_name=self.name,
@@ -279,6 +278,7 @@ class RemoteMessageQueue(MessageQueue):
                 queue_port=self.port,
                 queue_max_messages=self.max_messages
             ).inc()
+            start_time = time.perf_counter()
 
             greenlet = gevent.spawn(self._try_to_get, timeout)
             gevent.joinall([greenlet])
@@ -316,7 +316,6 @@ class RemoteMessageQueue(MessageQueue):
         # Will create the queue if it doesnt exist
         try:
             # increment in-flight counter
-            start_time = time.perf_counter()
             self.remote_queue_puts_queued.labels(
                 timeout=timeout,
                 queue_name=self.name,
@@ -324,6 +323,7 @@ class RemoteMessageQueue(MessageQueue):
                 queue_port=self.port,
                 queue_max_messages=self.max_messages
             ).inc()
+            start_time = time.perf_counter()
 
             greenlet = gevent.spawn(self._try_to_put, message, timeout)
             gevent.joinall([greenlet])
