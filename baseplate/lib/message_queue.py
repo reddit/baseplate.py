@@ -5,11 +5,12 @@ import select
 import time
 
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 import gevent
 import posix_ipc
 
+from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
 from thrift.protocol import TBinaryProtocol
@@ -204,37 +205,29 @@ class RemoteMessageQueue(MessageQueue):
     """
 
     prom_labels = [
-        "timeout",
+        "mode", # put or get
         "queue_name",
         "queue_host",
         "queue_port",
         "queue_max_messages",
     ]
 
-    remote_queue_gets_queued = Gauge(
+    remote_queue_requests_queued = Gauge(
         f"{PROM_PREFIX}_pending_puts_to_sidecar",
-        "total number of get requests in flight, being sent to the publishing sidecar.",
+        "total number of queue requests in flight, being sent to the publishing sidecar.",
         prom_labels,
         multiprocess_mode="livesum",
     )
 
-    remote_queue_puts_queued = Gauge(
-        f"{PROM_PREFIX}_pending_gets_to_sidecar",
-        "total number of put requests in flight, being sent to the publishing sidecar.",
-        prom_labels,
-        multiprocess_mode="livesum",
+    remote_queue_requests_outcome = Counter(
+        f"{PROM_PREFIX}_sidecar_requests_outcome",
+        "outcomes (success/fail) or queue requests sent to the publishing sidecar.",
+        prom_labels + ["outcome"],
     )
 
-    remote_queue_put_latency = Histogram(
-        f"{PROM_PREFIX}_sidecar_put_latency",
-        "latency of message `put` to the publishing sidecar.",
-        prom_labels,
-        buckets=default_latency_buckets,
-    )
-
-    remote_queue_get_latency = Histogram(
-        f"{PROM_PREFIX}_sidecar_get_latency",
-        "latency of message `get` to the publishing sidecar.",
+    remote_queue_request_latency = Histogram(
+        f"{PROM_PREFIX}_sidecar_latency",
+        "latency of message requests to the publishing sidecar.",
         prom_labels,
         buckets=default_latency_buckets,
     )
@@ -262,94 +255,117 @@ class RemoteMessageQueue(MessageQueue):
         self.client = RemoteMessageQueueService.Client(protocol)
         self.transport.open()
 
-    def _try_to_get(self, timeout: Optional[float]) -> bytes:
-        try:
-            return self.client.get(self.name, timeout).value
-        except TSocket.TTransportException:
-            self.connect()  # Try reconnecting once
-            return self.client.get(self.name, timeout).value
+    def _update_counters(self, request_mode: str, outcome_mode: str):
+        # This request is no longer queued
+        self.remote_queue_requests_queued.labels(
+            mode=request_mode,
+            queue_name=self.name,
+            queue_host=self.host,
+            queue_port=self.port,
+            queue_max_messages=self.max_messages,
+        ).dec()
+        # Increment success/failure counters
+        self.remote_queue_requests_outcome.labels(
+            mode=request_mode,
+            outcome=outcome_mode,
+            queue_name=self.name,
+            queue_host=self.host,
+            queue_port=self.port,
+            queue_max_messages=self.max_messages,
+        ).inc()
 
-    def get(self, timeout: Optional[float] = None) -> bytes:
-        # Call the remote server and get an element for the correct queue
-        try:
-            self.remote_queue_gets_queued.labels(
-                timeout=timeout,
-                queue_name=self.name,
-                queue_host=self.host,
-                queue_port=self.port,
-                queue_max_messages=self.max_messages,
-            ).inc()
-            start_time = time.perf_counter()
+    def _get_success_callback(self, thing: Any):
+        self._update_counters("get", "success")
 
-            greenlet = gevent.spawn(self._try_to_get, timeout)
-            gevent.joinall([greenlet])
+    def _put_success_callback(self, thing: Any):
+        self._update_counters("put", "success")
 
-            self.remote_queue_get_latency.labels(
-                timeout=timeout,
+    def _get_fail_callback(self, thing: Any):
+        self._update_counters("get", "fail")
+
+    def _put_fail_callback(self, thing: Any):
+        self._update_counters("put", "fail")
+
+    def _try_to_get(self, timeout: Optional[float], start_time: float) -> bytes:
+        try: # handle timeouts
+            try: # retry connection errors once
+                result = self.client.get(self.name, timeout).value
+            except TSocket.TTransportException:
+                self.connect()  # Try reconnecting once
+                result = self.client.get(self.name, timeout).value
+
+            # record latency
+            self.remote_queue_request_latency.labels(
+                mode="get",
                 queue_name=self.name,
                 queue_host=self.host,
                 queue_port=self.port,
                 queue_max_messages=self.max_messages,
             ).observe(time.perf_counter() - start_time)
+            # update other counters
+            self._update_counters("get", "success")
 
-            self.remote_queue_gets_queued.labels(
-                timeout=timeout,
+            return result
+        # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue
+        except ThriftTimedOutError:
+            self._update_counters("get", "fail")
+            raise TimedOutError
+
+    def get(self, timeout: Optional[float] = None, block: bool = False) -> bytes:
+        # Call the remote server and get an element for the correct queue
+        # increment in-flight counter
+        self.remote_queue_requests_queued.labels(
+            mode="get",
+            queue_name=self.name,
+            queue_host=self.host,
+            queue_port=self.port,
+            queue_max_messages=self.max_messages,
+        ).inc()
+        start_time = time.perf_counter()
+
+        try:
+            return self._try_to_get(timeout, start_time)
+        except ThriftTimedOutError:
+            raise TimedOutError
+
+    def _try_to_put(self, message: bytes, timeout: Optional[float], start_time: float) -> bool:
+        try:
+            try:
+                # Call the remote server and put an element on the correct queue
+                # Will create the queue if it doesnt exist
+                self.client.put(self.name, message, timeout)
+            except TSocket.TTransportException:
+                self.connect()  # Try reconnecting once
+                self.client.put(self.name, message, timeout)
+
+            # record latency
+            self.remote_queue_request_latency.labels(
+                mode="put",
                 queue_name=self.name,
                 queue_host=self.host,
                 queue_port=self.port,
                 queue_max_messages=self.max_messages,
-            ).dec()
-
-            return greenlet.get()
+            ).observe(time.perf_counter() - start_time)
+            return True # Success
         # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue
         except ThriftTimedOutError:
             raise TimedOutError
 
-    def _try_to_put(self, message: bytes, timeout: Optional[float]) -> None:
-        try:
-            self.client.put(self.name, message, timeout)
-        except TSocket.TTransportException:
-            self.connect()  # Try reconnecting once
-            self.client.put(self.name, message, timeout)
+    def put(self, message: bytes, timeout: Optional[float] = None, block: bool = False) -> Any:
+        # increment in-flight counter
+        self.remote_queue_requests_queued.labels(
+            mode="put",
+            queue_name=self.name,
+            queue_host=self.host,
+            queue_port=self.port,
+            queue_max_messages=self.max_messages,
+        ).inc()
+        start_time = time.perf_counter()
 
-    def put(self, message: bytes, timeout: Optional[float] = None) -> None:
-        # Call the remote server and put an element on the correct queue
-        # Will create the queue if it doesnt exist
-        try:
-            # increment in-flight counter
-            self.remote_queue_puts_queued.labels(
-                timeout=timeout,
-                queue_name=self.name,
-                queue_host=self.host,
-                queue_port=self.port,
-                queue_max_messages=self.max_messages,
-            ).inc()
-            start_time = time.perf_counter()
-
-            greenlet = gevent.spawn(self._try_to_put, message, timeout)
-            gevent.joinall([greenlet])
-
-            # report latency and decrement in-flight counter
-            self.remote_queue_put_latency.labels(
-                timeout=timeout,
-                queue_name=self.name,
-                queue_host=self.host,
-                queue_port=self.port,
-                queue_max_messages=self.max_messages,
-            ).observe(time.perf_counter() - start_time)
-
-            self.remote_queue_puts_queued.labels(
-                timeout=timeout,
-                queue_name=self.name,
-                queue_host=self.host,
-                queue_port=self.port,
-                queue_max_messages=self.max_messages,
-            ).dec()
-
-            # reraise any exceptions encountered in processing
-            greenlet.get()
-        except ThriftTimedOutError:
-            raise TimedOutError
+        greenlet = gevent.spawn(self._try_to_put, message, timeout, start_time)
+        greenlet.link_value(self._get_success_callback)
+        greenlet.link_exception(self._get_fail_callback)
+        return greenlet
 
     def close(self) -> None:
         self.transport.close()

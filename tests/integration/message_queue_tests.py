@@ -168,17 +168,21 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
             message_queue = RemoteMessageQueue(self.qname, max_messages=10)
 
             with contextlib.closing(message_queue) as mq:
-                mq.put(b"x", timeout=0)
+                g = mq.put(b"x")
+                gevent.joinall([g])
                 message = mq.get()
                 self.assertEqual(message, b"x")
+
+
 
     def test_multiple_queues(self):
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             mq1 = RemoteMessageQueue(self.qname, max_messages=10)
             mq2 = RemoteMessageQueue(self.qname + "2", max_messages=10)
 
-            mq1.put(b"x", timeout=0)
-            mq2.put(b"a", timeout=0)
+            g = mq1.put(b"x", timeout=0)
+            g2 = mq2.put(b"a", timeout=0)
+            gevent.joinall([g, g2])
 
             # Check the queues in reverse order
             self.assertEqual(mq2.get(), b"a")
@@ -192,7 +196,8 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
             message_queue = RemoteMessageQueue(self.qname, max_messages=10, port=9091)
 
             with contextlib.closing(message_queue) as mq:
-                mq.put(b"x", timeout=0)
+                g = mq.put(b"x", timeout=0)
+                gevent.joinall([g])
                 self.assertEqual(mq.get(), b"x")
 
     def test_get_timeout(self):
@@ -209,14 +214,22 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                 )  # TODO: this routinely takes 0.105-0.11 seconds, is 1 place ok?
 
     def test_put_timeout(self):
+        # `put` is non-blocking, so if we try to put onto a full queue and a TimeOutError 
+        # is raised, we dont actually know unless we explicitly check
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             message_queue = RemoteMessageQueue(self.qname, max_messages=1)
 
             with contextlib.closing(message_queue) as mq:
-                mq.put(b"x")
+                # TODO: This fails with socket errors if I remove this first joinall - presumably we can't call put twice without 
+                # waiting for the first one to truly finish?
+                greenlet = mq.put(b"x") # fill the queue
+                gevent.joinall([greenlet])
                 start = time.time()
-                with self.assertRaises(TimedOutError):
-                    mq.put(b"x", timeout=0.1)
+                with self.assertRaises(TimedOutError): # queue should be full
+                    # put is non-blocking, so we need to wait for the result
+                    greenlet2 = mq.put(b"x", timeout=0.1)
+                    gevent.joinall([greenlet2])
+                    greenlet2.get() # this should expose any exceptions encountered, i.e. TimedOutError
                 elapsed = time.time() - start
                 self.assertAlmostEqual(elapsed, 0.1, places=1)
 
@@ -225,7 +238,8 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
             message_queue = RemoteMessageQueue(self.qname, max_messages=1)
 
             with contextlib.closing(message_queue) as mq:
-                mq.put(b"x")
+                g = mq.put(b"x")
+                gevent.joinall([g])
                 # close the connection manually
                 mq.close()
                 # this should still pass, as it catches the thrift error and re-connects
