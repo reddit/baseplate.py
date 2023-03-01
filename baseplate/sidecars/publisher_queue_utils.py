@@ -1,5 +1,6 @@
 """Shared functions for the event & trace publisher sidecars and message queues."""
 import contextlib
+import time
 
 from typing import Dict
 from typing import Generator

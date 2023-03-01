@@ -1,8 +1,10 @@
 import contextlib
+import io
 import time
 import unittest
 
 from importlib import reload
+from baseplate.thrift.message_queue import RemoteMessageQueueService
 
 import gevent
 import posix_ipc
@@ -15,6 +17,10 @@ from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.sidecars import publisher_queue_utils
+
+from thrift.protocol import TBinaryProtocol
+from thrift.transport import TSocket
+from thrift.transport import TTransport
 
 
 class TestPosixMessageQueueCreation(unittest.TestCase):
@@ -169,36 +175,36 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
 
             with contextlib.closing(message_queue) as mq:
                 g = mq.put(b"x")
-                gevent.joinall([g])
-                message = mq.get()
+                # Need to join before calling get: put is non-blocking, but get will start before put 
+                # finishes, and since gevent is not true parallelism, get will actually block and put 
+                # will never finish. We need to call joinall before get in all these tests to ensure
+                # elements finish enqueueing before we try to get them.
+                gevent.joinall([g]) 
+                message = mq.get(timeout=1)
+                print("message: ", str(message))
                 self.assertEqual(message, b"x")
-
-
 
     def test_multiple_queues(self):
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
             mq1 = RemoteMessageQueue(self.qname, max_messages=10)
             mq2 = RemoteMessageQueue(self.qname + "2", max_messages=10)
 
-            g = mq1.put(b"x", timeout=0)
-            g2 = mq2.put(b"a", timeout=0)
+            g = mq1.put(b"x", timeout=1)
+            g2 = mq2.put(b"a", timeout=1)
+
             gevent.joinall([g, g2])
-
             # Check the queues in reverse order
-            self.assertEqual(mq2.get(), b"a")
-            self.assertEqual(mq1.get(), b"x")
-
-            mq1.close()
-            mq2.close()
+            self.assertEqual(mq2.get(timeout=2), b"a")
+            self.assertEqual(mq1.get(timeout=2), b"x")
 
     def test_queues_alternate_port(self):
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9091):
             message_queue = RemoteMessageQueue(self.qname, max_messages=10, port=9091)
 
             with contextlib.closing(message_queue) as mq:
-                g = mq.put(b"x", timeout=0)
+                g = mq.put(b"x", timeout=1)
                 gevent.joinall([g])
-                self.assertEqual(mq.get(), b"x")
+                self.assertEqual(mq.get(timeout=2), b"x")
 
     def test_get_timeout(self):
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
@@ -220,44 +226,30 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
             message_queue = RemoteMessageQueue(self.qname, max_messages=1)
 
             with contextlib.closing(message_queue) as mq:
-                # TODO: This fails with socket errors if I remove this first joinall - presumably we can't call put twice without 
-                # waiting for the first one to truly finish?
-                greenlet = mq.put(b"x") # fill the queue
-                gevent.joinall([greenlet])
+                g = mq.put(b"x") # fill the queue
                 start = time.time()
                 with self.assertRaises(TimedOutError): # queue should be full
                     # put is non-blocking, so we need to wait for the result
-                    greenlet2 = mq.put(b"x", timeout=0.1)
-                    gevent.joinall([greenlet2])
-                    greenlet2.get() # this should expose any exceptions encountered, i.e. TimedOutError
+                    g2 = mq.put(b"x", timeout=0.1)
+                    gevent.joinall([g, g2])
+                    g2.get() # this should expose any exceptions encountered, i.e. TimedOutError
                 elapsed = time.time() - start
                 self.assertAlmostEqual(elapsed, 0.1, places=1)
 
-    def test_thrift_retry(self):
+    def test_pool(self):
+        # If we try to connect with more slots than the pool has, without joining, we should get an error
         with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
-            message_queue = RemoteMessageQueue(self.qname, max_messages=1)
+            message_queue = RemoteMessageQueue(self.qname, max_messages=10, pool_size=3)
 
             with contextlib.closing(message_queue) as mq:
-                g = mq.put(b"x")
-                gevent.joinall([g])
-                # close the connection manually
-                mq.close()
-                # this should still pass, as it catches the thrift error and re-connects
-                self.assertEqual(mq.get(), b"x")
-
-    def test_get_thrift_retry_and_timeout(self):
-        # Check that we still catch a timeout error even if we have to reconnect
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
-            message_queue = RemoteMessageQueue(self.qname, max_messages=1)
-
-            with contextlib.closing(message_queue) as mq:
-                mq.close()
-                start = time.time()
-                with self.assertRaises(TimedOutError):
-                    mq.get(timeout=0.1)
-                elapsed = time.time() - start
-                self.assertAlmostEqual(elapsed, 0.1, places=1)
-
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    g1 = mq.put(b"x", timeout=1)
+                    g2 = mq.put(b"x", timeout=1)
+                    g3 = mq.put(b"x", timeout=1)
+                    g4 = mq.put(b"x", timeout=1)
+                    gevent.joinall([g1, g2, g3, g4])
+                assert "timed out waiting for a connection slot" in buf.getvalue()
 
 class TestCreateQueue(GeventPatchedTestCase):
     def test_posix_queue(self):
