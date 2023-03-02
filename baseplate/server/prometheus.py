@@ -14,6 +14,7 @@ import atexit
 import logging
 import os
 import sys
+import json
 
 from typing import Iterable
 from typing import TYPE_CHECKING
@@ -40,6 +41,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 PROMETHEUS_EXPORTER_ADDRESS = Endpoint("0.0.0.0:6060")
 METRICS_ENDPOINT = "/metrics"
+HEALTH_ENDPOINT = "/health"
 
 
 def worker_id() -> str:
@@ -50,16 +52,21 @@ def worker_id() -> str:
 
 
 def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") -> Iterable[bytes]:
-    if environ["PATH_INFO"] != METRICS_ENDPOINT:
-        start_response("404 Not Found", [("Content-Type", "text/plain")])
-        return [b"Not Found"]
+    if environ["PATH_INFO"] == METRICS_ENDPOINT:
+        registry = CollectorRegistry()
+        multiprocess.MultiProcessCollector(registry)
+        data = generate_latest(registry)
+        response_headers = [('content-type', 'application/json')]
+        start_response("200 OK", response_headers)
+        return [data]
+    elif environ["PATH_INFO"] == HEALTH_ENDPOINT:
+        response_headers = [("Content-type", CONTENT_TYPE_LATEST), ("Content-Length", str(len(data)))]
+        data = json.dumps({"service": "service_name", "status": "ok", "check_type": "readiness"})
+        encoded = data.encode("utf-8")
+        return [encoded]
 
-    registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
-    data = generate_latest(registry)
-    response_headers = [("Content-type", CONTENT_TYPE_LATEST), ("Content-Length", str(len(data)))]
-    start_response("200 OK", response_headers)
-    return [data]
+    start_response("404 Not Found", [("Content-Type", "text/plain")])
+    return [b"Not Found"]
 
 
 def start_prometheus_exporter(address: EndpointConfiguration = PROMETHEUS_EXPORTER_ADDRESS) -> None:
