@@ -1,4 +1,4 @@
-"""A message queue, with two implementations: POSIX-based, or in-memory using a Thrift server."""
+"""A message queue, with three implementations: POSIX-based, in-memory, or remote using a Thrift server."""
 import abc
 import queue as q
 import select
@@ -157,7 +157,7 @@ class PosixMessageQueue(MessageQueue):
         This must be called explicitly if queues are created/destroyed on the
         fly. It is not automatically called when the object is reclaimed by
         Python.
-        
+
         """
         self.queue.close()
 
@@ -271,7 +271,7 @@ class RemoteMessageQueue(MessageQueue):
         # Increment success/failure counters
         if outcome == "success":
             metric = self.remote_queue_put_requests_success
-        else: 
+        else:
             metric = self.remote_queue_put_requests_fail
         metric.labels(
             queue_name=self.name,
@@ -293,7 +293,7 @@ class RemoteMessageQueue(MessageQueue):
             print("Remote queue `put` failed, exception found: ", e)
 
     def get(self, _: Optional[float] = None) -> bytes:
-        raise NotImplementedError # This queue type is write-only
+        raise NotImplementedError  # This queue type is write-only
 
     def _try_to_put(self, message: bytes, timeout: Optional[float], start_time: float) -> bool:
         # get a connection from the pool
@@ -328,6 +328,7 @@ class RemoteMessageQueue(MessageQueue):
         greenlet.link_value(self._put_success_callback)
         greenlet.link_exception(self._put_fail_callback)
         return greenlet
+
 
 def create_queue(
     queue_type: QueueType,
