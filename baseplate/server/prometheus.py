@@ -56,12 +56,13 @@ def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") 
         registry = CollectorRegistry()
         multiprocess.MultiProcessCollector(registry)
         data = generate_latest(registry)
-        response_headers = [('content-type', 'application/json')]
+        response_headers = [("Content-type", CONTENT_TYPE_LATEST), ("Content-Length", str(len(data)))]
         start_response("200 OK", response_headers)
         return [data]
     elif environ["PATH_INFO"] == HEALTH_ENDPOINT:
-        response_headers = [("Content-type", CONTENT_TYPE_LATEST), ("Content-Length", str(len(data)))]
+        response_headers = [('content-type', 'application/json')]
         data = json.dumps({"service": "service_name", "status": "ok", "check_type": "readiness"})
+        start_response("200 OK", response_headers)
         encoded = data.encode("utf-8")
         return [encoded]
 
