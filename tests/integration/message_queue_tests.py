@@ -204,7 +204,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
         with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
             message_queue = RemoteMessageQueue(self.qname, max_messages=1, pool_size=1)
 
-            with contextlib.closing(message_queue) as mq:
+            with contextlib.closing(message_queue):
                 start = time.time()
                 with self.assertRaises(TimedOutError):
                     queues[self.qname].get(timeout=0.1)

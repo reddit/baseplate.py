@@ -18,8 +18,6 @@ from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
 from baseplate.lib.message_queue import create_queue
-from baseplate.lib.message_queue import DEFAULT_QUEUE_HOST
-from baseplate.lib.message_queue import DEFAULT_QUEUE_PORT
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import TimedOutError
@@ -28,7 +26,6 @@ from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
-from baseplate.sidecars import publisher_queue_utils
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
 
