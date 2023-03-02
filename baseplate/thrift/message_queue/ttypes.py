@@ -6,13 +6,10 @@
 #  options string: py:slots
 #
 
-from thrift.Thrift import TType, TMessageType, TFrozenDict, TException, TApplicationException
-from thrift.protocol.TProtocol import TProtocolException
-from thrift.TRecursive import fix_spec
-
-import sys
-
+from thrift.Thrift import TException
+from thrift.Thrift import TType 
 from thrift.transport import TTransport
+from thrift.TRecursive import fix_spec
 all_structs = []
 
 

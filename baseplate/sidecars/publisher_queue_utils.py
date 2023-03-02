@@ -1,10 +1,12 @@
 """Shared functions for the event & trace publisher sidecars and message queues."""
 import contextlib
+
 from typing import Dict
 from typing import Generator
 from typing import Optional
 
 import gevent
+
 from gevent.server import StreamServer
 
 from baseplate.lib import config

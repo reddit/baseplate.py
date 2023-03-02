@@ -2,6 +2,7 @@ import argparse
 import configparser
 import logging
 import urllib.parse
+
 from typing import Optional
 
 import requests
