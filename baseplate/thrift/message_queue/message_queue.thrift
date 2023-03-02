@@ -24,10 +24,4 @@ service RemoteMessageQueueService {
     ) throws (
         1: ThriftTimedOutError timed_out_error
     );
-    // GetResponse get(
-    //     1: string queue_name
-    //     3: double timeout
-    // ) throws (
-    //     1: ThriftTimedOutError timed_out_error
-    // );
 }

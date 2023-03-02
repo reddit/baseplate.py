@@ -1,5 +1,4 @@
 import unittest
-
 from importlib import reload
 
 import gevent.monkey
@@ -7,7 +6,6 @@ import gevent.monkey
 from baseplate.lib.message_queue import create_queue
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import QueueType
-from baseplate.sidecars import publisher_queue_utils
 
 
 class GeventPatchedTestCase(unittest.TestCase):

@@ -5,7 +5,6 @@ import gzip
 import hashlib
 import hmac
 import logging
-
 from typing import Any
 from typing import List
 from typing import Optional
@@ -249,16 +248,7 @@ def publish_events() -> None:
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
     publisher = BatchPublisher(metrics_client, cfg)
 
-    if cfg.queue_type == QueueType.IN_MEMORY.value:
-        # Start the Thrift server that communicates with RemoteMessageQueues and stores
-        # data in a InMemoryMessageQueue
-        with publisher_queue_utils.start_queue_server(
-            event_queue, host=DEFAULT_QUEUE_HOST, port=DEFAULT_QUEUE_PORT
-        ):
-            build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
-
-    else:
-        build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
+    build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
 if __name__ == "__main__":

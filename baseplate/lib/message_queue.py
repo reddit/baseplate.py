@@ -3,16 +3,12 @@ import abc
 import queue as q
 import select
 import time
-
 from enum import Enum
-import traceback
-from typing import Any, Optional
-from baseplate.lib import config
-from baseplate.lib.thrift_pool import ThriftConnectionPool
+from typing import Any
+from typing import Optional
 
 import gevent
 import posix_ipc
-
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -20,8 +16,10 @@ from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket
 from thrift.transport import TTransport
 
+from baseplate.lib import config
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.retry import RetryPolicy
+from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.thrift.message_queue import RemoteMessageQueueService
 from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 
@@ -208,7 +206,7 @@ class RemoteMessageQueue(MessageQueue):
     """
 
     prom_labels = [
-        "mode", # put or get
+        "mode",  # put or get
         "queue_name",
         "queue_host",
         "queue_port",
@@ -257,11 +255,15 @@ class RemoteMessageQueue(MessageQueue):
         # self.connect()
         # self.client.create_queue(name, max_messages)
 
-    def create_connection_pool(self, pool_size, pool_timeout, pool_conn_max_age) -> ThriftConnectionPool:
+    def create_connection_pool(
+        self, pool_size: int, pool_timeout: int, pool_conn_max_age: int
+    ) -> ThriftConnectionPool:
         endpoint = config.Endpoint(f"{self.host}:{self.port}")
-        pool = ThriftConnectionPool(endpoint, size=pool_size, timeout=pool_timeout, max_age=pool_conn_max_age)
+        pool = ThriftConnectionPool(
+            endpoint, size=pool_size, timeout=pool_timeout, max_age=pool_conn_max_age
+        )
         return pool
-    
+
     def connect(self) -> None:
         # Establish a connection with the queue server
         transport = TSocket.TSocket(self.host, self.port)
@@ -270,7 +272,7 @@ class RemoteMessageQueue(MessageQueue):
         self.client = RemoteMessageQueueService.Client(protocol)
         self.transport.open()
 
-    def _update_counters(self, request_mode: str, outcome_mode: str):
+    def _update_counters(self, request_mode: str, outcome_mode: str) -> None:
         # This request is no longer queued
         self.remote_queue_requests_queued.labels(
             mode=request_mode,
@@ -289,11 +291,11 @@ class RemoteMessageQueue(MessageQueue):
             queue_max_messages=self.max_messages,
         ).inc()
 
-    def _put_success_callback(self, greenlet: Any):
+    def _put_success_callback(self, greenlet: Any) -> None:
         self._update_counters("put", "success")
         gevent.joinall([greenlet])
 
-    def _put_fail_callback(self, greenlet: Any):
+    def _put_fail_callback(self, greenlet: Any) -> None:
         self._update_counters("put", "fail")
         gevent.joinall([greenlet])
         try:
@@ -301,8 +303,8 @@ class RemoteMessageQueue(MessageQueue):
         except Exception as e:
             print("Remote queue `put` failed, exception found: ", e)
 
-    def get(self) -> bytes:
-        raise NotImplementedError
+    def get(self, _: Optional[float] = None) -> bytes:
+        raise NotImplementedError # TODO: this is yucky, that this queue type does not implement get
 
     def _try_to_put(self, message: bytes, timeout: Optional[float], start_time: float) -> bool:
         # get a connection from the pool
@@ -319,7 +321,7 @@ class RemoteMessageQueue(MessageQueue):
                     queue_port=self.port,
                     queue_max_messages=self.max_messages,
                 ).observe(time.perf_counter() - start_time)
-                return True # Success
+                return True  # Success
             # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue
             except ThriftTimedOutError:
                 raise TimedOutError
@@ -341,7 +343,7 @@ class RemoteMessageQueue(MessageQueue):
         return greenlet
 
     def close(self) -> None:
-        pass # do we need to close anything??
+        pass  # do we need to close anything??
 
 
 def create_queue(
@@ -434,8 +436,6 @@ def queue_tool() -> None:
         args.queue_name,
         args.max_messages,
         args.max_message_size,
-        args.queue_host,
-        args.queue_port,
     )
 
     if args.mode == "read":

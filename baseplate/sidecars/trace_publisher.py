@@ -2,7 +2,6 @@ import argparse
 import configparser
 import logging
 import urllib.parse
-
 from typing import Optional
 
 import requests
@@ -212,11 +211,7 @@ def publish_traces() -> None:
         post_timeout=publisher_cfg.post_timeout,
     )
 
-    if publisher_cfg.queue_type == QueueType.IN_MEMORY.value:
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
-            build_and_publish_batch(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
-    else:
-        build_and_publish_batch(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
+    build_and_publish_batch(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
 if __name__ == "__main__":

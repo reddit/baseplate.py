@@ -1,13 +1,10 @@
 """Shared functions for the event & trace publisher sidecars and message queues."""
 import contextlib
-import time
-
 from typing import Dict
 from typing import Generator
 from typing import Optional
 
 import gevent
-
 from gevent.server import StreamServer
 
 from baseplate.lib import config
@@ -18,7 +15,6 @@ from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
 from baseplate.thrift.message_queue import RemoteMessageQueueService
 from baseplate.thrift.message_queue.ttypes import CreateResponse
-from baseplate.thrift.message_queue.ttypes import GetResponse
 from baseplate.thrift.message_queue.ttypes import PutResponse
 from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 
@@ -50,8 +46,11 @@ class RemoteMessageQueueHandler:
         except TimedOutError:
             raise ThriftTimedOutError
 
+
 @contextlib.contextmanager
-def start_queue_server(queues: Dict[str, MessageQueue], host: str, port: int) -> Generator[StreamServer, None, None]:
+def start_queue_server(
+    queues: Dict[str, MessageQueue], host: str, port: int
+) -> Generator[StreamServer, None, None]:
     # Start a thrift server that will store the queue data in memory
     processor = RemoteMessageQueueService.Processor(RemoteMessageQueueHandler(queues))
     server_bind_endpoint = config.Endpoint(f"{host}:{port}")

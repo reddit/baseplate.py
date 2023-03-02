@@ -2,9 +2,7 @@ import contextlib
 import io
 import time
 import unittest
-
 from importlib import reload
-from baseplate.thrift.message_queue import RemoteMessageQueueService
 
 import gevent
 import posix_ipc
@@ -17,10 +15,6 @@ from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import RemoteMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.sidecars import publisher_queue_utils
-
-from thrift.protocol import TBinaryProtocol
-from thrift.transport import TSocket
-from thrift.transport import TTransport
 
 
 class TestPosixMessageQueueCreation(unittest.TestCase):
@@ -164,7 +158,8 @@ class GeventPatchedTestCase(unittest.TestCase):
 
 
 class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
-    qname = "/baseplate-test-queue"    
+    qname = "/baseplate-test-queue"
+
     def test_put_get(self):
         # create the queue and start the server that would ordinarily be running on the sidecar
         queues = {}
@@ -219,19 +214,19 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
 
     def test_put_timeout(self):
         queues = {}
-        # `put` is non-blocking, so if we try to put onto a full queue and a TimeOutError 
+        # `put` is non-blocking, so if we try to put onto a full queue and a TimeOutError
         # is raised, we dont actually know unless we explicitly check
         with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
             message_queue = RemoteMessageQueue(self.qname, max_messages=1, pool_size=2)
 
             with contextlib.closing(message_queue) as mq:
-                g = mq.put(b"x") # fill the queue
+                g = mq.put(b"x")  # fill the queue
                 start = time.time()
-                with self.assertRaises(TimedOutError): # queue should be full
+                with self.assertRaises(TimedOutError):  # queue should be full
                     # put is non-blocking, so we need to wait for the result
                     g2 = mq.put(b"x", timeout=0.1)
                     gevent.joinall([g, g2])
-                    g2.get() # this should expose any exceptions encountered, i.e. TimedOutError
+                    g2.get()  # this should expose any exceptions encountered, i.e. TimedOutError
                 elapsed = time.time() - start
                 self.assertAlmostEqual(elapsed, 0.1, places=1)
 
@@ -251,7 +246,8 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
                     gevent.joinall([g1, g2, g3, g4])
                 assert "timed out waiting for a connection slot" in buf.getvalue()
 
-class TestCreateQueue():
+
+class TestCreateQueue:
     def test_posix_queue(self):
         queue: MessageQueue = create_queue(QueueType.POSIX, "/test", 5, 1000)
         assert isinstance(queue, PosixMessageQueue)
