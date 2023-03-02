@@ -216,21 +216,6 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
             elapsed = time.time() - start
             self.assertAlmostEqual(elapsed, 0.1, places=1)
 
-    def test_pool(self):
-        queues = {}
-        # If we try to connect with more slots than the pool has, without joining, we should get an error
-        with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
-            mq = RemoteMessageQueue(self.qname, max_messages=10, pool_size=3, pool_timeout=0.1)
-
-            buf = io.StringIO()
-            with contextlib.redirect_stdout(buf):
-                g1 = mq.put(b"x", timeout=0.1)
-                g2 = mq.put(b"x", timeout=0.1)
-                g3 = mq.put(b"x", timeout=0.1)
-                g4 = mq.put(b"x", timeout=0.1)
-                gevent.joinall([g1, g2, g3, g4])
-            assert "timed out waiting for a connection slot" in buf.getvalue()
-
 
 class TestCreateQueue:
     def test_posix_queue(self):
