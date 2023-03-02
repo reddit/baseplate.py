@@ -89,16 +89,6 @@ class MessageQueue(abc.ABC):
 
         """
 
-    @abc.abstractmethod
-    def close(self) -> None:
-        """Close the queue, freeing related resources.
-
-        This must be called explicitly if queues are created/destroyed on the
-        fly. It is not automatically called when the object is reclaimed by
-        Python.
-
-        """
-
 
 class PosixMessageQueue(MessageQueue):
     """A Gevent-friendly (but not required) inter process message queue.
@@ -162,6 +152,13 @@ class PosixMessageQueue(MessageQueue):
         self.queue.unlink()
 
     def close(self) -> None:
+        """Close the queue, freeing related resources.
+
+        This must be called explicitly if queues are created/destroyed on the
+        fly. It is not automatically called when the object is reclaimed by
+        Python.
+        
+        """
         self.queue.close()
 
 
@@ -190,45 +187,44 @@ class InMemoryMessageQueue(MessageQueue):
         except q.Full:
             raise TimedOutError
 
-    def close(self) -> None:
-        """Not implemented for in-memory queue"""
-
 
 class RemoteMessageQueue(MessageQueue):
-    """A message queue that uses a remote Thrift server.
-
-    Used in conjunction with the InMemoryMessageQueue to provide an alternative
-    to Posix queues, for use-cases where Posix is not appropriate.
+    """A write-only message queue that uses a remote Thrift server.
 
     This implementation is a temporary compromise and should only be used
     under very specific circumstances if the POSIX alternative is unavailable.
-    Specifically, using Thrift here has significant performance and/or
+    Specifically, using Thrift here may have significant performance and/or
     resource impacts.
 
     """
 
     prom_labels = [
-        "mode",  # put or get
         "queue_name",
         "queue_host",
         "queue_port",
         "queue_max_messages",
     ]
 
-    remote_queue_requests_queued = Gauge(
+    remote_queue_put_requests_queued = Gauge(
         f"{PROM_PREFIX}_pending_puts_to_sidecar",
         "total number of queue requests in flight, being sent to the publishing sidecar.",
         prom_labels,
         multiprocess_mode="livesum",
     )
 
-    remote_queue_requests_outcome = Counter(
-        f"{PROM_PREFIX}_sidecar_requests_outcome",
-        "outcomes (success/fail) or queue requests sent to the publishing sidecar.",
-        prom_labels + ["outcome"],
+    remote_queue_put_requests_success = Counter(
+        f"{PROM_PREFIX}_sidecar_put_success",
+        "successful queue requests sent to the publishing sidecar.",
+        prom_labels,
     )
 
-    remote_queue_request_latency = Histogram(
+    remote_queue_put_requests_fail = Counter(
+        f"{PROM_PREFIX}_sidecar_put_fail",
+        "failed queue requests sent to the publishing sidecar.",
+        prom_labels,
+    )
+
+    remote_queue_put_request_latency = Histogram(
         f"{PROM_PREFIX}_sidecar_latency",
         "latency of message requests to the publishing sidecar.",
         prom_labels,
@@ -254,8 +250,6 @@ class RemoteMessageQueue(MessageQueue):
         with self.pool.connection() as protocol:
             client = RemoteMessageQueueService.Client(protocol)
             client.create_queue(name, max_messages)
-        # self.connect()
-        # self.client.create_queue(name, max_messages)
 
     def create_connection_pool(
         self, pool_size: int, pool_timeout: int, pool_conn_max_age: int
@@ -266,27 +260,20 @@ class RemoteMessageQueue(MessageQueue):
         )
         return pool
 
-    def connect(self) -> None:
-        # Establish a connection with the queue server
-        transport = TSocket.TSocket(self.host, self.port)
-        self.transport = TTransport.TBufferedTransport(transport)
-        protocol = TBinaryProtocol.TBinaryProtocol(self.transport)
-        self.client = RemoteMessageQueueService.Client(protocol)
-        self.transport.open()
-
-    def _update_counters(self, request_mode: str, outcome_mode: str) -> None:
+    def _update_counters(self, outcome: str) -> None:
         # This request is no longer queued
-        self.remote_queue_requests_queued.labels(
-            mode=request_mode,
+        self.remote_queue_put_requests_queued.labels(
             queue_name=self.name,
             queue_host=self.host,
             queue_port=self.port,
             queue_max_messages=self.max_messages,
         ).dec()
         # Increment success/failure counters
-        self.remote_queue_requests_outcome.labels(
-            mode=request_mode,
-            outcome=outcome_mode,
+        if outcome == "success":
+            metric = self.remote_queue_put_requests_success
+        else: 
+            metric = self.remote_queue_put_requests_fail
+        metric.labels(
             queue_name=self.name,
             queue_host=self.host,
             queue_port=self.port,
@@ -294,11 +281,11 @@ class RemoteMessageQueue(MessageQueue):
         ).inc()
 
     def _put_success_callback(self, greenlet: Any) -> None:
-        self._update_counters("put", "success")
+        self._update_counters("success")
         gevent.joinall([greenlet])
 
     def _put_fail_callback(self, greenlet: Any) -> None:
-        self._update_counters("put", "fail")
+        self._update_counters("fail")
         gevent.joinall([greenlet])
         try:
             greenlet.get()
@@ -306,7 +293,7 @@ class RemoteMessageQueue(MessageQueue):
             print("Remote queue `put` failed, exception found: ", e)
 
     def get(self, _: Optional[float] = None) -> bytes:
-        raise NotImplementedError  # TODO: this is yucky, that this queue type does not implement get
+        raise NotImplementedError # This queue type is write-only
 
     def _try_to_put(self, message: bytes, timeout: Optional[float], start_time: float) -> bool:
         # get a connection from the pool
@@ -316,8 +303,7 @@ class RemoteMessageQueue(MessageQueue):
                 client.put(self.name, message, timeout)
 
                 # record latency
-                self.remote_queue_request_latency.labels(
-                    mode="put",
+                self.remote_queue_put_request_latency.labels(
                     queue_name=self.name,
                     queue_host=self.host,
                     queue_port=self.port,
@@ -330,8 +316,7 @@ class RemoteMessageQueue(MessageQueue):
 
     def put(self, message: bytes, timeout: Optional[float] = None) -> Any:
         # increment in-flight counter
-        self.remote_queue_requests_queued.labels(
-            mode="put",
+        self.remote_queue_put_requests_queued.labels(
             queue_name=self.name,
             queue_host=self.host,
             queue_port=self.port,
@@ -344,21 +329,16 @@ class RemoteMessageQueue(MessageQueue):
         greenlet.link_exception(self._put_fail_callback)
         return greenlet
 
-    def close(self) -> None:
-        pass  # do we need to close anything??
-
-
 def create_queue(
     queue_type: QueueType,
     queue_full_name: str,
     max_queue_size: int,
     max_element_size: int,
 ) -> MessageQueue:
-    # The in-memory queue is initialized here on the sidecar, and the main baseplate
+    # The in-memory queue is created on the sidecar, and the main baseplate
     # application will use a remote queue to interact with it.
     if queue_type == QueueType.IN_MEMORY:
         event_queue = InMemoryMessageQueue(max_queue_size)
-        # event_queue = RemoteMessageQueue(queue_full_name, max_queue_size, host, port)
 
     else:
         event_queue = PosixMessageQueue(  # type: ignore

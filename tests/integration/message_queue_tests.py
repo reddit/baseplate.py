@@ -95,56 +95,44 @@ class TestPosixMessageQueueCreation(unittest.TestCase):
 
 class TestInMemoryMessageQueueCreation(unittest.TestCase):
     def test_instantiate_queue(self):
-        message_queue = InMemoryMessageQueue(max_messages=1)
-
-        with contextlib.closing(message_queue) as mq:
-            self.assertEqual(mq.queue.maxsize, 1)
+        mq = InMemoryMessageQueue(max_messages=1)
+        self.assertEqual(mq.queue.maxsize, 1)
 
     def test_put_get(self):
-        message_queue = InMemoryMessageQueue(max_messages=1)
-
-        with contextlib.closing(message_queue) as mq:
-            mq.put(b"x")
-            message = mq.get()
-            self.assertEqual(message, b"x")
+        mq = InMemoryMessageQueue(max_messages=1)
+        mq.put(b"x")
+        message = mq.get()
+        self.assertEqual(message, b"x")
 
     def test_get_timeout(self):
-        message_queue = InMemoryMessageQueue(max_messages=1)
-
-        with contextlib.closing(message_queue) as mq:
-            start = time.time()
-            with self.assertRaises(TimedOutError):
-                mq.get(timeout=0.1)
-            elapsed = time.time() - start
-            self.assertAlmostEqual(elapsed, 0.1, places=2)
+        mq = InMemoryMessageQueue(max_messages=1)
+        start = time.time()
+        with self.assertRaises(TimedOutError):
+            mq.get(timeout=0.1)
+        elapsed = time.time() - start
+        self.assertAlmostEqual(elapsed, 0.1, places=2)
 
     def test_put_timeout(self):
-        message_queue = InMemoryMessageQueue(max_messages=1)
-
-        with contextlib.closing(message_queue) as mq:
-            mq.put(b"x")
-            start = time.time()
-            with self.assertRaises(TimedOutError):
-                mq.put(b"x", timeout=0.1)
-            elapsed = time.time() - start
-            self.assertAlmostEqual(elapsed, 0.1, places=1)
+        mq = InMemoryMessageQueue(max_messages=1)
+        mq.put(b"x")
+        start = time.time()
+        with self.assertRaises(TimedOutError):
+            mq.put(b"x", timeout=0.1)
+        elapsed = time.time() - start
+        self.assertAlmostEqual(elapsed, 0.1, places=1)
 
     def test_put_zero_timeout(self):
-        message_queue = InMemoryMessageQueue(max_messages=1)
-
-        with contextlib.closing(message_queue) as mq:
-            mq.put(b"x", timeout=0)
-            message = mq.get()
-            self.assertEqual(message, b"x")
+        mq = InMemoryMessageQueue(max_messages=1)
+        mq.put(b"x", timeout=0)
+        message = mq.get()
+        self.assertEqual(message, b"x")
 
     def test_put_full_zero_timeout(self):
-        message_queue = InMemoryMessageQueue(max_messages=1)
+        mq = InMemoryMessageQueue(max_messages=1)
+        mq.put(b"1", timeout=0)
 
-        with contextlib.closing(message_queue) as mq:
-            mq.put(b"1", timeout=0)
-
-            with self.assertRaises(TimedOutError):
-                mq.put(b"2", timeout=0)
+        with self.assertRaises(TimedOutError):
+            mq.put(b"2", timeout=0)
 
 
 class GeventPatchedTestCase(unittest.TestCase):
@@ -166,14 +154,12 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
         queues = {}
         with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
             # create the corresponding queue that would ordinarily be on the main baseplate application/client-side
-            message_queue = RemoteMessageQueue(self.qname, max_messages=10, pool_size=1)
-
-            with contextlib.closing(message_queue) as mq:
-                g = mq.put(b"x")
-                gevent.joinall([g])
-                message = queues[self.qname].get(timeout=0.1)
-                print("message: ", str(message))
-                self.assertEqual(message, b"x")
+            mq = RemoteMessageQueue(self.qname, max_messages=10, pool_size=1)
+            g = mq.put(b"x")
+            gevent.joinall([g])
+            message = queues[self.qname].get(timeout=0.1)
+            print("message: ", str(message))
+            self.assertEqual(message, b"x")
 
     def test_multiple_queues(self):
         queues = {}
@@ -192,60 +178,55 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
     def test_queues_alternate_port(self):
         queues = {}
         with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9091):
-            message_queue = RemoteMessageQueue(self.qname, max_messages=10, port=9091, pool_size=1)
+            mq = RemoteMessageQueue(self.qname, max_messages=10, port=9091, pool_size=1)
 
-            with contextlib.closing(message_queue) as mq:
-                g = mq.put(b"x", timeout=0.1)
-                gevent.joinall([g])
-                self.assertEqual(queues[self.qname].get(timeout=2), b"x")
+            g = mq.put(b"x", timeout=0.1)
+            gevent.joinall([g])
+            self.assertEqual(queues[self.qname].get(timeout=2), b"x")
 
     def test_get_timeout(self):
         queues = {}
         with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
-            message_queue = RemoteMessageQueue(self.qname, max_messages=1, pool_size=1)
+            mq = RemoteMessageQueue(self.qname, max_messages=1, pool_size=1)
 
-            with contextlib.closing(message_queue):
-                start = time.time()
-                with self.assertRaises(TimedOutError):
-                    queues[self.qname].get(timeout=0.1)
-                elapsed = time.time() - start
-                self.assertAlmostEqual(
-                    elapsed, 0.1, places=1
-                )  # TODO: this routinely takes 0.105-0.11 seconds, is 1 place ok?
+            start = time.time()
+            with self.assertRaises(TimedOutError):
+                queues[self.qname].get(timeout=0.1)
+            elapsed = time.time() - start
+            self.assertAlmostEqual(
+                elapsed, 0.1, places=1
+            )  # TODO: this routinely takes 0.105-0.11 seconds, is 1 place ok?
 
     def test_put_timeout(self):
         queues = {}
         # `put` is non-blocking, so if we try to put onto a full queue and a TimeOutError
         # is raised, we dont actually know unless we explicitly check
         with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
-            message_queue = RemoteMessageQueue(self.qname, max_messages=1, pool_size=2)
+            mq = RemoteMessageQueue(self.qname, max_messages=1, pool_size=2)
 
-            with contextlib.closing(message_queue) as mq:
-                g = mq.put(b"x")  # fill the queue
-                start = time.time()
-                with self.assertRaises(TimedOutError):  # queue should be full
-                    # put is non-blocking, so we need to wait for the result
-                    g2 = mq.put(b"x", timeout=0.1)
-                    gevent.joinall([g, g2])
-                    g2.get()  # this should expose any exceptions encountered, i.e. TimedOutError
-                elapsed = time.time() - start
-                self.assertAlmostEqual(elapsed, 0.1, places=1)
+            g = mq.put(b"x")  # fill the queue
+            start = time.time()
+            with self.assertRaises(TimedOutError):  # queue should be full
+                # put is non-blocking, so we need to wait for the result
+                g2 = mq.put(b"x", timeout=0.1)
+                gevent.joinall([g, g2])
+                g2.get()  # this should expose any exceptions encountered, i.e. TimedOutError
+            elapsed = time.time() - start
+            self.assertAlmostEqual(elapsed, 0.1, places=1)
 
     def test_pool(self):
         queues = {}
         # If we try to connect with more slots than the pool has, without joining, we should get an error
         with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
-            message_queue = RemoteMessageQueue(self.qname, max_messages=10, pool_size=3)
-
-            with contextlib.closing(message_queue) as mq:
-                buf = io.StringIO()
-                with contextlib.redirect_stdout(buf):
-                    g1 = mq.put(b"x", timeout=0.1)
-                    g2 = mq.put(b"x", timeout=0.1)
-                    g3 = mq.put(b"x", timeout=0.1)
-                    g4 = mq.put(b"x", timeout=0.1)
-                    gevent.joinall([g1, g2, g3, g4])
-                assert "timed out waiting for a connection slot" in buf.getvalue()
+            mq = RemoteMessageQueue(self.qname, max_messages=10, pool_size=3)
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                g1 = mq.put(b"x", timeout=0.1)
+                g2 = mq.put(b"x", timeout=0.1)
+                g3 = mq.put(b"x", timeout=0.1)
+                g4 = mq.put(b"x", timeout=0.1)
+                gevent.joinall([g1, g2, g3, g4])
+            assert "timed out waiting for a connection slot" in buf.getvalue()
 
 
 class TestCreateQueue:
