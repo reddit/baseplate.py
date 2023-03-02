@@ -35,27 +35,13 @@ class PublisherQueueUtilTests(GeventPatchedTestCase):
         assert output == test_message_2
 
     def test_in_memory_queue_get_put(self):
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
-            queue: MessageQueue = create_queue(QueueType.IN_MEMORY, "/test", 5, 1000)
+        queue: MessageQueue = create_queue(QueueType.IN_MEMORY, "/test", 5, 1000)
 
-            test_message = bytes("message", "utf-8")
-            test_message_2 = bytes("2nd message", "utf-8")
-            queue.put(test_message)
-            queue.put(test_message_2)
-            output = queue.get()
-            assert output == test_message
-            output = queue.get()
-            assert output == test_message_2
-
-    def test_in_memory_queue_alternate_port(self):
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9091):
-            queue: MessageQueue = create_queue(QueueType.IN_MEMORY, "/test", 5, 1000, port=9091)
-
-            test_message = bytes("message", "utf-8")
-            test_message_2 = bytes("2nd message", "utf-8")
-            queue.put(test_message)
-            queue.put(test_message_2)
-            output = queue.get()
-            assert output == test_message
-            output = queue.get()
-            assert output == test_message_2
+        test_message = bytes("message", "utf-8")
+        test_message_2 = bytes("2nd message", "utf-8")
+        queue.put(test_message)
+        queue.put(test_message_2)
+        output = queue.get()
+        assert output == test_message
+        output = queue.get()
+        assert output == test_message_2

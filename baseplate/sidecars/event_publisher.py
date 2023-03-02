@@ -239,8 +239,9 @@ def publish_events() -> None:
 
     metrics_client = metrics_client_from_config(raw_config)
 
+    queue_name = f"/events-{args.queue_name}"
     event_queue: MessageQueue = create_queue(
-        cfg.queue_type, f"/events-{args.queue_name}", cfg.max_queue_size, cfg.max_element_size
+        cfg.queue_type, queue_name, cfg.max_queue_size, cfg.max_element_size
     )
 
     # pylint: disable=maybe-no-member
@@ -252,7 +253,7 @@ def publish_events() -> None:
         # Start the Thrift server that communicates with RemoteMessageQueues and stores
         # data in a InMemoryMessageQueue
         with publisher_queue_utils.start_queue_server(
-            host=DEFAULT_QUEUE_HOST, port=DEFAULT_QUEUE_PORT
+            event_queue, host=DEFAULT_QUEUE_HOST, port=DEFAULT_QUEUE_PORT
         ):
             build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 

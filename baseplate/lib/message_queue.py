@@ -254,11 +254,21 @@ class RemoteMessageQueue(MessageQueue):
         with self.pool.connection() as protocol:
             client = RemoteMessageQueueService.Client(protocol)
             client.create_queue(name, max_messages)
+        # self.connect()
+        # self.client.create_queue(name, max_messages)
 
     def create_connection_pool(self, pool_size, pool_timeout, pool_conn_max_age) -> ThriftConnectionPool:
         endpoint = config.Endpoint(f"{self.host}:{self.port}")
         pool = ThriftConnectionPool(endpoint, size=pool_size, timeout=pool_timeout, max_age=pool_conn_max_age)
         return pool
+    
+    def connect(self) -> None:
+        # Establish a connection with the queue server
+        transport = TSocket.TSocket(self.host, self.port)
+        self.transport = TTransport.TBufferedTransport(transport)
+        protocol = TBinaryProtocol.TBinaryProtocol(self.transport)
+        self.client = RemoteMessageQueueService.Client(protocol)
+        self.transport.open()
 
     def _update_counters(self, request_mode: str, outcome_mode: str):
         # This request is no longer queued
@@ -291,46 +301,8 @@ class RemoteMessageQueue(MessageQueue):
         except Exception as e:
             print("Remote queue `put` failed, exception found: ", e)
 
-    def _try_to_get(self, timeout: Optional[float], start_time: float) -> bytes:
-        # get a connection from the pool
-        with self.pool.connection() as protocol:
-            client = RemoteMessageQueueService.Client(protocol)
-            try: # handle timeouts
-                result = client.get(self.name, timeout).value
-
-                # record latency
-                self.remote_queue_request_latency.labels(
-                    mode="get",
-                    queue_name=self.name,
-                    queue_host=self.host,
-                    queue_port=self.port,
-                    queue_max_messages=self.max_messages,
-                ).observe(time.perf_counter() - start_time)
-                # update other counters
-                self._update_counters("get", "success")
-
-                return result
-            # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue
-            except ThriftTimedOutError:
-                self._update_counters("get", "fail")
-                raise TimedOutError
-
-    def get(self, timeout: Optional[float] = None, block: bool = False) -> bytes:
-        # Call the remote server and get an element for the correct queue
-
-        # increment in-flight counter
-        self.remote_queue_requests_queued.labels(
-            mode="get",
-            queue_name=self.name,
-            queue_host=self.host,
-            queue_port=self.port,
-            queue_max_messages=self.max_messages,
-        ).inc()
-        start_time = time.perf_counter()
-        try:
-            return self._try_to_get(timeout, start_time)
-        except ThriftTimedOutError:
-            raise TimedOutError
+    def get(self) -> bytes:
+        raise NotImplementedError
 
     def _try_to_put(self, message: bytes, timeout: Optional[float], start_time: float) -> bool:
         # get a connection from the pool
@@ -377,13 +349,12 @@ def create_queue(
     queue_full_name: str,
     max_queue_size: int,
     max_element_size: int,
-    host: str = DEFAULT_QUEUE_HOST,
-    port: int = DEFAULT_QUEUE_PORT,
 ) -> MessageQueue:
-    # The in-memory queue is initialized on the sidecar, so we use a remote queue
-    # from the main baseplate application to interact with it.
+    # The in-memory queue is initialized here on the sidecar, and the main baseplate
+    # application will use a remote queue to interact with it.
     if queue_type == QueueType.IN_MEMORY:
-        event_queue = RemoteMessageQueue(queue_full_name, max_queue_size, host, port)
+        event_queue = InMemoryMessageQueue(max_queue_size)
+        # event_queue = RemoteMessageQueue(queue_full_name, max_queue_size, host, port)
 
     else:
         event_queue = PosixMessageQueue(  # type: ignore

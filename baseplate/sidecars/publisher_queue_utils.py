@@ -33,40 +33,27 @@ class RemoteMessageQueueHandler:
 
     """
 
-    def __init__(self) -> None:
+    def __init__(self, queues: Dict[str, MessageQueue]) -> None:
         # Store the queue by name with its max messages
-        self.queues: Dict[str, MessageQueue] = {}
+        self.queues = queues
 
     def create_queue(self, queue_name: str, max_messages: int) -> CreateResponse:
-        queue = InMemoryMessageQueue(max_messages)
-        self.queues[queue_name] = queue
-
+        self.queues[queue_name] = InMemoryMessageQueue(max_messages)
         return CreateResponse()
 
-    def get(self, queue_name: str, timeout: Optional[float] = None) -> GetResponse:
-        try:
-            queue = self.queues[queue_name]
-            # Get element from list, waiting if necessary
-            result = queue.get(timeout)
-        # If the queue timed out, raise a timeout as the server response
-        except TimedOutError as e:
-            raise ThriftTimedOutError from e
-
-        return GetResponse(result)
-
     def put(self, queue_name: str, message: bytes, timeout: Optional[float] = None) -> PutResponse:
+        # May raise TimedOutError
         try:
             queue = self.queues[queue_name]
             queue.put(message, timeout)
-        except TimedOutError as e:
-            raise ThriftTimedOutError from e
-        return PutResponse()
-
+            return PutResponse()
+        except TimedOutError:
+            raise ThriftTimedOutError
 
 @contextlib.contextmanager
-def start_queue_server(host: str, port: int) -> Generator[StreamServer, None, None]:
+def start_queue_server(queues: Dict[str, MessageQueue], host: str, port: int) -> Generator[StreamServer, None, None]:
     # Start a thrift server that will store the queue data in memory
-    processor = RemoteMessageQueueService.Processor(RemoteMessageQueueHandler())
+    processor = RemoteMessageQueueService.Processor(RemoteMessageQueueHandler(queues))
     server_bind_endpoint = config.Endpoint(f"{host}:{port}")
     listener = make_listener(server_bind_endpoint)
     server = make_server(server_config={}, listener=listener, app=processor)
