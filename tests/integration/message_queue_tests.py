@@ -187,7 +187,7 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
     def test_get_timeout(self):
         queues = {}
         with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
-            mq = RemoteMessageQueue(self.qname, max_messages=1, pool_size=1)
+            _ = RemoteMessageQueue(self.qname, max_messages=1, pool_size=1) # create the empty queue
 
             start = time.time()
             with self.assertRaises(TimedOutError):

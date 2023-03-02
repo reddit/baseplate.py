@@ -14,9 +14,6 @@ import posix_ipc
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
-from thrift.protocol import TBinaryProtocol
-from thrift.transport import TSocket
-from thrift.transport import TTransport
 
 from baseplate.lib import config
 from baseplate.lib.prometheus_metrics import default_latency_buckets
