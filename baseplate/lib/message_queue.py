@@ -306,7 +306,7 @@ class RemoteMessageQueue(MessageQueue):
             print("Remote queue `put` failed, exception found: ", e)
 
     def get(self, _: Optional[float] = None) -> bytes:
-        raise NotImplementedError # TODO: this is yucky, that this queue type does not implement get
+        raise NotImplementedError  # TODO: this is yucky, that this queue type does not implement get
 
     def _try_to_put(self, message: bytes, timeout: Optional[float], start_time: float) -> bool:
         # get a connection from the pool
