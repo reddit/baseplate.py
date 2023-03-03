@@ -270,7 +270,7 @@ def load_app_and_run_server() -> None:
     admin_server = AdminServer(
         serve_metrics=is_metrics_enabled(config.app),
         serve_health=is_health_enabled(config.app),
-        callback=get_health_callback(config.app),
+        healthcheck=get_health_callback(config.app),
     )
     admin_server.start()
     if not admin_server.serve_metrics:

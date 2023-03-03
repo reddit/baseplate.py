@@ -134,7 +134,11 @@ class AdminServer:
 
         elif self.serve_health and environ["PATH_INFO"] == HEALTH_ENDPOINT:
             queries = urllib.parse.parse_qs(environ["QUERY_STRING"])
-            check = queries.get("check", "")
+            check = queries.get("check", "liveness")
+
+            logger.info(check)
+            logger.info(queries)
+            logger.info(environ["QUERY_STRING"])
 
             if check == "liveness":
                 response_headers = [("content-type", "application/json")]
