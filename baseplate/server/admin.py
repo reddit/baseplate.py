@@ -138,9 +138,7 @@ class AdminServer:
 
             status = "ok"
             response = "200 OK"
-            if check == "liveness":
-                pass
-            elif check == "startup" or check == "readiness":
+            if check == "liveness" or check == "startup" or check == "readiness":
                 if self.healthcheck():
                     status = "ok"
                     response = "200 OK"
