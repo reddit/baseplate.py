@@ -134,7 +134,7 @@ class AdminServer:
 
         elif self.serve_health and environ["PATH_INFO"] == HEALTH_ENDPOINT:
             queries = urllib.parse.parse_qs(environ["QUERY_STRING"])
-            check = queries.get("check", "liveness")
+            check = queries.get("check", "liveness")[0]
 
             status = "ok"
             response = "200 OK"
