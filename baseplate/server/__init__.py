@@ -51,8 +51,10 @@ from baseplate.lib.log_formatter import CustomJsonFormatter
 from baseplate.lib.prometheus_metrics import is_metrics_enabled
 from baseplate.server import einhorn
 from baseplate.server import reloader
+from baseplate.server.admin import AdminServer
+from baseplate.server.admin import get_health_callback
+from baseplate.server.admin import is_health_enabled
 from baseplate.server.net import bind_socket
-
 
 logger = logging.getLogger(__name__)
 
@@ -265,13 +267,13 @@ def load_app_and_run_server() -> None:
         config = read_config(args.config_file, args.server_name, args.app_name)
     assert config.server
 
-    # Prom exporter needs to start before the app starts because
-    # we need to set the prometheus id before we generate any stats
-    if is_metrics_enabled(config.app):
-        from baseplate.server.prometheus import start_prometheus_exporter
-
-        start_prometheus_exporter()
-    else:
+    admin_server = AdminServer(
+        serve_metrics=is_metrics_enabled(config.app),
+        serve_health=is_health_enabled(config.app),
+        callback=get_health_callback(config.app),
+    )
+    admin_server.start()
+    if not admin_server.serve_metrics:
         logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     configure_logging(config, args.debug)

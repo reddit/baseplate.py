@@ -10,88 +10,20 @@ their metrics. Each application worker will be serving the exporter as well and
 can aggregate and serve metrics for all workers.
 
 """
-import atexit
 import logging
 import os
-import sys
-import json
-
-from typing import Iterable
-from typing import TYPE_CHECKING
-
-from gevent.pywsgi import LoggingLogAdapter
-from gevent.pywsgi import WSGIServer
-from prometheus_client import CollectorRegistry
-from prometheus_client import CONTENT_TYPE_LATEST
-from prometheus_client import generate_latest
-from prometheus_client import multiprocess
-from prometheus_client import values
-from prometheus_client.values import MultiProcessValue
 
 from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
+from baseplate.server.admin import AdminServer
 from baseplate.server.net import bind_socket
-
-
-if TYPE_CHECKING:
-    from _typeshed.wsgi import StartResponse  # pylint: disable=import-error,no-name-in-module
-    from _typeshed.wsgi import WSGIEnvironment  # pylint: disable=import-error,no-name-in-module
-
 
 logger = logging.getLogger(__name__)
 PROMETHEUS_EXPORTER_ADDRESS = Endpoint("0.0.0.0:6060")
-METRICS_ENDPOINT = "/metrics"
-HEALTH_ENDPOINT = "/health"
-
-
-def worker_id() -> str:
-    worker = os.environ.get("MULTIPROCESS_WORKER_ID")
-    if worker is None:
-        worker = str(os.getpid())
-    return worker
-
-
-def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") -> Iterable[bytes]:
-    if environ["PATH_INFO"] == METRICS_ENDPOINT:
-        registry = CollectorRegistry()
-        multiprocess.MultiProcessCollector(registry)
-        data = generate_latest(registry)
-        response_headers = [("Content-type", CONTENT_TYPE_LATEST), ("Content-Length", str(len(data)))]
-        start_response("200 OK", response_headers)
-        return [data]
-    elif environ["PATH_INFO"] == HEALTH_ENDPOINT:
-        response_headers = [('content-type', 'application/json')]
-        data = json.dumps({"service": "service_name", "status": "ok", "check_type": "readiness"})
-        start_response("200 OK", response_headers)
-        encoded = data.encode("utf-8")
-        return [encoded]
-
-    start_response("404 Not Found", [("Content-Type", "text/plain")])
-    return [b"Not Found"]
 
 
 def start_prometheus_exporter(address: EndpointConfiguration = PROMETHEUS_EXPORTER_ADDRESS) -> None:
-    if "PROMETHEUS_MULTIPROC_DIR" not in os.environ:
-        logger.error(
-            "prometheus-client is installed but PROMETHEUS_MULTIPROC_DIR is not set to a writeable directory."
-        )
-        sys.exit(1)
-
-    values.ValueClass = MultiProcessValue(worker_id)
-    atexit.register(multiprocess.mark_process_dead, worker_id())
-
-    server_socket = bind_socket(address)
-    server = WSGIServer(
-        server_socket,
-        application=export_metrics,
-        log=LoggingLogAdapter(logger, level=logging.DEBUG),
-        error_log=LoggingLogAdapter(logger, level=logging.ERROR),
-    )
-    logger.info(
-        "Prometheus metrics exported on server listening on %s%s",
-        address,
-        METRICS_ENDPOINT,
-    )
+    server = AdminServer(address=address, serve_metrics=True)
     server.start()
 
 
