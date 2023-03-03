@@ -1,5 +1,4 @@
 import contextlib
-import io
 import time
 import unittest
 
