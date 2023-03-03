@@ -57,12 +57,13 @@ def get_health_callback(raw_config: Dict[str, str]) -> bool:
         raw_config,
         {
             "health": {
-                "callback": config.Optional(config.Boolean),
+                "callback": config.Optional(config.String),
             }
         },
     )
 
-    if cfg.health.callback is not None:
+    if cfg.health.callback:
+        logger.info(f"selected callback is: {cfg.health.callback}")
         return load_function(cfg.health.callback)
 
     return lambda: False
