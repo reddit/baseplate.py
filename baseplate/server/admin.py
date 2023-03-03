@@ -136,14 +136,10 @@ class AdminServer:
             queries = urllib.parse.parse_qs(environ["QUERY_STRING"])
             check = queries.get("check", "liveness")
 
-            logger.info(check)
-            logger.info(queries)
-            logger.info(environ["QUERY_STRING"])
-
+            status = "ok"
+            response = "200 OK"
             if check == "liveness":
-                response_headers = [("content-type", "application/json")]
-                data = json.dumps({"service": "service_name", "status": "ok", "check_type": check})
-                start_response("200 OK", response_headers)
+                pass
             elif check == "startup" or check == "readiness":
                 if self.healthcheck():
                     status = "ok"
@@ -151,20 +147,15 @@ class AdminServer:
                 else:
                     status = "check_failed"
                     response = "503 Service Unavailable"
-
-                response_headers = [("content-type", "application/json")]
-                data = json.dumps(
-                    {"service": "service_name", "status": status, "check_type": check}
-                )
-                start_response(response, response_headers)
             else:
-                response_headers = [("content-type", "application/json")]
-                data = json.dumps(
-                    {"service": "service_name", "status": "error", "check_type": check}
-                ).encode("utf-8")
-                start_response("400 Bad Request", response_headers)
+                status = "error"
+                response = "400 Bad Request"
 
-            return [data]
+            logger.info(f"{check}, {status}, {response}")
+            response_headers = [("content-type", "application/json")]
+            data = json.dumps({"service": "service_name", "status": status, "check_type": check})
+            start_response(response, response_headers)
+            return [data.encode("utf-8")]
 
         start_response("404 Not Found", [("Content-Type", "text/plain")])
         return [b"Not Found"]
