@@ -268,7 +268,7 @@ class RemoteMessageQueue(MessageQueue):
             queue_name=self.name,
         ).inc()
 
-    def _put_success_callback(self, greenlet: Any) -> None:
+    def _put_success_callback(self, _: Any) -> None:
         self._update_counters("success")
 
     def _put_fail_callback(self, greenlet: Any) -> None:
@@ -276,7 +276,7 @@ class RemoteMessageQueue(MessageQueue):
         try:
             greenlet.get()
         except Exception as e:
-            logging.info("Remote queue `put` failed, exception found: ", e)
+            logging.info(f"Remote queue `put` failed, exception found: {e}")
 
     def get(self, _: Optional[float] = None) -> bytes:
         raise NotImplementedError  # This queue type is write-only

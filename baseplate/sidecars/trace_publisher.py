@@ -213,7 +213,8 @@ def publish_traces() -> None:
     if publisher_cfg.queue_type == QueueType.IN_MEMORY.value:
         # Start the Thrift server that communicates with RemoteMessageQueues and stores
         # data in a InMemoryMessageQueue
-        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
+        queues = {}
+        with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
             build_batch_and_publish(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
 
     else:
