@@ -220,6 +220,5 @@ def publish_traces() -> None:
         build_batch_and_publish(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
-
 if __name__ == "__main__":
     publish_traces()

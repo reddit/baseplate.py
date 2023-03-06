@@ -26,6 +26,7 @@ from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 DEFAULT_QUEUE_HOST = "127.0.0.1"
 DEFAULT_QUEUE_PORT = 9090
 
+
 class MessageQueueError(Exception):
     """Base exception for message queue related errors."""
 
