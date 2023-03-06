@@ -150,58 +150,44 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
 
     def test_put_get(self):
         # create the queue and start the server that would ordinarily be running on the sidecar
-        queues = {}
-        with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
+        imq = InMemoryMessageQueue(max_messages=10)
+        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9090):
             # create the corresponding queue that would ordinarily be on the main baseplate application/client-side
             mq = RemoteMessageQueue(self.qname, max_messages=10, pool_size=1)
             g = mq.put(b"x")
             gevent.joinall([g])
-            message = queues[self.qname].get(timeout=0.1)
+            message = imq.get(timeout=0.1)
             self.assertEqual(message, b"x")
 
-    def test_multiple_queues(self):
-        queues = {}
-        with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
-            mq1 = RemoteMessageQueue(self.qname, max_messages=10, pool_size=1)
-            mq2 = RemoteMessageQueue(self.qname + "2", max_messages=10, pool_size=1)
-
-            g = mq1.put(b"x", timeout=0.1)
-            g2 = mq2.put(b"a", timeout=0.1)
-
-            gevent.joinall([g, g2])
-            # Check the queues in reverse order
-            self.assertEqual(queues[self.qname + "2"].get(timeout=0.1), b"a")
-            self.assertEqual(queues[self.qname].get(timeout=0.1), b"x")
-
     def test_queues_alternate_port(self):
-        queues = {}
-        with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9091):
+        imq = InMemoryMessageQueue(max_messages=10)
+        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9091):
             mq = RemoteMessageQueue(self.qname, max_messages=10, port=9091, pool_size=1)
 
             g = mq.put(b"x", timeout=0.1)
             gevent.joinall([g])
-            self.assertEqual(queues[self.qname].get(timeout=2), b"x")
+            self.assertEqual(imq.get(timeout=2), b"x")
 
     def test_get_timeout(self):
-        queues = {}
-        with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
+        imq = InMemoryMessageQueue(max_messages=1)
+        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9090):
             _ = RemoteMessageQueue(
                 self.qname, max_messages=1, pool_size=1
             )  # create the empty queue
 
             start = time.time()
             with self.assertRaises(TimedOutError):
-                queues[self.qname].get(timeout=0.1)
+                imq.get(timeout=0.1)
             elapsed = time.time() - start
             self.assertAlmostEqual(
                 elapsed, 0.1, places=1
             )  # TODO: this routinely takes 0.105-0.11 seconds, is 1 place ok?
 
     def test_put_timeout(self):
-        queues = {}
+        imq = InMemoryMessageQueue(max_messages=1)
         # `put` is non-blocking, so if we try to put onto a full queue and a TimeOutError
         # is raised, we dont actually know unless we explicitly check
-        with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
+        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9090):
             mq = RemoteMessageQueue(self.qname, max_messages=1, pool_size=2)
 
             g = mq.put(b"x")  # fill the queue

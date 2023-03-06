@@ -7,7 +7,6 @@ import hmac
 import logging
 
 from typing import Any
-from typing import Dict
 from typing import List
 from typing import Optional
 
@@ -248,8 +247,7 @@ def publish_events() -> None:
     if cfg.queue_type == QueueType.IN_MEMORY.value:
         # Start the Thrift server that communicates with RemoteMessageQueues and stores
         # data in a InMemoryMessageQueue
-        queues: Dict[str, MessageQueue] = {}
-        with publisher_queue_utils.start_queue_server(queues, host="127.0.0.1", port=9090):
+        with publisher_queue_utils.start_queue_server(event_queue, host="127.0.0.1", port=9090):
             build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
     else:

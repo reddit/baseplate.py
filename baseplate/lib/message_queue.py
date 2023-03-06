@@ -241,9 +241,6 @@ class RemoteMessageQueue(MessageQueue):
         self.host = host
         self.port = port
         self.pool = self.create_connection_pool(pool_size, pool_timeout, pool_conn_max_age)
-        with self.pool.connection() as protocol:
-            client = RemoteMessageQueueService.Client(protocol)
-            client.create_queue(name, max_messages)
 
     def create_connection_pool(
         self, pool_size: int, pool_timeout: int, pool_conn_max_age: int
@@ -286,7 +283,7 @@ class RemoteMessageQueue(MessageQueue):
         with self.pool.connection() as protocol:
             client = RemoteMessageQueueService.Client(protocol)
             try:
-                client.put(self.name, message, timeout)
+                client.put(message, timeout)
 
                 # record latency
                 self.remote_queue_put_latency.labels(

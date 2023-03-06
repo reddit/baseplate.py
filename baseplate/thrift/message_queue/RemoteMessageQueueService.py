@@ -6,14 +6,13 @@
 #  options string: py:slots
 #
 import logging
-import sys
 
 from thrift.Thrift import TApplicationException
 from thrift.Thrift import TMessageType
 from thrift.Thrift import TProcessor
 from thrift.Thrift import TType
-from thrift.transport import TTransport
 from thrift.TRecursive import fix_spec
+from thrift.transport import TTransport
 
 from .ttypes import *
 
@@ -21,19 +20,9 @@ all_structs = []
 
 
 class Iface(object):
-    def create_queue(self, queue_name, max_messages):
+    def put(self, message, timeout):
         """
         Parameters:
-         - queue_name
-         - max_messages
-
-        """
-        pass
-
-    def put(self, queue_name, message, timeout):
-        """
-        Parameters:
-         - queue_name
          - message
          - timeout
 
@@ -48,57 +37,19 @@ class Client(Iface):
             self._oprot = oprot
         self._seqid = 0
 
-    def create_queue(self, queue_name, max_messages):
+    def put(self, message, timeout):
         """
         Parameters:
-         - queue_name
-         - max_messages
-
-        """
-        self.send_create_queue(queue_name, max_messages)
-        return self.recv_create_queue()
-
-    def send_create_queue(self, queue_name, max_messages):
-        self._oprot.writeMessageBegin("create_queue", TMessageType.CALL, self._seqid)
-        args = create_queue_args()
-        args.queue_name = queue_name
-        args.max_messages = max_messages
-        args.write(self._oprot)
-        self._oprot.writeMessageEnd()
-        self._oprot.trans.flush()
-
-    def recv_create_queue(self):
-        iprot = self._iprot
-        (fname, mtype, rseqid) = iprot.readMessageBegin()
-        if mtype == TMessageType.EXCEPTION:
-            x = TApplicationException()
-            x.read(iprot)
-            iprot.readMessageEnd()
-            raise x
-        result = create_queue_result()
-        result.read(iprot)
-        iprot.readMessageEnd()
-        if result.success is not None:
-            return result.success
-        raise TApplicationException(
-            TApplicationException.MISSING_RESULT, "create_queue failed: unknown result"
-        )
-
-    def put(self, queue_name, message, timeout):
-        """
-        Parameters:
-         - queue_name
          - message
          - timeout
 
         """
-        self.send_put(queue_name, message, timeout)
+        self.send_put(message, timeout)
         return self.recv_put()
 
-    def send_put(self, queue_name, message, timeout):
+    def send_put(self, message, timeout):
         self._oprot.writeMessageBegin("put", TMessageType.CALL, self._seqid)
         args = put_args()
-        args.queue_name = queue_name
         args.message = message
         args.timeout = timeout
         args.write(self._oprot)
@@ -129,7 +80,6 @@ class Processor(Iface, TProcessor):
     def __init__(self, handler):
         self._handler = handler
         self._processMap = {}
-        self._processMap["create_queue"] = Processor.process_create_queue
         self._processMap["put"] = Processor.process_put
         self._on_message_begin = None
 
@@ -155,36 +105,13 @@ class Processor(Iface, TProcessor):
             self._processMap[name](self, seqid, iprot, oprot)
         return True
 
-    def process_create_queue(self, seqid, iprot, oprot):
-        args = create_queue_args()
-        args.read(iprot)
-        iprot.readMessageEnd()
-        result = create_queue_result()
-        try:
-            result.success = self._handler.create_queue(args.queue_name, args.max_messages)
-            msg_type = TMessageType.REPLY
-        except TTransport.TTransportException:
-            raise
-        except TApplicationException as ex:
-            logging.exception("TApplication exception in handler")
-            msg_type = TMessageType.EXCEPTION
-            result = ex
-        except Exception:
-            logging.exception("Unexpected exception in handler")
-            msg_type = TMessageType.EXCEPTION
-            result = TApplicationException(TApplicationException.INTERNAL_ERROR, "Internal error")
-        oprot.writeMessageBegin("create_queue", msg_type, seqid)
-        result.write(oprot)
-        oprot.writeMessageEnd()
-        oprot.trans.flush()
-
     def process_put(self, seqid, iprot, oprot):
         args = put_args()
         args.read(iprot)
         iprot.readMessageEnd()
         result = put_result()
         try:
-            result.success = self._handler.put(args.queue_name, args.message, args.timeout)
+            result.success = self._handler.put(args.message, args.timeout)
             msg_type = TMessageType.REPLY
         except TTransport.TTransportException:
             raise
@@ -208,224 +135,24 @@ class Processor(Iface, TProcessor):
 # HELPER FUNCTIONS AND STRUCTURES
 
 
-class create_queue_args(object):
-    """
-    Attributes:
-     - queue_name
-     - max_messages
-
-    """
-
-    __slots__ = (
-        "queue_name",
-        "max_messages",
-    )
-
-    def __init__(
-        self,
-        queue_name=None,
-        max_messages=None,
-    ):
-        self.queue_name = queue_name
-        self.max_messages = max_messages
-
-    def read(self, iprot):
-        if (
-            iprot._fast_decode is not None
-            and isinstance(iprot.trans, TTransport.CReadableTransport)
-            and self.thrift_spec is not None
-        ):
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 1:
-                if ftype == TType.STRING:
-                    self.queue_name = (
-                        iprot.readString().decode("utf-8", errors="replace")
-                        if sys.version_info[0] == 2
-                        else iprot.readString()
-                    )
-                else:
-                    iprot.skip(ftype)
-            elif fid == 2:
-                if ftype == TType.I64:
-                    self.max_messages = iprot.readI64()
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin("create_queue_args")
-        if self.queue_name is not None:
-            oprot.writeFieldBegin("queue_name", TType.STRING, 1)
-            oprot.writeString(
-                self.queue_name.encode("utf-8") if sys.version_info[0] == 2 else self.queue_name
-            )
-            oprot.writeFieldEnd()
-        if self.max_messages is not None:
-            oprot.writeFieldBegin("max_messages", TType.I64, 2)
-            oprot.writeI64(self.max_messages)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
-        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        for attr in self.__slots__:
-            my_val = getattr(self, attr)
-            other_val = getattr(other, attr)
-            if my_val != other_val:
-                return False
-        return True
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
-all_structs.append(create_queue_args)
-create_queue_args.thrift_spec = (
-    None,  # 0
-    (
-        1,
-        TType.STRING,
-        "queue_name",
-        "UTF8",
-        None,
-    ),  # 1
-    (
-        2,
-        TType.I64,
-        "max_messages",
-        None,
-        None,
-    ),  # 2
-)
-
-
-class create_queue_result(object):
-    """
-    Attributes:
-     - success
-
-    """
-
-    __slots__ = ("success",)
-
-    def __init__(
-        self,
-        success=None,
-    ):
-        self.success = success
-
-    def read(self, iprot):
-        if (
-            iprot._fast_decode is not None
-            and isinstance(iprot.trans, TTransport.CReadableTransport)
-            and self.thrift_spec is not None
-        ):
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 0:
-                if ftype == TType.STRUCT:
-                    self.success = CreateResponse()
-                    self.success.read(iprot)
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin("create_queue_result")
-        if self.success is not None:
-            oprot.writeFieldBegin("success", TType.STRUCT, 0)
-            self.success.write(oprot)
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        return
-
-    def __repr__(self):
-        L = ["%s=%r" % (key, getattr(self, key)) for key in self.__slots__]
-        return "%s(%s)" % (self.__class__.__name__, ", ".join(L))
-
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        for attr in self.__slots__:
-            my_val = getattr(self, attr)
-            other_val = getattr(other, attr)
-            if my_val != other_val:
-                return False
-        return True
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
-all_structs.append(create_queue_result)
-create_queue_result.thrift_spec = (
-    (
-        0,
-        TType.STRUCT,
-        "success",
-        [CreateResponse, None],
-        None,
-    ),  # 0
-)
-
-
 class put_args(object):
     """
     Attributes:
-     - queue_name
      - message
      - timeout
 
     """
 
     __slots__ = (
-        "queue_name",
         "message",
         "timeout",
     )
 
     def __init__(
         self,
-        queue_name=None,
         message=None,
         timeout=None,
     ):
-        self.queue_name = queue_name
         self.message = message
         self.timeout = timeout
 
@@ -444,19 +171,10 @@ class put_args(object):
                 break
             if fid == 1:
                 if ftype == TType.STRING:
-                    self.queue_name = (
-                        iprot.readString().decode("utf-8", errors="replace")
-                        if sys.version_info[0] == 2
-                        else iprot.readString()
-                    )
-                else:
-                    iprot.skip(ftype)
-            elif fid == 2:
-                if ftype == TType.STRING:
                     self.message = iprot.readBinary()
                 else:
                     iprot.skip(ftype)
-            elif fid == 3:
+            elif fid == 2:
                 if ftype == TType.DOUBLE:
                     self.timeout = iprot.readDouble()
                 else:
@@ -471,18 +189,12 @@ class put_args(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin("put_args")
-        if self.queue_name is not None:
-            oprot.writeFieldBegin("queue_name", TType.STRING, 1)
-            oprot.writeString(
-                self.queue_name.encode("utf-8") if sys.version_info[0] == 2 else self.queue_name
-            )
-            oprot.writeFieldEnd()
         if self.message is not None:
-            oprot.writeFieldBegin("message", TType.STRING, 2)
+            oprot.writeFieldBegin("message", TType.STRING, 1)
             oprot.writeBinary(self.message)
             oprot.writeFieldEnd()
         if self.timeout is not None:
-            oprot.writeFieldBegin("timeout", TType.DOUBLE, 3)
+            oprot.writeFieldBegin("timeout", TType.DOUBLE, 2)
             oprot.writeDouble(self.timeout)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -515,24 +227,17 @@ put_args.thrift_spec = (
     (
         1,
         TType.STRING,
-        "queue_name",
-        "UTF8",
+        "message",
+        "BINARY",
         None,
     ),  # 1
     (
         2,
-        TType.STRING,
-        "message",
-        "BINARY",
-        None,
-    ),  # 2
-    (
-        3,
         TType.DOUBLE,
         "timeout",
         None,
         None,
-    ),  # 3
+    ),  # 2
 )
 
 
