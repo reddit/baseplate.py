@@ -11,8 +11,8 @@ from thrift.Thrift import TApplicationException
 from thrift.Thrift import TMessageType
 from thrift.Thrift import TProcessor
 from thrift.Thrift import TType
-from thrift.TRecursive import fix_spec
 from thrift.transport import TTransport
+from thrift.TRecursive import fix_spec
 
 from .ttypes import *
 

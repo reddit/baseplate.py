@@ -7,9 +7,8 @@
 #
 from thrift.Thrift import TException
 from thrift.Thrift import TType
-from thrift.TRecursive import fix_spec
-
 from thrift.transport import TTransport
+from thrift.TRecursive import fix_spec
 
 all_structs = []
 
