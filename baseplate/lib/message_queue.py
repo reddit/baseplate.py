@@ -276,7 +276,7 @@ class RemoteMessageQueue(MessageQueue):
         try:
             greenlet.get()
         except Exception as e:
-            logging.info(f"Remote queue `put` failed, exception found: {e}")
+            logging.info("Remote queue `put` failed, exception found: %s", e)
 
     def get(self, _: Optional[float] = None) -> bytes:
         raise NotImplementedError  # This queue type is write-only
