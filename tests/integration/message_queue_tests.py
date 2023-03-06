@@ -157,7 +157,6 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
             g = mq.put(b"x")
             gevent.joinall([g])
             message = queues[self.qname].get(timeout=0.1)
-            print("message: ", str(message))
             self.assertEqual(message, b"x")
 
     def test_multiple_queues(self):

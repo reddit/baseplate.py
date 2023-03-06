@@ -26,6 +26,7 @@ from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
+from baseplate.sidecars import publisher_queue_utils
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
 
@@ -174,14 +175,11 @@ def build_batch_and_publish(
 
         try:
             message = event_queue.get(timeout)
-        except TimedOutError:
-            message = None
-
-        try:
             batcher.add(message)
+        except TimedOutError:
             continue
         except BatchFull:
-            pass
+            continue
 
         serialized = batcher.serialize()
         try:
@@ -246,7 +244,14 @@ def publish_events() -> None:
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
     publisher = BatchPublisher(metrics_client, cfg)
 
-    build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
+    if cfg.queue_type == QueueType.IN_MEMORY.value:
+        # Start the Thrift server that communicates with RemoteMessageQueues and stores
+        # data in a InMemoryMessageQueue
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
+            build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
+
+    else:
+        build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
 if __name__ == "__main__":

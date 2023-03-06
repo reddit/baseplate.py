@@ -1,5 +1,6 @@
 """A message queue, with three implementations: POSIX-based, in-memory, or remote using a Thrift server."""
 import abc
+import logging
 import queue as q
 import select
 import time
@@ -24,8 +25,6 @@ from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 
 DEFAULT_QUEUE_HOST = "127.0.0.1"
 DEFAULT_QUEUE_PORT = 9090
-PROM_PREFIX = "message_queue"
-
 
 class MessageQueueError(Exception):
     """Base exception for message queue related errors."""
@@ -197,32 +196,29 @@ class RemoteMessageQueue(MessageQueue):
 
     prom_labels = [
         "queue_name",
-        "queue_host",
-        "queue_port",
-        "queue_max_messages",
     ]
 
-    remote_queue_put_requests_queued = Gauge(
-        f"{PROM_PREFIX}_pending_puts_to_sidecar",
+    remote_queue_put_length = Gauge(
+        "message_queue_length",
         "total number of queue requests in flight, being sent to the publishing sidecar.",
         prom_labels,
         multiprocess_mode="livesum",
     )
 
-    remote_queue_put_requests_success = Counter(
-        f"{PROM_PREFIX}_sidecar_put_success",
+    remote_queue_put_success = Counter(
+        "message_queue_sidecar_put_success",
         "successful queue requests sent to the publishing sidecar.",
         prom_labels,
     )
 
-    remote_queue_put_requests_fail = Counter(
-        f"{PROM_PREFIX}_sidecar_put_fail",
+    remote_queue_put_fail = Counter(
+        "message_queue_sidecar_put_fail",
         "failed queue requests sent to the publishing sidecar.",
         prom_labels,
     )
 
-    remote_queue_put_request_latency = Histogram(
-        f"{PROM_PREFIX}_sidecar_latency",
+    remote_queue_put_latency = Histogram(
+        "message_queue_sidecar_latency",
         "latency of message requests to the publishing sidecar.",
         prom_labels,
         buckets=default_latency_buckets,
@@ -259,35 +255,27 @@ class RemoteMessageQueue(MessageQueue):
 
     def _update_counters(self, outcome: str) -> None:
         # This request is no longer queued
-        self.remote_queue_put_requests_queued.labels(
+        self.remote_queue_put_length.labels(
             queue_name=self.name,
-            queue_host=self.host,
-            queue_port=self.port,
-            queue_max_messages=self.max_messages,
         ).dec()
         # Increment success/failure counters
         if outcome == "success":
-            metric = self.remote_queue_put_requests_success
+            metric = self.remote_queue_put_success
         else:
-            metric = self.remote_queue_put_requests_fail
+            metric = self.remote_queue_put_fail
         metric.labels(
             queue_name=self.name,
-            queue_host=self.host,
-            queue_port=self.port,
-            queue_max_messages=self.max_messages,
         ).inc()
 
     def _put_success_callback(self, greenlet: Any) -> None:
         self._update_counters("success")
-        gevent.joinall([greenlet])
 
     def _put_fail_callback(self, greenlet: Any) -> None:
         self._update_counters("fail")
-        gevent.joinall([greenlet])
         try:
             greenlet.get()
         except Exception as e:
-            print("Remote queue `put` failed, exception found: ", e)
+            logging.info("Remote queue `put` failed, exception found: ", e)
 
     def get(self, _: Optional[float] = None) -> bytes:
         raise NotImplementedError  # This queue type is write-only
@@ -300,11 +288,8 @@ class RemoteMessageQueue(MessageQueue):
                 client.put(self.name, message, timeout)
 
                 # record latency
-                self.remote_queue_put_request_latency.labels(
+                self.remote_queue_put_latency.labels(
                     queue_name=self.name,
-                    queue_host=self.host,
-                    queue_port=self.port,
-                    queue_max_messages=self.max_messages,
                 ).observe(time.perf_counter() - start_time)
                 return True  # Success
             # If the server responded with a timeout, raise our own timeout to be consistent with the posix queue
@@ -313,11 +298,8 @@ class RemoteMessageQueue(MessageQueue):
 
     def put(self, message: bytes, timeout: Optional[float] = None) -> Any:
         # increment in-flight counter
-        self.remote_queue_put_requests_queued.labels(
+        self.remote_queue_put_length.labels(
             queue_name=self.name,
-            queue_host=self.host,
-            queue_port=self.port,
-            queue_max_messages=self.max_messages,
         ).inc()
         start_time = time.perf_counter()
 

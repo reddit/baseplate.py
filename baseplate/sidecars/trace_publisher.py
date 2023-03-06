@@ -20,6 +20,7 @@ from baseplate.observers.tracing import MAX_QUEUE_SIZE
 from baseplate.observers.tracing import MAX_SPAN_SIZE
 from baseplate.server import EnvironmentInterpolation
 from baseplate.sidecars import BatchFull
+from baseplate.sidecars import publisher_queue_utils
 from baseplate.sidecars import RawJSONBatch
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
@@ -123,7 +124,7 @@ class ZipkinPublisher:
         )
 
 
-def build_and_publish_batch(
+def build_batch_and_publish(
     trace_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: ZipkinPublisher, timeout: float
 ) -> None:
     while True:
@@ -131,11 +132,9 @@ def build_and_publish_batch(
 
         try:
             message = trace_queue.get(timeout)
-        except TimedOutError:
-            message = None
-
-        try:
             batcher.add(message)
+        except TimedOutError:
+            continue
         except BatchFull:
             serialized = batcher.serialize()
             publisher.publish(serialized)
@@ -211,7 +210,15 @@ def publish_traces() -> None:
         post_timeout=publisher_cfg.post_timeout,
     )
 
-    build_and_publish_batch(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
+    if publisher_cfg.queue_type == QueueType.IN_MEMORY.value:
+        # Start the Thrift server that communicates with RemoteMessageQueues and stores
+        # data in a InMemoryMessageQueue
+        with publisher_queue_utils.start_queue_server(host="127.0.0.1", port=9090):
+            build_batch_and_publish(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
+
+    else:
+        build_batch_and_publish(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
+
 
 
 if __name__ == "__main__":
