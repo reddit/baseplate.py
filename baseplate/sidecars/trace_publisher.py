@@ -11,6 +11,7 @@ from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.lib import message_queue
 from baseplate.lib import metrics
+from baseplate.lib.message_queue import InMemoryMessageQueue
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import TimedOutError
@@ -210,7 +211,7 @@ def publish_traces() -> None:
         post_timeout=publisher_cfg.post_timeout,
     )
 
-    if publisher_cfg.queue_type == QueueType.IN_MEMORY.value:
+    if publisher_cfg.queue_type == QueueType.IN_MEMORY.value and isinstance(trace_queue, InMemoryMessageQueue):
         # Start the Thrift server that communicates with RemoteMessageQueues and stores
         # data in a InMemoryMessageQueue
         with publisher_queue_utils.start_queue_server(trace_queue, host="127.0.0.1", port=9090):
