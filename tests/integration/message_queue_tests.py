@@ -151,9 +151,9 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
     def test_put_get(self):
         # create the queue and start the server that would ordinarily be running on the sidecar
         imq = InMemoryMessageQueue(max_messages=10)
-        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9090):
+        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9091):
             # create the corresponding queue that would ordinarily be on the main baseplate application/client-side
-            mq = RemoteMessageQueue(self.qname, max_messages=10, pool_size=1)
+            mq = RemoteMessageQueue(self.qname, pool_size=1)
             g = mq.put(b"x")
             gevent.joinall([g])
             message = imq.get(timeout=0.1)
@@ -161,8 +161,8 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
 
     def test_queues_alternate_port(self):
         imq = InMemoryMessageQueue(max_messages=10)
-        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9091):
-            mq = RemoteMessageQueue(self.qname, max_messages=10, port=9091, pool_size=1)
+        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9092):
+            mq = RemoteMessageQueue(self.qname, port=9092, pool_size=1)
 
             g = mq.put(b"x", timeout=0.1)
             gevent.joinall([g])
@@ -170,10 +170,8 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
 
     def test_get_timeout(self):
         imq = InMemoryMessageQueue(max_messages=1)
-        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9090):
-            _ = RemoteMessageQueue(
-                self.qname, max_messages=1, pool_size=1
-            )  # create the empty queue
+        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9091):
+            _ = RemoteMessageQueue(self.qname, pool_size=1)  # create the empty queue
 
             start = time.time()
             with self.assertRaises(TimedOutError):
@@ -187,8 +185,8 @@ class TestRemoteMessageQueueCreation(GeventPatchedTestCase):
         imq = InMemoryMessageQueue(max_messages=1)
         # `put` is non-blocking, so if we try to put onto a full queue and a TimeOutError
         # is raised, we dont actually know unless we explicitly check
-        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9090):
-            mq = RemoteMessageQueue(self.qname, max_messages=1, pool_size=2)
+        with publisher_queue_utils.start_queue_server(imq, host="127.0.0.1", port=9091):
+            mq = RemoteMessageQueue(self.qname, pool_size=2)
 
             g = mq.put(b"x")  # fill the queue
             start = time.time()

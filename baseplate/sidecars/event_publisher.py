@@ -48,6 +48,9 @@ MAX_BATCH_AGE = 1
 MAX_BATCH_SIZE = 500 * 1024
 # Seconds to wait for get/put operations on the event queue
 QUEUE_TIMEOUT = 0.2
+# Default address for remote queue server
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 9091
 
 
 class MaxRetriesError(Exception):
@@ -173,7 +176,6 @@ def build_batch_and_publish(
     # Helper that continuously polls for messages, then batches and publishes them
     while True:
         message: Optional[bytes]
-
         try:
             message = event_queue.get(timeout)
             batcher.add(message)
@@ -230,6 +232,8 @@ def publish_events() -> None:
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
             "max_element_size": config.Optional(config.Integer, MAX_EVENT_SIZE),
             "queue_type": config.Optional(config.String, default=QueueType.POSIX.value),
+            "queue_host": config.Optional(config.String, DEFAULT_HOST),
+            "queue_port": config.Optional(config.Integer, DEFAULT_PORT),
         },
     )
 
@@ -250,7 +254,9 @@ def publish_events() -> None:
     ):
         # Start the Thrift server that communicates with RemoteMessageQueues and stores
         # data in a InMemoryMessageQueue
-        with publisher_queue_utils.start_queue_server(event_queue, host="127.0.0.1", port=9090):
+        with publisher_queue_utils.start_queue_server(
+            event_queue, host=cfg.queue_host, port=cfg.queue_port
+        ):
             build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
     else:

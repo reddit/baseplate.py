@@ -24,7 +24,7 @@ from baseplate.thrift.message_queue import RemoteMessageQueueService
 from baseplate.thrift.message_queue.ttypes import ThriftTimedOutError
 
 DEFAULT_QUEUE_HOST = "127.0.0.1"
-DEFAULT_QUEUE_PORT = 9090
+DEFAULT_QUEUE_PORT = 9091
 
 
 class MessageQueueError(Exception):
@@ -54,7 +54,7 @@ class MessageQueueOSError(OSError):
         super().__init__(f"{inner} (check `ulimit -q`?)")
 
 
-class QueueType(Enum):
+class QueueType(str, Enum):
     IN_MEMORY = "in_memory"
     POSIX = "posix"
 
@@ -228,16 +228,13 @@ class RemoteMessageQueue(MessageQueue):
     def __init__(
         self,
         name: str,
-        max_messages: int,
         host: str = DEFAULT_QUEUE_HOST,
         port: int = DEFAULT_QUEUE_PORT,
         pool_size: int = 10,
         pool_timeout: int = 1,
         pool_conn_max_age: int = 120,
     ):
-        # Connect to the remote queue server, and creeate the new queue
         self.name = name
-        self.max_messages = max_messages
         self.host = host
         self.port = port
         self.pool = self.create_connection_pool(pool_size, pool_timeout, pool_conn_max_age)
@@ -284,7 +281,6 @@ class RemoteMessageQueue(MessageQueue):
             client = RemoteMessageQueueService.Client(protocol)
             try:
                 client.put(message, timeout)
-
                 # record latency
                 self.remote_queue_put_latency.labels(
                     queue_name=self.name,
@@ -316,14 +312,17 @@ def create_queue(
     # The in-memory queue is created on the sidecar, and the main baseplate
     # application will use a remote queue to interact with it.
     if queue_type == QueueType.IN_MEMORY:
+        logging.debug("Using in memory message queue")
         event_queue = InMemoryMessageQueue(max_queue_size)
-
-    else:
+    elif queue_type == QueueType.POSIX:
+        logging.debug("Using posix message queue")
         event_queue = PosixMessageQueue(  # type: ignore
             queue_full_name,
             max_messages=max_queue_size,
             max_message_size=max_element_size,
         )
+    else:
+        raise f"Unknown queue type, options are [{QueueType.IN_MEMORY.value}, {QueueType.POSIX.value}]"
 
     return event_queue
 

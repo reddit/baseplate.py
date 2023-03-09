@@ -50,7 +50,6 @@ def start_queue_server(
     server_bind_endpoint = config.Endpoint(f"{host}:{port}")
     listener = make_listener(server_bind_endpoint)
     server = make_server(server_config={}, listener=listener, app=processor)
-
     # run the server until our caller is done with it
     server_greenlet = gevent.spawn(server.serve_forever)
     try:

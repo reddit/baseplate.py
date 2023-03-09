@@ -4,6 +4,10 @@ from typing import List
 from typing import NamedTuple
 from typing import Optional
 
+import gevent
+
+gevent.monkey.patch_all()
+
 
 class SerializedBatch(NamedTuple):
     item_count: int
