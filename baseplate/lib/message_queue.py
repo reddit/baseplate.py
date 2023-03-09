@@ -322,7 +322,7 @@ def create_queue(
             max_message_size=max_element_size,
         )
     else:
-        raise f"Unknown queue type, options are [{QueueType.IN_MEMORY.value}, {QueueType.POSIX.value}]"
+        raise Exception(f"Unknown queue type, options are [{QueueType.IN_MEMORY.value}, {QueueType.POSIX.value}]")
 
     return event_queue
 
