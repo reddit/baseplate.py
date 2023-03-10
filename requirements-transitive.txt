@@ -19,7 +19,7 @@ chardet==4.0.0
 click==7.1.2
 confluent-kafka==1.6.0
 coverage==5.4
-cryptography==3.4.4
+cryptography==39.0.1
 docutils==0.16
 geomet==0.2.1.post1
 gevent==21.1.2
@@ -58,7 +58,7 @@ pyenchant==3.2.0
 pyflakes==2.5.0
 Pygments==2.7.4
 pymemcache==1.4.3
-pyOpenSSL==20.0.1
+pyOpenSSL==23.0.0
 pyparsing==2.4.7
 pyramid==1.10.5
 python-json-logger==2.0.1
