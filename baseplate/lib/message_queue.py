@@ -296,8 +296,14 @@ class RemoteMessageQueue(MessageQueue):
             queue_name=self.name,
         ).inc()
         start_time = time.perf_counter()
-
-        greenlet = gevent.spawn(self._try_to_put, message, timeout, start_time)
+        try:
+            greenlet = gevent.spawn(self._try_to_put, message, timeout, start_time)
+        except Exception as e: 
+            # If the greenlet failed to spawn for some reason, log it as a failure
+            self._update_counters("fail")
+            logging.info("Remote queue `put` failed because gevent.spawn failed: %s", e)
+            raise e
+        # Process success/failure when the greenlet completes
         greenlet.link_value(self._put_success_callback)
         greenlet.link_exception(self._put_fail_callback)
         return greenlet
