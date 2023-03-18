@@ -167,20 +167,19 @@ class InMemoryMessageQueue(MessageQueue):
     """
 
     def __init__(self, max_messages: int):
-        self.queue: q.Queue = q.Queue(max_messages)
+        self.queue = gevent.queue.Queue(maxsize=max_messages)
         self.max_messages = max_messages
 
     def get(self, timeout: Optional[float] = None) -> bytes:
         try:
             message = self.queue.get(timeout=timeout)
-            self.queue.task_done()
             return message
         except q.Empty:
             raise TimedOutError
 
     def put(self, message: bytes, timeout: Optional[float] = None) -> None:
         try:
-            self.queue.put(message, timeout=timeout)
+            self.queue.put(message, block=False,timeout=timeout)
         except q.Full:
             raise TimedOutError
 

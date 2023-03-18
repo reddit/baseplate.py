@@ -5,7 +5,10 @@ import gzip
 import hashlib
 import hmac
 import logging
+import signal
+import sys
 
+from types import FrameType
 from typing import Any
 from typing import List
 from typing import Optional
@@ -171,30 +174,41 @@ class BatchPublisher:
         raise MaxRetriesError("could not sent batch")
 
 
-def build_batch_and_publish(
+SERIALIZER_BY_VERSION = {"2": V2Batch, "2j": V2JBatch}
+
+
+def serialize_and_publish_batch(publisher: BatchPublisher, batcher: TimeLimitedBatch) -> None:
+    """Serializes batch, publishes it using the publisher, and then resets the batch for more messages."""
+    serialized_batch = batcher.serialize()
+    try:
+        publisher.publish(serialized_batch)
+    except Exception:
+        logger.exception("Events publishing failed.")
+    batcher.reset()
+
+
+def build_and_publish_batch(
     event_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: BatchPublisher, timeout: float
 ) -> bytes:
-    # Helper that continuously polls for messages, then batches and publishes them
+    """Continuously polls for messages, then batches and publishes them."""
     while True:
         message: Optional[bytes]
         try:
             message = event_queue.get(timeout)
             batcher.add(message)
+            continue # We will publish on the next loop if batch full/queue empty
         except TimedOutError:
-            continue
+            message = None
+            pass # We may want to publish if we have other messages in the batch and time is up
         except BatchFull:
-            continue
+            batcher.is_full = True
+            pass # We want to publish bc batch is full
 
-        serialized = batcher.serialize()
-        try:
-            publisher.publish(serialized)
-        except Exception:
-            logger.exception("Events publishing failed.")
-        batcher.reset()
-        batcher.add(message)
+        if batcher.is_ready: # Time is up or batch is full
+            serialize_and_publish_batch(publisher, batcher)
 
-
-SERIALIZER_BY_VERSION = {"2": V2Batch, "2j": V2JBatch}
+            if message: # If we published because batch was full, we need to add the straggler we popped
+                batcher.add(message)
 
 
 def publish_events() -> None:
@@ -250,6 +264,27 @@ def publish_events() -> None:
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
     publisher = BatchPublisher(metrics_client, cfg)
 
+
+    def flush_queue_signal_handler(_signo: int, _frame: FrameType) -> None:
+        """Signal handler for flushing messages from the queue and publishing them."""
+        message: Optional[bytes]
+        logger.info("Shutdown signal received. Flushing events...")
+
+        while True:
+            try:
+                message = event_queue.get(timeout=0.2)
+            except TimedOutError:
+                # Once the queue drains, publish anything remaining and then exit
+                if len(batcher.serialize()) > 0:
+                    serialize_and_publish_batch(publisher, batcher)
+                break
+
+            if batcher.is_ready:
+                serialize_and_publish_batch(publisher, batcher)
+            batcher.add(message)
+        sys.exit(0)
+    
+
     if cfg.queue_type == QueueType.IN_MEMORY.value and isinstance(
         event_queue, InMemoryMessageQueue
     ):
@@ -259,10 +294,17 @@ def publish_events() -> None:
         with publisher_queue_utils.start_queue_server(
             event_queue, host=cfg.queue_host, port=cfg.queue_port
         ):
-            build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
+            for sig in (gevent.signal.SIGINT, gevent.signal.SIGTERM):
+                gevent.signal.signal(sig, flush_queue_signal_handler)
+                gevent.signal.siginterrupt(sig, False)
+            print("patched with gevent signal")
+            build_and_publish_batch(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
     else:
-        build_batch_and_publish(event_queue, batcher, publisher, QUEUE_TIMEOUT)
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(sig, flush_queue_signal_handler)
+            signal.siginterrupt(sig, False)
+        build_and_publish_batch(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
 if __name__ == "__main__":
