@@ -13,7 +13,6 @@ from typing import Any
 from typing import List
 from typing import Optional
 
-import gevent
 import requests
 
 from baseplate import __version__ as baseplate_version
