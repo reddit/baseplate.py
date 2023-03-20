@@ -196,18 +196,20 @@ def build_and_publish_batch(
         try:
             message = event_queue.get(timeout)
             batcher.add(message)
-            continue # We will publish on the next loop if batch full/queue empty
+            continue  # We will publish on the next loop if batch full/queue empty
         except TimedOutError:
             message = None
-            pass # We may want to publish if we have other messages in the batch and time is up
+            pass  # We may want to publish if we have other messages in the batch and time is up
         except BatchFull:
             batcher.is_full = True
-            pass # We want to publish bc batch is full
+            pass  # We want to publish bc batch is full
 
-        if batcher.is_ready: # Time is up or batch is full
+        if batcher.is_ready:  # Time is up or batch is full
             serialize_and_publish_batch(publisher, batcher)
 
-            if message: # If we published because batch was full, we need to add the straggler we popped
+            if (
+                message
+            ):  # If we published because batch was full, we need to add the straggler we popped
                 batcher.add(message)
 
 
@@ -264,7 +266,6 @@ def publish_events() -> None:
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
     publisher = BatchPublisher(metrics_client, cfg)
 
-
     def flush_queue_signal_handler(_signo: int, _frame: FrameType) -> None:
         """Signal handler for flushing messages from the queue and publishing them."""
         message: Optional[bytes]
@@ -283,7 +284,6 @@ def publish_events() -> None:
                 serialize_and_publish_batch(publisher, batcher)
             batcher.add(message)
         sys.exit(0)
-    
 
     if cfg.queue_type == QueueType.IN_MEMORY.value and isinstance(
         event_queue, InMemoryMessageQueue
