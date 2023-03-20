@@ -179,7 +179,7 @@ class InMemoryMessageQueue(MessageQueue):
 
     def put(self, message: bytes, timeout: Optional[float] = None) -> None:
         try:
-            self.queue.put(message, block=False, timeout=timeout)
+            self.queue.put(message, block=True, timeout=timeout)
         except q.Full:
             raise TimedOutError
 
