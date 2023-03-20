@@ -288,16 +288,13 @@ def publish_events() -> None:
     if cfg.queue_type == QueueType.IN_MEMORY.value and isinstance(
         event_queue, InMemoryMessageQueue
     ):
-        gevent.monkey.patch_all()
         # Start the Thrift server that communicates with RemoteMessageQueues and stores
         # data in a InMemoryMessageQueue
         with publisher_queue_utils.start_queue_server(
             event_queue, host=cfg.queue_host, port=cfg.queue_port
         ):
-            for sig in (gevent.signal.SIGINT, gevent.signal.SIGTERM):
-                gevent.signal.signal(sig, flush_queue_signal_handler)
-                gevent.signal.siginterrupt(sig, False)
-            print("patched with gevent signal")
+            # Note: shutting down gracefully with gevent is complicated, so we are not
+            # implementing for now. There is the possibility of event loss on shutdown.
             build_and_publish_batch(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
     else:
