@@ -196,13 +196,13 @@ def build_and_publish_batch(
         try:
             message = event_queue.get(timeout)
             batcher.add(message)
-            continue  # We will publish on the next loop if batch full/queue empty
+            continue  # Start loop again - we will publish on the next loop if batch full/queue empty
         except TimedOutError:
             message = None
-            pass  # We may want to publish if we have other messages in the batch and time is up
+            # Keep going - we may want to publish if we have other messages in the batch and time is up
         except BatchFull:
             batcher.is_full = True
-            pass  # We want to publish bc batch is full
+            # Keep going - we want to publish bc batch is full
 
         if batcher.is_ready:  # Time is up or batch is full
             serialize_and_publish_batch(publisher, batcher)
