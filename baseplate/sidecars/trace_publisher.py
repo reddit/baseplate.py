@@ -5,7 +5,6 @@ import urllib.parse
 
 from typing import Optional
 
-import gevent
 import requests
 
 from baseplate import __version__ as baseplate_version
@@ -215,7 +214,6 @@ def publish_traces() -> None:
     if publisher_cfg.queue_type == QueueType.IN_MEMORY.value and isinstance(
         trace_queue, InMemoryMessageQueue
     ):
-        gevent.monkey.patch_all()
         # Start the Thrift server that communicates with RemoteMessageQueues and stores
         # data in a InMemoryMessageQueue
         with publisher_queue_utils.start_queue_server(trace_queue, host="127.0.0.1", port=9090):
