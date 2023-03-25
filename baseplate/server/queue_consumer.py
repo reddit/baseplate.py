@@ -169,7 +169,7 @@ class QueueConsumer:
         while not self.stopped:
             try:
                 # We set a timeout so we can periodically check if we should
-                # stop, this way we will actually return if we have recieved a
+                # stop, this way we will actually return if we have received a
                 # `stop()` call rather than hanging in a `get` waiting for a
                 # new message.  If we did not do this, we would not be able to
                 # wait for all of our workers to finish before stopping the
