@@ -64,6 +64,10 @@ class TimeLimitedBatch(Batch):
             return 0
         return time.time() - self.batch_start
 
+    @property
+    def is_ready(self) -> bool:
+        return self.age >= self.max_age
+
     def add(self, item: Optional[bytes]) -> None:
         if self.age >= self.max_age:
             raise BatchFull
