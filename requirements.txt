@@ -9,7 +9,7 @@ boto3==1.21.20
 flake8==5.0.4
 lxml==4.6.5
 mypy==0.910
-prometheus-client==0.14.1
+prometheus-client==0.16.0
 pydocstyle==5.1.1
 pylint==2.15.3
 pytest==6.2.2
