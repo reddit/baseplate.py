@@ -17,7 +17,7 @@ extras_require = {
     "refcycle": ["objgraph>=3.0,<4.0"],
     "requests": ["advocate>=1.0.0,<2.0"],
     "s3fetcher": ["boto3>=1.18"],  # Kept for backwards compatibility, these are now main requirements
-    "sentry": ["sentry-sdk>=0.19,<1.0"],
+    "sentry": ["sentry-sdk>=0.19,<2.0"],
     "sql": ["sqlalchemy>=1.1.0,<2.0"],
     "zookeeper": ["kazoo>=2.5.0,<3.0"],
 }
@@ -44,7 +44,7 @@ setup(
         "posix_ipc>=1.0.0,<2.0",
         "python-json-logger>=2.0,<3.0",
         "requests>=2.21.0,<3.0",
-        "thrift-unofficial>=0.14.1,<1.0",
+        "thrift>=0.14.1,<1.0",
         "gevent>=20.5.0",
         "prometheus-client>=0.12.0",
     ],
