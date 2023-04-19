@@ -244,6 +244,18 @@ def File(mode: str = "r") -> Callable[[str], IO]:  # noqa: D401
 
     return open_file
 
+def DateTime(text: str) -> datetime.datetime:
+    if not text:
+        raise ValueError("expected a time")
+
+    return datetime.datetime.fromisoformat(text)
+
+def Date(text: str) -> datetime.date:
+    if not text:
+        raise ValueError("expected a date")
+
+    return datetime.date.fromisoformat(text)
+
 
 def Timespan(text: str) -> datetime.timedelta:  # noqa: D401
     """A span of time.
