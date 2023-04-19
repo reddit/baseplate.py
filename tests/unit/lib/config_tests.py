@@ -130,18 +130,20 @@ class DateTimeTests(unittest.TestCase):
     def test_invalid(self):
         with self.assertRaises(ValueError):
             config.DateTime("2020-20-19T11:53:00")
+
     def test_valid(self):
-        self.assertEqual(config.DateTime("2023-04-19T11:53:26"),
-                         datetime.datetime(2023, 4, 19, 11, 53, 26))
+        self.assertEqual(
+            config.DateTime("2023-04-19T11:53:26"), datetime.datetime(2023, 4, 19, 11, 53, 26)
+        )
 
 
 class DateTests(unittest.TestCase):
     def test_invalid(self):
         with self.assertRaises(ValueError):
             config.DateTime("2020-20-00")
+
     def test_valid(self):
-        self.assertEqual(config.DateTime("2020-01-01"),
-                         datetime.date(2020, 1, 1))
+        self.assertEqual(config.DateTime("2020-01-01"), datetime.date(2020, 1, 1))
 
 
 class TimespanTests(unittest.TestCase):

@@ -244,11 +244,13 @@ def File(mode: str = "r") -> Callable[[str], IO]:  # noqa: D401
 
     return open_file
 
+
 def DateTime(text: str) -> datetime.datetime:
     if not text:
         raise ValueError("expected a time")
 
     return datetime.datetime.fromisoformat(text)
+
 
 def Date(text: str) -> datetime.date:
     if not text:
