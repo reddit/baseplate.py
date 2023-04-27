@@ -149,6 +149,17 @@ def test_internal_client_sends_headers(http_server):
         assert http_server.requests[0].span.id != context.span.id
         assert http_server.requests[0].raw_edge_context == b"test payload"
 
+        setattr(context, "raw_edge_context", None)
+        response = context.internal.get(http_server.url)
+
+        assert response.status_code == 204
+        assert response.text == ""
+        assert http_server.requests[1].method == "GET"
+        assert http_server.requests[1].span.trace_id == context.span.trace_id
+        assert http_server.requests[1].span.parent_id == context.span.id
+        assert http_server.requests[1].span.id != context.span.id
+        assert http_server.requests[1].raw_edge_context is None
+
 
 def test_external_client_doesnt_send_headers(http_server):
     baseplate = Baseplate(
