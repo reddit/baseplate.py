@@ -297,9 +297,12 @@ def load_app_and_run_server() -> None:
         SERVER_STATE.state = ServerLifecycle.SHUTTING_DOWN
 
         cfg = parse_config(config.server, {"drain_time": OptionalConfig(Timespan)})
+        # Default drain time across all baseplate apps
+        drain_time_seconds = 5
         if cfg.drain_time:
-            logger.debug("Draining inbound requests...")
-            time.sleep(cfg.drain_time.total_seconds())
+            drain_time_seconds = cfg.drain_time.total_seconds()
+        logger.debug("Draining inbound requests...")
+        time.sleep(drain_time_seconds)
     finally:
         logger.debug("Gracefully shutting down...")
         server.stop()
