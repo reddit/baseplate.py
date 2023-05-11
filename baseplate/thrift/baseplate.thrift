@@ -226,4 +226,6 @@ exception Error {
     this request.
     */
     4: optional bool retryable
-}
+} (
+    python.immutable = "false",
+)

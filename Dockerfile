@@ -1,6 +1,6 @@
-FROM ghcr.io/reddit/thrift-compiler:0.14.1 AS thrift
+FROM ghcr.io/reddit/thrift-compiler:0.18.1 AS thrift
 
-FROM python:3.9
+FROM python:3.11
 
 COPY --from=thrift /usr/local/bin/thrift /usr/local/bin/thrift
 
@@ -12,6 +12,7 @@ WORKDIR /src
 ENV CASS_DRIVER_NO_EXTENSIONS theytaketoolongtobuild
 
 COPY requirements*.txt ./
+
 RUN pip install -r requirements.txt
 
 RUN touch /baseplate-py-dev-docker-image
