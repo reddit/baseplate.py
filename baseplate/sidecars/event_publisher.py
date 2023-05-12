@@ -20,13 +20,17 @@ from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.events import MAX_EVENT_SIZE
 from baseplate.lib.events import MAX_QUEUE_SIZE
+from baseplate.lib.message_queue import create_queue
+from baseplate.lib.message_queue import InMemoryMessageQueue
 from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
 from baseplate.sidecars import Batch
 from baseplate.sidecars import BatchFull
+from baseplate.sidecars import publisher_queue_utils
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
 
@@ -45,6 +49,11 @@ MAX_RETRY_TIME = 5 * 60
 MAX_BATCH_AGE = 1
 # maximum size (in bytes) of a batch of events
 MAX_BATCH_SIZE = 500 * 1024
+# Seconds to wait for get/put operations on the event queue
+QUEUE_TIMEOUT = 0.2
+# Default address for remote queue server
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 9091
 
 
 class MaxRetriesError(Exception):
@@ -177,6 +186,32 @@ def serialize_and_publish_batch(publisher: BatchPublisher, batcher: TimeLimitedB
     batcher.reset()
 
 
+def build_and_publish_batch(
+    event_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: BatchPublisher, timeout: float
+) -> bytes:
+    """Continuously polls for messages, then batches and publishes them."""
+    while True:
+        message: Optional[bytes]
+        try:
+            message = event_queue.get(timeout)
+            batcher.add(message)
+            continue  # Start loop again - we will publish on the next loop if batch full/queue empty
+        except TimedOutError:
+            message = None
+            # Keep going - we may want to publish if we have other messages in the batch and time is up
+        except BatchFull:
+            batcher.is_full = True
+            # Keep going - we want to publish bc batch is full
+
+        if batcher.is_ready:  # Time is up or batch is full
+            serialize_and_publish_batch(publisher, batcher)
+
+            if (
+                message
+            ):  # If we published because batch was full, we need to add the straggler we popped
+                batcher.add(message)
+
+
 def publish_events() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
@@ -211,15 +246,18 @@ def publish_events() -> None:
             },
             "key": {"name": config.String, "secret": config.Base64},
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
+            "max_element_size": config.Optional(config.Integer, MAX_EVENT_SIZE),
+            "queue_type": config.Optional(config.String, default=QueueType.POSIX.value),
+            "queue_host": config.Optional(config.String, DEFAULT_HOST),
+            "queue_port": config.Optional(config.Integer, DEFAULT_PORT),
         },
     )
 
     metrics_client = metrics_client_from_config(raw_config)
 
-    event_queue = MessageQueue(
-        "/events-" + args.queue_name,
-        max_messages=cfg.max_queue_size,
-        max_message_size=MAX_EVENT_SIZE,
+    queue_name = f"/events-{args.queue_name}"
+    event_queue: MessageQueue = create_queue(
+        cfg.queue_type, queue_name, cfg.max_queue_size, cfg.max_element_size
     )
 
     # pylint: disable=maybe-no-member
@@ -236,6 +274,7 @@ def publish_events() -> None:
             try:
                 message = event_queue.get(timeout=0.2)
             except TimedOutError:
+                # Once the queue drains, publish anything remaining and then exit
                 if len(batcher.serialize()) > 0:
                     serialize_and_publish_batch(publisher, batcher)
                 break
@@ -245,21 +284,23 @@ def publish_events() -> None:
             batcher.add(message)
         sys.exit(0)
 
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(sig, flush_queue_signal_handler)
-        signal.siginterrupt(sig, False)
+    if cfg.queue_type == QueueType.IN_MEMORY.value and isinstance(
+        event_queue, InMemoryMessageQueue
+    ):
+        # Start the Thrift server that communicates with RemoteMessageQueues and stores
+        # data in a InMemoryMessageQueue
+        with publisher_queue_utils.start_queue_server(
+            event_queue, host=cfg.queue_host, port=cfg.queue_port
+        ):
+            # Note: shutting down gracefully with gevent is complicated, so we are not
+            # implementing for now. There is the possibility of event loss on shutdown.
+            build_and_publish_batch(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
-    while True:
-        message: Optional[bytes]
-
-        try:
-            message = event_queue.get(timeout=0.2)
-        except TimedOutError:
-            message = None
-
-        if batcher.is_ready:
-            serialize_and_publish_batch(publisher, batcher)
-        batcher.add(message)
+    else:
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(sig, flush_queue_signal_handler)
+            signal.siginterrupt(sig, False)
+        build_and_publish_batch(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
 if __name__ == "__main__":

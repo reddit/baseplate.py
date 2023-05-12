@@ -9,8 +9,11 @@ import requests
 
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
+from baseplate.lib import message_queue
 from baseplate.lib import metrics
+from baseplate.lib.message_queue import InMemoryMessageQueue
 from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import QueueType
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
@@ -18,6 +21,7 @@ from baseplate.observers.tracing import MAX_QUEUE_SIZE
 from baseplate.observers.tracing import MAX_SPAN_SIZE
 from baseplate.server import EnvironmentInterpolation
 from baseplate.sidecars import BatchFull
+from baseplate.sidecars import publisher_queue_utils
 from baseplate.sidecars import RawJSONBatch
 from baseplate.sidecars import SerializedBatch
 from baseplate.sidecars import TimeLimitedBatch
@@ -36,6 +40,9 @@ MAX_BATCH_AGE = 1
 
 # maximum number of retries when publishing traces
 RETRY_LIMIT_DEFAULT = 10
+
+# Seconds to wait for get/put operations on the event queue
+QUEUE_TIMEOUT = 0.2
 
 
 class MaxRetriesError(Exception):
@@ -118,6 +125,24 @@ class ZipkinPublisher:
         )
 
 
+def build_batch_and_publish(
+    trace_queue: MessageQueue, batcher: TimeLimitedBatch, publisher: ZipkinPublisher, timeout: float
+) -> None:
+    while True:
+        message: Optional[bytes]
+
+        try:
+            message = trace_queue.get(timeout)
+            batcher.add(message)
+        except TimedOutError:
+            continue
+        except BatchFull:
+            serialized = batcher.serialize()
+            publisher.publish(serialized)
+            batcher.reset()
+            batcher.add(message)
+
+
 def publish_traces() -> None:
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument(
@@ -129,6 +154,12 @@ def publish_traces() -> None:
         help="name of trace queue / publisher config (default: main)",
     )
     arg_parser.add_argument(
+        "--queue-type",
+        default=QueueType.POSIX.value,
+        choices=[qt.value for qt in QueueType],
+        help="allows selection of the queue implementation",
+    )
+    arg_parser.add_argument(
         "--debug", default=False, action="store_true", help="enable debug logging"
     )
     arg_parser.add_argument(
@@ -137,6 +168,7 @@ def publish_traces() -> None:
         metavar="NAME",
         help="name of app to load from config_file (default: main)",
     )
+
     args = arg_parser.parse_args()
 
     if args.debug:
@@ -157,13 +189,16 @@ def publish_traces() -> None:
             "max_batch_size": config.Optional(config.Integer, MAX_BATCH_SIZE_DEFAULT),
             "retry_limit": config.Optional(config.Integer, RETRY_LIMIT_DEFAULT),
             "max_queue_size": config.Optional(config.Integer, MAX_QUEUE_SIZE),
+            "max_element_size": config.Optional(config.Integer, MAX_SPAN_SIZE),
+            "queue_type": config.Optional(config.String, default=QueueType.POSIX.value),
         },
     )
 
-    trace_queue = MessageQueue(
+    trace_queue: MessageQueue = message_queue.create_queue(
+        publisher_cfg.queue_type,
         "/traces-" + args.queue_name,
-        max_messages=publisher_cfg.max_queue_size,
-        max_message_size=MAX_SPAN_SIZE,
+        publisher_cfg.max_queue_size,
+        publisher_cfg.max_element_size,
     )
 
     # pylint: disable=maybe-no-member
@@ -176,21 +211,16 @@ def publish_traces() -> None:
         post_timeout=publisher_cfg.post_timeout,
     )
 
-    while True:
-        message: Optional[bytes]
+    if publisher_cfg.queue_type == QueueType.IN_MEMORY.value and isinstance(
+        trace_queue, InMemoryMessageQueue
+    ):
+        # Start the Thrift server that communicates with RemoteMessageQueues and stores
+        # data in a InMemoryMessageQueue
+        with publisher_queue_utils.start_queue_server(trace_queue, host="127.0.0.1", port=9090):
+            build_batch_and_publish(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
 
-        try:
-            message = trace_queue.get(timeout=0.2)
-        except TimedOutError:
-            message = None
-
-        try:
-            batcher.add(message)
-        except BatchFull:
-            serialized = batcher.serialize()
-            publisher.publish(serialized)
-            batcher.reset()
-            batcher.add(message)
+    else:
+        build_batch_and_publish(trace_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
 if __name__ == "__main__":

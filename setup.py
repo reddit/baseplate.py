@@ -55,6 +55,8 @@ setup(
         "bin/baseplate-shell",
         "bin/baseplate-tshell",
         "bin/baseplate-healthcheck",
+        "bin/baseplate-sidecar-event",
+        "bin/baseplate-sidecar-trace",
     ],
     # the thrift compiler must be able to find baseplate.thrift to build
     # services which extend BaseplateService.

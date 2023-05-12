@@ -14,6 +14,7 @@ import logging
 from typing import Any
 from typing import Callable
 from typing import Generic
+from typing import Optional
 from typing import TypeVar
 
 from thrift import TSerialization
@@ -23,6 +24,7 @@ from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 
 
@@ -90,13 +92,23 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
     :param event_serializer: A callable that takes an event object
         and returns serialized bytes ready to send on the wire. See below for
         options.
+    :param queue: An optional MessageQueue that will be used for queueing and
+        publishing messages. If no queue is provided, a PosixMessageQueue will
+        be used.
 
     """
 
-    def __init__(self, name: str, event_serializer: Callable[[T], bytes]):
-        self.queue = MessageQueue(
-            "/events-" + name, max_messages=MAX_QUEUE_SIZE, max_message_size=MAX_EVENT_SIZE
-        )
+    def __init__(
+        self,
+        name: str,
+        event_serializer: Callable[[T], bytes],
+        queue: Optional[MessageQueue] = None,
+    ):
+        if queue:
+            self.queue = queue
+        else:
+            self.queue = PosixMessageQueue("/events-" + name, MAX_QUEUE_SIZE, MAX_EVENT_SIZE)
+
         self.serialize_event = event_serializer
 
     def put(self, event: T) -> None:
@@ -121,6 +133,15 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
             self.queue.put(serialized, timeout=0)
         except TimedOutError:
             raise EventQueueFullError
+
+    def get(self) -> bytes:
+        """Get an event from the queue.
+
+        :returns bytes: The next event in the queue.
+        :raises: :py:exc:`TimedOutError` There were no elements in the queue.
+
+        """
+        return self.queue.get()
 
     def make_object_for_context(self, name: str, span: Span) -> "EventQueue[T]":
         return self

@@ -27,10 +27,10 @@ process pair (run the producer then the consumer):
 .. testcode::
 
     # producer.py
-    from baseplate.lib.message_queue import MessageQueue
+    from baseplate.lib.message_queue import PosixMessageQueue
 
     # If the queue doesn't already exist, we'll create it.
-    mq = MessageQueue(
+    mq = PosixMessageQueue(
         "/baseplate-testing", max_messages=1, max_message_size=1)
     message = "1"
     mq.put(message)
@@ -48,9 +48,9 @@ POSIX message queue. Next up, run the consumer:
 .. testcode::
 
     # consumer.py
-    from baseplate.lib.message_queue import MessageQueue
+    from baseplate.lib.message_queue import PosixMessageQueue
 
-    mq = MessageQueue(
+    mq = PosixMessageQueue(
         "/baseplate-testing", max_messages=1, max_message_size=1)
     # Unless a `timeout` kwarg is passed, this will block until
     # we can pop a message from the queue.
@@ -97,8 +97,8 @@ up seeing a vague ``ValueError`` exception. Here's an example:
 
 .. code-block:: pycon
 
-    >>> from baseplate.lib.message_queue import MessageQueue
-    >>> mq = MessageQueue(
+    >>> from baseplate.lib.message_queue import PosixMessageQueue
+    >>> mq = PosixMessageQueue(
             "/over-the-limit", max_messages=11, max_message_size=8096)
     Traceback (most recent call last):
       File "<input>", line 2, in <module>
@@ -138,7 +138,10 @@ See ``--help`` for more info.
 
 .. automodule:: baseplate.lib.message_queue
 
-.. autoclass:: MessageQueue
+.. autoclass:: PosixMessageQueue
+   :members:
+
+.. autoclass:: InMemoryMessageQueue
    :members:
 
 

@@ -2,7 +2,6 @@
 import collections
 import json
 import logging
-import queue
 import random
 import socket
 import threading
@@ -10,6 +9,8 @@ import time
 import typing
 
 from datetime import datetime
+from queue import Empty
+from queue import Queue
 from typing import Any
 from typing import DefaultDict
 from typing import Dict
@@ -30,14 +31,15 @@ from baseplate import SpanObserver
 from baseplate.lib import config
 from baseplate.lib import warn_deprecated
 from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import PosixMessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.observers.timeout import ServerTimeout
 
 
 if typing.TYPE_CHECKING:
-    SpanQueue = queue.Queue["TraceSpanObserver"]  # pylint: disable=unsubscriptable-object
+    SpanQueue = Queue["TraceSpanObserver"]  # pylint: disable=unsubscriptable-object
 else:
-    SpanQueue = queue.Queue
+    SpanQueue = Queue
 
 
 logger = logging.getLogger(__name__)
@@ -421,7 +423,7 @@ class BaseBatchRecorder(Recorder):
     def __init__(
         self, max_queue_size: int, num_workers: int, max_span_batch: int, batch_wait_interval: float
     ):
-        self.span_queue: SpanQueue = queue.Queue(maxsize=max_queue_size)
+        self.span_queue: SpanQueue = Queue(maxsize=max_queue_size)
         self.batch_wait_interval = batch_wait_interval
         self.max_span_batch = max_span_batch
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -444,7 +446,7 @@ class BaseBatchRecorder(Recorder):
             try:
                 while len(spans) < self.max_span_batch:
                     spans.append(self.span_queue.get_nowait()._serialize())
-            except queue.Empty:
+            except Empty:
                 pass
             finally:
                 if spans:
@@ -539,18 +541,21 @@ class TraceQueueFullError(Exception):
 
 
 class SidecarRecorder(Recorder):
-    """Interface for recording spans to a POSIX message queue.
+    """Interface for recording spans to a message queue.
 
     The SidecarRecorder serializes spans to a string representation before
     adding them to the queue.
     """
 
-    def __init__(self, queue_name: str):
-        self.queue = MessageQueue(
-            "/traces-" + queue_name,
-            max_messages=MAX_QUEUE_SIZE,
-            max_message_size=MAX_SPAN_SIZE,
-        )
+    def __init__(
+        self,
+        queue_name: str,
+        queue: Optional[MessageQueue] = None,
+    ):
+        if queue:
+            self.queue = queue
+        else:
+            self.queue = PosixMessageQueue("/traces-" + queue_name, MAX_QUEUE_SIZE, MAX_SPAN_SIZE)
 
     def send(self, span: TraceSpanObserver) -> None:
         # Don't raise exceptions from here. This is called in the
@@ -561,7 +566,7 @@ class SidecarRecorder(Recorder):
                 "Trace too big. Traces published to %s are not allowed to be larger "
                 "than %d bytes. Received trace is %d bytes. This can be caused by "
                 "an excess amount of tags or a large amount of child spans.",
-                self.queue.queue.name,
+                self.queue.name,
                 MAX_SPAN_SIZE,
                 len(serialized_str),
             )
@@ -569,9 +574,7 @@ class SidecarRecorder(Recorder):
         try:
             self.queue.put(serialized_str, timeout=0)
         except TimedOutError:
-            logger.warning(
-                "Trace queue %s is full. Is trace sidecar healthy?", self.queue.queue.name
-            )
+            logger.warning("Trace queue %s is full. Is trace sidecar healthy?", self.queue.name)
 
 
 def tracing_client_from_config(

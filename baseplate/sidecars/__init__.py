@@ -57,6 +57,7 @@ class TimeLimitedBatch(Batch):
         self.batch = inner
         self.batch_start: Optional[float] = None
         self.max_age = max_age
+        self.is_full = False
 
     @property
     def age(self) -> float:
@@ -66,7 +67,7 @@ class TimeLimitedBatch(Batch):
 
     @property
     def is_ready(self) -> bool:
-        return self.age >= self.max_age
+        return self.is_full or self.age >= self.max_age
 
     def add(self, item: Optional[bytes]) -> None:
         if self.age >= self.max_age:
@@ -83,3 +84,4 @@ class TimeLimitedBatch(Batch):
     def reset(self) -> None:
         self.batch.reset()
         self.batch_start = None
+        self.is_full = False
