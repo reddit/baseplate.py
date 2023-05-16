@@ -240,9 +240,13 @@ def publish_events() -> None:
                     serialize_and_publish_batch(publisher, batcher)
                 break
 
-            if batcher.is_ready:
-                serialize_and_publish_batch(publisher, batcher)
-            batcher.add(message)
+            try:
+                batcher.add(message)
+                continue
+            except BatchFull:
+                pass
+            
+            serialize_and_publish_batch(publisher, batcher)
         sys.exit(0)
 
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -257,9 +261,13 @@ def publish_events() -> None:
         except TimedOutError:
             message = None
 
-        if batcher.is_ready:
-            serialize_and_publish_batch(publisher, batcher)
-        batcher.add(message)
+        try:
+            batcher.add(message)
+            continue
+        except BatchFull:
+            pass
+
+        serialize_and_publish_batch(publisher, batcher)
 
 
 if __name__ == "__main__":
