@@ -5,10 +5,7 @@ import gzip
 import hashlib
 import hmac
 import logging
-import signal
-import sys
 
-from types import FrameType
 from typing import Any
 from typing import List
 from typing import Optional
@@ -192,24 +189,20 @@ def build_and_publish_batch(
     """Continuously polls for messages, then batches and publishes them."""
     while True:
         message: Optional[bytes]
+
         try:
-            message = event_queue.get(timeout)
-            batcher.add(message)
-            continue  # Start loop again - we will publish on the next loop if batch full/queue empty
+            message = event_queue.get(timeout=timeout)
         except TimedOutError:
             message = None
-            # Keep going - we may want to publish if we have other messages in the batch and time is up
+
+        try:
+            batcher.add(message)
+            continue
         except BatchFull:
-            batcher.is_full = True
-            # Keep going - we want to publish bc batch is full
+            pass
 
-        if batcher.is_ready:  # Time is up or batch is full
-            serialize_and_publish_batch(publisher, batcher)
-
-            if (
-                message
-            ):  # If we published because batch was full, we need to add the straggler we popped
-                batcher.add(message)
+        serialize_and_publish_batch(publisher, batcher)
+        batcher.add(message)
 
 
 def publish_events() -> None:
@@ -265,25 +258,6 @@ def publish_events() -> None:
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
     publisher = BatchPublisher(metrics_client, cfg)
 
-    def flush_queue_signal_handler(_signo: int, _frame: FrameType) -> None:
-        """Signal handler for flushing messages from the queue and publishing them."""
-        message: Optional[bytes]
-        logger.info("Shutdown signal received. Flushing events...")
-
-        while True:
-            try:
-                message = event_queue.get(timeout=0.2)
-            except TimedOutError:
-                # Once the queue drains, publish anything remaining and then exit
-                if len(batcher.serialize()) > 0:
-                    serialize_and_publish_batch(publisher, batcher)
-                break
-
-            if batcher.is_ready:
-                serialize_and_publish_batch(publisher, batcher)
-            batcher.add(message)
-        sys.exit(0)
-
     if cfg.queue_type == QueueType.IN_MEMORY.value and isinstance(
         event_queue, InMemoryMessageQueue
     ):
@@ -297,9 +271,6 @@ def publish_events() -> None:
             build_and_publish_batch(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
     else:
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            signal.signal(sig, flush_queue_signal_handler)
-            signal.siginterrupt(sig, False)
         build_and_publish_batch(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
 
