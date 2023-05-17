@@ -273,5 +273,6 @@ def publish_events() -> None:
     else:
         build_and_publish_batch(event_queue, batcher, publisher, QUEUE_TIMEOUT)
 
+
 if __name__ == "__main__":
     publish_events()
