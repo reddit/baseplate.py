@@ -247,6 +247,7 @@ def publish_events() -> None:
                 pass
             
             serialize_and_publish_batch(publisher, batcher)
+            batcher.add(message)
         sys.exit(0)
 
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -268,6 +269,7 @@ def publish_events() -> None:
             pass
 
         serialize_and_publish_batch(publisher, batcher)
+        batcher.add(message)
 
 
 if __name__ == "__main__":
