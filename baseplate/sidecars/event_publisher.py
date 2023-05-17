@@ -245,7 +245,7 @@ def publish_events() -> None:
                 continue
             except BatchFull:
                 pass
-            
+
             serialize_and_publish_batch(publisher, batcher)
             batcher.add(message)
         sys.exit(0)
