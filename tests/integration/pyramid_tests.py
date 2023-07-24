@@ -194,6 +194,14 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertFalse(self.observer.on_server_span_created.called)
         self.assertFalse(self.context_init_event_subscriber.called)
 
+    def test_not_found_echo_path(self):
+        # confirm that issue #800 isn't reintroduced. This is an issue where we
+        # echo the path to the 404 in the response which probably isn't a
+        # problem, but does show up in automated vuln scans which can cause some
+        # extra work hunting down false positives
+        resp = self.test_app.get("/doesnt_exist", status=404)
+        self.assertNotIn(b"doesnt_exist", resp.body)
+
     def test_exception_caught(self):
         with self.assertRaises(TestException):
             self.test_app.get("/example?error")
