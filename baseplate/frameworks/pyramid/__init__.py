@@ -412,6 +412,7 @@ class BaseplateConfigurator:
         config.set_request_factory(RequestFactory(self.baseplate))
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
         config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
+        config.add_notfound_view(notfound_override)
 
         # Position of the tween is important. We need it to cover all code
         # that can written in the app. This means that it should be above
@@ -444,3 +445,7 @@ def get_is_healthy_probe(request: Request) -> int:
             code,
         )
         return IsHealthyProbe.READINESS
+
+
+def notfound_override(_request: Request) -> Response:
+    return Response("Not Found", status="404 Not Found")
