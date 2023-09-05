@@ -185,7 +185,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     )
 
     PROM_LABELS = [
-        "sql_pool",
+        "sql_client_name",
         "sql_address",
         "sql_database",
     ]
@@ -248,7 +248,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     ) -> Tuple[str, Parameters]:
         """Handle the engine's before_cursor_execute event."""
         labels = {
-            "sql_pool": self.name,
+            "sql_client_name": self.name,
             "sql_address": conn.engine.url.host,
             "sql_database": conn.engine.url.database,
         }
@@ -289,7 +289,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         conn.info["span"] = None
 
         labels = {
-            "sql_pool": self.name,
+            "sql_client_name": self.name,
             "sql_address": conn.engine.url.host,
             "sql_database": conn.engine.url.database,
         }
@@ -308,7 +308,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
             context.connection.info["span"] = None
 
         labels = {
-            "sql_pool": self.name,
+            "sql_client_name": self.name,
             "sql_address": context.connection.engine.url.host,
             "sql_database": context.connection.engine.url.database,
         }
