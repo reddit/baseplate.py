@@ -162,7 +162,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     PROM_PREFIX = "sql_client"
     PROM_POOL_PREFIX = f"{PROM_PREFIX}_pool"
-    PROM_POOL_LABELS = ["sql_pool"]
+    PROM_POOL_LABELS = ["sql_client_name"]
 
     max_connections_gauge = Gauge(
         f"{PROM_POOL_PREFIX}_max_size",
