@@ -230,6 +230,9 @@ class TestThriftContextFactory:
         prom_labels = {
             "thrift_pool": "TestThriftContextFactory.context_factory.<locals>.Iface",
         }
-        assert context_factory.client_cls.__qualname__ == "TestThriftContextFactory.context_factory.<locals>.Iface"
+        assert (
+            context_factory.client_cls.__qualname__
+            == "TestThriftContextFactory.context_factory.<locals>.Iface"
+        )
         assert REGISTRY.get_sample_value("thrift_client_pool_max_size", prom_labels) == 4
         assert REGISTRY.get_sample_value("thrift_client_pool_active_connections", prom_labels) == 8
