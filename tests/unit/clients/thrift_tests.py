@@ -4,7 +4,6 @@ from contextlib import nullcontext as does_not_raise
 from unittest import mock
 
 import pytest
-import inspect
 
 from prometheus_client import REGISTRY
 from thrift.protocol.TProtocol import TProtocolException
