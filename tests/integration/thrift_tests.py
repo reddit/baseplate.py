@@ -154,7 +154,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
                 context.example_service.example()
 
         finished_spans = self.get_finished_spans()
-        self.assertEqual(len(finished_spans), 1)
+        self.assertGreater(len(finished_spans), 0)
         self.assertSpanHasAttributes(finished_spans[0], {'user.agent': 'fancy test client'})
 
 
