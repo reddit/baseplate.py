@@ -7,6 +7,8 @@ from typing import Callable
 from typing import Mapping
 from typing import Optional
 
+from contextlib import contextmanager
+
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -18,6 +20,11 @@ from thrift.Thrift import TException
 from thrift.Thrift import TProcessor
 from thrift.transport.TTransport import TTransportException
 
+from opentelemetry.propagate import extract
+from opentelemetry import trace
+from opentelemetry.trace import status
+from opentelemetry.context import attach, detach
+
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate import TraceInfo
@@ -25,7 +32,6 @@ from baseplate.lib.edgecontext import EdgeContextFactory
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
-
 
 PROM_NAMESPACE = "thrift_server"
 
@@ -69,6 +75,23 @@ class _ContextAwareHandler:
         self.context = context
         self.logger = logger
         self.convert_to_baseplate_error = convert_to_baseplate_error
+        self.tracer = trace.get_tracer(__name__)
+
+    @contextmanager
+    def _set_remote_context(self, servicer_context):
+        headers = servicer_context.headers
+        if headers:
+            str_headers = {}
+            for k, v in headers.items():
+                str_headers[k.decode()] = v.decode()
+            ctx = extract(str_headers)
+            token = attach(ctx)
+            try:
+                yield
+            finally:
+                detach(token)
+        else:
+            yield
 
     def __getattr__(self, fn_name: str) -> Callable[..., Any]:
         def call_with_context(*args: Any, **kwargs: Any) -> Any:
@@ -76,91 +99,90 @@ class _ContextAwareHandler:
 
             handler_fn = getattr(self.handler, fn_name)
 
-            span = self.context.span
-            span.set_tag("thrift.method", fn_name)
-            start_time = time.perf_counter()
+            with self._set_remote_context(self.context) as ctx:
+              with self.tracer.start_as_current_span(fn_name, kind=trace.SpanKind.SERVER, record_exception=False) as span:
+                span.set_attribute("thrift.method", fn_name)
+                if b'User-Agent' in self.context.headers:
+                    span.set_attribute("user.agent", self.context.headers[b'User-Agent'].decode())
+                start_time = time.perf_counter()
 
-            try:
-                span.start()
-                with PROM_ACTIVE.labels(fn_name).track_inprogress():
-                    result = handler_fn(self.context, *args, **kwargs)
-            except (TApplicationException, TProtocolException, TTransportException):
-                # these are subclasses of TException but aren't ones that
-                # should be expected in the protocol
-                span.finish(exc_info=sys.exc_info())
-                raise
-            except Error as exc:
-                c = ErrorCode()
-                status = c._VALUES_TO_NAMES.get(exc.code, "")
-                span.set_tag("exception_type", "Error")
-                span.set_tag("thrift.status_code", exc.code)
-                span.set_tag("thrift.status", status)
-                span.set_tag("success", "false")
-                # mark 5xx errors as failures since those are still "unexpected"
-                if 500 <= exc.code < 600:
-                    span.finish(exc_info=sys.exc_info())
+                try:
+                    with PROM_ACTIVE.labels(fn_name).track_inprogress():
+                        result = handler_fn(self.context, *args, **kwargs)
+                except (TApplicationException, TProtocolException, TTransportException) as e:
+                    # these are subclasses of TException but aren't ones that
+                    # should be expected in the protocol
+                    span.record_exception(e)
+                    raise
+                except Error as exc:
+                    c = ErrorCode()
+                    thrift_status = c._VALUES_TO_NAMES.get(exc.code, "")
+                    span.set_attribute("exception_type", "Error")
+                    span.set_attribute("thrift.status_code", exc.code)
+                    span.set_attribute("thrift.status", thrift_status)
+                    span.set_status(status.Status(status.StatusCode.ERROR))
+                    # mark 5xx errors as failures since those are still "unexpected"
+                    if 500 <= exc.code < 600:
+                        span.record_exception(exc)
+                    raise
+                except TException as e:
+                    span.set_status(status.Status(status.StatusCode.ERROR))
+                    # This is an expected exception so don't record it.
+                    raise
+                except Exception as e:  # noqa: E722
+                    # the handler crashed (or timed out)!
+                    span.record_exception(e)
+                    span.set_status(status.Status(status.StatusCode.ERROR))
+                    if self.convert_to_baseplate_error:
+                        raise Error(
+                            code=ErrorCode.INTERNAL_SERVER_ERROR,
+                            message="Internal server error",
+                        )
+                    raise
                 else:
-                    span.finish()
-                raise
-            except TException as e:
-                span.set_tag("exception_type", type(e).__name__)
-                span.set_tag("success", "false")
-                # this is an expected exception, as defined in the IDL
-                span.finish()
-                raise
-            except Exception:  # noqa: E722
-                # the handler crashed (or timed out)!
-                span.finish(exc_info=sys.exc_info())
-                if self.convert_to_baseplate_error:
-                    raise Error(
-                        code=ErrorCode.INTERNAL_SERVER_ERROR,
-                        message="Internal server error",
+                    # a normal result
+                    span.set_status(status.Status(status.StatusCode.OK))
+                    return result
+                finally:
+                    thrift_success = "true"
+                    exception_type = ""
+                    baseplate_status_code = ""
+                    baseplate_status = ""
+                    exc_info = sys.exc_info()
+                    if exc_info[0] is not None:
+                        thrift_success = "false"
+                        exception_type = exc_info[0].__name__
+                        current_exc = exc_info[1]
+                        try:
+                            # We want the following code to execute whenever the
+                            # service raises an instance of Baseplate's `Error` class.
+                            # Unfortunately, we cannot just rely on `isinstance` to do
+                            # what we want here because some services compile
+                            # Baseplate's thrift file on their own and import `Error`
+                            # from that. When this is done, `isinstance` will always
+                            # return `False` since it's technically a different class.
+                            # To fix this, we optimistically try to access `code` on
+                            # `current_exc` and just catch the `AttributeError` if the
+                            # `code` attribute is not present.
+                            # Note: if the error code was not originally defined in baseplate, or the
+                            # name associated with the error was overriden, this cannot reflect that
+                            # we will emit the status code in both cases
+                            # but the status will be blank in the first case, and the baseplate name
+                            # in the second
+                            baseplate_status_code = current_exc.code  # type: ignore
+                            baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
+                        except AttributeError:
+                            pass
+                    PROM_REQUESTS.labels(
+                        thrift_method=fn_name,
+                        thrift_success=thrift_success,
+                        thrift_exception_type=exception_type,
+                        thrift_baseplate_status=baseplate_status,
+                        thrift_baseplate_status_code=baseplate_status_code,
+                    ).inc()
+                    PROM_LATENCY.labels(fn_name, thrift_success).observe(
+                        time.perf_counter() - start_time
                     )
-                raise
-            else:
-                # a normal result
-                span.finish()
-                return result
-            finally:
-                thrift_success = "true"
-                exception_type = ""
-                baseplate_status_code = ""
-                baseplate_status = ""
-                exc_info = sys.exc_info()
-                if exc_info[0] is not None:
-                    thrift_success = "false"
-                    exception_type = exc_info[0].__name__
-                    current_exc = exc_info[1]
-                    try:
-                        # We want the following code to execute whenever the
-                        # service raises an instance of Baseplate's `Error` class.
-                        # Unfortunately, we cannot just rely on `isinstance` to do
-                        # what we want here because some services compile
-                        # Baseplate's thrift file on their own and import `Error`
-                        # from that. When this is done, `isinstance` will always
-                        # return `False` since it's technically a different class.
-                        # To fix this, we optimistically try to access `code` on
-                        # `current_exc` and just catch the `AttributeError` if the
-                        # `code` attribute is not present.
-                        # Note: if the error code was not originally defined in baseplate, or the
-                        # name associated with the error was overriden, this cannot reflect that
-                        # we will emit the status code in both cases
-                        # but the status will be blank in the first case, and the baseplate name
-                        # in the second
-                        baseplate_status_code = current_exc.code  # type: ignore
-                        baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
-                    except AttributeError:
-                        pass
-                PROM_REQUESTS.labels(
-                    thrift_method=fn_name,
-                    thrift_success=thrift_success,
-                    thrift_exception_type=exception_type,
-                    thrift_baseplate_status=baseplate_status,
-                    thrift_baseplate_status_code=baseplate_status_code,
-                ).inc()
-                PROM_LATENCY.labels(fn_name, thrift_success).observe(
-                    time.perf_counter() - start_time
-                )
 
         return call_with_context
 
@@ -226,6 +248,7 @@ def baseplateify_processor(
 
             span = baseplate.make_server_span(context, name=fn_name, trace_info=trace_info)
             span.set_tag("protocol", "thrift")
+
             try:
                 service_name = headers[b"User-Agent"].decode()
             except (KeyError, UnicodeDecodeError):
