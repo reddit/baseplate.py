@@ -210,9 +210,6 @@ class _PooledClientProxy:
         )
 
 
-def _set_header_into_thrift(prot: THeaderProtocol, key: str, val: str):
-    prot.trans.set_header(key.encode('utf-8'), val.encode('utf-8'))
-
 def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
     def _call_thrift_method(self: Any, *args: Any, **kwargs: Any) -> Any:
