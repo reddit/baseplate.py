@@ -34,6 +34,10 @@ from baseplate.lib.prometheus_metrics import default_size_buckets
 from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.thrift.ttypes import IsHealthyProbe
 
+from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
+
+
+PyramidInstrumentor().instrument()
 
 logger = logging.getLogger(__name__)
 

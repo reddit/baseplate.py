@@ -9,6 +9,8 @@ from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
 
+from opentelemetry.test.test_base import TestBase
+
 from . import FakeEdgeContextFactory
 
 
@@ -75,8 +77,9 @@ def local_tracing_within_context(request):
     return {"trace": "success"}
 
 
-class ConfiguratorTests(unittest.TestCase):
+class ConfiguratorTests(TestBase):
     def setUp(self):
+        super().setUp()
         configurator = Configurator()
         configurator.add_route("example", "/example", request_method="GET")
         configurator.add_route("route", "/route/{hello}/world", request_method="GET")
@@ -132,6 +135,10 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_finish.called)
         self.assertTrue(self.context_init_event_subscriber.called)
 
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertIsNone(finished_spans[0].parent)
+
     def test_trace_headers(self):
         self.test_app.get(
             "/example",
@@ -142,6 +149,7 @@ class ConfiguratorTests(unittest.TestCase):
                 "X-Span": "3456",
                 "X-Sampled": "1",
                 "X-Flags": "1",
+                "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
             },
         )
 
@@ -157,6 +165,11 @@ class ConfiguratorTests(unittest.TestCase):
         self.assertTrue(self.server_observer.on_start.called)
         self.assertTrue(self.server_observer.on_finish.called)
         self.assertTrue(self.context_init_event_subscriber.called)
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertIsNotNone(finished_spans[0].parent)
+        self.assertEqual(finished_spans[0].context.trace_id, 0x4bf92f3577b34da6a3ce929d0e0e4736)
 
     def test_edge_request_headers(self):
         self.test_app.get(
