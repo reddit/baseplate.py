@@ -27,3 +27,5 @@ fakeredis==1.5.0
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-test-utils
+opentelemetry-instrumentation-pyramid
+opentelemetry-instrumentation-requests
