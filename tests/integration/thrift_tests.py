@@ -149,9 +149,12 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
 
         handler = Handler()
 
-        with serve_thrift(handler, TestService) as server:
+        server_span_observer = mock.Mock(spec=ServerSpanObserver)
+        with serve_thrift(handler, TestService, server_span_observer) as server:
             with baseplate_thrift_client(server.endpoint, TestService) as context:
                 context.example_service.example()
+
+        server_span_observer.on_set_tag.assert_called()
 
         finished_spans = self.get_finished_spans()
         self.assertGreater(len(finished_spans), 0)

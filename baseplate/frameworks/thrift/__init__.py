@@ -99,40 +99,63 @@ class _ContextAwareHandler:
 
             handler_fn = getattr(self.handler, fn_name)
 
+            span = self.context.span
+            span.set_tag("thrift.method", fn_name)
+            start_time = time.perf_counter()
             with self._set_remote_context(self.context) as ctx:
-              with self.tracer.start_as_current_span(fn_name, kind=trace.SpanKind.SERVER, record_exception=False) as span:
-                span.set_attribute("thrift.method", fn_name)
+              with self.tracer.start_as_current_span(fn_name, kind=trace.SpanKind.SERVER, record_exception=False) as otelspan:
+                otelspan.set_attribute("thrift.method", fn_name)
                 if b'User-Agent' in self.context.headers:
-                    span.set_attribute("user.agent", self.context.headers[b'User-Agent'].decode())
+                    otelspan.set_attribute("user.agent", self.context.headers[b'User-Agent'].decode())
                 start_time = time.perf_counter()
 
                 try:
+                    span.start()
                     with PROM_ACTIVE.labels(fn_name).track_inprogress():
                         result = handler_fn(self.context, *args, **kwargs)
                 except (TApplicationException, TProtocolException, TTransportException) as e:
                     # these are subclasses of TException but aren't ones that
                     # should be expected in the protocol
-                    span.record_exception(e)
+                    otelspan.record_exception(e)
+                    span.finish(exc_info=sys.exc_info())
                     raise
                 except Error as exc:
                     c = ErrorCode()
                     thrift_status = c._VALUES_TO_NAMES.get(exc.code, "")
-                    span.set_attribute("exception_type", "Error")
-                    span.set_attribute("thrift.status_code", exc.code)
-                    span.set_attribute("thrift.status", thrift_status)
-                    span.set_status(status.Status(status.StatusCode.ERROR))
+
+                    otelspan.set_attribute("exception_type", "Error")
+                    otelspan.set_attribute("thrift.status_code", exc.code)
+                    otelspan.set_attribute("thrift.status", thrift_status)
+                    otelspan.set_status(status.Status(status.StatusCode.ERROR))
+
+                    span.set_tag("exception_type", "Error")
+                    span.set_tag("thrift.status_code", exc.code)
+                    span.set_tag("thrift.status", status)
+                    span.set_tag("success", "false")
                     # mark 5xx errors as failures since those are still "unexpected"
                     if 500 <= exc.code < 600:
-                        span.record_exception(exc)
+                        otelspan.record_exception(exc)
+                        span.finish(exc_info=sys.exc_info())
+                    else:
+                        span.finish()
                     raise
                 except TException as e:
-                    span.set_status(status.Status(status.StatusCode.ERROR))
-                    # This is an expected exception so don't record it.
+                    otelspan.set_status(status.Status(status.StatusCode.ERROR))
+                    otelspan.record_exception(exc)
+
+                    span.set_tag("exception_type", type(e).__name__)
+                    span.set_tag("success", "false")
+
+                    # this is an expected exception, as defined in the IDL
+                    span.finish()
                     raise
                 except Exception as e:  # noqa: E722
                     # the handler crashed (or timed out)!
-                    span.record_exception(e)
-                    span.set_status(status.Status(status.StatusCode.ERROR))
+                    span.finish(exc_info=sys.exc_info())
+
+                    otelspan.record_exception(e)
+                    otelspan.set_status(status.Status(status.StatusCode.ERROR))
+
                     if self.convert_to_baseplate_error:
                         raise Error(
                             code=ErrorCode.INTERNAL_SERVER_ERROR,
@@ -141,7 +164,8 @@ class _ContextAwareHandler:
                     raise
                 else:
                     # a normal result
-                    span.set_status(status.Status(status.StatusCode.OK))
+                    otelspan.set_status(status.Status(status.StatusCode.OK))
+                    span.finish()
                     return result
                 finally:
                     thrift_success = "true"
