@@ -107,7 +107,6 @@ class _ContextAwareHandler:
                 otelspan.set_attribute("thrift.method", fn_name)
                 if b'User-Agent' in self.context.headers:
                     otelspan.set_attribute("user.agent", self.context.headers[b'User-Agent'].decode())
-                start_time = time.perf_counter()
 
                 try:
                     span.start()
