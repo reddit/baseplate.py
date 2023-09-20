@@ -301,6 +301,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                           raise
                       except TException:
                           # this is an expected exception, as defined in the IDL
+                          otelspan.set_status(status.Status(status.StatusCode.OK))
                           span.finish()
                           raise
                       except:  # noqa: E722

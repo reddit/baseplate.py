@@ -124,7 +124,6 @@ class _ContextAwareHandler:
                     otelspan.set_attribute("exception_type", "Error")
                     otelspan.set_attribute("thrift.status_code", exc.code)
                     otelspan.set_attribute("thrift.status", status)
-                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
 
                     span.set_tag("exception_type", "Error")
                     span.set_tag("thrift.status_code", exc.code)
@@ -132,20 +131,24 @@ class _ContextAwareHandler:
                     span.set_tag("success", "false")
                     # mark 5xx errors as failures since those are still "unexpected"
                     if 500 <= exc.code < 600:
+                        otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
                         otelspan.record_exception(exc)
                         span.finish(exc_info=sys.exc_info())
                     else:
+                        # Set as OK as this is an expected exception
+                        otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         span.finish()
                     raise
-                except TException as e:
-                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
+                except TException as exc:
                     otelspan.record_exception(exc)
 
-                    span.set_tag("exception_type", type(e).__name__)
+                    span.set_tag("exception_type", type(exc).__name__)
                     span.set_tag("success", "false")
 
                     # this is an expected exception, as defined in the IDL
                     span.finish()
+                    # Set as OK as this is an expected exception
+                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                     raise
                 except Exception as e:  # noqa: E722
                     # the handler crashed (or timed out)!

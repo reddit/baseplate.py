@@ -3,6 +3,7 @@
 #
 # See install_requires and extras_require in setup.py for the range of versions
 # supported.
+-r requirements-transitive.txt
 black==21.10b0
 boto3==1.21.20
 flake8==5.0.4
@@ -11,7 +12,7 @@ mypy==0.910
 prometheus-client==0.16.0
 pydocstyle==5.1.1
 pylint==2.15.3
-pytest==6.2.5
+pytest==6.2.2
 pytest-cov==2.11.1
 pytz==2021.1
 reorder-python-imports==2.4.0
@@ -24,8 +25,8 @@ types-setuptools==57.0.2
 webtest==2.0.35
 wheel==0.38.1
 fakeredis==1.5.0
-opentelemetry-api
-opentelemetry-sdk
-opentelemetry-test-utils
-opentelemetry-instrumentation-pyramid
-opentelemetry-instrumentation-requests
+opentelemetry-api==1.20.0
+opentelemetry-sdk==1.20.0
+opentelemetry-test-utils==0.41b0
+opentelemetry-instrumentation-pyramid==0.41b0
+opentelemetry-instrumentation-requests==0.41b0
