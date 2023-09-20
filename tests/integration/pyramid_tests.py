@@ -169,7 +169,7 @@ class ConfiguratorTests(TestBase):
         finished_spans = self.get_finished_spans()
         self.assertEqual(len(finished_spans), 1)
         self.assertIsNotNone(finished_spans[0].parent)
-        self.assertEqual(finished_spans[0].context.trace_id, 0x4bf92f3577b34da6a3ce929d0e0e4736)
+        self.assertEqual(finished_spans[0].context.trace_id, 0x4BF92F3577B34DA6A3CE929D0E0E4736)
 
     def test_edge_request_headers(self):
         self.test_app.get(

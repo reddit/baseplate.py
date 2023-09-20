@@ -102,112 +102,116 @@ class _ContextAwareHandler:
             span.set_tag("thrift.method", fn_name)
             start_time = time.perf_counter()
             with self._set_remote_context(self.context) as ctx:
-              with self.tracer.start_as_current_span(fn_name, kind=trace.SpanKind.SERVER, record_exception=False) as otelspan:
-                otelspan.set_attribute("thrift.method", fn_name)
-                if b'User-Agent' in self.context.headers:
-                    otelspan.set_attribute("user.agent", self.context.headers[b'User-Agent'].decode())
+                with self.tracer.start_as_current_span(
+                    fn_name, kind=trace.SpanKind.SERVER, record_exception=False
+                ) as otelspan:
+                    otelspan.set_attribute("thrift.method", fn_name)
+                    if b"User-Agent" in self.context.headers:
+                        otelspan.set_attribute(
+                            "user.agent", self.context.headers[b"User-Agent"].decode()
+                        )
 
-                try:
-                    span.start()
-                    with PROM_ACTIVE.labels(fn_name).track_inprogress():
-                        result = handler_fn(self.context, *args, **kwargs)
-                except (TApplicationException, TProtocolException, TTransportException) as e:
-                    # these are subclasses of TException but aren't ones that
-                    # should be expected in the protocol
-                    otelspan.record_exception(e)
-                    span.finish(exc_info=sys.exc_info())
-                    raise
-                except Error as exc:
-                    c = ErrorCode()
-                    status = c._VALUES_TO_NAMES.get(exc.code, "")
-
-                    otelspan.set_attribute("exception_type", "Error")
-                    otelspan.set_attribute("thrift.status_code", exc.code)
-                    otelspan.set_attribute("thrift.status", status)
-
-                    span.set_tag("exception_type", "Error")
-                    span.set_tag("thrift.status_code", exc.code)
-                    span.set_tag("thrift.status", status)
-                    span.set_tag("success", "false")
-                    # mark 5xx errors as failures since those are still "unexpected"
-                    if 500 <= exc.code < 600:
-                        otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
-                        otelspan.record_exception(exc)
+                    try:
+                        span.start()
+                        with PROM_ACTIVE.labels(fn_name).track_inprogress():
+                            result = handler_fn(self.context, *args, **kwargs)
+                    except (TApplicationException, TProtocolException, TTransportException) as e:
+                        # these are subclasses of TException but aren't ones that
+                        # should be expected in the protocol
+                        otelspan.record_exception(e)
                         span.finish(exc_info=sys.exc_info())
-                    else:
+                        raise
+                    except Error as exc:
+                        c = ErrorCode()
+                        status = c._VALUES_TO_NAMES.get(exc.code, "")
+
+                        otelspan.set_attribute("exception_type", "Error")
+                        otelspan.set_attribute("thrift.status_code", exc.code)
+                        otelspan.set_attribute("thrift.status", status)
+
+                        span.set_tag("exception_type", "Error")
+                        span.set_tag("thrift.status_code", exc.code)
+                        span.set_tag("thrift.status", status)
+                        span.set_tag("success", "false")
+                        # mark 5xx errors as failures since those are still "unexpected"
+                        if 500 <= exc.code < 600:
+                            otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
+                            otelspan.record_exception(exc)
+                            span.finish(exc_info=sys.exc_info())
+                        else:
+                            # Set as OK as this is an expected exception
+                            otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
+                            span.finish()
+                        raise
+                    except TException as exc:
+                        otelspan.record_exception(exc)
+
+                        span.set_tag("exception_type", type(exc).__name__)
+                        span.set_tag("success", "false")
+
+                        # this is an expected exception, as defined in the IDL
+                        span.finish()
                         # Set as OK as this is an expected exception
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
+                        raise
+                    except Exception as e:  # noqa: E722
+                        # the handler crashed (or timed out)!
+                        span.finish(exc_info=sys.exc_info())
+
+                        otelspan.record_exception(e)
+                        otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
+
+                        if self.convert_to_baseplate_error:
+                            raise Error(
+                                code=ErrorCode.INTERNAL_SERVER_ERROR,
+                                message="Internal server error",
+                            )
+                        raise
+                    else:
+                        # a normal result
+                        otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         span.finish()
-                    raise
-                except TException as exc:
-                    otelspan.record_exception(exc)
-
-                    span.set_tag("exception_type", type(exc).__name__)
-                    span.set_tag("success", "false")
-
-                    # this is an expected exception, as defined in the IDL
-                    span.finish()
-                    # Set as OK as this is an expected exception
-                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
-                    raise
-                except Exception as e:  # noqa: E722
-                    # the handler crashed (or timed out)!
-                    span.finish(exc_info=sys.exc_info())
-
-                    otelspan.record_exception(e)
-                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
-
-                    if self.convert_to_baseplate_error:
-                        raise Error(
-                            code=ErrorCode.INTERNAL_SERVER_ERROR,
-                            message="Internal server error",
+                        return result
+                    finally:
+                        thrift_success = "true"
+                        exception_type = ""
+                        baseplate_status_code = ""
+                        baseplate_status = ""
+                        exc_info = sys.exc_info()
+                        if exc_info[0] is not None:
+                            thrift_success = "false"
+                            exception_type = exc_info[0].__name__
+                            current_exc = exc_info[1]
+                            try:
+                                # We want the following code to execute whenever the
+                                # service raises an instance of Baseplate's `Error` class.
+                                # Unfortunately, we cannot just rely on `isinstance` to do
+                                # what we want here because some services compile
+                                # Baseplate's thrift file on their own and import `Error`
+                                # from that. When this is done, `isinstance` will always
+                                # return `False` since it's technically a different class.
+                                # To fix this, we optimistically try to access `code` on
+                                # `current_exc` and just catch the `AttributeError` if the
+                                # `code` attribute is not present.
+                                # Note: if the error code was not originally defined in baseplate, or the
+                                # name associated with the error was overriden, this cannot reflect that
+                                # we will emit the status code in both cases
+                                # but the status will be blank in the first case, and the baseplate name
+                                # in the second
+                                baseplate_status_code = current_exc.code  # type: ignore
+                                baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
+                            except AttributeError:
+                                pass
+                        PROM_REQUESTS.labels(
+                            thrift_method=fn_name,
+                            thrift_success=thrift_success,
+                            thrift_exception_type=exception_type,
+                            thrift_baseplate_status=baseplate_status,
+                            thrift_baseplate_status_code=baseplate_status_code,
+                        ).inc()
+                        PROM_LATENCY.labels(fn_name, thrift_success).observe(
+                            time.perf_counter() - start_time
                         )
-                    raise
-                else:
-                    # a normal result
-                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
-                    span.finish()
-                    return result
-                finally:
-                    thrift_success = "true"
-                    exception_type = ""
-                    baseplate_status_code = ""
-                    baseplate_status = ""
-                    exc_info = sys.exc_info()
-                    if exc_info[0] is not None:
-                        thrift_success = "false"
-                        exception_type = exc_info[0].__name__
-                        current_exc = exc_info[1]
-                        try:
-                            # We want the following code to execute whenever the
-                            # service raises an instance of Baseplate's `Error` class.
-                            # Unfortunately, we cannot just rely on `isinstance` to do
-                            # what we want here because some services compile
-                            # Baseplate's thrift file on their own and import `Error`
-                            # from that. When this is done, `isinstance` will always
-                            # return `False` since it's technically a different class.
-                            # To fix this, we optimistically try to access `code` on
-                            # `current_exc` and just catch the `AttributeError` if the
-                            # `code` attribute is not present.
-                            # Note: if the error code was not originally defined in baseplate, or the
-                            # name associated with the error was overriden, this cannot reflect that
-                            # we will emit the status code in both cases
-                            # but the status will be blank in the first case, and the baseplate name
-                            # in the second
-                            baseplate_status_code = current_exc.code  # type: ignore
-                            baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
-                        except AttributeError:
-                            pass
-                    PROM_REQUESTS.labels(
-                        thrift_method=fn_name,
-                        thrift_success=thrift_success,
-                        thrift_exception_type=exception_type,
-                        thrift_baseplate_status=baseplate_status,
-                        thrift_baseplate_status_code=baseplate_status_code,
-                    ).inc()
-                    PROM_LATENCY.labels(fn_name, thrift_success).observe(
-                        time.perf_counter() - start_time
-                    )
 
         return call_with_context
 
