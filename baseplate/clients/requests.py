@@ -30,6 +30,7 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 
 RequestsInstrumentor().instrument()
 
+
 def http_adapter_from_config(
     app_config: config.RawConfig, prefix: str, **kwargs: Any
 ) -> HTTPAdapter:

@@ -211,7 +211,6 @@ class _PooledClientProxy:
 
 
 def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
-
     def _call_thrift_method(self: Any, *args: Any, **kwargs: Any) -> Any:
         trace_name = f"{self.namespace}.{name}"
         last_error = None
@@ -232,133 +231,135 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     span.start()
 
                     mutable_metadata = OrderedDict()
-                    with self.tracer.start_as_current_span(trace_name, kind=trace.SpanKind.CLIENT) as otelspan:
-                      try:
-                          baseplate = span.baseplate
-                          if baseplate:
-                              service_name = baseplate.service_name
-                              if service_name:
-                                  prot.trans.set_header(b"User-Agent", service_name.encode())
+                    with self.tracer.start_as_current_span(
+                        trace_name, kind=trace.SpanKind.CLIENT
+                    ) as otelspan:
+                        try:
+                            baseplate = span.baseplate
+                            if baseplate:
+                                service_name = baseplate.service_name
+                                if service_name:
+                                    prot.trans.set_header(b"User-Agent", service_name.encode())
 
-                          prot.trans.set_header(b"Trace", str(span.trace_id).encode())
-                          prot.trans.set_header(b"Parent", str(span.parent_id).encode())
-                          prot.trans.set_header(b"Span", str(span.id).encode())
+                            prot.trans.set_header(b"Trace", str(span.trace_id).encode())
+                            prot.trans.set_header(b"Parent", str(span.parent_id).encode())
+                            prot.trans.set_header(b"Span", str(span.id).encode())
 
-                          propagate.inject(mutable_metadata)
+                            propagate.inject(mutable_metadata)
 
-                          # set w3c traceparent headers
-                          for k, v in mutable_metadata.items():
-                              prot.set_header(k.encode(), v.encode())
+                            # set w3c traceparent headers
+                            for k, v in mutable_metadata.items():
+                                prot.set_header(k.encode(), v.encode())
 
-                          if span.sampled is not None:
-                              sampled = "1" if span.sampled else "0"
-                              prot.trans.set_header(b"Sampled", sampled.encode())
-                          if span.flags:
-                              prot.trans.set_header(b"Flags", str(span.flags).encode())
+                            if span.sampled is not None:
+                                sampled = "1" if span.sampled else "0"
+                                prot.trans.set_header(b"Sampled", sampled.encode())
+                            if span.flags:
+                                prot.trans.set_header(b"Flags", str(span.flags).encode())
 
-                          min_timeout = time_remaining
-                          if self.pool.timeout:
-                              if not min_timeout or self.pool.timeout < min_timeout:
-                                  min_timeout = self.pool.timeout
-                          if min_timeout and min_timeout > 0:
-                              # min_timeout is in float seconds, we are converting to int milliseconds
-                              # rounding up here.
-                              prot.trans.set_header(
-                                  b"Deadline-Budget", str(int(ceil(min_timeout * 1000))).encode()
-                              )
+                            min_timeout = time_remaining
+                            if self.pool.timeout:
+                                if not min_timeout or self.pool.timeout < min_timeout:
+                                    min_timeout = self.pool.timeout
+                            if min_timeout and min_timeout > 0:
+                                # min_timeout is in float seconds, we are converting to int milliseconds
+                                # rounding up here.
+                                prot.trans.set_header(
+                                    b"Deadline-Budget", str(int(ceil(min_timeout * 1000))).encode()
+                                )
 
-                          try:
-                              edge_context = span.context.raw_edge_context
-                          except AttributeError:
-                              edge_context = None
+                            try:
+                                edge_context = span.context.raw_edge_context
+                            except AttributeError:
+                                edge_context = None
 
-                          if edge_context:
-                              prot.trans.set_header(b"Edge-Request", edge_context)
+                            if edge_context:
+                                prot.trans.set_header(b"Edge-Request", edge_context)
 
-                          result = method(*args, **kwargs)
-                      except TTransportException as exc:
-                          # the connection failed for some reason, retry if able
-                          span.finish(exc_info=sys.exc_info())
-                          otelspan.set_status(status.Status(status.StatusCode.ERROR))
-                          last_error = str(exc)
-                          if exc.inner is not None:
-                              last_error += f" ({exc.inner})"
-                          raise  # we need to raise all exceptions so that self.pool.connect() self-heals
-                      except (TApplicationException, TProtocolException):
-                          # these are subclasses of TException but aren't ones that
-                          # should be expected in the protocol. this is an error!
-                          span.finish(exc_info=sys.exc_info())
-                          otelspan.set_status(status.Status(status.StatusCode.ERROR))
-                          raise
-                      except Error as exc:
-                          # a 5xx error is an unexpected exception but not 5xx are
-                          # not.
-                          if 500 <= exc.code < 600:
-                              span.finish(exc_info=sys.exc_info())
-                              otelspan.set_status(status.Status(status.StatusCode.ERROR))
-                          else:
-                              span.finish()
-                          raise
-                      except TException:
-                          # this is an expected exception, as defined in the IDL
-                          otelspan.set_status(status.Status(status.StatusCode.OK))
-                          span.finish()
-                          raise
-                      except:  # noqa: E722
-                          # something unexpected happened
-                          span.finish(exc_info=sys.exc_info())
-                          otelspan.set_status(status.Status(status.StatusCode.ERROR))
-                          raise
-                      else:
-                          # a normal result
-                          span.finish()
-                          otelspan.set_status(status.Status(status.StatusCode.OK))
-                          return result
-                      finally:
-                          thrift_success = "true"
-                          exception_type = ""
-                          baseplate_status = ""
-                          baseplate_status_code = ""
-                          exc_info = sys.exc_info()
-                          if exc_info[0] is not None:
-                              thrift_success = "false"
-                              exception_type = exc_info[0].__name__
-                              current_exc = exc_info[1]
-                              try:
-                                  # We want the following code to execute whenever the
-                                  # service raises an instance of Baseplate's `Error` class.
-                                  # Unfortunately, we cannot just rely on `isinstance` to do
-                                  # what we want here because some services compile
-                                  # Baseplate's thrift file on their own and import `Error`
-                                  # from that. When this is done, `isinstance` will always
-                                  # return `False` since it's technically a different class.
-                                  # To fix this, we optimistically try to access `code` on
-                                  # `current_exc` and just catch the `AttributeError` if the
-                                  # `code` attribute is not present.
-                                  # Note: if the error code was not originally defined in baseplate, or the
-                                  # name associated with the error was overriden, this cannot reflect that
-                                  # we will emit the status code in both cases
-                                  # but the status will be blank in the first case, and the baseplate name
-                                  # in the second
-                                  baseplate_status_code = current_exc.code  # type: ignore
-                                  baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
-                              except AttributeError:
-                                  pass
+                            result = method(*args, **kwargs)
+                        except TTransportException as exc:
+                            # the connection failed for some reason, retry if able
+                            span.finish(exc_info=sys.exc_info())
+                            otelspan.set_status(status.Status(status.StatusCode.ERROR))
+                            last_error = str(exc)
+                            if exc.inner is not None:
+                                last_error += f" ({exc.inner})"
+                            raise  # we need to raise all exceptions so that self.pool.connect() self-heals
+                        except (TApplicationException, TProtocolException):
+                            # these are subclasses of TException but aren't ones that
+                            # should be expected in the protocol. this is an error!
+                            span.finish(exc_info=sys.exc_info())
+                            otelspan.set_status(status.Status(status.StatusCode.ERROR))
+                            raise
+                        except Error as exc:
+                            # a 5xx error is an unexpected exception but not 5xx are
+                            # not.
+                            if 500 <= exc.code < 600:
+                                span.finish(exc_info=sys.exc_info())
+                                otelspan.set_status(status.Status(status.StatusCode.ERROR))
+                            else:
+                                span.finish()
+                            raise
+                        except TException:
+                            # this is an expected exception, as defined in the IDL
+                            otelspan.set_status(status.Status(status.StatusCode.OK))
+                            span.finish()
+                            raise
+                        except:  # noqa: E722
+                            # something unexpected happened
+                            span.finish(exc_info=sys.exc_info())
+                            otelspan.set_status(status.Status(status.StatusCode.ERROR))
+                            raise
+                        else:
+                            # a normal result
+                            span.finish()
+                            otelspan.set_status(status.Status(status.StatusCode.OK))
+                            return result
+                        finally:
+                            thrift_success = "true"
+                            exception_type = ""
+                            baseplate_status = ""
+                            baseplate_status_code = ""
+                            exc_info = sys.exc_info()
+                            if exc_info[0] is not None:
+                                thrift_success = "false"
+                                exception_type = exc_info[0].__name__
+                                current_exc = exc_info[1]
+                                try:
+                                    # We want the following code to execute whenever the
+                                    # service raises an instance of Baseplate's `Error` class.
+                                    # Unfortunately, we cannot just rely on `isinstance` to do
+                                    # what we want here because some services compile
+                                    # Baseplate's thrift file on their own and import `Error`
+                                    # from that. When this is done, `isinstance` will always
+                                    # return `False` since it's technically a different class.
+                                    # To fix this, we optimistically try to access `code` on
+                                    # `current_exc` and just catch the `AttributeError` if the
+                                    # `code` attribute is not present.
+                                    # Note: if the error code was not originally defined in baseplate, or the
+                                    # name associated with the error was overriden, this cannot reflect that
+                                    # we will emit the status code in both cases
+                                    # but the status will be blank in the first case, and the baseplate name
+                                    # in the second
+                                    baseplate_status_code = current_exc.code  # type: ignore
+                                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
+                                except AttributeError:
+                                    pass
 
-                          REQUEST_LATENCY.labels(
-                              thrift_method=name,
-                              thrift_client_name=self.namespace,
-                              thrift_success=thrift_success,
-                          ).observe(time.perf_counter() - start_time)
+                            REQUEST_LATENCY.labels(
+                                thrift_method=name,
+                                thrift_client_name=self.namespace,
+                                thrift_success=thrift_success,
+                            ).observe(time.perf_counter() - start_time)
 
-                          REQUESTS_TOTAL.labels(
-                              thrift_method=name,
-                              thrift_client_name=self.namespace,
-                              thrift_success=thrift_success,
-                              thrift_exception_type=exception_type,
-                              thrift_baseplate_status_code=baseplate_status_code,
-                              thrift_baseplate_status=baseplate_status,
-                          ).inc()
+                            REQUESTS_TOTAL.labels(
+                                thrift_method=name,
+                                thrift_client_name=self.namespace,
+                                thrift_success=thrift_success,
+                                thrift_exception_type=exception_type,
+                                thrift_baseplate_status_code=baseplate_status_code,
+                                thrift_baseplate_status=baseplate_status,
+                            ).inc()
 
             except TTransportException:
                 # swallow exception so we can retry on TTransportException (relies on the for loop)

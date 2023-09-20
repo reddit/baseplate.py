@@ -96,7 +96,11 @@ def baseplate_thrift_client(
     context = baseplate.make_context_object()
     # our client currently requires the legacy headers to be configured.
     trace_info = TraceInfo.from_upstream(
-        trace_id=0x4bf92f3577b34da6a3ce929d0e0e4736, parent_id=0x00f067aa0ba902b7, span_id=0x00f067aa0ba902b9, flags=4567, sampled=True
+        trace_id=0x4BF92F3577B34DA6A3CE929D0E0E4736,
+        parent_id=0x00F067AA0BA902B7,
+        span_id=0x00F067AA0BA902B9,
+        flags=4567,
+        sampled=True,
     )
 
     baseplate.configure_context({"example_service": ThriftClient(client_spec.Client)})
@@ -136,8 +140,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
 
         finished_spans = self.get_finished_spans()
         self.assertGreater(len(finished_spans), 0)
-        self.assertSpanHasAttributes(finished_spans[0], {'user.agent': 'fancy test client'})
-
+        self.assertSpanHasAttributes(finished_spans[0], {"user.agent": "fancy test client"})
 
     def test_no_headers(self):
         """We should accept requests without headers and generate a trace."""
@@ -160,8 +163,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
 
     def test_header_propagation(self):
         """If the client sends headers, we should set the trace up accordingly."""
-        trace_id = 0x4bf92f3577b34da6a3ce929d0e0e4736
-        parent_id = 0x00f067aa0ba902b7
+        trace_id = 0x4BF92F3577B34DA6A3CE929D0E0E4736
+        parent_id = 0x00F067AA0BA902B7
         sampled = 0x01
         traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
 
@@ -187,8 +190,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
 
     def test_not_sampled_flag(self):
         """Test that we do not sample the span if we receive a false sampled flag."""
-        trace_id = 0x4bf92f3577b34da6a3ce929d0e0e4736
-        parent_id = 0x00f067aa0ba902b7
+        trace_id = 0x4BF92F3577B34DA6A3CE929D0E0E4736
+        parent_id = 0x00F067AA0BA902B7
         traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00"
 
         class Handler(TestService.Iface):
@@ -213,8 +216,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
 
     def test_sampled_flag(self):
         """Test that we do not sample the span if we receive a false sampled flag."""
-        trace_id = 0x4bf92f3577b34da6a3ce929d0e0e4736
-        parent_id = 0x00f067aa0ba902b7
+        trace_id = 0x4BF92F3577B34DA6A3CE929D0E0E4736
+        parent_id = 0x00F067AA0BA902B7
         sampled = 0x01
         traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
 
@@ -331,7 +334,6 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
                 with self.assertRaises(TestService.ExpectedException):
                     client.example()
 
-
         finished_spans = self.get_finished_spans()
         self.assertEqual(len(finished_spans), 1)
         self.assertTrue(finished_spans[0].status.is_ok)
@@ -357,7 +359,9 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         self.assertEqual(len(finished_spans), 1)
         self.assertFalse(finished_spans[0].status.is_ok)
         self.assertEqual(len(finished_spans[0].events), 1)
-        self.assertEqual(finished_spans[0].events[0].attributes['exception.type'], 'UnexpectedException')
+        self.assertEqual(
+            finished_spans[0].events[0].attributes["exception.type"], "UnexpectedException"
+        )
 
 
 class ThriftClientSpanTests(GeventPatchedTestCase, TestBase):
@@ -371,13 +375,10 @@ class ThriftClientSpanTests(GeventPatchedTestCase, TestBase):
         handler = Handler()
 
         with serve_thrift(handler, TestService) as server:
-            with baseplate_thrift_client(
-                server.endpoint, TestService
-            ) as context:
-                with trace.get_tracer('TestWrapper').start_as_current_span('test'):
+            with baseplate_thrift_client(server.endpoint, TestService) as context:
+                with trace.get_tracer("TestWrapper").start_as_current_span("test"):
                     context.example_service.example()
 
-        
         finished_spans = self.get_finished_spans()
         self.assertGreaterEqual(len(finished_spans), 2)
         client_span = finished_spans[1]
@@ -395,12 +396,10 @@ class ThriftClientSpanTests(GeventPatchedTestCase, TestBase):
         handler = Handler()
 
         with serve_thrift(handler, TestService) as server:
-            with baseplate_thrift_client(
-                server.endpoint, TestService
-            ) as context:
+            with baseplate_thrift_client(server.endpoint, TestService) as context:
                 with self.assertRaises(TestService.ExpectedException):
-                  with trace.get_tracer('TestWrapper').start_as_current_span('test'):
-                    context.example_service.example()
+                    with trace.get_tracer("TestWrapper").start_as_current_span("test"):
+                        context.example_service.example()
 
         finished_spans = self.get_finished_spans()
         self.assertGreaterEqual(len(finished_spans), 2)
@@ -420,18 +419,16 @@ class ThriftClientSpanTests(GeventPatchedTestCase, TestBase):
         handler = Handler()
 
         with serve_thrift(handler, TestService) as server:
-            with baseplate_thrift_client(
-                server.endpoint, TestService
-            ) as context:
+            with baseplate_thrift_client(server.endpoint, TestService) as context:
                 with self.assertRaises(Error):
-                  with trace.get_tracer('TestWrapper').start_as_current_span('test'):
-                    context.example_service.example()
+                    with trace.get_tracer("TestWrapper").start_as_current_span("test"):
+                        context.example_service.example()
 
         finished_spans = self.get_finished_spans()
         self.assertGreaterEqual(len(finished_spans), 2)
         client_span = finished_spans[1]
         self.assertGreater(len(client_span.events), 0)
-        self.assertEqual(client_span.events[0].name, 'exception')
+        self.assertEqual(client_span.events[0].name, "exception")
 
 
 class ThriftEndToEndTests(GeventPatchedTestCase, TestBase):
@@ -557,9 +554,7 @@ class ThriftHealthcheck(GeventPatchedTestCase):
         handler = Handler()
 
         with serve_thrift(handler, BaseplateService) as server:
-            with baseplate_thrift_client(
-                server.endpoint, BaseplateServiceV2
-            ) as context:
+            with baseplate_thrift_client(server.endpoint, BaseplateServiceV2) as context:
                 healthy = context.example_service.is_healthy(
                     request=IsHealthyRequest(probe=IsHealthyProbe.READINESS),
                 )
@@ -577,9 +572,7 @@ class ThriftHealthcheck(GeventPatchedTestCase):
         handler = Handler()
 
         with serve_thrift(handler, BaseplateServiceV2) as server:
-            with baseplate_thrift_client(
-                server.endpoint, BaseplateServiceV2
-            ) as context:
+            with baseplate_thrift_client(server.endpoint, BaseplateServiceV2) as context:
                 healthy = context.example_service.is_healthy(
                     request=IsHealthyRequest(probe=IsHealthyProbe.LIVENESS),
                 )
