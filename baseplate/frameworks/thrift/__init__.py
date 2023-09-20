@@ -22,7 +22,6 @@ from thrift.transport.TTransport import TTransportException
 
 from opentelemetry.propagate import extract
 from opentelemetry import trace
-from opentelemetry.trace import status
 from opentelemetry.context import attach, detach
 
 from baseplate import Baseplate
@@ -120,12 +119,12 @@ class _ContextAwareHandler:
                     raise
                 except Error as exc:
                     c = ErrorCode()
-                    thrift_status = c._VALUES_TO_NAMES.get(exc.code, "")
+                    status = c._VALUES_TO_NAMES.get(exc.code, "")
 
                     otelspan.set_attribute("exception_type", "Error")
                     otelspan.set_attribute("thrift.status_code", exc.code)
-                    otelspan.set_attribute("thrift.status", thrift_status)
-                    otelspan.set_status(status.Status(status.StatusCode.ERROR))
+                    otelspan.set_attribute("thrift.status", status)
+                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
 
                     span.set_tag("exception_type", "Error")
                     span.set_tag("thrift.status_code", exc.code)
@@ -139,7 +138,7 @@ class _ContextAwareHandler:
                         span.finish()
                     raise
                 except TException as e:
-                    otelspan.set_status(status.Status(status.StatusCode.ERROR))
+                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
                     otelspan.record_exception(exc)
 
                     span.set_tag("exception_type", type(e).__name__)
@@ -153,7 +152,7 @@ class _ContextAwareHandler:
                     span.finish(exc_info=sys.exc_info())
 
                     otelspan.record_exception(e)
-                    otelspan.set_status(status.Status(status.StatusCode.ERROR))
+                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
 
                     if self.convert_to_baseplate_error:
                         raise Error(
@@ -163,7 +162,7 @@ class _ContextAwareHandler:
                     raise
                 else:
                     # a normal result
-                    otelspan.set_status(status.Status(status.StatusCode.OK))
+                    otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                     span.finish()
                     return result
                 finally:
