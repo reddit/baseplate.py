@@ -146,7 +146,7 @@ def _make_baseplate_tween(
             response = handler(request)
             if request.span:
                 request.span.set_tag("http.response_length", response.content_length)
-        except Exception as e :  # noqa: E722
+        except Exception as e:  # noqa: E722
             trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
             trace.get_current_span().record_exception(e)
             if hasattr(request, "span") and request.span:
@@ -296,6 +296,7 @@ class HeaderTrustHandler:
     def get_bool(self) -> bool:
         raise NotImplementedError
 
+
 class StaticTrustHandler(HeaderTrustHandler):
     """Default implementation for handling headers.
 
@@ -325,7 +326,6 @@ class StaticTrustHandler(HeaderTrustHandler):
 
     def get_bool(self) -> bool:
         return self.trust_headers
-
 
 
 # pylint: disable=too-many-ancestors
@@ -442,7 +442,9 @@ class BaseplateConfigurator:
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
         config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
         config.add_notfound_view(notfound_override)
-        config.add_settings({SETTING_REDDIT_TRACING_TRUST_HEADERS: self.header_trust_handler.get_bool()})
+        config.add_settings(
+            {SETTING_REDDIT_TRACING_TRUST_HEADERS: self.header_trust_handler.get_bool()}
+        )
 
         # Position of the tween is important. We need it to cover all code
         # that can written in the app. This means that it should be above

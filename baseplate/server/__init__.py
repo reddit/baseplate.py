@@ -41,11 +41,13 @@ from typing import Tuple
 from gevent.server import StreamServer
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.resources import SERVICE_NAME
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
-from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
+from opentelemetry.sdk.trace.sampling import DEFAULT_OFF
+from opentelemetry.sdk.trace.sampling import DEFAULT_ON
+from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
@@ -205,18 +207,23 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 def configure_tracing(config: Configuration) -> None:
     if config.tracing:
         if "service_name" in config.tracing and "endpoint" in config.tracing:
-            resource = Resource.create({
-                SERVICE_NAME: config.tracing["service_name"]
-            })
-            sampler = ALWAYS_OFF
+            resource = Resource.create({SERVICE_NAME: config.tracing["service_name"]})
+            # Don't sample unless parent sampled by default
+            sampler = DEFAULT_OFF
             if "sample_rate" in config.tracing:
                 sample_rate = config.tracing["sample_rate"]
                 if (
                     sample_rate is not None
                     and isinstance(sample_rate, float)
-                    and 0 <= sample_rate <= 1
+                    and 0.0 <= sample_rate <= 1.0
                 ):
-                    sampler = TraceIdRatioBased(sample_rate)
+                    if sample_rate == 1.0:
+                        # if sample rate is 1.0 sample by default
+                        sampler = DEFAULT_ON
+                    elif sample_rate == 0.0:
+                        sampler = DEFAULT_OFF
+                    else:
+                        sampler = ParentBasedTraceIdRatio(sample_rate)
                 else:
                     # if you don't set a sample rate we wont sample by default.
                     logger.warning(
