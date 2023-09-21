@@ -16,6 +16,8 @@ import pyramid.request
 import pyramid.tweens
 import webob.request
 
+from opentelemetry import trace
+from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -33,8 +35,6 @@ from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.prometheus_metrics import default_size_buckets
 from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.thrift.ttypes import IsHealthyProbe
-
-from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 
 
 PyramidInstrumentor().instrument()
@@ -68,9 +68,11 @@ class SpanFinishingAppIterWrapper:
         try:
             return next(self.app_iter)
         except StopIteration:
+            trace.get_current_span().set_status(trace.status.StatusCode.OK)
             self.span.finish()
             raise
         except:  # noqa: E722
+            trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
             self.span.finish(exc_info=sys.exc_info())
             raise
 
@@ -135,6 +137,7 @@ def _make_baseplate_tween(
                 request.span.set_tag("http.response_length", response.content_length)
         except:  # noqa: E722
             if hasattr(request, "span") and request.span:
+                trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
                 request.span.finish(exc_info=sys.exc_info())
             raise
         else:

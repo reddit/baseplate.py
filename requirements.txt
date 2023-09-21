@@ -30,3 +30,4 @@ opentelemetry-sdk==1.20.0
 opentelemetry-test-utils==0.41b0
 opentelemetry-instrumentation-pyramid==0.41b0
 opentelemetry-instrumentation-requests==0.41b0
+opentelemetry-exporter-otlp==1.20.0

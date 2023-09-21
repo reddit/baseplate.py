@@ -3,25 +3,23 @@ import inspect
 import sys
 import time
 
+from collections import OrderedDict
 from math import ceil
 from typing import Any
 from typing import Callable
 from typing import Iterator
 from typing import Optional
 
-from collections import OrderedDict
-
+from opentelemetry import propagate
+from opentelemetry import trace
+from opentelemetry.trace import status
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
 from thrift.protocol.TProtocol import TProtocolException
-from thrift.protocol.THeaderProtocol import THeaderProtocol
 from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
 from thrift.transport.TTransport import TTransportException
-
-from opentelemetry import trace, propagate
-from opentelemetry.trace import status
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -230,7 +228,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     span.set_tag("method", method.__name__)
                     span.start()
 
-                    mutable_metadata = OrderedDict()
+                    mutable_metadata: OrderedDict = OrderedDict()
                     with self.tracer.start_as_current_span(
                         trace_name, kind=trace.SpanKind.CLIENT
                     ) as otelspan:

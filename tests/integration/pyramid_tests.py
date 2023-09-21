@@ -3,13 +3,12 @@ import unittest
 
 from unittest import mock
 
+from opentelemetry.test.test_base import TestBase
 from pyramid.response import Response
 
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
-
-from opentelemetry.test.test_base import TestBase
 
 from . import FakeEdgeContextFactory
 
