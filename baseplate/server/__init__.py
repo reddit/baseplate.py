@@ -204,7 +204,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
 def configure_tracing(config: Configuration) -> None:
     if config.tracing:
-        if "service_name" in config.app and "endpoint" in config.tracing:
+        if "service_name" in config.tracing and "endpoint" in config.tracing:
             resource = Resource(attributes={"service.name": config.app["service_name"]})
             sampler = ALWAYS_OFF
             if "sample_rate" in config.tracing:
@@ -239,7 +239,7 @@ def configure_tracing(config: Configuration) -> None:
             trace.set_tracer_provider(provider)
         else:
             logger.warning(
-                "Tracing disabled: app.service_name and tracing.endpoint are required fields in the config."
+                "Tracing disabled: service_name and endpoint are required fields in the tracing config."
             )
 
 
