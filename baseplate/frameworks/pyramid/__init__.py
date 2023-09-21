@@ -136,11 +136,11 @@ def _make_baseplate_tween(
 ) -> Callable[[Request], Response]:
     def baseplate_tween(request: Request) -> Response:
         response: Optional[Response] = None
-        if not request.registry.settings[SETTING_REDDIT_TRACING_TRUST_HEADERS]:
-            # If we don't trust the tracing headers we remove them before the otel
-            # instrumentation can pick them up.
-            request.headers.pop("traceparent", None)
-            request.headers.pop("tracestate", None)
+        #if not request.registry.settings[SETTING_REDDIT_TRACING_TRUST_HEADERS]:
+        #    # If we don't trust the tracing headers we remove them before the otel
+        #    # instrumentation can pick them up.
+        #    request.headers.pop("traceparent", None)
+        #    request.headers.pop("tracestate", None)
 
         try:
             response = handler(request)
@@ -293,9 +293,6 @@ class HeaderTrustHandler:
         """
         raise NotImplementedError
 
-    def get_bool(self) -> bool:
-        raise NotImplementedError
-
 
 class StaticTrustHandler(HeaderTrustHandler):
     """Default implementation for handling headers.
@@ -322,9 +319,6 @@ class StaticTrustHandler(HeaderTrustHandler):
         return self.trust_headers
 
     def should_trust_edge_context_payload(self, request: Request) -> bool:
-        return self.trust_headers
-
-    def get_bool(self) -> bool:
         return self.trust_headers
 
 
@@ -442,9 +436,9 @@ class BaseplateConfigurator:
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
         config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
         config.add_notfound_view(notfound_override)
-        config.add_settings(
-            {SETTING_REDDIT_TRACING_TRUST_HEADERS: self.header_trust_handler.get_bool()}
-        )
+        #config.add_settings(
+        #    {SETTING_REDDIT_TRACING_TRUST_HEADERS: self.header_trust_handler.get_bool()}
+        #)
 
         # Position of the tween is important. We need it to cover all code
         # that can written in the app. This means that it should be above
