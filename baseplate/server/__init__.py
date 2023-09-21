@@ -246,6 +246,7 @@ def configure_tracing(config: Configuration) -> None:
             provider = TracerProvider(sampler=sampler, resource=resource)
             provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
             trace.set_tracer_provider(provider)
+            logger.info("Tracing Configured")
         else:
             logger.warning(
                 "Tracing disabled: service_name and endpoint are required fields in the tracing config."
