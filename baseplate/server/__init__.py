@@ -41,7 +41,7 @@ from typing import Tuple
 from gevent.server import StreamServer
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
@@ -205,7 +205,9 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 def configure_tracing(config: Configuration) -> None:
     if config.tracing:
         if "service_name" in config.tracing and "endpoint" in config.tracing:
-            resource = Resource(attributes={"service.name": config.app["service_name"]})
+            resource = Resource.create({
+                SERVICE_NAME: config.tracing["service_name"]
+            })
             sampler = ALWAYS_OFF
             if "sample_rate" in config.tracing:
                 sample_rate = config.tracing["sample_rate"]
