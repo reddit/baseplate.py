@@ -211,12 +211,12 @@ def configure_tracing(config: Configuration) -> None:
             # Don't sample unless parent sampled by default
             sampler = DEFAULT_OFF
             if "sample_rate" in config.tracing:
-                sample_rate = config.tracing["sample_rate"]
-                if (
-                    sample_rate is not None
-                    and isinstance(sample_rate, float)
-                    and 0.0 <= sample_rate <= 1.0
-                ):
+                try:
+                    sample_rate = float(config.tracing["sample_rate"])
+                except ValueError:
+                    logger.error("unable to parse tracing sample_rate")
+                    return
+                if sample_rate is not None and 0.0 <= sample_rate <= 1.0:
                     if sample_rate == 1.0:
                         # if sample rate is 1.0 sample by default
                         sampler = DEFAULT_ON
