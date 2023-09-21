@@ -50,6 +50,8 @@ setup(
         "opentelemetry-api>=1.20.0",
         "opentelemetry-sdk>=1.20.0",
         "opentelemetry-exporter-otlp>=1.20.0",
+        "opentelemetry-instrumentation-pyramid>=0.41b0",
+        "opentelemetry-instrumentation-requests>=0.41b0",
     ],
     extras_require=extras_require,
     scripts=[
