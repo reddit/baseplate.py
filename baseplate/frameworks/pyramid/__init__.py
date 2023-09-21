@@ -37,6 +37,9 @@ from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.thrift.ttypes import IsHealthyProbe
 
 
+SETTING_REDDIT_TRACING_TRUST_HEADERS = "reddit.tracing.trust_headers"
+
+
 PyramidInstrumentor().instrument()
 
 logger = logging.getLogger(__name__)
@@ -57,7 +60,7 @@ class SpanFinishingAppIterWrapper:
 
     """
 
-    def __init__(self, span: Span, app_iter: Iterable[bytes]) -> None:
+    def __init__(self, app_iter: Iterable[bytes], span: Optional[Span] = None) -> None:
         self.span = span
         self.app_iter = iter(app_iter)
 
@@ -69,11 +72,14 @@ class SpanFinishingAppIterWrapper:
             return next(self.app_iter)
         except StopIteration:
             trace.get_current_span().set_status(trace.status.StatusCode.OK)
-            self.span.finish()
+            if self.span:
+                self.span.finish()
             raise
-        except:  # noqa: E722
+        except Exception as e:  # noqa: E722
             trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
-            self.span.finish(exc_info=sys.exc_info())
+            trace.get_current_span().record_exception(e)
+            if self.span:
+                self.span.finish(exc_info=sys.exc_info())
             raise
 
     def close(self) -> None:
@@ -130,21 +136,31 @@ def _make_baseplate_tween(
 ) -> Callable[[Request], Response]:
     def baseplate_tween(request: Request) -> Response:
         response: Optional[Response] = None
+        if not request.registry.settings[SETTING_REDDIT_TRACING_TRUST_HEADERS]:
+            # If we don't trust the tracing headers we remove them before the otel
+            # instrumentation can pick them up.
+            request.headers.pop("traceparent", None)
+            request.headers.pop("tracestate", None)
 
         try:
             response = handler(request)
             if request.span:
                 request.span.set_tag("http.response_length", response.content_length)
-        except:  # noqa: E722
+        except Exception as e :  # noqa: E722
+            trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
+            trace.get_current_span().record_exception(e)
             if hasattr(request, "span") and request.span:
-                trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
                 request.span.finish(exc_info=sys.exc_info())
             raise
         else:
+            trace.get_current_span().set_status(trace.status.StatusCode.OK)
+            content_length = response.content_length
             if request.span:
                 request.span.set_tag("http.status_code", response.status_code)
-                content_length = response.content_length
-                response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
+                response.app_iter = SpanFinishingAppIterWrapper(response.app_iter, request.span)
+                response.content_length = content_length
+            else:
+                response.app_iter = SpanFinishingAppIterWrapper(response.app_iter)
                 response.content_length = content_length
         finally:
             manually_close_request_metrics(request, response)
@@ -277,6 +293,8 @@ class HeaderTrustHandler:
         """
         raise NotImplementedError
 
+    def get_bool(self) -> bool:
+        raise NotImplementedError
 
 class StaticTrustHandler(HeaderTrustHandler):
     """Default implementation for handling headers.
@@ -304,6 +322,10 @@ class StaticTrustHandler(HeaderTrustHandler):
 
     def should_trust_edge_context_payload(self, request: Request) -> bool:
         return self.trust_headers
+
+    def get_bool(self) -> bool:
+        return self.trust_headers
+
 
 
 # pylint: disable=too-many-ancestors
@@ -420,6 +442,7 @@ class BaseplateConfigurator:
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
         config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
         config.add_notfound_view(notfound_override)
+        config.add_settings({SETTING_REDDIT_TRACING_TRUST_HEADERS: self.header_trust_handler.get_bool()})
 
         # Position of the tween is important. We need it to cover all code
         # that can written in the app. This means that it should be above

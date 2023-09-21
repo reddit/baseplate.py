@@ -143,8 +143,8 @@ class ConfiguratorTests(TestBase):
 
         finished_spans = self.get_finished_spans()
         self.assertEqual(len(finished_spans), 1)
-        self.assertTrue(finished_spans[0].status.is_ok)
-        self.assertGreater(finished_spans[0].events, 0)
+        self.assertFalse(finished_spans[0].status.is_ok)
+        self.assertGreater(len(finished_spans[0].events), 0)
         self.assertEqual(finished_spans[0].events[0].name, "exception")
 
     def test_control_flow_exception_not_caught(self):
@@ -152,9 +152,7 @@ class ConfiguratorTests(TestBase):
 
         finished_spans = self.get_finished_spans()
         self.assertEqual(len(finished_spans), 1)
-        self.assertFalse(finished_spans[0].status.is_ok)
-        self.assertGreater(len(finished_spans[0].events), 0)
-        self.assertEqual(finished_spans[0].events[0].name, "exception")
+        self.assertTrue(finished_spans[0].status.is_ok)
 
     def test_exception_in_exception_view_caught(self):
         with self.assertRaises(ExceptionViewException):
@@ -166,6 +164,9 @@ class ConfiguratorTests(TestBase):
 
     def test_distrust_headers(self):
         self.baseplate_configurator.header_trust_handler.trust_headers = False
+        # We need to get this into the settings so that we can load it in our tween.
+        # The above method should be load at app initialisation still.
+        self.test_app.app.registry.settings['reddit.tracing.trust_headers'] = False
 
         self.test_app.get(
             "/example",

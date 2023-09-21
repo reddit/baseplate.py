@@ -204,8 +204,8 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
 def configure_tracing(config: Configuration) -> None:
     if config.tracing:
-        if "service_name" in config.tracing and "endpoint" in config.tracing:
-            resource = Resource(attributes={"service.name": config.tracing.service_name})
+        if "service_name" in config.app and "endpoint" in config.tracing:
+            resource = Resource(attributes={"service.name": config.app["service_name"]})
             sampler = ALWAYS_OFF
             if "sample_rate" in config.tracing:
                 sample_rate = config.tracing["sample_rate"]
@@ -225,8 +225,10 @@ def configure_tracing(config: Configuration) -> None:
                     "sample_rate not specified in tracing config, default to no sampling."
                 )
             # Load insecure option from tracing config.
+            insecure: bool
             if "insecure" in config.tracing:
-                insecure = config.tracing["insecure"]
+                if config.tracing["insecure"] == "false":
+                    insecure = False
             else:
                 # Default to true. At the time of implementation our current tracing pipeline is not setup for TLS.
                 insecure = True
@@ -237,7 +239,7 @@ def configure_tracing(config: Configuration) -> None:
             trace.set_tracer_provider(provider)
         else:
             logger.warning(
-                "Tracing disabled: service_name and endpoint are required fields in the tracing config section."
+                "Tracing disabled: app.service_name and tracing.endpoint are required fields in the config."
             )
 
 
