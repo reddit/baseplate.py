@@ -79,7 +79,7 @@ sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
 SQLAlchemy==1.4.12
-thrift==0.14.1
+thrift-unofficial==0.19.0
 toml==0.10.2
 tomli==1.2.2
 translationstring==1.4
