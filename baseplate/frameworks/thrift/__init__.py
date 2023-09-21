@@ -1,14 +1,18 @@
 import sys
 import time
 
+from contextlib import contextmanager
 from logging import Logger
 from typing import Any
 from typing import Callable
+from typing import Iterator
 from typing import Mapping
 from typing import Optional
 
-from contextlib import contextmanager
-
+from opentelemetry import trace
+from opentelemetry.context import attach
+from opentelemetry.context import detach
+from opentelemetry.propagate import extract
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -19,10 +23,6 @@ from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
 from thrift.Thrift import TProcessor
 from thrift.transport.TTransport import TTransportException
-
-from opentelemetry.propagate import extract
-from opentelemetry import trace
-from opentelemetry.context import attach, detach
 
 from baseplate import Baseplate
 from baseplate import RequestContext
@@ -77,7 +77,7 @@ class _ContextAwareHandler:
         self.tracer = trace.get_tracer(__name__)
 
     @contextmanager
-    def _set_remote_context(self, servicer_context):
+    def _set_remote_context(self, servicer_context: RequestContext) -> Iterator[None]:
         headers = servicer_context.headers
         if headers:
             str_headers = {}
@@ -101,7 +101,7 @@ class _ContextAwareHandler:
             span = self.context.span
             span.set_tag("thrift.method", fn_name)
             start_time = time.perf_counter()
-            with self._set_remote_context(self.context) as ctx:
+            with self._set_remote_context(self.context):
                 with self.tracer.start_as_current_span(
                     fn_name, kind=trace.SpanKind.SERVER, record_exception=False
                 ) as otelspan:

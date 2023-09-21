@@ -39,6 +39,13 @@ from typing import TextIO
 from typing import Tuple
 
 from gevent.server import StreamServer
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.sampling import ALWAYS_OFF
+from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
@@ -133,6 +140,7 @@ class Configuration(NamedTuple):
     server: Optional[Dict[str, str]]
     app: Dict[str, str]
     has_logging_options: bool
+    tracing: Optional[Dict[str, str]]
     shell: Optional[Dict[str, str]]
 
 
@@ -146,13 +154,18 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
     server_config = dict(parser.items("server:" + server_name)) if server_name else None
     app_config = dict(parser.items("app:" + app_name))
     has_logging_config = parser.has_section("loggers")
+    tracing_config = None
+    if parser.has_section("tracing"):
+        tracing_config = dict(parser.items("tracing"))
     shell_config = None
     if parser.has_section("shell"):
         shell_config = dict(parser.items("shell"))
     elif parser.has_section("tshell"):
         shell_config = dict(parser.items("tshell"))
 
-    return Configuration(filename, server_config, app_config, has_logging_config, shell_config)
+    return Configuration(
+        filename, server_config, app_config, has_logging_config, tracing_config, shell_config
+    )
 
 
 def configure_logging(config: Configuration, debug: bool) -> None:
@@ -187,6 +200,45 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
     if config.has_logging_options:
         logging.config.fileConfig(config.filename)
+
+
+def configure_tracing(config: Configuration) -> None:
+    if config.tracing:
+        if "service_name" in config.tracing and "endpoint" in config.tracing:
+            resource = Resource(attributes={"service.name": config.tracing.service_name})
+            sampler = ALWAYS_OFF
+            if "sample_rate" in config.tracing:
+                sample_rate = config.tracing["sample_rate"]
+                if (
+                    sample_rate is not None
+                    and isinstance(sample_rate, float)
+                    and 0 <= sample_rate <= 1
+                ):
+                    sampler = TraceIdRatioBased(sample_rate)
+                else:
+                    # if you don't set a sample rate we wont sample by default.
+                    logger.warning(
+                        "sample_rate invalid in tracing config, it must be a float between 0 and 1. Defaulting to no sampling."
+                    )
+            else:
+                logger.warning(
+                    "sample_rate not specified in tracing config, default to no sampling."
+                )
+            # Load insecure option from tracing config.
+            if "insecure" in config.tracing:
+                insecure = config.tracing["insecure"]
+            else:
+                # Default to true. At the time of implementation our current tracing pipeline is not setup for TLS.
+                insecure = True
+
+            otlp_exporter = OTLPSpanExporter(endpoint=config.tracing["endpoint"], insecure=insecure)
+            provider = TracerProvider(sampler=sampler, resource=resource)
+            provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+            trace.set_tracer_provider(provider)
+        else:
+            logger.warning(
+                "Tracing disabled: service_name and endpoint are required fields in the tracing config section."
+            )
 
 
 def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
@@ -275,6 +327,7 @@ def load_app_and_run_server() -> None:
         logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     configure_logging(config, args.debug)
+    configure_tracing(config)
 
     app = make_app(config.app)
     listener = make_listener(args.bind)

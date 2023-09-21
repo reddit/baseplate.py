@@ -8,10 +8,10 @@ from unittest import mock
 import gevent.monkey
 import pytest
 
+from opentelemetry import trace
+from opentelemetry.test.test_base import TestBase
+
 from baseplate import Baseplate
-from baseplate import BaseplateObserver
-from baseplate import ServerSpanObserver
-from baseplate import SpanObserver
 from baseplate import TraceInfo
 from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
@@ -27,9 +27,6 @@ from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
-
-from opentelemetry import trace
-from opentelemetry.test.test_base import TestBase
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
@@ -190,8 +187,6 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
 
     def test_not_sampled_flag(self):
         """Test that we do not sample the span if we receive a false sampled flag."""
-        trace_id = 0x4BF92F3577B34DA6A3CE929D0E0E4736
-        parent_id = 0x00F067AA0BA902B7
         traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-00"
 
         class Handler(TestService.Iface):
