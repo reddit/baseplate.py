@@ -81,7 +81,13 @@ class _ContextAwareHandler:
     def _set_remote_context(self, request_context: RequestContext) -> Iterator[None]:
         headers = request_context.headers
         if headers:
-            header_dict = {k.decode(): v.decode() for k, v in headers.items()}
+            header_dict = Dict()
+            for k, v in headers.items():
+                try:
+                    header_dict[k.decode()] = v.decode()
+                except Exception as e:
+                    self.logger.warning("Failed to decode header.", e)
+
             ctx = extract(header_dict)
             token = attach(ctx)
             try:
