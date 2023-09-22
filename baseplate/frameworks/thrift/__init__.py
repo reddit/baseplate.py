@@ -69,23 +69,20 @@ class _ContextAwareHandler:
         context: RequestContext,
         logger: Logger,
         convert_to_baseplate_error: bool,
+        tracer,
     ):
         self.handler = handler
         self.context = context
         self.logger = logger
         self.convert_to_baseplate_error = convert_to_baseplate_error
-        self.tracer = trace.get_tracer(__name__)
+        self._tracer = tracer
 
     @contextmanager
-    def _set_remote_context(self, servicer_context: RequestContext) -> Iterator[None]:
-        headers = servicer_context.headers
-        str_headers = {}
+    def _set_remote_context(self, request_context: RequestContext) -> Iterator[None]:
+        headers = request_context.headers
         if headers:
-            if b'traceparent' in headers:
-                str_headers['traceparent'] = headers[b'traceparent'].decode()
-            if b'tracestate' in headers:
-                str_headers['tracestate'] = headers[b'tracestate'].decode()
-            ctx = extract(str_headers)
+            header_dict = {k.decode(): v.decode() for k, v in headers.items()}
+            ctx = extract(header_dict)
             token = attach(ctx)
             try:
                 yield
@@ -93,6 +90,18 @@ class _ContextAwareHandler:
                 detach(token)
         else:
             yield
+
+    #def _start_span(
+    #        self, handler_call_details, context, set_status_on_exception=False
+    #):
+    #    attributes = {
+    #            SpanAttributes.RPC_SYSTEM: "thrift",
+    #    }
+
+    #    headers = context.headers
+    #    if b"user-agent" in headers:
+    #        attributes["rpc.user_agent"] = headers["user-agent"].decode()
+
 
     def __getattr__(self, fn_name: str) -> Callable[..., Any]:
         def call_with_context(*args: Any, **kwargs: Any) -> Any:
@@ -104,7 +113,7 @@ class _ContextAwareHandler:
             span.set_tag("thrift.method", fn_name)
             start_time = time.perf_counter()
             with self._set_remote_context(self.context):
-                with self.tracer.start_as_current_span(
+                with self._tracer.start_as_current_span(
                     fn_name, kind=trace.SpanKind.SERVER, record_exception=False
                 ) as otelspan:
                     otelspan.set_attribute("thrift.method", fn_name)
@@ -290,8 +299,9 @@ def baseplateify_processor(
             context.headers = headers
 
             handler = processor._handler
+            tracer = trace.get_tracer(__name__)
             context_aware_handler = _ContextAwareHandler(
-                handler, context, logger, convert_to_baseplate_error
+                handler, context, logger, convert_to_baseplate_error, tracer
             )
             context_aware_processor = processor.__class__(context_aware_handler)
             return processor_fn(context_aware_processor, seqid, iprot, oprot)
