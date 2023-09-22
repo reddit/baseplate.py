@@ -205,7 +205,9 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
 
 def configure_tracing(config: Configuration) -> None:
+    logger.info("Entering configure tracing function"
     if config.tracing:
+        logger.info("Tracing config has been provided")
         if "service_name" in config.tracing and "endpoint" in config.tracing:
             resource = Resource.create({SERVICE_NAME: config.tracing["service_name"]})
             # Don't sample unless parent sampled by default
