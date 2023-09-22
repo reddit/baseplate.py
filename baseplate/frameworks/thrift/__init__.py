@@ -79,10 +79,12 @@ class _ContextAwareHandler:
     @contextmanager
     def _set_remote_context(self, servicer_context: RequestContext) -> Iterator[None]:
         headers = servicer_context.headers
+        str_headers = {}
         if headers:
-            str_headers = {}
-            for k, v in headers.items():
-                str_headers[k.decode()] = v.decode()
+            if b'traceparent' in headers:
+                str_headers['traceparent'] = headers[b'traceparent'].decode()
+            if b'tracestate' in headers:
+                str_headers['tracestate'] = headers[b'tracestate'].decode()
             ctx = extract(str_headers)
             token = attach(ctx)
             try:
