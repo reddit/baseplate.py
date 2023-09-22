@@ -81,7 +81,7 @@ class _ContextAwareHandler:
     def _set_remote_context(self, request_context: RequestContext) -> Iterator[None]:
         headers = request_context.headers
         if headers:
-            header_dict = Dict()
+            header_dict = {}
             for k, v in headers.items():
                 try:
                     header_dict[k.decode()] = v.decode()
