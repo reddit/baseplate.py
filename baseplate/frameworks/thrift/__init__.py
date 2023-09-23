@@ -85,7 +85,7 @@ class _ContextAwareHandler:
             for k, v in headers.items():
                 try:
                     header_dict[k.decode()] = v.decode()
-                except TypeError as e:
+                except UnicodeDecodeError:
                     self.logger.info(f"Unable to decode header {k.decode()}, ignoring.")
 
             ctx = extract(header_dict)
