@@ -22,7 +22,7 @@ coverage==5.4
 cryptography==39.0.1
 docutils==0.16
 geomet==0.2.1.post1
-gevent==21.1.2
+gevent==23.9.1
 graphviz==0.16
 greenlet==1.0.0
 hupper==1.10.2
