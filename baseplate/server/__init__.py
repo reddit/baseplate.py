@@ -205,6 +205,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
 
 def configure_tracing(config: Configuration) -> None:
+    breakpoint()
     logger.info("Entering configure tracing function")
     if config.tracing:
         logger.info("Tracing config has been provided")
@@ -341,7 +342,6 @@ def load_app_and_run_server() -> None:
         logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     configure_logging(config, args.debug)
-    breakpoint()
     configure_tracing(config)
 
     app = make_app(config.app)
