@@ -341,6 +341,7 @@ def load_app_and_run_server() -> None:
         logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     configure_logging(config, args.debug)
+    breakpoint()
     configure_tracing(config)
 
     app = make_app(config.app)
