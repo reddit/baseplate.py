@@ -118,7 +118,6 @@ class _ContextAwareHandler:
             span = self.context.span
             span.set_tag("thrift.method", fn_name)
             start_time = time.perf_counter()
-            logger.debug("(TJR)...........CALLED WITH CONTEXT")
             with self._set_remote_context(self.context):
                 with self._tracer.start_as_current_span(
                     fn_name, kind=trace.SpanKind.SERVER, record_exception=False
