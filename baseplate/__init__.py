@@ -629,7 +629,10 @@ class Span:
 
         """
         for observer in self.observers:
-            observer.on_finish(exc_info)
+            try:
+                observer.on_finish(exc_info)
+            except Exception:
+                logger.exception("Exception raised while finalizing observer")
 
         # clean up reference cycles
         self.context = None  # type: ignore
