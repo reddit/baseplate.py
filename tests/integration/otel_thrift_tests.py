@@ -9,6 +9,7 @@ import gevent.monkey
 import pytest
 
 from opentelemetry import trace
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 
 from baseplate import Baseplate
@@ -30,6 +31,9 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
+
+
+THRIFT_CLIENT_NAME = "example_service"
 
 
 @contextlib.contextmanager
@@ -88,7 +92,7 @@ def baseplate_thrift_client(
 
     context = baseplate.make_context_object()
 
-    baseplate.configure_context({"example_service": ThriftClient(client_spec.Client)})
+    baseplate.configure_context({THRIFT_CLIENT_NAME: ThriftClient(client_spec.Client)})
 
     context = baseplate.make_context_object()
     # our client currently requires the legacy headers to be configured.
@@ -99,8 +103,6 @@ def baseplate_thrift_client(
         flags=4567,
         sampled=True,
     )
-
-    baseplate.configure_context({"example_service": ThriftClient(client_spec.Client)})
 
     baseplate.make_server_span(context, "example_service.example", trace_info)
     context.raw_edge_context = FakeEdgeContextFactory.RAW_BYTES
@@ -138,6 +140,36 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         finished_spans = self.get_finished_spans()
         self.assertGreater(len(finished_spans), 0)
         self.assertSpanHasAttributes(finished_spans[0], {"user.agent": "fancy test client"})
+
+    def test_client_span_attributes(self):
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(server.endpoint, TestService) as context:
+                context.example_service.example()
+
+                net_peer_addr = server.endpoint.address.host
+                net_peer_port = server.endpoint.address.port
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 2)
+
+        thrift_client_span = finished_spans[-1]
+        self.assertEqual(thrift_client_span.kind, trace.SpanKind.CLIENT)
+        self.assertSpanHasAttributes(
+            thrift_client_span,
+            {
+                SpanAttributes.RPC_SYSTEM: "thrift",
+                SpanAttributes.RPC_SERVICE: THRIFT_CLIENT_NAME,
+                SpanAttributes.RPC_METHOD: "example",
+                SpanAttributes.NET_PEER_NAME: net_peer_addr,
+                SpanAttributes.NET_PEER_PORT: net_peer_port,
+            },
+        )
 
     def test_no_headers(self):
         """We should accept requests without headers and generate a trace."""

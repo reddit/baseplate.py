@@ -12,6 +12,7 @@ from typing import Optional
 
 from opentelemetry import propagate
 from opentelemetry import trace
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import status
 from prometheus_client import Counter
 from prometheus_client import Gauge
@@ -229,8 +230,42 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     span.start()
 
                     mutable_metadata: OrderedDict = OrderedDict()
+
+                    # RPC specific headers
+                    # 1.20 doc https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/trace/semantic_conventions/rpc.md
+                    extra_headers = {
+                        # 1.20 and above
+                        SpanAttributes.RPC_SYSTEM: "thrift",
+                        # this is technically incorrect, but we don't currently have a reliable way
+                        # of getting the name of the service being called, so relying on the name of
+                        # the client is the best we can do
+                        SpanAttributes.RPC_SERVICE: self.namespace,
+                        SpanAttributes.RPC_METHOD: name,
+                        # new in 1.21
+                        # SpanAttributes.NETWORK_TRANSPORT: "tcp",  # only protocol supported?
+                        # SpanAttributes.NETWORK_TYPE: "ipv4|6",
+                        # 1.21 and above
+                        # SpanAttributes.SERVER_ADDRESS: self.pool.endpoint.address.host,
+                        # SpanAttributes.SERVER_PORT: self.pool.endpoint.address.port,
+                        # 1.20 ONLY
+                        SpanAttributes.NET_PEER_NAME: self.pool.endpoint.address.host,  # renamed to server.address in 1.21
+                        # or maybe net.sock.peer.addr? who knows... both renamed to server.address in 1.21
+                        SpanAttributes.NET_PEER_PORT: self.pool.endpoint.address.port,  # renamed to server.port in 1.21
+                        # SpanAttributes.NET_SOCK_PEER_ADDR -> SERVER_SOCKET_ADDRESS -> NETWORK_PEER_ADDRESS
+                        # SpanAttributes.NET_SOCK_PEER_NAME
+                        # SpanAttributes.NET_SOCK_PEER_PORT -> SERVER_SOCKET_PORT -> NETWORK_PEER_PORT
+                        # 1.21 only
+                        # SpanAttributes.SERVER_SOCKET_ADDRESS: "ip",
+                        # SpanAttributes.SERVER_SOCKET_PORT: "only if != server.port and server.socket.address is set",
+                        # new in 1.22
+                        # SpanAttributes.NETWORK_PEER_ADDRESS: "ip",  # recommended if != from server.address
+                        # SpanAttributes.NETWORK_PEER_PORT: 0,  # recommended if network.peer.address is set
+                    }
+
                     with self.tracer.start_as_current_span(
-                        trace_name, kind=trace.SpanKind.CLIENT
+                        trace_name,
+                        kind=trace.SpanKind.CLIENT,
+                        attributes=extra_headers,
                     ) as otelspan:
                         try:
                             baseplate = span.baseplate

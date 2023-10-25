@@ -1,3 +1,4 @@
+import random
 import sys
 import time
 
@@ -97,17 +98,12 @@ class _ContextAwareHandler:
         else:
             yield
 
-    #def _start_span(
-    #        self, handler_call_details, context, set_status_on_exception=False
-    #):
-    #    attributes = {
-    #            SpanAttributes.RPC_SYSTEM: "thrift",
-    #    }
-
-    #    headers = context.headers
-    #    if b"user-agent" in headers:
-    #        attributes["rpc.user_agent"] = headers["user-agent"].decode()
-
+    # def _start_span(
+    #         self, handler_call_details, context, set_status_on_exception=False
+    # ):
+    #     attributes = {
+    #             SpanAttributes.RPC_SYSTEM: "thrift",
+    #     }
 
     def __getattr__(self, fn_name: str) -> Callable[..., Any]:
         def call_with_context(*args: Any, **kwargs: Any) -> Any:
@@ -272,11 +268,11 @@ def baseplateify_processor(
                 sampled = bool(headers.get(b"Sampled") == b"1")
                 flags = headers.get(b"Flags", None)
                 trace_info = TraceInfo.from_upstream(
-                    headers[b"Trace"].decode(),
-                    headers[b"Parent"].decode(),
-                    headers[b"Span"].decode(),
-                    sampled,
-                    int(flags) if flags is not None else None,
+                    trace_id=headers[b"Trace"].decode(),
+                    parent_id=headers[b"Parent"].decode(),
+                    span_id=str(random.getrandbits(128)),
+                    sampled=sampled,
+                    flags=int(flags) if flags is not None else None,
                 )
             except (KeyError, ValueError):
                 trace_info = None
