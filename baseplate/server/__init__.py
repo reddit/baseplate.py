@@ -40,14 +40,17 @@ from typing import Tuple
 
 from gevent.server import StreamServer
 from opentelemetry import trace
+from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.resources import SERVICE_NAME
+from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import DEFAULT_OFF
 from opentelemetry.sdk.trace.sampling import DEFAULT_ON
 from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
+from opentelemetry.semconv.resource import ResourceAttributes
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
@@ -204,6 +207,24 @@ def configure_logging(config: Configuration, debug: bool) -> None:
         logging.config.fileConfig(config.filename)
 
 
+class BaseplateBatchSpanProcessor(BatchSpanProcessor):
+    def __init__(
+        self, otlp_exporter: OTLPSpanExporter, attributes: Optional[dict[str, Any]] = None
+    ) -> None:
+        logger.info(f"Initializing {self.__class__.__name__} with global attributes {attributes=}.")
+        super().__init__(otlp_exporter)
+        self.baseplate_global_attributes = attributes
+
+    def on_start(self, span: Span, parent_context: Optional[Context] = None) -> None:
+        logger.warning(f"Starting new span. [{span=}, {parent_context=}]")
+        if self.baseplate_global_attributes:
+            span.set_attributes(self.baseplate_global_attributes)
+            logger.warning(
+                f"Added global attributes to new span. [{span=}, {self.baseplate_global_attributes=}]"
+            )
+        super().on_start(span, parent_context)
+
+
 def configure_tracing(config: Configuration) -> None:
     logger.info("Entering configure tracing function")
     if config.tracing:
@@ -246,7 +267,14 @@ def configure_tracing(config: Configuration) -> None:
 
             otlp_exporter = OTLPSpanExporter(endpoint=config.tracing["endpoint"], insecure=insecure)
             provider = TracerProvider(sampler=sampler, resource=resource)
-            provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+            provider.add_span_processor(
+                BaseplateBatchSpanProcessor(
+                    otlp_exporter,
+                    attributes={
+                        ResourceAttributes.SERVICE_NAME: config.tracing["service_name"],
+                    },
+                )
+            )
             trace.set_tracer_provider(provider)
             logger.info("Tracing Configured")
         else:

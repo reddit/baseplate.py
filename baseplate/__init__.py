@@ -706,7 +706,7 @@ class LocalSpan(Span):
         if not self.context:
             raise ParentSpanAlreadyFinishedError
 
-        span_id = str(random.getrandbits(64))
+        span_id = str(random.getrandbits(128))
         context_copy = self.context.clone()
         span: Span
         if local:

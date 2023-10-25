@@ -5,19 +5,19 @@ repos:
     name: make-fmt
     stages: [commit]
     language: system
-    entry: docker-compose run baseplate make fmt
+    entry: docker compose run --no-TTY baseplate make fmt
     always_run: true
   - id: make-lint
     name: make-lint
     stages: [push]
     language: system
-    entry: docker-compose run baseplate make lint
+    entry: docker compose run --no-TTY baseplate make lint
     always_run: true
     fail_fast: true
   - id: pytest
     name: pytest
     stages: [push]
     language: system
-    entry: docker-compose run baseplate pytest
+    entry: docker compose run --no-TTY baseplate pytest
     always_run: true
     fail_fast: true

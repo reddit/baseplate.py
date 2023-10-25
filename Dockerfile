@@ -12,6 +12,7 @@ WORKDIR /src
 ENV CASS_DRIVER_NO_EXTENSIONS theytaketoolongtobuild
 
 COPY requirements*.txt ./
+RUN apt-get -y update && apt-get -y install librdkafka-dev && rm -rf /var/lib/apt/lists/*
 RUN pip install -r requirements.txt
 
 RUN touch /baseplate-py-dev-docker-image
