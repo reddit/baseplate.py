@@ -245,10 +245,10 @@ class TraceSpanObserverTests(TraceTestBase):
         span_obj = self.test_span_observer._to_span_obj([], [])
         self.assertEqual(span_obj["parentId"], self.span.parent_id)
 
-    def test_to_span_obj_sets_default_parent_id(self):
+    def test_to_span_obj_default_no_parent_id(self):
         self.span.parent_id = None
         span_obj = self.test_span_observer._to_span_obj([], [])
-        self.assertEqual(span_obj["parentId"], 0)
+        self.assertFalse("parentId" in span_obj)
 
     def test_incr_tag_adds_binary_annotation(self):
         self.test_span_observer.binary_annotations = []
