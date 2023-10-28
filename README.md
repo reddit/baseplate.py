@@ -28,7 +28,7 @@ And can take advantage of:
 
 And many other things!
 
-# pre-commit
+## pre-commit
 
 * [Documentation](https://pre-commit.com/)
 
