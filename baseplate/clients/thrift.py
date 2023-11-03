@@ -1,5 +1,6 @@
 import contextlib
 import inspect
+import logging
 import sys
 import time
 
@@ -32,6 +33,8 @@ from baseplate.lib.thrift_pool import thrift_pool_from_config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
+
+logger = logging.getLogger(__name__)
 
 PROM_NAMESPACE = "thrift_client"
 
@@ -233,7 +236,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
                     # RPC specific headers
                     # 1.20 doc https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/trace/semantic_conventions/rpc.md
-                    extra_headers = {
+                    otel_attributes = {
                         # 1.20 and above
                         SpanAttributes.RPC_SYSTEM: "thrift",
                         # this is technically incorrect, but we don't currently have a reliable way
@@ -241,12 +244,15 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         # the client is the best we can do
                         SpanAttributes.RPC_SERVICE: self.namespace,
                         SpanAttributes.RPC_METHOD: name,
+                        #
                         # new in 1.21
                         # SpanAttributes.NETWORK_TRANSPORT: "tcp",  # only protocol supported?
                         # SpanAttributes.NETWORK_TYPE: "ipv4|6",
+                        #
                         # 1.21 and above
                         # SpanAttributes.SERVER_ADDRESS: self.pool.endpoint.address.host,
                         # SpanAttributes.SERVER_PORT: self.pool.endpoint.address.port,
+                        #
                         # 1.20 ONLY
                         SpanAttributes.NET_PEER_NAME: self.pool.endpoint.address.host,  # renamed to server.address in 1.21
                         # or maybe net.sock.peer.addr? who knows... both renamed to server.address in 1.21
@@ -254,18 +260,23 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         # SpanAttributes.NET_SOCK_PEER_ADDR -> SERVER_SOCKET_ADDRESS -> NETWORK_PEER_ADDRESS
                         # SpanAttributes.NET_SOCK_PEER_NAME
                         # SpanAttributes.NET_SOCK_PEER_PORT -> SERVER_SOCKET_PORT -> NETWORK_PEER_PORT
+                        #
                         # 1.21 only
                         # SpanAttributes.SERVER_SOCKET_ADDRESS: "ip",
                         # SpanAttributes.SERVER_SOCKET_PORT: "only if != server.port and server.socket.address is set",
+                        #
                         # new in 1.22
                         # SpanAttributes.NETWORK_PEER_ADDRESS: "ip",  # recommended if != from server.address
                         # SpanAttributes.NETWORK_PEER_PORT: 0,  # recommended if network.peer.address is set
                     }
+                    logger.debug(
+                        f"Will use the following otel span attributes. [{span=}, {otel_attributes=}]"
+                    )
 
                     with self.tracer.start_as_current_span(
                         trace_name,
                         kind=trace.SpanKind.CLIENT,
-                        attributes=extra_headers,
+                        attributes=otel_attributes,
                     ) as otelspan:
                         try:
                             baseplate = span.baseplate
@@ -277,6 +288,9 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                             prot.trans.set_header(b"Trace", str(span.trace_id).encode())
                             prot.trans.set_header(b"Parent", str(span.parent_id).encode())
                             prot.trans.set_header(b"Span", str(span.id).encode())
+                            logger.debug(
+                                f"Set old tracing headers on outgoing transaction. [{span=}, {span.trace_id=}, {span.parent_id=}, {span.id=}]"
+                            )
 
                             propagate.inject(mutable_metadata)
 
@@ -287,8 +301,10 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                             if span.sampled is not None:
                                 sampled = "1" if span.sampled else "0"
                                 prot.trans.set_header(b"Sampled", sampled.encode())
+                                logger.debug(f"Set baseplate header. [{span=}, {sampled=}]")
                             if span.flags:
                                 prot.trans.set_header(b"Flags", str(span.flags).encode())
+                                logger.debug(f"Set baseplate header. [{span=}, {span.flags=}]")
 
                             min_timeout = time_remaining
                             if self.pool.timeout:

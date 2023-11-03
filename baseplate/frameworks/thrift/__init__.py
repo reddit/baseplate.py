@@ -1,3 +1,4 @@
+import logging
 import random
 import sys
 import time
@@ -13,6 +14,7 @@ from typing import Optional
 from opentelemetry import trace
 from opentelemetry.context import attach
 from opentelemetry.context import detach
+from opentelemetry.context.context import Context
 from opentelemetry.propagate import extract
 from prometheus_client import Counter
 from prometheus_client import Gauge
@@ -32,6 +34,9 @@ from baseplate.lib.edgecontext import EdgeContextFactory
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
+
+
+logger = logging.getLogger(__name__)
 
 PROM_NAMESPACE = "thrift_server"
 
@@ -90,20 +95,48 @@ class _ContextAwareHandler:
                     self.logger.info(f"Unable to decode header {k.decode()}, ignoring.")
 
             ctx = extract(header_dict)
-            token = attach(ctx)
-            try:
+            logger.debug(f"Extracted otel header. [{ctx=}, {header_dict=}]")
+
+            if ctx == {}:
+                logger.debug(
+                    f"Unable to extract otel header. Defaulting back to baseplate headers. [{header_dict=}]"
+                )
+                # we try and extract old style headers
+                try:
+                    span_context = trace.SpanContext(
+                        trace_id=int(header_dict["Trace"]),
+                        span_id=int(header_dict["Span"]),
+                        is_remote=True,
+                        trace_flags=trace.TraceFlags(
+                            int(header_dict.get("Sampled", "0"))
+                        ),  # default off
+                        trace_state=None,
+                    )
+                    parent_span = trace.NonRecordingSpan(span_context)
+                    if header_dict.get("Debug"):
+                        parent_span.debug = True
+                        parent_span.trace_flags = trace.TraceFlags(1)
+                        logger.debug(
+                            f"Detected incoming baseplate trace as debug. [{parent_span=}]"
+                        )
+                    ctx = trace.set_span_in_context(parent_span, Context())
+                    logger.debug(f"Extracted baseplate headers. [{ctx=}, {header_dict=}]")
+                except KeyError:
+                    logger.exception(
+                        f"No (or missing) tracing headers. Skipping setting context. [{header_dict=}]"
+                    )
+            if ctx:
+                token = attach(ctx)
+                logger.debug(f"Attached context. [{ctx=}, {token=}]")
+                try:
+                    yield
+                finally:
+                    detach(token)
+                    logger.debug(f"Detached context. [{ctx=}, {token=}]")
+            else:
                 yield
-            finally:
-                detach(token)
         else:
             yield
-
-    # def _start_span(
-    #         self, handler_call_details, context, set_status_on_exception=False
-    # ):
-    #     attributes = {
-    #             SpanAttributes.RPC_SYSTEM: "thrift",
-    #     }
 
     def __getattr__(self, fn_name: str) -> Callable[..., Any]:
         def call_with_context(*args: Any, **kwargs: Any) -> Any:
@@ -115,8 +148,13 @@ class _ContextAwareHandler:
             span.set_tag("thrift.method", fn_name)
             start_time = time.perf_counter()
             with self._set_remote_context(self.context):
+                # we automatically record all exceptions, however...
+                # we manually set status on exception because not all exceptions are "bad"
                 with self._tracer.start_as_current_span(
-                    fn_name, kind=trace.SpanKind.SERVER, record_exception=False
+                    fn_name,
+                    kind=trace.SpanKind.SERVER,
+                    record_exception=True,
+                    set_status_on_exception=False,
                 ) as otelspan:
                     otelspan.set_attribute("thrift.method", fn_name)
                     if b"User-Agent" in self.context.headers:
@@ -128,13 +166,17 @@ class _ContextAwareHandler:
                         span.start()
                         with PROM_ACTIVE.labels(fn_name).track_inprogress():
                             result = handler_fn(self.context, *args, **kwargs)
-                    except (TApplicationException, TProtocolException, TTransportException) as e:
+                    except (TApplicationException, TProtocolException, TTransportException) as exc:
+                        logger.debug(
+                            f"Processing one of: TApplicationException, TProtocolException, TTransportException. [{exc=}]"
+                        )
                         # these are subclasses of TException but aren't ones that
                         # should be expected in the protocol
-                        otelspan.record_exception(e)
                         span.finish(exc_info=sys.exc_info())
+                        otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
                         raise
                     except Error as exc:
+                        logger.debug(f"Processing Error. [{exc=}]")
                         c = ErrorCode()
                         status = c._VALUES_TO_NAMES.get(exc.code, "")
 
@@ -148,17 +190,17 @@ class _ContextAwareHandler:
                         span.set_tag("success", "false")
                         # mark 5xx errors as failures since those are still "unexpected"
                         if 500 <= exc.code < 600:
-                            otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
-                            otelspan.record_exception(exc)
+                            logger.debug(f"Processing 5xx baseplate Error. [{exc=}]")
                             span.finish(exc_info=sys.exc_info())
+                            otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
                         else:
+                            logger.debug(f"Processing non 5xx baseplate Error. [{exc=}]")
                             # Set as OK as this is an expected exception
-                            otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                             span.finish()
+                            otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         raise
                     except TException as exc:
-                        otelspan.record_exception(exc)
-
+                        logger.debug(f"Processing TException. [{exc=}]")
                         span.set_tag("exception_type", type(exc).__name__)
                         span.set_tag("success", "false")
 
@@ -167,23 +209,24 @@ class _ContextAwareHandler:
                         # Set as OK as this is an expected exception
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         raise
-                    except Exception as e:  # noqa: E722
+                    except Exception as exc:  # noqa: E722
+                        logger.debug(f"Processing every other type of exception. [{exc=}]")
                         # the handler crashed (or timed out)!
                         span.finish(exc_info=sys.exc_info())
-
-                        otelspan.record_exception(e)
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
 
                         if self.convert_to_baseplate_error:
+                            logger.debug(f"Converting exception to baseplate Error. [{exc=}]")
                             raise Error(
                                 code=ErrorCode.INTERNAL_SERVER_ERROR,
                                 message="Internal server error",
                             )
+                        logger.debug(f"Re-raising unexpected exception. [{exc=}]")
                         raise
                     else:
                         # a normal result
-                        otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         span.finish()
+                        otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         return result
                     finally:
                         thrift_success = "true"
@@ -270,7 +313,7 @@ def baseplateify_processor(
                 trace_info = TraceInfo.from_upstream(
                     trace_id=headers[b"Trace"].decode(),
                     parent_id=headers[b"Parent"].decode(),
-                    span_id=str(random.getrandbits(128)),
+                    span_id=str(random.getrandbits(64)),
                     sampled=sampled,
                     flags=int(flags) if flags is not None else None,
                 )

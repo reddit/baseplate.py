@@ -32,6 +32,8 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
 
+logger = logging.getLogger(__name__)
+
 
 @contextlib.contextmanager
 def serve_thrift(handler, server_spec, server_span_observer=None, baseplate_observer=None):

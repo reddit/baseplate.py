@@ -9,8 +9,14 @@ import gevent.monkey
 import pytest
 
 from opentelemetry import trace
+from opentelemetry.context.context import Context
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
+from parameterized import parameterized
+from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
+from thrift.transport.TTransport import TTransportException
 
 from baseplate import Baseplate
 from baseplate import TraceInfo
@@ -32,12 +38,14 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
 
+logger = logging.getLogger(__name__)
+
 
 THRIFT_CLIENT_NAME = "example_service"
 
 
 @contextlib.contextmanager
-def serve_thrift(handler, server_spec, baseplate_observer=None):
+def serve_thrift(handler, server_spec, baseplate_observer=None, convert_to_baseplate_error=True):
     # create baseplate root
     baseplate = Baseplate()
 
@@ -49,7 +57,7 @@ def serve_thrift(handler, server_spec, baseplate_observer=None):
     edge_context_factory = FakeEdgeContextFactory()
     processor = server_spec.Processor(handler)
     processor = baseplateify_processor(
-        processor, logger, baseplate, edge_context_factory, convert_to_baseplate_error=True
+        processor, logger, baseplate, edge_context_factory, convert_to_baseplate_error
     )
 
     # bind a server socket on an available port
@@ -170,6 +178,79 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
                 SpanAttributes.NET_PEER_PORT: net_peer_port,
             },
         )
+
+    def test_client_to_server_span_parenthood(self):
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService) as server:
+            with baseplate_thrift_client(server.endpoint, TestService) as context:
+                context.example_service.example()
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 2)
+
+        thrift_server_span = finished_spans[0]
+        thrift_client_span = finished_spans[1]
+
+        self.assertEqual(thrift_server_span.kind, trace.SpanKind.SERVER)
+        self.assertEqual(thrift_client_span.kind, trace.SpanKind.CLIENT)
+
+        # trace id should be the same everywhere
+        self.assertEqual(
+            thrift_server_span.get_span_context().trace_id,
+            thrift_client_span.get_span_context().trace_id,
+        )
+        self.assertEqual(
+            thrift_server_span.get_span_context().trace_id, thrift_server_span.parent.trace_id
+        )
+
+        # Ensure client span ID is == server parent span ID
+        # but other span IDs are distinct
+        self.assertEqual(
+            thrift_server_span.parent.span_id, thrift_client_span.get_span_context().span_id
+        )
+        self.assertNotEqual(
+            thrift_server_span.parent.span_id, thrift_server_span.get_span_context().span_id
+        )
+        self.assertNotEqual(
+            thrift_server_span.get_span_context().span_id,
+            thrift_client_span.get_span_context().span_id,
+        )
+
+    def test_server_span_defaults_to_old_headers(self):
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+
+        handler = Handler()
+
+        with mock.patch("baseplate.frameworks.thrift.extract") as extract:
+            # override the extract function so that it behaves as if otel headers were not set
+            extract.return_value = Context()
+            with serve_thrift(handler, TestService) as server:
+                with mock.patch("baseplate.random") as random:
+                    with baseplate_thrift_client(server.endpoint, TestService) as context:
+                        # override the value of random.getrandbits to make the test deterministic
+                        random.getrandbits.return_value = 13796108427971843129
+                        context.example_service.example()
+
+                        random.getrandbits.assert_called_once_with(64)
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 2)
+
+        thrift_server_span = finished_spans[0]
+        self.assertEqual(thrift_server_span.kind, trace.SpanKind.SERVER)
+
+        self.assertIsNotNone(thrift_server_span.parent)
+        # span_id should be the value we manually set above in the mock for random
+        self.assertEqual(thrift_server_span.parent.span_id, 13796108427971843129)
+        # this should be the trace_id set originally in baseplate_thrift_client
+        self.assertEqual(thrift_server_span.parent.trace_id, 0x4BF92F3577B34DA6A3CE929D0E0E4736)
 
     def test_no_headers(self):
         """We should accept requests without headers and generate a trace."""
@@ -365,7 +446,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         self.assertEqual(len(finished_spans), 1)
         self.assertTrue(finished_spans[0].status.is_ok)
 
-    def test_unexpected_exception_is_makred_as_error(self):
+    def test_unexpected_exception_is_marked_as_error(self):
         """If the server returns an unexpected exception, mark a failure."""
 
         class UnexpectedException(Exception):
@@ -377,9 +458,11 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
 
         handler = Handler()
 
-        with serve_thrift(handler, TestService) as server:
+        with serve_thrift(handler, TestService, convert_to_baseplate_error=False) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
-                with self.assertRaises(Error):
+                # although we set `convert_to_baseplate_error` to `False`, this still gets "converted"
+                # in the ``TestService`` interface. But the point is it's not just ``Error``
+                with self.assertRaises(TApplicationException):
                     client.example()
 
         finished_spans = self.get_finished_spans()
@@ -389,6 +472,119 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         self.assertEqual(
             finished_spans[0].events[0].attributes["exception.type"], "UnexpectedException"
         )
+
+    def test_unexpected_exception_is_marked_as_error_convert(self):
+        """If the server returns an unexpected exception, mark a failure."""
+
+        class UnexpectedException(Exception):
+            pass
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                raise UnexpectedException
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService, convert_to_baseplate_error=True) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                with self.assertRaises(Error):
+                    client.example()
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertFalse(finished_spans[0].status.is_ok)
+        self.assertEqual(len(finished_spans[0].events), 1)
+        self.assertEqual(finished_spans[0].events[0].attributes["exception.type"], "Error")
+
+    @parameterized.expand(
+        [
+            (
+                TApplicationException(TApplicationException.UNKNOWN_METHOD, "unknown method"),
+                True,
+                pytest.raises(TApplicationException),
+                "TApplicationException",
+                trace.status.StatusCode.ERROR,
+            ),
+            (
+                TProtocolException(message="Required field is unset!"),
+                True,
+                pytest.raises(TApplicationException),  # because of TestService
+                "TProtocolException",
+                trace.status.StatusCode.ERROR,
+            ),
+            (
+                TTransportException(message="Something is wrong with the transport"),
+                True,
+                pytest.raises(TTransportException),
+                "TTransportException",
+                trace.status.StatusCode.ERROR,
+            ),
+            (
+                Error(ErrorCode.NOT_FOUND, "404 not found"),
+                True,
+                pytest.raises(Error),
+                "Error",
+                trace.status.StatusCode.OK,
+            ),
+            (
+                Error(ErrorCode.SERVICE_UNAVAILABLE, "503 unavailable"),
+                True,
+                pytest.raises(Error),
+                "Error",
+                trace.status.StatusCode.ERROR,
+            ),
+            (
+                TException(message="Some other generic thrift exception"),
+                True,
+                pytest.raises(TException),
+                "TException",
+                trace.status.StatusCode.OK,
+            ),
+            (
+                Exception("Some very generic exception"),
+                False,
+                pytest.raises(Exception),
+                "Exception",
+                trace.status.StatusCode.ERROR,
+            ),
+            (
+                Exception("Some very generic exception"),
+                True,
+                pytest.raises(Exception),
+                "Error",
+                trace.status.StatusCode.ERROR,
+            ),
+        ],
+    )
+    def test_exception_handling_trace_status(
+        self, exc, convert, expectation, otel_exception, otel_status
+    ):
+        """
+        This test ensures that we do record (i.e. add exceptions as events on the otel spans) every
+        exception that is happening, but only set the error status when we want it to (i.e. only on
+        some exceptions, or when the status on baseplate Error is a 5xx).
+        """
+        logger.debug(f"{exc=}, {convert=}, {expectation=}, {otel_exception=}, {otel_status=}")
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                if exc is None:
+                    pass
+                else:
+                    raise exc
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService, convert_to_baseplate_error=convert) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                with expectation:
+                    client.example()
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(finished_spans[0].status.status_code, otel_status)
+        self.assertEqual(len(finished_spans[0].events), 1)
+        self.assertEqual(finished_spans[0].events[0].attributes["exception.type"], otel_exception)
 
 
 class ThriftClientSpanTests(GeventPatchedTestCase, TestBase):
