@@ -209,7 +209,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
 class BaseplateBatchSpanProcessor(BatchSpanProcessor):
     def __init__(
-        self, otlp_exporter: OTLPSpanExporter, attributes: Optional[dict[str, Any]] = None
+        self, otlp_exporter: OTLPSpanExporter, attributes: Optional[Dict[str, Any]] = None
     ) -> None:
         logger.info(f"Initializing {self.__class__.__name__} with global attributes {attributes=}.")
         super().__init__(otlp_exporter)
