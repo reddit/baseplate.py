@@ -21,6 +21,7 @@ def baseplate_session(request):
         adapter=mock.MagicMock(),
         name="session_name",
         span=mock.MagicMock(),
+        parent=mock.MagicMock(),
         client_name=request.param,
     )
 

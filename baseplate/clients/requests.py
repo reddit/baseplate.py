@@ -20,6 +20,7 @@ from requests import Session
 from requests.adapters import HTTPAdapter
 
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry import trace
 from opentelemetry.trace import span
 
 from baseplate import Span
@@ -152,7 +153,7 @@ class BaseplateSession:
     """
 
     def __init__(
-        self, adapter: HTTPAdapter, name: str, span: Span, client_name: Optional[str] = None
+            self, adapter: HTTPAdapter, name: str, span: Span, parent: span.Span, client_name: Optional[str] = None
     ) -> None:
         self.adapter = adapter
         self.name = name
@@ -352,7 +353,7 @@ class RequestsContextFactory(ContextFactory):
         self.client_name = client_name
 
     def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> BaseplateSession:
-        return self.session_cls(self.adapter, name, span, client_name=self.client_name)
+        return self.session_cls(self.adapter, name, span, parent, client_name=self.client_name)
 
 
 class InternalRequestsClient(config.Parser):
