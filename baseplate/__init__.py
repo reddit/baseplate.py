@@ -226,7 +226,7 @@ class RequestContext:
         if isinstance(config_item, dict):
             obj = RequestContext(context_config=config_item, prefix=full_name, span=self.span, parent=self.parent)
         elif hasattr(config_item, "make_object_for_context"):
-            if "parent" in inspect.getfullargspec(config_item.make_object_for_context).args:
+            if len(inspect.getfullargspec(config_item.make_object_for_context).args) == 4:
                 obj = config_item.make_object_for_context(full_name, self.span, self.parent)
             else:
                 obj = config_item.make_object_for_context(full_name, self.span)
