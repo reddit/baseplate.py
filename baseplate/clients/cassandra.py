@@ -230,7 +230,7 @@ class CQLMapperContextFactory(CassandraContextFactory):
         # pylint: disable=redefined-outer-name
         import cqlmapper.connection
 
-        session_adapter = super().make_object_for_context(name, span)
+        session_adapter = super().make_object_for_context(name, span, parent)
         return cqlmapper.connection.Connection(session_adapter)
 
 
