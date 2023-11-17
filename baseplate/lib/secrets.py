@@ -436,7 +436,7 @@ class DirectorySecretsStore(SecretsStore):
         data, mtime = self._get_file_data(secret_path)
         return self.parser(data, secret_path), mtime
 
-    def make_object_for_context(self, name: str, span: Span) -> "DirectorySecretsStore":
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "DirectorySecretsStore":
         """Return an object that can be added to the context object.
         This allows the secret store to be used with
         :py:meth:`~baseplate.Baseplate.add_to_context`::
