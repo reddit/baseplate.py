@@ -156,6 +156,7 @@ class _ContextAwareHandler:
                     record_exception=True,
                     set_status_on_exception=False,
                 ) as otelspan:
+                    self.context.parent = otelspan
                     otelspan.set_attribute("thrift.method", fn_name)
                     if b"User-Agent" in self.context.headers:
                         otelspan.set_attribute(

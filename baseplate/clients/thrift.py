@@ -160,7 +160,7 @@ class ThriftContextFactory(ContextFactory):
         # instantiated and ones that have actual open connections.
 
     def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "_PooledClientProxy":
-        return self.proxy_cls(self.client_cls, self.pool, span, name)
+        return self.proxy_cls(self.client_cls, self.pool, span, parent, name)
 
 
 def _enumerate_service_methods(client: Any) -> Iterator[str]:
@@ -191,12 +191,14 @@ class _PooledClientProxy:
         client_cls: Any,
         pool: ThriftConnectionPool,
         server_span: Span,
+        parent_span: span.Span,
         namespace: str,
         retry_policy: Optional[RetryPolicy] = None,
     ):
         self.client_cls = client_cls
         self.pool = pool
         self.server_span = server_span
+        self.parent_span = parent_span
         self.namespace = namespace
         self.retry_policy = retry_policy or RetryPolicy.new(attempts=1)
         self.tracer = trace.get_tracer(__name__)
@@ -207,6 +209,7 @@ class _PooledClientProxy:
             self.client_cls,
             self.pool,
             self.server_span,
+            self.parent_span,
             self.namespace,
             retry_policy=RetryPolicy.new(**policy),
         )
@@ -273,8 +276,10 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                         f"Will use the following otel span attributes. [{span=}, {otel_attributes=}]"
                     )
 
+                    ctx = trace.set_span_in_context(self.parent_span)
                     with self.tracer.start_as_current_span(
                         trace_name,
+                        context=ctx,
                         kind=trace.SpanKind.CLIENT,
                         attributes=otel_attributes,
                     ) as otelspan:
