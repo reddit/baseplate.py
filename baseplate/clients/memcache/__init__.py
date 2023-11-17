@@ -14,6 +14,8 @@ from prometheus_client import Gauge
 from prometheus_client import Histogram
 from pymemcache.client.base import PooledClient
 
+from opentelemetry.trace import span
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
@@ -169,7 +171,7 @@ class MemcacheContextFactory(ContextFactory):
         batch.gauge("pool.open_and_available").replace(len(pool.free))
         batch.gauge("pool.size").replace(pool.max_size)
 
-    def make_object_for_context(self, name: str, span: Span) -> "MonitoredMemcacheConnection":
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "MonitoredMemcacheConnection":
         return MonitoredMemcacheConnection(name, span, self.pooled_client)
 
 

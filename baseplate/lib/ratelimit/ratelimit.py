@@ -1,3 +1,5 @@
+from opentelemetry.trace import span
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib.ratelimit.backends import RateLimitBackend
@@ -30,8 +32,8 @@ class RateLimiterContextFactory(ContextFactory):
         self.allowance = allowance
         self.interval = interval
 
-    def make_object_for_context(self, name: str, span: Span) -> "RateLimiter":
-        backend = self.backend_factory.make_object_for_context(name, span)
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "RateLimiter":
+        backend = self.backend_factory.make_object_for_context(name, span, parent)
         return RateLimiter(backend, self.allowance, self.interval)
 
 

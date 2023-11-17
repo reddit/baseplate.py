@@ -21,6 +21,8 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
+from opentelemetry.trace import span
+
 from baseplate import _ExcInfo
 from baseplate import Span
 from baseplate import SpanObserver
@@ -232,8 +234,8 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         batch.gauge("pool.in_use").replace(pool.checkedout())
         batch.gauge("pool.overflow").replace(max(pool.overflow(), 0))
 
-    def make_object_for_context(self, name: str, span: Span) -> Engine:
-        engine = self.engine.execution_options(context_name=name, server_span=span)
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> Engine:
+        engine = self.engine.execution_options(context_name=name, server_span=span, parent=parent)
         return engine
 
     # pylint: disable=unused-argument, too-many-arguments
@@ -342,8 +344,8 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
 
     """
 
-    def make_object_for_context(self, name: str, span: Span) -> Session:
-        engine = super().make_object_for_context(name, span)
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> Session:
+        engine = super().make_object_for_context(name, span, parent)
         session = Session(bind=engine)
         span.register(SQLAlchemySessionSpanObserver(session))
         return session

@@ -13,6 +13,8 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 
+from opentelemetry.trace import span
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import cached_property
@@ -352,7 +354,7 @@ class SecretsStore(ContextFactory):
             mtime,
         )
 
-    def make_object_for_context(self, name: str, span: Span) -> "SecretsStore":
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "SecretsStore":
         """Return an object that can be added to the context object.
 
         This allows the secret store to be used with

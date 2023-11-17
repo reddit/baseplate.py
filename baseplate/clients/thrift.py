@@ -14,7 +14,7 @@ from typing import Optional
 from opentelemetry import propagate
 from opentelemetry import trace
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.trace import status
+from opentelemetry.trace import status, span
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -159,7 +159,7 @@ class ThriftContextFactory(ContextFactory):
         # distinguish easily between available connection slots that aren't
         # instantiated and ones that have actual open connections.
 
-    def make_object_for_context(self, name: str, span: Span) -> "_PooledClientProxy":
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "_PooledClientProxy":
         return self.proxy_cls(self.client_cls, self.pool, span, name)
 
 

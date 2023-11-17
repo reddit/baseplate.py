@@ -13,6 +13,8 @@ import rediscluster
 from redis import RedisError
 from rediscluster.pipeline import ClusterPipeline
 
+from opentelemetry.trace import span
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.clients.redis import ACTIVE_REQUESTS
@@ -391,7 +393,7 @@ class ClusterRedisContextFactory(ContextFactory):
         batch.gauge("pool.size").replace(size)
         batch.gauge("pool.open_connections").replace(open_connections_num)
 
-    def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisClusterConnection":
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "MonitoredRedisClusterConnection":
         return MonitoredRedisClusterConnection(
             name,
             span,

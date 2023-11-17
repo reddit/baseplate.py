@@ -27,6 +27,8 @@ from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
 
+from opentelemetry.trace import span
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
@@ -175,7 +177,7 @@ class CassandraContextFactory(ContextFactory):
         self.prometheus_client_name = prometheus_client_name
         self.prometheus_cluster_name = prometheus_cluster_name
 
-    def make_object_for_context(self, name: str, span: Span) -> "CassandraSessionAdapter":
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "CassandraSessionAdapter":
         return CassandraSessionAdapter(
             name,
             span,
@@ -222,7 +224,7 @@ class CQLMapperContextFactory(CassandraContextFactory):
 
     """
 
-    def make_object_for_context(self, name: str, span: Span) -> "cqlmapper.connection.Connection":
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "cqlmapper.connection.Connection":
         # Import inline so you can still use the regular Cassandra integration
         # without installing cqlmapper
         # pylint: disable=redefined-outer-name

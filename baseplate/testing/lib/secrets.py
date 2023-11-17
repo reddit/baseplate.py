@@ -1,5 +1,7 @@
 from typing import Dict
 
+from opentelemetry.trace import span
+
 from baseplate import Span
 from baseplate.lib.secrets import parse_secrets_fetcher
 from baseplate.lib.secrets import SecretsStore
@@ -38,5 +40,5 @@ class FakeSecretsStore(SecretsStore):
         self._filewatcher = FakeFileWatcher(fake_secrets)
         self.parser = parse_secrets_fetcher
 
-    def make_object_for_context(self, name: str, span: Span) -> SecretsStore:
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> SecretsStore:
         return self

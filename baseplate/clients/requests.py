@@ -10,7 +10,6 @@ from typing import Union
 
 from advocate import AddrValidator
 from advocate import ValidatingHTTPAdapter
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -19,6 +18,9 @@ from requests import Request
 from requests import Response
 from requests import Session
 from requests.adapters import HTTPAdapter
+
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.trace import span
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -349,7 +351,7 @@ class RequestsContextFactory(ContextFactory):
         self.session_cls = session_cls
         self.client_name = client_name
 
-    def make_object_for_context(self, name: str, span: Span) -> BaseplateSession:
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> BaseplateSession:
         return self.session_cls(self.adapter, name, span, client_name=self.client_name)
 
 

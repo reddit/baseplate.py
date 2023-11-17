@@ -8,6 +8,8 @@ trace information is passed on and metrics are collected automatically.
 from typing import Any
 from typing import TYPE_CHECKING
 
+from opentelemetry.trace import span
+
 
 if TYPE_CHECKING:
     import baseplate.lib.metrics
@@ -31,7 +33,7 @@ class ContextFactory:
 
         """
 
-    def make_object_for_context(self, name: str, span: "baseplate.Span") -> Any:
+    def make_object_for_context(self, name: str, span: "baseplate.Span", parent: span.Span) -> Any:
         """Return an object that can be added to the context object.
 
         :param name: The name assigned to this object on the context.

@@ -19,6 +19,8 @@ from typing import TypeVar
 from thrift import TSerialization
 from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
+from opentelemetry.trace import span
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
@@ -122,7 +124,7 @@ class EventQueue(ContextFactory, config.Parser, Generic[T]):
         except TimedOutError:
             raise EventQueueFullError
 
-    def make_object_for_context(self, name: str, span: Span) -> "EventQueue[T]":
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "EventQueue[T]":
         return self
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> "EventQueue[T]":

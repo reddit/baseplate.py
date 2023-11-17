@@ -16,6 +16,8 @@ from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
 
+from opentelemetry.trace import span
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
@@ -195,7 +197,7 @@ class RedisContextFactory(ContextFactory):
         batch.gauge("pool.in_use").replace(in_use)
         batch.gauge("pool.open_and_available").replace(open_connections_num - in_use)
 
-    def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "MonitoredRedisConnection":
         return MonitoredRedisConnection(
             context_name=name,
             server_span=span,

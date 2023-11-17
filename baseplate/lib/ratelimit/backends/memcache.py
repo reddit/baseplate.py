@@ -1,5 +1,7 @@
 from pymemcache.client import PooledClient
 
+from opentelemetry.trace import span
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.clients.memcache import MemcacheContextFactory
@@ -22,8 +24,8 @@ class MemcacheRateLimitBackendContextFactory(ContextFactory):
         self.memcache_context_factory = MemcacheContextFactory(memcache_pool)
         self.prefix = prefix
 
-    def make_object_for_context(self, name: str, span: Span) -> "MemcacheRateLimitBackend":
-        memcache = self.memcache_context_factory.make_object_for_context(name, span)
+    def make_object_for_context(self, name: str, span: Span, parent: span.Span) -> "MemcacheRateLimitBackend":
+        memcache = self.memcache_context_factory.make_object_for_context(name, span, parent)
         return MemcacheRateLimitBackend(memcache, prefix=self.prefix)
 
 
