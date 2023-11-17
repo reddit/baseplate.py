@@ -136,12 +136,6 @@ def _make_baseplate_tween(
 ) -> Callable[[Request], Response]:
     def baseplate_tween(request: Request) -> Response:
         response: Optional[Response] = None
-        # if not request.registry.settings[SETTING_REDDIT_TRACING_TRUST_HEADERS]:
-        #     # If we don't trust the tracing headers we remove them before the otel
-        #     # instrumentation can pick them up.
-        #     request.headers.pop("traceparent", None)
-        #     request.headers.pop("tracestate", None)
-
         try:
             response = handler(request)
             if request.span:
@@ -412,6 +406,8 @@ class BaseplateConfigurator:
             name=request.matched_route.name,
             trace_info=trace_info,
         )
+
+        request.parent = trace.get_current_span()
         span.set_tag("protocol", "http")
         span.set_tag("http.url", request.url)
         span.set_tag("http.method", request.method)
