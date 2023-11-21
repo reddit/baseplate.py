@@ -10,6 +10,7 @@ import pytest
 
 from opentelemetry import trace
 from opentelemetry.context.context import Context
+from opentelemetry.semconv.trace import MessageTypeValues
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from parameterized import parameterized
@@ -53,7 +54,6 @@ def serve_thrift(handler, server_spec, baseplate_observer=None, convert_to_basep
         baseplate.register(baseplate_observer)
 
     # set up the server's processor
-    logger = mock.Mock(spec=logging.Logger)
     edge_context_factory = FakeEdgeContextFactory()
     processor = server_spec.Processor(handler)
     processor = baseplateify_processor(
@@ -160,7 +160,6 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             with baseplate_thrift_client(server.endpoint, TestService) as context:
                 context.example_service.example()
 
-                net_peer_addr = server.endpoint.address.host
                 net_peer_port = server.endpoint.address.port
 
         finished_spans = self.get_finished_spans()
@@ -174,7 +173,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
                 SpanAttributes.RPC_SYSTEM: "thrift",
                 SpanAttributes.RPC_SERVICE: THRIFT_CLIENT_NAME,
                 SpanAttributes.RPC_METHOD: "example",
-                SpanAttributes.NET_PEER_NAME: net_peer_addr,
+                SpanAttributes.NET_PEER_NAME: "localhost",
                 SpanAttributes.NET_PEER_PORT: net_peer_port,
             },
         )
@@ -186,7 +185,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
 
         handler = Handler()
 
+        server_port = None
         with serve_thrift(handler, TestService) as server:
+            server_port = server.endpoint.address[1]
             with baseplate_thrift_client(server.endpoint, TestService) as context:
                 context.example_service.example()
 
@@ -220,6 +221,47 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             thrift_server_span.get_span_context().span_id,
             thrift_client_span.get_span_context().span_id,
         )
+
+        self.assertSpanHasAttributes(thrift_client_span, {SpanAttributes.RPC_SYSTEM: "thrift"})
+        self.assertSpanHasAttributes(
+            thrift_client_span, {SpanAttributes.RPC_SERVICE: "example_service"}
+        )
+        self.assertSpanHasAttributes(thrift_client_span, {SpanAttributes.RPC_METHOD: "example"})
+        self.assertEqual(thrift_client_span.name, f"example_service/example")
+        self.assertSpanHasAttributes(
+            thrift_client_span, {SpanAttributes.NET_PEER_NAME: "localhost"}
+        )
+        self.assertSpanHasAttributes(
+            thrift_client_span, {SpanAttributes.NET_PEER_PORT: server_port}
+        )
+        self.assertEqual(len(thrift_client_span.events), 1)
+        self.assertEqual(
+            thrift_client_span.events[0].attributes[SpanAttributes.MESSAGE_TYPE],
+            MessageTypeValues.SENT.value,
+        )
+        self.assertEqual(thrift_client_span.events[0].name, "message")
+
+        self.assertSpanHasAttributes(thrift_server_span, {SpanAttributes.RPC_SYSTEM: "thrift"})
+        self.assertSpanHasAttributes(
+            thrift_server_span, {SpanAttributes.RPC_SERVICE: "tests.integration.otel_thrift_tests"}
+        )
+        self.assertSpanHasAttributes(thrift_server_span, {SpanAttributes.RPC_METHOD: "example"})
+        self.assertEqual(thrift_server_span.name, f"tests.integration.otel_thrift_tests/example")
+        self.assertSpanHasAttributes(
+            thrift_server_span, {SpanAttributes.NET_HOST_NAME: "localhost"}
+        )
+        self.assertSpanHasAttributes(
+            thrift_server_span, {SpanAttributes.NET_HOST_PORT: server_port}
+        )
+        self.assertSpanHasAttributes(
+            thrift_server_span, {SpanAttributes.NET_PEER_NAME: "localhost"}
+        )
+        self.assertEqual(len(thrift_server_span.events), 1)
+        self.assertEqual(
+            thrift_server_span.events[0].attributes[SpanAttributes.MESSAGE_TYPE],
+            MessageTypeValues.RECEIVED.value,
+        )
+        self.assertEqual(thrift_server_span.events[0].name, "message")
 
     def test_server_span_defaults_to_old_headers(self):
         class Handler(TestService.Iface):
@@ -468,9 +510,9 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         finished_spans = self.get_finished_spans()
         self.assertEqual(len(finished_spans), 1)
         self.assertFalse(finished_spans[0].status.is_ok)
-        self.assertEqual(len(finished_spans[0].events), 1)
+        self.assertEqual(len(finished_spans[0].events), 2)
         self.assertEqual(
-            finished_spans[0].events[0].attributes["exception.type"], "UnexpectedException"
+            finished_spans[0].events[-1].attributes["exception.type"], "UnexpectedException"
         )
 
     def test_unexpected_exception_is_marked_as_error_convert(self):
@@ -493,8 +535,8 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         finished_spans = self.get_finished_spans()
         self.assertEqual(len(finished_spans), 1)
         self.assertFalse(finished_spans[0].status.is_ok)
-        self.assertEqual(len(finished_spans[0].events), 1)
-        self.assertEqual(finished_spans[0].events[0].attributes["exception.type"], "Error")
+        self.assertEqual(len(finished_spans[0].events), 2)
+        self.assertEqual(finished_spans[0].events[-1].attributes["exception.type"], "Error")
 
     @parameterized.expand(
         [
@@ -583,8 +625,8 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         finished_spans = self.get_finished_spans()
         self.assertEqual(len(finished_spans), 1)
         self.assertEqual(finished_spans[0].status.status_code, otel_status)
-        self.assertEqual(len(finished_spans[0].events), 1)
-        self.assertEqual(finished_spans[0].events[0].attributes["exception.type"], otel_exception)
+        self.assertEqual(len(finished_spans[0].events), 2)
+        self.assertEqual(finished_spans[0].events[-1].attributes["exception.type"], otel_exception)
 
 
 class ThriftClientSpanTests(GeventPatchedTestCase, TestBase):
@@ -650,8 +692,8 @@ class ThriftClientSpanTests(GeventPatchedTestCase, TestBase):
         finished_spans = self.get_finished_spans()
         self.assertGreaterEqual(len(finished_spans), 2)
         client_span = finished_spans[1]
-        self.assertGreater(len(client_span.events), 0)
-        self.assertEqual(client_span.events[0].name, "exception")
+        self.assertEqual(len(client_span.events), 2)
+        self.assertEqual(client_span.events[-1].name, "exception")
 
 
 class ThriftEndToEndTests(GeventPatchedTestCase, TestBase):
