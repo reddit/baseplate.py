@@ -56,11 +56,11 @@ class GeventServer(StreamServer):
         otel_attributes = {
             SpanAttributes.RPC_SYSTEM: "thrift",
             SpanAttributes.RPC_SERVICE: self.processor.baseplate.service_name,
-            SpanAttributes.NET_HOST_NAME: self.server_host,
+            SpanAttributes.NET_HOST_IP: self.server_host,
             SpanAttributes.NET_HOST_PORT: self.server_port,
         }
 
-        if otel_attributes.get(SpanAttributes.NET_HOST_NAME) in ["127.0.0.1", "::1"]:
+        if otel_attributes.get(SpanAttributes.NET_HOST_IP) in ["127.0.0.1", "::1"]:
             otel_attributes[SpanAttributes.NET_HOST_NAME] = "localhost"
 
         client_addr = None
@@ -71,10 +71,10 @@ class GeventServer(StreamServer):
             client_addr = address[0]
             client_port = address[1]
         if client_addr:
-            otel_attributes[SpanAttributes.NET_PEER_NAME] = client_addr
+            otel_attributes[SpanAttributes.NET_PEER_IP] = client_addr
             if client_port:
                 otel_attributes[SpanAttributes.NET_PEER_PORT] = client_port
-            if otel_attributes.get(SpanAttributes.NET_PEER_NAME) in ["127.0.0.1", "::1"]:
+            if otel_attributes.get(SpanAttributes.NET_PEER_IP) in ["127.0.0.1", "::1"]:
                 otel_attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
 
         try:

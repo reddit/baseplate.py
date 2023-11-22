@@ -228,6 +228,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         )
         self.assertSpanHasAttributes(thrift_client_span, {SpanAttributes.RPC_METHOD: "example"})
         self.assertEqual(thrift_client_span.name, f"example_service/example")
+        self.assertSpanHasAttributes(thrift_client_span, {SpanAttributes.NET_PEER_IP: "127.0.0.1"})
         self.assertSpanHasAttributes(
             thrift_client_span, {SpanAttributes.NET_PEER_NAME: "localhost"}
         )
@@ -247,6 +248,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         )
         self.assertSpanHasAttributes(thrift_server_span, {SpanAttributes.RPC_METHOD: "example"})
         self.assertEqual(thrift_server_span.name, f"tests.integration.otel_thrift_tests/example")
+        self.assertSpanHasAttributes(thrift_server_span, {SpanAttributes.NET_HOST_IP: "127.0.0.1"})
         self.assertSpanHasAttributes(
             thrift_server_span, {SpanAttributes.NET_HOST_NAME: "localhost"}
         )

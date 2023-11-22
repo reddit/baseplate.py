@@ -1,6 +1,7 @@
 import contextlib
 import inspect
 import logging
+import socket
 import sys
 import time
 
@@ -202,6 +203,14 @@ class _PooledClientProxy:
         self.retry_policy = retry_policy or RetryPolicy.new(attempts=1)
         self.tracer = trace.get_tracer(__name__)
 
+        self.otel_peer_name = None
+        self.otel_peer_ip = None
+        try:
+            self.otel_peer_name = socket.getfqdn()
+            self.otel_peer_ip = socket.gethostbyname(self.otel_peer_name)
+        except Exception:
+            logger.exception("Failed to retrieve local fqdn/pod name/pod IP for otel traces.")
+
     @contextlib.contextmanager
     def retrying(self, **policy: Any) -> Iterator["_PooledClientProxy"]:
         yield self.__class__(
@@ -230,7 +239,10 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
             SpanAttributes.RPC_SYSTEM: "thrift",
             SpanAttributes.RPC_SERVICE: rpc_service,
             SpanAttributes.RPC_METHOD: rpc_method,
+            SpanAttributes.NET_HOST_NAME: self.otel_peer_name,
+            SpanAttributes.NET_HOST_IP: self.otel_peer_ip,
         }
+
         otelspan_name = f"{rpc_service}/{rpc_method}"
         trace_name = f"{self.namespace}.{name}"  # old bp.py span name
 
@@ -253,11 +265,11 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
                     pool_addr = self.pool.endpoint.address
                     if isinstance(pool_addr, str):
-                        otel_attributes[SpanAttributes.NET_PEER_NAME] = pool_addr
+                        otel_attributes[SpanAttributes.NET_PEER_IP] = pool_addr
                     elif pool_addr is not None:
-                        otel_attributes[SpanAttributes.NET_PEER_NAME] = pool_addr.host
+                        otel_attributes[SpanAttributes.NET_PEER_IP] = pool_addr.host
                         otel_attributes[SpanAttributes.NET_PEER_PORT] = pool_addr.port
-                    if otel_attributes.get(SpanAttributes.NET_PEER_NAME) in ["127.0.0.1", "::1"]:
+                    if otel_attributes.get(SpanAttributes.NET_PEER_IP) in ["127.0.0.1", "::1"]:
                         otel_attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
                     logger.debug(
                         f"Will use the following otel span attributes. [{span=}, {otel_attributes=}]"
