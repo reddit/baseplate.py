@@ -144,14 +144,19 @@ def _load_from_s3(data: bytes) -> bytes:
         # resource is public. In other words, this means that a given service cannot access
         # a public resource belonging to another cluster/AWS account unless the request credentials
         # are unsigned.
+
+        # Access S3 with adaptive retries enabled:
         s3_client = boto3.client(
             "s3",
-            config=Config(signature_version=UNSIGNED),
+            config=Config(
+                signature_version=UNSIGNED, retries={"total_max_attempts": 4, "mode": "adaptive"}
+            ),
             region_name=region_name,
         )
     else:
         s3_client = boto3.client(
             "s3",
+            config=Config(retries={"total_max_attempts": 4, "mode": "adaptive"}),
             region_name=region_name,
         )
 
