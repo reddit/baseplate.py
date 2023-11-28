@@ -145,7 +145,7 @@ def _load_from_s3(data: bytes) -> bytes:
         # a public resource belonging to another cluster/AWS account unless the request credentials
         # are unsigned.
 
-        # Access S3 with adaptive retries enabled:
+        # Access S3 with 10 max retries enabled:
         s3_client = boto3.client(
             "s3",
             config=Config(
