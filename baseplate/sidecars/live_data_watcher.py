@@ -148,9 +148,7 @@ def _load_from_s3(data: bytes) -> bytes:
         # Access S3 with 10 max retries enabled:
         s3_client = boto3.client(
             "s3",
-            config=Config(
-                signature_version=UNSIGNED, retries={"total_max_attempts": 10}
-            ),
+            config=Config(signature_version=UNSIGNED, retries={"total_max_attempts": 10}),
             region_name=region_name,
         )
     else:
