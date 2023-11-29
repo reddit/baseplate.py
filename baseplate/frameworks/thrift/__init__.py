@@ -95,36 +95,8 @@ class _ContextAwareHandler:
                     self.logger.info(f"Unable to decode header {k.decode()}, ignoring.")
 
             ctx = extract(header_dict)
-            logger.debug(f"Extracted otel header. [{ctx=}, {header_dict=}]")
+            logger.debug(f"Extracted trace headers. [{ctx=}, {header_dict=}]")
 
-            if ctx == {}:
-                logger.debug(
-                    f"Unable to extract otel header. Defaulting back to baseplate headers. [{header_dict=}]"
-                )
-                # we try and extract old style headers
-                try:
-                    span_context = trace.SpanContext(
-                        trace_id=int(header_dict["Trace"]),
-                        span_id=int(header_dict["Span"]),
-                        is_remote=True,
-                        trace_flags=trace.TraceFlags(
-                            int(header_dict.get("Sampled", "0"))
-                        ),  # default off
-                        trace_state=None,
-                    )
-                    parent_span = trace.NonRecordingSpan(span_context)
-                    if header_dict.get("Debug"):
-                        parent_span.debug = True
-                        parent_span.trace_flags = trace.TraceFlags(1)
-                        logger.debug(
-                            f"Detected incoming baseplate trace as debug. [{parent_span=}]"
-                        )
-                    ctx = trace.set_span_in_context(parent_span, Context())
-                    logger.debug(f"Extracted baseplate headers. [{ctx=}, {header_dict=}]")
-                except KeyError:
-                    logger.exception(
-                        f"No (or missing) tracing headers. Skipping setting context. [{header_dict=}]"
-                    )
             if ctx:
                 token = attach(ctx)
                 logger.debug(f"Attached context. [{ctx=}, {token=}]")
