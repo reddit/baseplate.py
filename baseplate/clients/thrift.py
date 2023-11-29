@@ -1,6 +1,7 @@
 import contextlib
 import inspect
 import logging
+import socket
 import sys
 import time
 
@@ -13,6 +14,7 @@ from typing import Optional
 
 from opentelemetry import propagate
 from opentelemetry import trace
+from opentelemetry.semconv.trace import MessageTypeValues
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import status
 from prometheus_client import Counter
@@ -201,6 +203,14 @@ class _PooledClientProxy:
         self.retry_policy = retry_policy or RetryPolicy.new(attempts=1)
         self.tracer = trace.get_tracer(__name__)
 
+        self.otel_peer_name = None
+        self.otel_peer_ip = None
+        try:
+            self.otel_peer_name = socket.getfqdn()
+            self.otel_peer_ip = socket.gethostbyname(self.otel_peer_name)
+        except Exception:
+            logger.exception("Failed to retrieve local fqdn/pod name/pod IP for otel traces.")
+
     @contextlib.contextmanager
     def retrying(self, **policy: Any) -> Iterator["_PooledClientProxy"]:
         yield self.__class__(
@@ -214,8 +224,27 @@ class _PooledClientProxy:
 
 def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
     def _call_thrift_method(self: Any, *args: Any, **kwargs: Any) -> Any:
-        trace_name = f"{self.namespace}.{name}"
         last_error = None
+
+        # this is technically incorrect, but we don't currently have a reliable way
+        # of getting the name of the service being called, so relying on the name of
+        # the client is the best we can do
+        rpc_service = self.namespace
+        rpc_method = name
+
+        # RPC specific headers
+        # 1.20 doc https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/trace/semantic_conventions/rpc.md
+        otel_attributes = {
+            # 1.20 and above
+            SpanAttributes.RPC_SYSTEM: "thrift",
+            SpanAttributes.RPC_SERVICE: rpc_service,
+            SpanAttributes.RPC_METHOD: rpc_method,
+            SpanAttributes.NET_HOST_NAME: self.otel_peer_name,
+            SpanAttributes.NET_HOST_IP: self.otel_peer_ip,
+        }
+
+        otelspan_name = f"{rpc_service}/{rpc_method}"
+        trace_name = f"{self.namespace}.{name}"  # old bp.py span name
 
         for time_remaining in self.retry_policy:
             try:
@@ -234,47 +263,20 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
                     mutable_metadata: OrderedDict = OrderedDict()
 
-                    # RPC specific headers
-                    # 1.20 doc https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/trace/semantic_conventions/rpc.md
-                    otel_attributes = {
-                        # 1.20 and above
-                        SpanAttributes.RPC_SYSTEM: "thrift",
-                        # this is technically incorrect, but we don't currently have a reliable way
-                        # of getting the name of the service being called, so relying on the name of
-                        # the client is the best we can do
-                        SpanAttributes.RPC_SERVICE: self.namespace,
-                        SpanAttributes.RPC_METHOD: name,
-                        #
-                        # new in 1.21
-                        # SpanAttributes.NETWORK_TRANSPORT: "tcp",  # only protocol supported?
-                        # SpanAttributes.NETWORK_TYPE: "ipv4|6",
-                        #
-                        # 1.21 and above
-                        # SpanAttributes.SERVER_ADDRESS: self.pool.endpoint.address.host,
-                        # SpanAttributes.SERVER_PORT: self.pool.endpoint.address.port,
-                        #
-                        # 1.20 ONLY
-                        SpanAttributes.NET_PEER_NAME: self.pool.endpoint.address.host,  # renamed to server.address in 1.21
-                        # or maybe net.sock.peer.addr? who knows... both renamed to server.address in 1.21
-                        SpanAttributes.NET_PEER_PORT: self.pool.endpoint.address.port,  # renamed to server.port in 1.21
-                        # SpanAttributes.NET_SOCK_PEER_ADDR -> SERVER_SOCKET_ADDRESS -> NETWORK_PEER_ADDRESS
-                        # SpanAttributes.NET_SOCK_PEER_NAME
-                        # SpanAttributes.NET_SOCK_PEER_PORT -> SERVER_SOCKET_PORT -> NETWORK_PEER_PORT
-                        #
-                        # 1.21 only
-                        # SpanAttributes.SERVER_SOCKET_ADDRESS: "ip",
-                        # SpanAttributes.SERVER_SOCKET_PORT: "only if != server.port and server.socket.address is set",
-                        #
-                        # new in 1.22
-                        # SpanAttributes.NETWORK_PEER_ADDRESS: "ip",  # recommended if != from server.address
-                        # SpanAttributes.NETWORK_PEER_PORT: 0,  # recommended if network.peer.address is set
-                    }
+                    pool_addr = self.pool.endpoint.address
+                    if isinstance(pool_addr, str):
+                        otel_attributes[SpanAttributes.NET_PEER_IP] = pool_addr
+                    elif pool_addr is not None:
+                        otel_attributes[SpanAttributes.NET_PEER_IP] = pool_addr.host
+                        otel_attributes[SpanAttributes.NET_PEER_PORT] = pool_addr.port
+                    if otel_attributes.get(SpanAttributes.NET_PEER_IP) in ["127.0.0.1", "::1"]:
+                        otel_attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
                     logger.debug(
                         f"Will use the following otel span attributes. [{span=}, {otel_attributes=}]"
                     )
 
                     with self.tracer.start_as_current_span(
-                        trace_name,
+                        otelspan_name,
                         kind=trace.SpanKind.CLIENT,
                         attributes=otel_attributes,
                     ) as otelspan:
@@ -349,6 +351,14 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                             otelspan.set_status(status.Status(status.StatusCode.OK))
                             return result
                         finally:
+                            event_attributes = {
+                                SpanAttributes.MESSAGE_TYPE: MessageTypeValues.SENT.value,
+                                # SpanAttributes.MESSAGE_ID: _,  # TODO if we want to
+                                # SpanAttributes.MESSAGE_COMPRESSED_SIZE: _,  # TODO if we want to
+                                # SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: _,  # TODO if we want to
+                            }
+                            otelspan.add_event(name="message", attributes=event_attributes)
+
                             thrift_success = "true"
                             exception_type = ""
                             baseplate_status = ""

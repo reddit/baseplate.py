@@ -11,11 +11,16 @@ from typing import Iterator
 from typing import Mapping
 from typing import Optional
 
+from form_observability import ContextAwareTracer
+from form_observability import ctx
 from opentelemetry import trace
 from opentelemetry.context import attach
 from opentelemetry.context import detach
 from opentelemetry.context.context import Context
 from opentelemetry.propagate import extract
+from opentelemetry.sdk.trace import Tracer
+from opentelemetry.semconv.trace import MessageTypeValues
+from opentelemetry.semconv.trace import SpanAttributes
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -37,6 +42,7 @@ from baseplate.thrift.ttypes import ErrorCode
 
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 PROM_NAMESPACE = "thrift_server"
 
@@ -75,7 +81,7 @@ class _ContextAwareHandler:
         context: RequestContext,
         logger: Logger,
         convert_to_baseplate_error: bool,
-        tracer,
+        tracer: Tracer,
     ):
         self.handler = handler
         self.context = context
@@ -119,16 +125,26 @@ class _ContextAwareHandler:
             span = self.context.span
             span.set_tag("thrift.method", fn_name)
             start_time = time.perf_counter()
+
+            # other attributes like RPC_SERVICE are inherited from `baseplate/server/thrift.py`
+            otel_attributes = {
+                SpanAttributes.RPC_METHOD: fn_name,
+            }
+
             with self._set_remote_context(self.context):
+                _trace = ContextAwareTracer(__name__)
+
+                otelspan_name = f"{ctx.get(SpanAttributes.RPC_SERVICE)}/{fn_name}"
+
                 # we automatically record all exceptions, however...
                 # we manually set status on exception because not all exceptions are "bad"
-                with self._tracer.start_as_current_span(
-                    fn_name,
+                with _trace.start_as_current_span(
+                    name=otelspan_name,
                     kind=trace.SpanKind.SERVER,
+                    attributes=otel_attributes,
                     record_exception=True,
                     set_status_on_exception=False,
                 ) as otelspan:
-                    otelspan.set_attribute("thrift.method", fn_name)
                     if b"User-Agent" in self.context.headers:
                         otelspan.set_attribute(
                             "user.agent", self.context.headers[b"User-Agent"].decode()
@@ -201,6 +217,14 @@ class _ContextAwareHandler:
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         return result
                     finally:
+                        event_attributes = {
+                            SpanAttributes.MESSAGE_TYPE: MessageTypeValues.RECEIVED.value,
+                            # SpanAttributes.MESSAGE_ID: _,  # TODO if we want to
+                            # SpanAttributes.MESSAGE_COMPRESSED_SIZE: _,  # TODO if we want to
+                            # SpanAttributes.MESSAGE_UNCOMPRESSED_SIZE: _,  # TODO if we want to
+                        }
+                        otelspan.add_event(name="message", attributes=event_attributes)
+
                         thrift_success = "true"
                         exception_type = ""
                         baseplate_status_code = ""
@@ -318,7 +342,11 @@ def baseplateify_processor(
             handler = processor._handler
             tracer = trace.get_tracer(__name__)
             context_aware_handler = _ContextAwareHandler(
-                handler, context, logger, convert_to_baseplate_error, tracer
+                handler,
+                context,
+                logger,
+                convert_to_baseplate_error,
+                tracer,
             )
             context_aware_processor = processor.__class__(context_aware_handler)
             return processor_fn(context_aware_processor, seqid, iprot, oprot)
