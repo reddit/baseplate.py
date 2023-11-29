@@ -287,26 +287,10 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                                 if service_name:
                                     prot.trans.set_header(b"User-Agent", service_name.encode())
 
-                            prot.trans.set_header(b"Trace", str(span.trace_id).encode())
-                            prot.trans.set_header(b"Parent", str(span.parent_id).encode())
-                            prot.trans.set_header(b"Span", str(span.id).encode())
-                            logger.debug(
-                                f"Set old tracing headers on outgoing transaction. [{span=}, {span.trace_id=}, {span.parent_id=}, {span.id=}]"
-                            )
-
+                            # Inject all tracing headers into mutable_metadata and add as headers
                             propagate.inject(mutable_metadata)
-
-                            # set w3c traceparent headers
                             for k, v in mutable_metadata.items():
                                 prot.set_header(k.encode(), v.encode())
-
-                            if span.sampled is not None:
-                                sampled = "1" if span.sampled else "0"
-                                prot.trans.set_header(b"Sampled", sampled.encode())
-                                logger.debug(f"Set baseplate header. [{span=}, {sampled=}]")
-                            if span.flags:
-                                prot.trans.set_header(b"Flags", str(span.flags).encode())
-                                logger.debug(f"Set baseplate header. [{span=}, {span.flags=}]")
 
                             min_timeout = time_remaining
                             if self.pool.timeout:

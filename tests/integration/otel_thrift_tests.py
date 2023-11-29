@@ -3,16 +3,17 @@ import logging
 import unittest
 
 from importlib import reload
-from unittest import mock
 
 import gevent.monkey
 import pytest
 
+from opentelemetry import propagate
 from opentelemetry import trace
-from opentelemetry.context.context import Context
+from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.semconv.trace import MessageTypeValues
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from parameterized import parameterized
 from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
@@ -24,6 +25,7 @@ from baseplate import TraceInfo
 from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
+from baseplate.lib.propagator_redditb3 import RedditB3Format
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.observers.timeout import ServerTimeout
 from baseplate.observers.timeout import TimeoutBaseplateObserver
@@ -43,6 +45,8 @@ logger = logging.getLogger(__name__)
 
 
 THRIFT_CLIENT_NAME = "example_service"
+
+propagate.set_global_textmap(CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()]))
 
 
 @contextlib.contextmanager
@@ -272,29 +276,25 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
 
         handler = Handler()
 
-        with mock.patch("baseplate.frameworks.thrift.extract") as extract:
-            # override the extract function so that it behaves as if otel headers were not set
-            extract.return_value = Context()
-            with serve_thrift(handler, TestService) as server:
-                with mock.patch("baseplate.random") as random:
-                    with baseplate_thrift_client(server.endpoint, TestService) as context:
-                        # override the value of random.getrandbits to make the test deterministic
-                        random.getrandbits.return_value = 13796108427971843129
-                        context.example_service.example()
-
-                        random.getrandbits.assert_called_once_with(64)
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                transport = client._oprot.trans
+                transport.set_header('X-Trace'.encode('utf-8'), '20d294c28becf34d'.encode('utf-8'))
+                transport.set_header('X-Span'.encode('utf-8'), 'a1bf4d567fc497a4'.encode('utf-8'))
+                transport.set_header('X-Sampled'.encode('utf-8'), '1'.encode('utf-8'))
+                client.example()
 
         finished_spans = self.get_finished_spans()
-        self.assertEqual(len(finished_spans), 2)
-
+        self.assertEqual(len(finished_spans), 1)
         thrift_server_span = finished_spans[0]
         self.assertEqual(thrift_server_span.kind, trace.SpanKind.SERVER)
 
         self.assertIsNotNone(thrift_server_span.parent)
+
         # span_id should be the value we manually set above in the mock for random
-        self.assertEqual(thrift_server_span.parent.span_id, 13796108427971843129)
+        self.assertEqual(thrift_server_span.parent.span_id, 0xa1bf4d567fc497a4)
         # this should be the trace_id set originally in baseplate_thrift_client
-        self.assertEqual(thrift_server_span.parent.trace_id, 0x4BF92F3577B34DA6A3CE929D0E0E4736)
+        self.assertEqual(thrift_server_span.parent.trace_id, 0x000000000000000020d294c28becf34d)
 
     def test_no_headers(self):
         """We should accept requests without headers and generate a trace."""
