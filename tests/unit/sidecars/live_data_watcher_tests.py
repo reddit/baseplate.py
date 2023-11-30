@@ -12,6 +12,7 @@ import boto3
 from moto import mock_s3
 
 from baseplate.sidecars.live_data_watcher import NodeWatcher
+from baseplate.sidecars.live_data_watcher import _generate_sharded_file_key
 
 NUM_FILE_SHARDS = 6
 
@@ -62,6 +63,30 @@ class NodeWatcherTests(unittest.TestCase):
         self.assertEqual(expected_content, dest.read_bytes())
         self.assertEqual(dest.owner(), pwd.getpwuid(os.getuid()).pw_name)
         self.assertEqual(dest.group(), grp.getgrgid(os.getgid()).gr_name)
+
+    def test_generate_sharded_file_key_with_no_shards_key(self):
+        original_file_key = "test_file_key"
+        actual_sharded_file_key = _generate_sharded_file_key(None, original_file_key)
+        expected_sharded_file_key = "test_file_key"
+        self.assertEqual(actual_sharded_file_key, expected_sharded_file_key)
+
+    def test_generate_sharded_file_key(self):
+        original_file_key = "test_file_key"
+        possible_sharded_file_keys = set(
+            [
+                "1_test_file_key",
+                "2_test_file_key",
+                "3_test_file_key",
+                "4_test_file_key",
+                "5_test_file_key",
+            ]
+        )
+        for i in range(50):
+            actual_sharded_file_key = _generate_sharded_file_key(NUM_FILE_SHARDS, original_file_key)
+            # If num_file_shards is provided, the generated file key MUST have a prefix.
+            self.assertTrue(actual_sharded_file_key in possible_sharded_file_keys)
+            # Make sure we aren't generating a file without the prefix.
+            self.assertFalse(actual_sharded_file_key == original_file_key)
 
     def test_s3_load_type_sharded_on_change(self):
         dest = self.output_dir.joinpath("data.txt")
