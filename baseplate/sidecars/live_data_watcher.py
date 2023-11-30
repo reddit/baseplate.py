@@ -167,16 +167,15 @@ def _load_from_s3(data: bytes) -> bytes:
         # a public resource belonging to another cluster/AWS account unless the request credentials
         # are unsigned.
 
-        # Access S3 with 10 max retries enabled:
+        # Default # of retries in legacy mode (current mode) is 5.
         s3_client = boto3.client(
             "s3",
-            config=Config(signature_version=UNSIGNED, retries={"total_max_attempts": 10}),
+            config=Config(signature_version=UNSIGNED),
             region_name=region_name,
         )
     else:
         s3_client = boto3.client(
             "s3",
-            config=Config(retries={"total_max_attempts": 10}),
             region_name=region_name,
         )
 
