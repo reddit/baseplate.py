@@ -35,7 +35,7 @@ class NodeWatcherTests(unittest.TestCase):
                 sharded_file_key = default_file_key
             else:
                 # All other copies should include the sharded prefix.
-                sharded_file_key = str(file_shard_num) + "/" + default_file_key
+                sharded_file_key = default_file_key
             s3_client.put_object(
                 Bucket=bucket_name,
                 Key=sharded_file_key,
@@ -71,7 +71,9 @@ class NodeWatcherTests(unittest.TestCase):
         expected_content = b'{"foo_encrypted": "bar_encrypted"}'
 
         # For safe measure, run this 20 times. It should succeed every time.
-        # We've uploaded 5 files to S3 in setUp() and num_file_shards=5 in the ZK node so we should be fetching one of these 5 files randomly (and successfully) - and all should have the same content.
+        # We've uploaded 5 files to S3 in setUp() and num_file_shards=5 in the
+        # ZK node so we should be fetching one of these 5 files randomly (and successfully)
+        # and all should have the same content.
         for i in range(20):
             inst.on_change(new_content, None)
             self.assertEqual(expected_content, dest.read_bytes())
