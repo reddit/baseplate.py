@@ -151,6 +151,7 @@ def _load_from_s3(data: bytes) -> bytes:
             "SSECustomerKey": loader_config["sse_key"],
             "SSECustomerAlgorithm": "AES256",
         }
+        logger.error(file_key)
     except KeyError as e:
         # We require all of these keys to properly read from S3.
         logger.exception(

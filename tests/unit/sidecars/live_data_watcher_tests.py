@@ -68,7 +68,7 @@ class NodeWatcherTests(unittest.TestCase):
         inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
 
         new_content = b'{"live_data_watcher_load_type":"S3","bucket_name":"test_bucket","file_key":"test_file_key","sse_key":"test_decryption_key","region_name":"us-east-1", "num_file_shards": 5}'
-        expected_content = b'{"foo_encrypted": "bar_encrypted"}'
+        expected_content = b'{"foo_encrypted": "bar_encrypteds"}'
 
         # For safe measure, run this 20 times. It should succeed every time.
         # We've uploaded 5 files to S3 in setUp() and num_file_shards=5 in the ZK node so we should be fetching one of these 5 files randomly (and successfully) - and all should have the same content.
