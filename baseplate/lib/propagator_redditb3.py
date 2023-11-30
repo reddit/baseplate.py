@@ -123,7 +123,8 @@ class RedditB3Format(TextMapPropagator):
 
 def _extract_first_element(
     items: typing.Iterable[CarrierT],
+    default: Optional[Any] = None,
 ) -> typing.Optional[CarrierT]:
     if items is None:
-        return None
-    return next(iter(items), None)
+        return default
+    return next(iter(items), default)
