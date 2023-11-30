@@ -127,12 +127,12 @@ def _load_from_s3(data: bytes) -> bytes:
         # We can't assume that every caller of this method will be using prefix sharding on
         # their S3 objects.
         num_file_shards = loader_config.get("num_file_shards", 1)
-        logger.error(num_file_shards)
+
         # If the num_file_shards key is present, we may have multiple copies of the same manifest
         # uploaded so fetch one randomly using a randomly generated prefix.
         # Generate a random number from 0 to num_file_shards exclusive to use as prefix.
         file_key_prefix = random.randrange(num_file_shards)
-        logger.error(file_key_prefix)
+
         # If 0 is generated, don’t append a prefix, fetch the file with no prefix
         # since we always upload one file without a prefix.
         if file_key_prefix == 0:
@@ -151,7 +151,6 @@ def _load_from_s3(data: bytes) -> bytes:
             "SSECustomerKey": loader_config["sse_key"],
             "SSECustomerAlgorithm": "AES256",
         }
-        logger.error(file_key)
     except KeyError as e:
         # We require all of these keys to properly read from S3.
         logger.exception(
