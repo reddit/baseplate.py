@@ -76,9 +76,9 @@ class NodeWatcherTests(unittest.TestCase):
         )
         for i in range(50):
             actual_sharded_file_key = _generate_sharded_file_key(NUM_FILE_SHARDS, original_file_key)
+            logger.error(actual_sharded_file_key)
             # If num_file_shards is provided, the generated file key MUST have a prefix.
             self.assertTrue(actual_sharded_file_key in possible_sharded_file_keys)
-            logger.error(actual_sharded_file_key)
             # Make sure we aren't generating a file without the prefix.
             self.assertFalse(actual_sharded_file_key == original_file_key)
 
