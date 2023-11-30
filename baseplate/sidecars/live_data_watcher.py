@@ -126,7 +126,8 @@ def _load_from_s3(data: bytes) -> bytes:
         num_file_shards = loader_config.get("num_file_shards")
 
         # We can't assume that every caller of this method will be using prefix sharding on
-        # their S3 objects. If it's not present, set the prefix to empty string ""
+        # their S3 objects (but at least one service definitely does - experiments).
+        # If it's not present or the value is 1, set the prefix to empty string ""
         if not num_file_shards or num_file_shards == 1:
             sharded_file_key_prefix = ""
         else:
