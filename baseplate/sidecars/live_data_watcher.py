@@ -116,7 +116,7 @@ def _parse_loader_type(data: bytes) -> LoaderType:
     return LoaderType(loader_type)
 
 
-def _generate_sharded_file_key_prefix(num_file_shards: Optional[int]) -> str:
+def _generate_sharded_file_key(num_file_shards: Optional[int], file_key: str) -> str:
     # We can't assume that every ZK Node that is being NodeWatched by the live-data-fetcher
     # will make use of S3 prefix sharding - but, we know at least one does (/experiments).
     # If it's not present or the value is 1, set the prefix to empty string ""
@@ -127,7 +127,8 @@ def _generate_sharded_file_key_prefix(num_file_shards: Optional[int]) -> str:
         # uploaded so fetch one randomly using a randomly generated prefix.
         # Generate a random number from 1 to num_file_shards exclusive to use as prefix.
         sharded_file_key_prefix = str(random.randrange(1, num_file_shards)) + "/"
-    return sharded_file_key_prefix
+    # Append prefix (if it exists) to our original file key.
+    return sharded_file_key_prefix + file_key
 
 
 def _load_from_s3(data: bytes) -> bytes:
@@ -138,13 +139,16 @@ def _load_from_s3(data: bytes) -> bytes:
     loader_config = json.loads(data.decode("UTF-8"))
     try:
         num_file_shards = loader_config.get("num_file_shards")
-        # Append prefix (if it exists) to our original file key.
-        file_key = _generate_sharded_file_key_prefix(num_file_shards) + loader_config["file_key"]
+
+        # We expect this key to always be present, otherwise it's an exception.
+        file_key = loader_config["file_key"]
+
+        sharded_file_key = _generate_sharded_file_key(num_file_shards, file_key)
 
         region_name = loader_config["region_name"]
         s3_kwargs = {
             "Bucket": loader_config["bucket_name"],
-            "Key": file_key,
+            "Key": sharded_file_key,
             "SSECustomerKey": loader_config["sse_key"],
             "SSECustomerAlgorithm": "AES256",
         }
