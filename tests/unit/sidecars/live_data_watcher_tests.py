@@ -35,7 +35,7 @@ class NodeWatcherTests(unittest.TestCase):
                 sharded_file_key = default_file_key
             else:
                 # All other copies should include the sharded prefix.
-                sharded_file_key = default_file_key
+                sharded_file_key = str(file_shard_num) + "/" + default_file_key
             s3_client.put_object(
                 Bucket=bucket_name,
                 Key=sharded_file_key,
