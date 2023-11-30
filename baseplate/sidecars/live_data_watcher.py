@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 import time
+import random
 
 from enum import Enum
 from pathlib import Path
@@ -122,10 +123,31 @@ def _load_from_s3(data: bytes) -> bytes:
     # and json is an easier format for znode authors to work with.
     loader_config = json.loads(data.decode("UTF-8"))
     try:
+        # Default to 1 since we generate random numbers from 0 to num_file_shards exclusive.
+        # We can't assume that every caller of this method will be using prefix sharding on
+        # their S3 objects.
+        num_file_shards = loader_config.get("num_file_shards", 1)
+
+        # If the num_file_shards key is present, we may have multiple copies of the same manifest
+        # uploaded so fetch one randomly using a randomly generated prefix.
+        # Generate a random number from 0 to num_file_shards exclusive to use as prefix.
+        file_key_prefix = random.randrange(num_file_shards)
+
+        # If 0 is generated, don’t append a prefix, fetch the file with no prefix
+        # since we always upload one file without a prefix.
+        if file_key_prefix == 0:
+            sharded_file_key_prefix = ""
+        else:
+            # If any other number is generated, fetch one of the copies of the
+            # file which has an included prefix.
+            sharded_file_key_prefix = str(file_key_prefix) + "/"
+
+        # Append prefix (if it exists) to our original file key.
+        file_key = sharded_file_key_prefix + loader_config["file_key"]
         region_name = loader_config["region_name"]
         s3_kwargs = {
             "Bucket": loader_config["bucket_name"],
-            "Key": loader_config["file_key"],
+            "Key": file_key,
             "SSECustomerKey": loader_config["sse_key"],
             "SSECustomerAlgorithm": "AES256",
         }
