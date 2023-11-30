@@ -53,24 +53,13 @@ class NodeWatcherTests(unittest.TestCase):
             self.output_dir = Path(loc)
             return super().run(result)
 
-    def test_s3_load_type_on_change(self):
-        dest = self.output_dir.joinpath("data.txt")
-        inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
-
-        new_content = b'{"live_data_watcher_load_type":"S3","bucket_name":"test_bucket","file_key":"test_file_key","sse_key":"test_decryption_key","region_name":"us-east-1"}'
-        expected_content = b'{"foo_encrypted": "bar_encrypted"}'
-        inst.on_change(new_content, None)
-        self.assertEqual(expected_content, dest.read_bytes())
-        self.assertEqual(dest.owner(), pwd.getpwuid(os.getuid()).pw_name)
-        self.assertEqual(dest.group(), grp.getgrgid(os.getgid()).gr_name)
-
-    def test_generate_sharded_file_key_with_no_sharding(self):
+    def test_generate_sharded_file_key_no_sharding(self):
         original_file_key = "test_file_key"
         actual_sharded_file_key = _generate_sharded_file_key(None, original_file_key)
         expected_sharded_file_key = "test_file_key"
         self.assertEqual(actual_sharded_file_key, expected_sharded_file_key)
 
-    def test_generate_sharded_file_key(self):
+    def test_generate_sharded_file_key_sharding(self):
         original_file_key = "test_file_key"
         possible_sharded_file_keys = set(
             [
@@ -88,7 +77,18 @@ class NodeWatcherTests(unittest.TestCase):
             # Make sure we aren't generating a file without the prefix.
             self.assertFalse(actual_sharded_file_key == original_file_key)
 
-    def test_s3_load_type_sharded_on_change(self):
+    def test_s3_load_type_on_change_no_sharding(self):
+        dest = self.output_dir.joinpath("data.txt")
+        inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
+
+        new_content = b'{"live_data_watcher_load_type":"S3","bucket_name":"test_bucket","file_key":"test_file_key","sse_key":"test_decryption_key","region_name":"us-east-1"}'
+        expected_content = b'{"foo_encrypted": "bar_encrypted"}'
+        inst.on_change(new_content, None)
+        self.assertEqual(expected_content, dest.read_bytes())
+        self.assertEqual(dest.owner(), pwd.getpwuid(os.getuid()).pw_name)
+        self.assertEqual(dest.group(), grp.getgrgid(os.getgid()).gr_name)
+
+    def test_s3_load_type_on_change_sharding(self):
         dest = self.output_dir.joinpath("data.txt")
         inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
 
