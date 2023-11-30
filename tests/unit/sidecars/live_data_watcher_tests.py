@@ -59,9 +59,11 @@ class NodeWatcherTests(unittest.TestCase):
 
     def test_generate_sharded_file_key_no_sharding(self):
         original_file_key = "test_file_key"
-        actual_sharded_file_key = _generate_sharded_file_key(None, original_file_key)
         expected_sharded_file_key = "test_file_key"
-        self.assertEqual(actual_sharded_file_key, expected_sharded_file_key)
+        possible_no_sharding_values = [0, 1, None]
+        for values in possible_no_sharding_values:
+            actual_sharded_file_key = _generate_sharded_file_key(values, original_file_key)
+            self.assertEqual(actual_sharded_file_key, expected_sharded_file_key)
 
     def test_generate_sharded_file_key_sharding(self):
         original_file_key = "test_file_key"
