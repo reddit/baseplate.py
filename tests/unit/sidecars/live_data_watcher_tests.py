@@ -1,5 +1,6 @@
 import grp
 import json
+import logging
 import os
 import pwd
 import tempfile
@@ -16,7 +17,6 @@ from baseplate.sidecars.live_data_watcher import NodeWatcher
 
 NUM_FILE_SHARDS = 6
 
-import logging
 
 logger = logging.getLogger(__name__)
 
