@@ -56,6 +56,7 @@ class RedditB3Format(TextMapPropagator):
             or flags
         )
 
+        # If we receive an invalid `trace_id` according to the w3 spec we return an empty context.
         if (
             trace_id == trace.INVALID_TRACE_ID
             or span_id == trace.INVALID_SPAN_ID
@@ -64,6 +65,7 @@ class RedditB3Format(TextMapPropagator):
         ):
             return context
 
+        # trace and span ids are encoded in hex, so must be converted
         trace_id = int(trace_id, 16)
         span_id = int(span_id, 16)
         options = 0
@@ -77,7 +79,6 @@ class RedditB3Format(TextMapPropagator):
         return trace.set_span_in_context(
             trace.NonRecordingSpan(
                 trace.SpanContext(
-                    # trace an span ids are encoded in hex, so must be converted
                     trace_id=trace_id,
                     span_id=span_id,
                     is_remote=True,
@@ -105,7 +106,7 @@ class RedditB3Format(TextMapPropagator):
             carrier,
             self.TRACE_ID_KEY,
             # The Reddit B3 format expects a 64bit TraceId not a 128bit ID. This is truncated for compatibility.
-            format_trace_id(span_context.trace_id)[16:],
+            format_trace_id(span_context.trace_id)[-16:],
         )
         setter.set(
             carrier, self.SPAN_ID_KEY, format_span_id(span_context.span_id)
