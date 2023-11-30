@@ -16,6 +16,10 @@ from baseplate.sidecars.live_data_watcher import NodeWatcher
 
 NUM_FILE_SHARDS = 6
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class NodeWatcherTests(unittest.TestCase):
     mock_s3 = mock_s3()
@@ -74,6 +78,7 @@ class NodeWatcherTests(unittest.TestCase):
             actual_sharded_file_key = _generate_sharded_file_key(NUM_FILE_SHARDS, original_file_key)
             # If num_file_shards is provided, the generated file key MUST have a prefix.
             self.assertTrue(actual_sharded_file_key in possible_sharded_file_keys)
+            logger.error(actual_sharded_file_key)
             # Make sure we aren't generating a file without the prefix.
             self.assertFalse(actual_sharded_file_key == original_file_key)
 
