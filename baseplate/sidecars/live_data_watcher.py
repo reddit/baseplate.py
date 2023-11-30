@@ -119,10 +119,10 @@ def _parse_loader_type(data: bytes) -> LoaderType:
 def _generate_sharded_file_key(num_file_shards: Optional[int], file_key: str) -> str:
     # We can't assume that every ZK Node that is being NodeWatched by the live-data-fetcher
     # will make use of S3 prefix sharding - but, we know at least one does (/experiments).
-    # If it's not present or the value is 1, set the prefix to empty string ""
-    if not num_file_shards or num_file_shards == 1:
-        sharded_file_key_prefix = ""
-    else:
+    # If it's not present or the value is 0 or 1, set the prefix to empty string ""
+    sharded_file_key_prefix = ""
+    no_shard_values = [None, 0, 1]
+    if not num_file_shards in no_shard_values:
         # If the num_file_shards key is present, we may have multiple copies of the same manifest
         # uploaded so fetch one randomly using a randomly generated prefix.
         # Generate a random number from 1 to num_file_shards exclusive to use as prefix.
