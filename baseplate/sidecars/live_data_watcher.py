@@ -4,6 +4,7 @@ import configparser
 import json
 import logging
 import os
+import random
 import sys
 import time
 
@@ -115,6 +116,20 @@ def _parse_loader_type(data: bytes) -> LoaderType:
     return LoaderType(loader_type)
 
 
+def _generate_sharded_file_key(num_file_shards: Optional[int], file_key: str) -> str:
+    # We can't assume that every ZK Node that is being NodeWatched by the live-data-fetcher
+    # will make use of S3 prefix sharding - but, we know at least one does (/experiments).
+    # If it's not present or the value is less than 2, set the prefix to empty string ""
+    sharded_file_key_prefix = ""
+    if num_file_shards is not None and num_file_shards > 1:
+        # If the num_file_shards key is present, we may have multiple copies of the same manifest
+        # uploaded so fetch one randomly using a randomly generated prefix.
+        # Generate a random number from 1 to num_file_shards exclusive to use as prefix.
+        sharded_file_key_prefix = str(random.randrange(1, num_file_shards)) + "/"
+    # Append prefix (if it exists) to our original file key.
+    return sharded_file_key_prefix + file_key
+
+
 def _load_from_s3(data: bytes) -> bytes:
     # While many of the baseplate configurations use an ini format,
     # we've opted for json in these internal-to-znode-configs because
@@ -122,10 +137,17 @@ def _load_from_s3(data: bytes) -> bytes:
     # and json is an easier format for znode authors to work with.
     loader_config = json.loads(data.decode("UTF-8"))
     try:
+        num_file_shards = loader_config.get("num_file_shards")
+
+        # We expect this key to always be present, otherwise it's an exception.
+        file_key = loader_config["file_key"]
+
+        sharded_file_key = _generate_sharded_file_key(num_file_shards, file_key)
+
         region_name = loader_config["region_name"]
         s3_kwargs = {
             "Bucket": loader_config["bucket_name"],
-            "Key": loader_config["file_key"],
+            "Key": sharded_file_key,
             "SSECustomerKey": loader_config["sse_key"],
             "SSECustomerAlgorithm": "AES256",
         }
@@ -144,6 +166,8 @@ def _load_from_s3(data: bytes) -> bytes:
         # resource is public. In other words, this means that a given service cannot access
         # a public resource belonging to another cluster/AWS account unless the request credentials
         # are unsigned.
+
+        # Default # of retries in legacy mode (current mode) is 5.
         s3_client = boto3.client(
             "s3",
             config=Config(signature_version=UNSIGNED),
