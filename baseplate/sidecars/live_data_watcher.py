@@ -116,6 +116,20 @@ def _parse_loader_type(data: bytes) -> LoaderType:
     return LoaderType(loader_type)
 
 
+def _generate_sharded_file_key_prefix(num_file_shards: Optional[int]) -> str:
+    # We can't assume that every ZK Node that is being NodeWatched by the live-data-fetcher
+    # will make use of S3 prefix sharding - but, we know at least one does (/experiments).
+    # If it's not present or the value is 1, set the prefix to empty string ""
+    if not num_file_shards or num_file_shards == 1:
+        sharded_file_key_prefix = ""
+    else:
+        # If the num_file_shards key is present, we may have multiple copies of the same manifest
+        # uploaded so fetch one randomly using a randomly generated prefix.
+        # Generate a random number from 1 to num_file_shards exclusive to use as prefix.
+        sharded_file_key_prefix = str(random.randrange(1, num_file_shards)) + "/"
+    return sharded_file_key_prefix
+
+
 def _load_from_s3(data: bytes) -> bytes:
     # While many of the baseplate configurations use an ini format,
     # we've opted for json in these internal-to-znode-configs because
@@ -124,20 +138,9 @@ def _load_from_s3(data: bytes) -> bytes:
     loader_config = json.loads(data.decode("UTF-8"))
     try:
         num_file_shards = loader_config.get("num_file_shards")
-
-        # We can't assume that every ZK Node that is being NodeWatched by the live-data-fetcher
-        # will make use of S3 prefix sharding - but, we know at least one does (/experiments).
-        # If it's not present or the value is 1, set the prefix to empty string ""
-        if not num_file_shards or num_file_shards == 1:
-            sharded_file_key_prefix = ""
-        else:
-            # If the num_file_shards key is present, we may have multiple copies of the same manifest
-            # uploaded so fetch one randomly using a randomly generated prefix.
-            # Generate a random number from 1 to num_file_shards exclusive to use as prefix.
-            sharded_file_key_prefix = str(random.randrange(1, num_file_shards)) + "/"
-
         # Append prefix (if it exists) to our original file key.
-        file_key = sharded_file_key_prefix + loader_config["file_key"]
+        file_key = _generate_sharded_file_key_prefix(num_file_shards) + loader_config["file_key"]
+
         region_name = loader_config["region_name"]
         s3_kwargs = {
             "Bucket": loader_config["bucket_name"],
