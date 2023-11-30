@@ -64,7 +64,7 @@ class NodeWatcherTests(unittest.TestCase):
         self.assertEqual(dest.owner(), pwd.getpwuid(os.getuid()).pw_name)
         self.assertEqual(dest.group(), grp.getgrgid(os.getgid()).gr_name)
 
-    def test_generate_sharded_file_key_with_no_shards_key(self):
+    def test_generate_sharded_file_key_with_no_sharding(self):
         original_file_key = "test_file_key"
         actual_sharded_file_key = _generate_sharded_file_key(None, original_file_key)
         expected_sharded_file_key = "test_file_key"
