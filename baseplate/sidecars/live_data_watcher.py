@@ -127,7 +127,7 @@ def _load_from_s3(data: bytes) -> bytes:
 
         # We can't assume that every caller of this method will be using prefix sharding on
         # their S3 objects. If it's not present, set the prefix to empty string ""
-        if not num_file_shards:
+        if not num_file_shards or num_file_shards == 1:
             sharded_file_key_prefix = ""
         else:
             # If the num_file_shards key is present, we may have multiple copies of the same manifest
