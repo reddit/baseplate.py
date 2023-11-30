@@ -11,8 +11,8 @@ import boto3
 
 from moto import mock_s3
 
-from baseplate.sidecars.live_data_watcher import NodeWatcher
 from baseplate.sidecars.live_data_watcher import _generate_sharded_file_key
+from baseplate.sidecars.live_data_watcher import NodeWatcher
 
 NUM_FILE_SHARDS = 6
 
