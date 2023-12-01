@@ -39,9 +39,11 @@ from typing import TextIO
 from typing import Tuple
 
 from gevent.server import StreamServer
-from opentelemetry import trace, propagate
+from opentelemetry import propagate
+from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.resources import SERVICE_NAME
 from opentelemetry.sdk.trace import Span
@@ -50,9 +52,8 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import DEFAULT_OFF
 from opentelemetry.sdk.trace.sampling import DEFAULT_ON
 from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.semconv.resource import ResourceAttributes
-from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
@@ -269,7 +270,9 @@ def configure_tracing(config: Configuration) -> None:
                 insecure = True
 
             otlp_exporter = OTLPSpanExporter(endpoint=config.tracing["endpoint"], insecure=insecure)
-            propagate.set_global_textmap(CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()]))
+            propagate.set_global_textmap(
+                CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()])
+            )
             provider = TracerProvider(sampler=sampler, resource=resource)
             provider.add_span_processor(
                 BaseplateBatchSpanProcessor(

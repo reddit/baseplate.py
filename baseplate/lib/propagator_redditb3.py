@@ -1,17 +1,17 @@
 import typing
+
 from re import compile as re_compile
 
 from opentelemetry import trace
 from opentelemetry.context import Context
-from opentelemetry.propagators.textmap import (
-    CarrierT,
-    Getter,
-    Setter,
-    TextMapPropagator,
-    default_getter,
-    default_setter,
-)
-from opentelemetry.trace import format_span_id, format_trace_id
+from opentelemetry.propagators.textmap import CarrierT
+from opentelemetry.propagators.textmap import default_getter
+from opentelemetry.propagators.textmap import default_setter
+from opentelemetry.propagators.textmap import Getter
+from opentelemetry.propagators.textmap import Setter
+from opentelemetry.propagators.textmap import TextMapPropagator
+from opentelemetry.trace import format_span_id
+from opentelemetry.trace import format_trace_id
 
 
 class RedditB3Format(TextMapPropagator):
@@ -39,22 +39,10 @@ class RedditB3Format(TextMapPropagator):
         sampled = "0"
         flags = None
 
-        trace_id = (
-            _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY))
-            or trace_id
-        )
-        span_id = (
-            _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY))
-            or span_id
-        )
-        sampled = (
-            _extract_first_element(getter.get(carrier, self.SAMPLED_KEY))
-            or sampled
-        )
-        flags = (
-            _extract_first_element(getter.get(carrier, self.FLAGS_KEY))
-            or flags
-        )
+        trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY)) or trace_id
+        span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY)) or span_id
+        sampled = _extract_first_element(getter.get(carrier, self.SAMPLED_KEY)) or sampled
+        flags = _extract_first_element(getter.get(carrier, self.FLAGS_KEY)) or flags
 
         # If we receive an invalid `trace_id` according to the w3 spec we return an empty context.
         if (
@@ -108,9 +96,7 @@ class RedditB3Format(TextMapPropagator):
             # The Reddit B3 format expects a 64bit TraceId not a 128bit ID. This is truncated for compatibility.
             format_trace_id(span_context.trace_id)[-16:],
         )
-        setter.set(
-            carrier, self.SPAN_ID_KEY, format_span_id(span_context.span_id)
-        )
+        setter.set(carrier, self.SPAN_ID_KEY, format_span_id(span_context.span_id))
         setter.set(carrier, self.SAMPLED_KEY, "1" if sampled else "0")
 
     @property
@@ -124,7 +110,7 @@ class RedditB3Format(TextMapPropagator):
 
 def _extract_first_element(
     items: typing.Iterable[CarrierT],
-    default: Optional[Any] = None,
+    default: typing.Optional[typing.Any] = None,
 ) -> typing.Optional[CarrierT]:
     if items is None:
         return default

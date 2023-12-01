@@ -46,7 +46,9 @@ logger = logging.getLogger(__name__)
 
 THRIFT_CLIENT_NAME = "example_service"
 
-propagate.set_global_textmap(CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()]))
+propagate.set_global_textmap(
+    CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()])
+)
 
 
 @contextlib.contextmanager
@@ -231,7 +233,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             thrift_client_span, {SpanAttributes.RPC_SERVICE: "example_service"}
         )
         self.assertSpanHasAttributes(thrift_client_span, {SpanAttributes.RPC_METHOD: "example"})
-        self.assertEqual(thrift_client_span.name, f"example_service/example")
+        self.assertEqual(thrift_client_span.name, "example_service/example")
         self.assertSpanHasAttributes(thrift_client_span, {SpanAttributes.NET_PEER_IP: "127.0.0.1"})
         self.assertSpanHasAttributes(
             thrift_client_span, {SpanAttributes.NET_PEER_NAME: "localhost"}
@@ -251,7 +253,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             thrift_server_span, {SpanAttributes.RPC_SERVICE: "tests.integration.otel_thrift_tests"}
         )
         self.assertSpanHasAttributes(thrift_server_span, {SpanAttributes.RPC_METHOD: "example"})
-        self.assertEqual(thrift_server_span.name, f"tests.integration.otel_thrift_tests/example")
+        self.assertEqual(thrift_server_span.name, "tests.integration.otel_thrift_tests/example")
         self.assertSpanHasAttributes(thrift_server_span, {SpanAttributes.NET_HOST_IP: "127.0.0.1"})
         self.assertSpanHasAttributes(
             thrift_server_span, {SpanAttributes.NET_HOST_NAME: "localhost"}
@@ -279,9 +281,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         with serve_thrift(handler, TestService) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
-                transport.set_header('X-Trace'.encode('utf-8'), '20d294c28becf34d'.encode('utf-8'))
-                transport.set_header('X-Span'.encode('utf-8'), 'a1bf4d567fc497a4'.encode('utf-8'))
-                transport.set_header('X-Sampled'.encode('utf-8'), '1'.encode('utf-8'))
+                transport.set_header("X-Trace".encode("utf-8"), "20d294c28becf34d".encode("utf-8"))
+                transport.set_header("X-Span".encode("utf-8"), "a1bf4d567fc497a4".encode("utf-8"))
+                transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
                 client.example()
 
         finished_spans = self.get_finished_spans()
@@ -292,9 +294,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         self.assertIsNotNone(thrift_server_span.parent)
 
         # span_id should be the value we manually set above in the mock for random
-        self.assertEqual(thrift_server_span.parent.span_id, 0xa1bf4d567fc497a4)
+        self.assertEqual(thrift_server_span.parent.span_id, 0xA1BF4D567FC497A4)
         # this should be the trace_id set originally in baseplate_thrift_client
-        self.assertEqual(thrift_server_span.parent.trace_id, 0x000000000000000020d294c28becf34d)
+        self.assertEqual(thrift_server_span.parent.trace_id, 0x000000000000000020D294C28BECF34D)
 
     def test_no_headers(self):
         """We should accept requests without headers and generate a trace."""

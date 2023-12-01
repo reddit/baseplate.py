@@ -16,7 +16,6 @@ from form_observability import ctx
 from opentelemetry import trace
 from opentelemetry.context import attach
 from opentelemetry.context import detach
-from opentelemetry.context.context import Context
 from opentelemetry.propagate import extract
 from opentelemetry.sdk.trace import Tracer
 from opentelemetry.semconv.trace import MessageTypeValues
