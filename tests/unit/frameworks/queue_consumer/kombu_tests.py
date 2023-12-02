@@ -125,20 +125,14 @@ class TestKombuMessageHandler:
             message.ack.assert_not_called()
             message.reject.assert_called_once()
 
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_PROCESSING_TIME._name}_bucket",
-                {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
-            )
-            == (1 if handled else None)
-        )
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_PROCESSED_TOTAL._name}_total",
-                {**prom_labels._asdict(), **{"amqp_success": "true"}},
-            )
-            == (1 if handled else None)
-        )
+        assert REGISTRY.get_sample_value(
+            f"{AMQP_PROCESSING_TIME._name}_bucket",
+            {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
+        ) == (1 if handled else None)
+        assert REGISTRY.get_sample_value(
+            f"{AMQP_PROCESSED_TOTAL._name}_total",
+            {**prom_labels._asdict(), **{"amqp_success": "true"}},
+        ) == (1 if handled else None)
         assert (
             REGISTRY.get_sample_value(
                 f"{AMQP_REPUBLISHED_TOTAL._name}_total",
@@ -153,13 +147,10 @@ class TestKombuMessageHandler:
             )
             is None
         )
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_REJECTED_TOTAL._name}_total",
-                {**prom_labels._asdict(), **{"reason_code": AMQP_REJECTED_REASON_TTL}},
-            )
-            == (None if handled else 1)
-        )
+        assert REGISTRY.get_sample_value(
+            f"{AMQP_REJECTED_TOTAL._name}_total",
+            {**prom_labels._asdict(), **{"reason_code": AMQP_REJECTED_REASON_TTL}},
+        ) == (None if handled else 1)
         assert REGISTRY.get_sample_value(
             f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()
         ) == (0 if handled else None)
@@ -417,13 +408,10 @@ class TestKombuMessageHandler:
                     )
                     == 0
                 )
-                assert (
-                    REGISTRY.get_sample_value(
-                        f"{AMQP_REPUBLISHED_TOTAL._name}_total",
-                        {**prom_labels._asdict()},
-                    )
-                    == (1 if republished else None)
-                )
+                assert REGISTRY.get_sample_value(
+                    f"{AMQP_REPUBLISHED_TOTAL._name}_total",
+                    {**prom_labels._asdict()},
+                ) == (1 if republished else None)
                 retry_reached_expectation = None
                 if attempt:
                     if attempt >= 5 or (limit and attempt >= limit):

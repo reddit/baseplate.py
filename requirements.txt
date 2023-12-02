@@ -4,16 +4,16 @@
 # See install_requires and extras_require in setup.py for the range of versions
 # supported.
 -r requirements-transitive.txt
-black==21.10b0
+black==22.10.0
 boto3==1.21.20
 flake8==5.0.4
 lxml==4.9.1
 mypy==0.910
 prometheus-client==0.16.0
 pydocstyle==5.1.1
-pylint==2.15.3
-pytest==6.2.2
-pytest-cov==2.11.1
+pylint==2.15.10
+pytest==7.3.1
+pytest-cov==4.1.0
 pytz==2021.1
 reorder-python-imports==2.4.0
 sphinx==3.4.3

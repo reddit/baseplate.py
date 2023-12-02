@@ -2,7 +2,9 @@ include "../../baseplate/thrift/baseplate.thrift"
 
 exception ExpectedException {
 
-}
+} (
+    python.immutable = "false",
+)
 
 service TestService {
     bool example() throws (
