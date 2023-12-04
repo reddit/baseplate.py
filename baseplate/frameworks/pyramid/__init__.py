@@ -37,9 +37,6 @@ from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.thrift.ttypes import IsHealthyProbe
 
 
-SETTING_REDDIT_TRACING_TRUST_HEADERS = "reddit.tracing.trust_headers"
-
-
 PyramidInstrumentor().instrument()
 
 logger = logging.getLogger(__name__)
@@ -136,11 +133,6 @@ def _make_baseplate_tween(
 ) -> Callable[[Request], Response]:
     def baseplate_tween(request: Request) -> Response:
         response: Optional[Response] = None
-        # if not request.registry.settings[SETTING_REDDIT_TRACING_TRUST_HEADERS]:
-        #     # If we don't trust the tracing headers we remove them before the otel
-        #     # instrumentation can pick them up.
-        #     request.headers.pop("traceparent", None)
-        #     request.headers.pop("tracestate", None)
 
         try:
             response = handler(request)
@@ -436,9 +428,6 @@ class BaseplateConfigurator:
         config.add_subscriber(self._on_new_request, pyramid.events.ContextFound)
         config.add_subscriber(self._on_application_created, pyramid.events.ApplicationCreated)
         config.add_notfound_view(notfound_override)
-        # config.add_settings(
-        #     {SETTING_REDDIT_TRACING_TRUST_HEADERS: self.header_trust_handler.get_bool()}
-        # )
 
         # Position of the tween is important. We need it to cover all code
         # that can written in the app. This means that it should be above

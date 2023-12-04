@@ -162,21 +162,6 @@ class ConfiguratorTests(TestBase):
         self.assertEqual(len(finished_spans), 1)
         self.assertFalse(finished_spans[0].status.is_ok)
 
-    def test_distrust_headers(self):
-        self.baseplate_configurator.header_trust_handler.trust_headers = False
-        # We need to get this into the settings so that we can load it in our tween.
-        # The above method should be load at app initialisation still.
-        self.test_app.app.registry.settings["reddit.tracing.trust_headers"] = False
-
-        self.test_app.get(
-            "/example",
-            headers={"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"},
-        )
-
-        finished_spans = self.get_finished_spans()
-        self.assertEqual(len(finished_spans), 1)
-        self.assertIsNone(finished_spans[0].parent)
-
     def test_local_trace_in_context(self):
         self.test_app.get("/trace_context")
 
