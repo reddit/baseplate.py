@@ -1,3 +1,4 @@
+import logging
 import typing
 
 from re import compile as re_compile
@@ -12,6 +13,8 @@ from opentelemetry.propagators.textmap import Setter
 from opentelemetry.propagators.textmap import TextMapPropagator
 from opentelemetry.trace import format_span_id
 from opentelemetry.trace import format_trace_id
+
+logger = logging.getLogger(__name__)
 
 
 class RedditB3Format(TextMapPropagator):
@@ -40,9 +43,13 @@ class RedditB3Format(TextMapPropagator):
         flags = None
 
         trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY), default=trace_id)
+        logger.debug(f"Extracted trace_id from carrier. [{carrier=}, {context=}, {trace_id=}]")
         span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY), default=span_id)
+        logger.debug(f"Extracted span_id from carrier. [{carrier=}, {context=}, {span_id=}]")
         sampled = _extract_first_element(getter.get(carrier, self.SAMPLED_KEY), default=sampled)
+        logger.debug(f"Extracted sampled from carrier. [{carrier=}, {context=}, {sampled=}]")
         flags = _extract_first_element(getter.get(carrier, self.FLAGS_KEY), default=flags)
+        logger.debug(f"Extracted flags from carrier. [{carrier=}, {context=}, {flags=}]")
 
         # If we receive an invalid `trace_id` according to the w3 spec we return an empty context.
         if (
@@ -51,11 +58,17 @@ class RedditB3Format(TextMapPropagator):
             or self._trace_id_regex.fullmatch(trace_id) is None
             or self._span_id_regex.fullmatch(span_id) is None
         ):
+            logger.debug(
+                f"No valid b3 traces headers in request. Aborting. [{carrier=}, {context=}, {trace_id=}, {span_id=}]"
+            )
             return context
 
         # trace and span ids are encoded in hex, so must be converted
         trace_id = int(trace_id, 16)
         span_id = int(span_id, 16)
+        logger.debug(
+            f"Converted IDs to integers. [{carrier=}, {context=}, {trace_id=}, {span_id=}]"
+        )
         options = 0
         # The b3 spec provides no defined behavior for both sample and
         # flag values set. Since the setting of at least one implies
@@ -63,6 +76,7 @@ class RedditB3Format(TextMapPropagator):
         # header is set to allow.
         if sampled in self._SAMPLE_PROPAGATE_VALUES or flags == "1":
             options |= trace.TraceFlags.SAMPLED
+            logger.debug(f"Set trace to sampled. [{carrier=}, {context=}]")
 
         return trace.set_span_in_context(
             trace.NonRecordingSpan(

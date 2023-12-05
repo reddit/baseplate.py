@@ -2,13 +2,22 @@ import unittest
 
 from unittest import mock
 
+from opentelemetry import propagate
 from opentelemetry import trace
+from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from pyramid.response import Response
 
 from baseplate import Baseplate
+from baseplate.lib.propagator_redditb3 import RedditB3Format
 
 from . import FakeEdgeContextFactory
+
+
+propagate.set_global_textmap(
+    CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()])
+)
 
 
 try:
@@ -122,6 +131,53 @@ class ConfiguratorTests(TestBase):
             "/example",
             headers={
                 "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+            },
+        )
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(finished_spans[0].parent.span_id, 0x00F067AA0BA902B7)
+        self.assertEqual(finished_spans[0].context.trace_id, 0x4BF92F3577B34DA6A3CE929D0E0E4736)
+
+    def test_bp_trace_headers(self):
+        self.test_app.get(
+            "/example",
+            headers={
+                "X-Trace": "4BF92F3577B34DA6A3CE929D0E0E4736",
+                "X-Parent": "00F067AA0BA902B7",
+                "X-Span": "00F067AA0BA902B8",
+                "X-Sampled": "1",
+            },
+        )
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(finished_spans[0].context.trace_id, 0x4BF92F3577B34DA6A3CE929D0E0E4736)
+        self.assertEqual(finished_spans[0].parent.span_id, 0x00F067AA0BA902B8)
+
+    def test_bp_short_trace_headers(self):
+        self.test_app.get(
+            "/example",
+            headers={
+                "X-Trace": "20d294c28becf34d",
+                "X-Parent": "a1bf4d567fc497a4",
+                "X-Span": "a1bf4d567fc497a5",
+                "X-Sampled": "1",
+            },
+        )
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(finished_spans[0].context.trace_id, 0x20D294C28BECF34D)
+        self.assertEqual(finished_spans[0].parent.span_id, 0xA1BF4D567FC497A5)
+
+    def test_both_trace_headers(self):
+        self.test_app.get(
+            "/example",
+            headers={
+                "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+                "X-Trace": "20d294c28becf34d",  # should get discarded
+                "X-Parent": "a1bf4d567fc497a4",  # should get discarded
+                "X-Span": "a1bf4d567fc497a5",
+                "X-Sampled": "1",
             },
         )
 

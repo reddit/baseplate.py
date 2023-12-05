@@ -281,6 +281,35 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         with serve_thrift(handler, TestService) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
+                transport.set_header(
+                    "X-Trace".encode("utf-8"), "4BF92F3577B34DA6A3CE929D0E0E4736".encode("utf-8")
+                )
+                transport.set_header("X-Span".encode("utf-8"), "00F067AA0BA902B8".encode("utf-8"))
+                transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
+                client.example()
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        thrift_server_span = finished_spans[0]
+        self.assertEqual(thrift_server_span.kind, trace.SpanKind.SERVER)
+
+        self.assertIsNotNone(thrift_server_span.parent)
+
+        # span_id should be the value we manually set above in the mock for random
+        self.assertEqual(thrift_server_span.parent.span_id, 0x00F067AA0BA902B8)
+        # this should be the trace_id set originally in baseplate_thrift_client
+        self.assertEqual(thrift_server_span.parent.trace_id, 0x4BF92F3577B34DA6A3CE929D0E0E4736)
+
+    def test_server_span_defaults_to_old_headers_short(self):
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                transport = client._oprot.trans
                 transport.set_header("X-Trace".encode("utf-8"), "20d294c28becf34d".encode("utf-8"))
                 transport.set_header("X-Span".encode("utf-8"), "a1bf4d567fc497a4".encode("utf-8"))
                 transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
@@ -297,6 +326,38 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         self.assertEqual(thrift_server_span.parent.span_id, 0xA1BF4D567FC497A4)
         # this should be the trace_id set originally in baseplate_thrift_client
         self.assertEqual(thrift_server_span.parent.trace_id, 0x000000000000000020D294C28BECF34D)
+
+    def test_otel_header_overrides_b3_headers(self):
+        """If the client sends headers, we should set the trace up accordingly."""
+        trace_id = 0x4BF92F3577B34DA6A3CE929D0E0E4736
+        parent_id = 0x00F067AA0BA902B7
+        sampled = 0x01
+        traceparent = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+
+        class Handler(TestService.Iface):
+            def example(self, context):
+                return True
+
+        handler = Handler()
+
+        with serve_thrift(handler, TestService) as server:
+            with raw_thrift_client(server.endpoint, TestService) as client:
+                transport = client._oprot.trans
+                transport.set_header(b"traceparent", traceparent.encode())
+                # should get discarded
+                transport.set_header("X-Trace".encode("utf-8"), "20d294c28becf34d".encode("utf-8"))
+                # should get discarded
+                transport.set_header("X-Span".encode("utf-8"), "a1bf4d567fc497a4".encode("utf-8"))
+                transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
+                client_result = client.example()
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(finished_spans[0].context.trace_id, trace_id)
+        self.assertEqual(finished_spans[0].context.trace_flags, sampled)
+        self.assertEqual(finished_spans[0].parent.span_id, parent_id)
+        self.assertIsNotNone(finished_spans[0].context.span_id)
+        self.assertTrue(client_result)
 
     def test_no_headers(self):
         """We should accept requests without headers and generate a trace."""
