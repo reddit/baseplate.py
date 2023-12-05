@@ -39,10 +39,10 @@ class RedditB3Format(TextMapPropagator):
         sampled = "0"
         flags = None
 
-        trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY)) or trace_id
-        span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY)) or span_id
-        sampled = _extract_first_element(getter.get(carrier, self.SAMPLED_KEY)) or sampled
-        flags = _extract_first_element(getter.get(carrier, self.FLAGS_KEY)) or flags
+        trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY), default=trace_id)
+        span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY), default=span_id)
+        sampled = _extract_first_element(getter.get(carrier, self.SAMPLED_KEY), default=sampled)
+        flags = _extract_first_element(getter.get(carrier, self.FLAGS_KEY), default=flags)
 
         # If we receive an invalid `trace_id` according to the w3 spec we return an empty context.
         if (
