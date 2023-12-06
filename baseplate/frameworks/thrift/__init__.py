@@ -131,13 +131,12 @@ class _ContextAwareHandler:
             }
 
             with self._set_remote_context(self.context):
-                _trace = ContextAwareTracer(__name__)
-
                 otelspan_name = f"{ctx.get(SpanAttributes.RPC_SERVICE)}/{fn_name}"
 
                 # we automatically record all exceptions, however...
                 # we manually set status on exception because not all exceptions are "bad"
-                with _trace.start_as_current_span(
+                context_aware_tracer = ContextAwareTracer(__name__)
+                with context_aware_tracer.start_as_current_span(
                     name=otelspan_name,
                     kind=trace.SpanKind.SERVER,
                     attributes=otel_attributes,

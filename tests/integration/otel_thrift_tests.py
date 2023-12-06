@@ -228,19 +228,19 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             thrift_client_span.get_span_context().span_id,
         )
 
-        self.assertSpanHasAttributes(thrift_client_span, {SpanAttributes.RPC_SYSTEM: "thrift"})
-        self.assertSpanHasAttributes(
-            thrift_client_span, {SpanAttributes.RPC_SERVICE: "example_service"}
-        )
-        self.assertSpanHasAttributes(thrift_client_span, {SpanAttributes.RPC_METHOD: "example"})
         self.assertEqual(thrift_client_span.name, "example_service/example")
-        self.assertSpanHasAttributes(thrift_client_span, {SpanAttributes.NET_PEER_IP: "127.0.0.1"})
         self.assertSpanHasAttributes(
-            thrift_client_span, {SpanAttributes.NET_PEER_NAME: "localhost"}
+            thrift_client_span,
+            {
+                SpanAttributes.RPC_SYSTEM: "thrift",
+                SpanAttributes.RPC_SERVICE: "example_service",
+                SpanAttributes.RPC_METHOD: "example",
+                SpanAttributes.NET_PEER_IP: "127.0.0.1",
+                SpanAttributes.NET_PEER_NAME: "localhost",
+                SpanAttributes.NET_PEER_PORT: server_port,
+            },
         )
-        self.assertSpanHasAttributes(
-            thrift_client_span, {SpanAttributes.NET_PEER_PORT: server_port}
-        )
+        self.assertNotIn("os.type", thrift_client_span.attributes)
         self.assertEqual(len(thrift_client_span.events), 1)
         self.assertEqual(
             thrift_client_span.events[0].attributes[SpanAttributes.MESSAGE_TYPE],
@@ -248,22 +248,24 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         )
         self.assertEqual(thrift_client_span.events[0].name, "message")
 
-        self.assertSpanHasAttributes(thrift_server_span, {SpanAttributes.RPC_SYSTEM: "thrift"})
-        self.assertSpanHasAttributes(
-            thrift_server_span, {SpanAttributes.RPC_SERVICE: "tests.integration.otel_thrift_tests"}
-        )
-        self.assertSpanHasAttributes(thrift_server_span, {SpanAttributes.RPC_METHOD: "example"})
         self.assertEqual(thrift_server_span.name, "tests.integration.otel_thrift_tests/example")
-        self.assertSpanHasAttributes(thrift_server_span, {SpanAttributes.NET_HOST_IP: "127.0.0.1"})
         self.assertSpanHasAttributes(
-            thrift_server_span, {SpanAttributes.NET_HOST_NAME: "localhost"}
+            thrift_server_span,
+            {
+                SpanAttributes.RPC_SYSTEM: "thrift",
+                SpanAttributes.RPC_SERVICE: "tests.integration.otel_thrift_tests",
+                SpanAttributes.RPC_METHOD: "example",
+                SpanAttributes.NET_HOST_IP: "127.0.0.1",
+                SpanAttributes.NET_HOST_NAME: "localhost",
+                SpanAttributes.NET_HOST_PORT: server_port,
+                SpanAttributes.NET_PEER_NAME: "localhost",
+            },
         )
-        self.assertSpanHasAttributes(
-            thrift_server_span, {SpanAttributes.NET_HOST_PORT: server_port}
-        )
-        self.assertSpanHasAttributes(
-            thrift_server_span, {SpanAttributes.NET_PEER_NAME: "localhost"}
-        )
+        # these two attributes are added by formenergy-observability
+        # https://github.com/Form-Energy/formenergy-observability/blob/32e4c60c620d7ee8ea1cf0543a5cd42ab801b4b0/form_observability/context_aware.py#L69L75
+        self.assertIn("os.type", thrift_server_span.attributes)
+        self.assertIn("host.name", thrift_server_span.attributes)
+
         self.assertEqual(len(thrift_server_span.events), 1)
         self.assertEqual(
             thrift_server_span.events[0].attributes[SpanAttributes.MESSAGE_TYPE],
