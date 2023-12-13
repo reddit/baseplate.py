@@ -43,13 +43,33 @@ class RedditB3Format(TextMapPropagator):
         flags = None
 
         trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY), default=trace_id)
-        logger.debug(f"Extracted trace_id from carrier. [{carrier=}, {context=}, {trace_id=}]")
+        logger.debug(
+            "Extracted trace_id from carrier. [carrier=%s, context=%s, trace_id=%s]",
+            carrier,
+            context,
+            trace_id,
+        )
         span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY), default=span_id)
-        logger.debug(f"Extracted span_id from carrier. [{carrier=}, {context=}, {span_id=}]")
+        logger.debug(
+            "Extracted span_id from carrier. [carrier=%s, context=%s, span_id=%s]",
+            carrier,
+            context,
+            span_id,
+        )
         sampled = _extract_first_element(getter.get(carrier, self.SAMPLED_KEY), default=sampled)
-        logger.debug(f"Extracted sampled from carrier. [{carrier=}, {context=}, {sampled=}]")
+        logger.debug(
+            "Extracted sampled from carrier. [carrier=%s, context=%s, sampled=%s]",
+            carrier,
+            context,
+            sampled,
+        )
         flags = _extract_first_element(getter.get(carrier, self.FLAGS_KEY), default=flags)
-        logger.debug(f"Extracted flags from carrier. [{carrier=}, {context=}, {flags=}]")
+        logger.debug(
+            "Extracted flags from carrier. [carrier=%s, context=%s, flags=%s]",
+            carrier,
+            context,
+            flags,
+        )
 
         # If we receive an invalid `trace_id` according to the w3 spec we return an empty context.
         if (
@@ -59,7 +79,11 @@ class RedditB3Format(TextMapPropagator):
             or self._span_id_regex.fullmatch(span_id) is None
         ):
             logger.debug(
-                f"No valid b3 traces headers in request. Aborting. [{carrier=}, {context=}, {trace_id=}, {span_id=}]"
+                "No valid b3 traces headers in request. Aborting. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",
+                carrier,
+                context,
+                trace_id,
+                span_id,
             )
             return context
 
@@ -67,7 +91,11 @@ class RedditB3Format(TextMapPropagator):
         trace_id = int(trace_id, 16)
         span_id = int(span_id, 16)
         logger.debug(
-            f"Converted IDs to integers. [{carrier=}, {context=}, {trace_id=}, {span_id=}]"
+            "Converted IDs to integers. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",
+            carrier,
+            context,
+            trace_id,
+            span_id,
         )
         options = 0
         # The b3 spec provides no defined behavior for both sample and
@@ -76,7 +104,7 @@ class RedditB3Format(TextMapPropagator):
         # header is set to allow.
         if sampled in self._SAMPLE_PROPAGATE_VALUES or flags == "1":
             options |= trace.TraceFlags.SAMPLED
-            logger.debug(f"Set trace to sampled. [{carrier=}, {context=}]")
+            logger.debug("Set trace to sampled. [carrier=%s, context=%s]", carrier, context)
 
         return trace.set_span_in_context(
             trace.NonRecordingSpan(

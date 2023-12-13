@@ -272,7 +272,9 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     if otel_attributes.get(SpanAttributes.NET_PEER_IP) in ["127.0.0.1", "::1"]:
                         otel_attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
                     logger.debug(
-                        f"Will use the following otel span attributes. [{span=}, {otel_attributes=}]"
+                        "Will use the following otel span attributes. [span=%s, otel_attributes=%s]",
+                        span,
+                        otel_attributes,
                     )
 
                     with self.tracer.start_as_current_span(

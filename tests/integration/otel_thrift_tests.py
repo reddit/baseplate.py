@@ -673,7 +673,10 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         exception that is happening, but only set the error status when we want it to (i.e. only on
         some exceptions, or when the status on baseplate Error is a 5xx).
         """
-        logger.debug(f"{exc=}, {convert=}, {expectation=}, {otel_exception=}, {otel_status=}")
+        logger.debug(
+            "exc=%s, convert=%s, expectation=%s, otel_exception=%s, otel_status=%s"
+            % (exc, convert, expectation, otel_exception, otel_status)
+        )
 
         class Handler(TestService.Iface):
             def example(self, context):

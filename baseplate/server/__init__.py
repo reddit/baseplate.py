@@ -215,16 +215,20 @@ class BaseplateBatchSpanProcessor(BatchSpanProcessor):
     def __init__(
         self, otlp_exporter: OTLPSpanExporter, attributes: Optional[Dict[str, Any]] = None
     ) -> None:
-        logger.info(f"Initializing {self.__class__.__name__} with global attributes {attributes=}.")
+        logger.info(
+            "Initializing %s with global attributes=%s.", self.__class__.__name__, attributes
+        )
         super().__init__(otlp_exporter)
         self.baseplate_global_attributes = attributes
 
     def on_start(self, span: Span, parent_context: Optional[Context] = None) -> None:
-        logger.warning(f"Starting new span. [{span=}, {parent_context=}]")
+        logger.warning("Starting new span. [span=%s, parent_context=%s]", span, parent_context)
         if self.baseplate_global_attributes:
             span.set_attributes(self.baseplate_global_attributes)
             logger.warning(
-                f"Added global attributes to new span. [{span=}, {self.baseplate_global_attributes=}]"
+                "Added global attributes to new span. [span=%s, baseplate_global_attributes=%s]",
+                span,
+                self.baseplate_global_attributes,
             )
         super().on_start(span, parent_context)
 

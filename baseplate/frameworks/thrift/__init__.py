@@ -97,19 +97,19 @@ class _ContextAwareHandler:
                 try:
                     header_dict[k.decode()] = v.decode()
                 except UnicodeDecodeError:
-                    self.logger.info(f"Unable to decode header {k.decode()}, ignoring.")
+                    self.logger.info("Unable to decode header %s, ignoring." % k.decode())
 
             ctx = extract(header_dict)
-            logger.debug(f"Extracted trace headers. [{ctx=}, {header_dict=}]")
+            logger.debug("Extracted trace headers. [ctx=%s, header_dict=%s]" % (ctx, header_dict))
 
             if ctx:
                 token = attach(ctx)
-                logger.debug(f"Attached context. [{ctx=}, {token=}]")
+                logger.debug("Attached context. [ctx=%s, token=%s]" % (ctx, token))
                 try:
                     yield
                 finally:
                     detach(token)
-                    logger.debug(f"Detached context. [{ctx=}, {token=}]")
+                    logger.debug("Detached context. [ctx=%s, token=%s]" % (ctx, token))
             else:
                 yield
         else:
@@ -154,7 +154,8 @@ class _ContextAwareHandler:
                             result = handler_fn(self.context, *args, **kwargs)
                     except (TApplicationException, TProtocolException, TTransportException) as exc:
                         logger.debug(
-                            f"Processing one of: TApplicationException, TProtocolException, TTransportException. [{exc=}]"
+                            "Processing one of: TApplicationException, TProtocolException, TTransportException. [exc=%s]"
+                            % exc
                         )
                         # these are subclasses of TException but aren't ones that
                         # should be expected in the protocol
@@ -162,7 +163,7 @@ class _ContextAwareHandler:
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
                         raise
                     except Error as exc:
-                        logger.debug(f"Processing Error. [{exc=}]")
+                        logger.debug("Processing Error. [exc=%s]" % exc)
                         c = ErrorCode()
                         status = c._VALUES_TO_NAMES.get(exc.code, "")
 
@@ -176,17 +177,17 @@ class _ContextAwareHandler:
                         span.set_tag("success", "false")
                         # mark 5xx errors as failures since those are still "unexpected"
                         if 500 <= exc.code < 600:
-                            logger.debug(f"Processing 5xx baseplate Error. [{exc=}]")
+                            logger.debug("Processing 5xx baseplate Error. [exc=%s]" % exc)
                             span.finish(exc_info=sys.exc_info())
                             otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
                         else:
-                            logger.debug(f"Processing non 5xx baseplate Error. [{exc=}]")
+                            logger.debug("Processing non 5xx baseplate Error. [exc=%s]" % exc)
                             # Set as OK as this is an expected exception
                             span.finish()
                             otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         raise
                     except TException as exc:
-                        logger.debug(f"Processing TException. [{exc=}]")
+                        logger.debug("Processing TException. [exc=%s]" % exc)
                         span.set_tag("exception_type", type(exc).__name__)
                         span.set_tag("success", "false")
 
@@ -196,18 +197,18 @@ class _ContextAwareHandler:
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         raise
                     except Exception as exc:  # noqa: E722
-                        logger.debug(f"Processing every other type of exception. [{exc=}]")
+                        logger.debug("Processing every other type of exception. [exc=%s]" % exc)
                         # the handler crashed (or timed out)!
                         span.finish(exc_info=sys.exc_info())
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
 
                         if self.convert_to_baseplate_error:
-                            logger.debug(f"Converting exception to baseplate Error. [{exc=}]")
+                            logger.debug("Converting exception to baseplate Error. [exc=%s]" % exc)
                             raise Error(
                                 code=ErrorCode.INTERNAL_SERVER_ERROR,
                                 message="Internal server error",
                             )
-                        logger.debug(f"Re-raising unexpected exception. [{exc=}]")
+                        logger.debug("Re-raising unexpected exception. [exc=%s]" % exc)
                         raise
                     else:
                         # a normal result
