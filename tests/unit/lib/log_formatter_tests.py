@@ -1,19 +1,9 @@
-import unittest
-
-from opentelemetry import propagate
 from opentelemetry import trace
-from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.test.test_base import TestBase
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from baseplate.lib import log_formatter
-from baseplate.lib.propagator_redditb3 import RedditB3Format
 
 tracer = trace.get_tracer(__name__)
-
-propagate.set_global_textmap(
-    CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()])
-)
 
 
 class CustomJSONFormatterTests(TestBase):

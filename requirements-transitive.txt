@@ -28,7 +28,7 @@ greenlet==1.0.0
 hupper==1.10.2
 idna==2.10
 imagesize==1.2.0
-importlib-metadata==6.8.0
+importlib-metadata==6.7.0
 iniconfig==1.1.1
 isort==5.7.0
 Jinja2==2.11.3
