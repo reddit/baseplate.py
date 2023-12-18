@@ -17,9 +17,9 @@ from opentelemetry import trace
 from opentelemetry.context import attach
 from opentelemetry.context import detach
 from opentelemetry.propagate import extract
-from opentelemetry.sdk.trace import Tracer
 from opentelemetry.semconv.trace import MessageTypeValues
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace import Tracer
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram

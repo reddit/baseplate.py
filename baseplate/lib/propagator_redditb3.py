@@ -1,10 +1,10 @@
 import logging
+
+from re import compile as re_compile
 from typing import Any
 from typing import Iterable
 from typing import Optional
 from typing import Set
-
-from re import compile as re_compile
 
 from opentelemetry import trace
 from opentelemetry.context import Context
@@ -40,33 +40,29 @@ class RedditB3Format(TextMapPropagator):
     ) -> Context:
         if context is None:
             context = Context()
-        trace_id: Optional[int] = trace.INVALID_TRACE_ID
-        span_id: Optional[int] = trace.INVALID_SPAN_ID
-        sampled: Optional[int] = "0"
-        flags: Optional[Iterable[str]] = None
 
-        trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY), default=trace_id)
+        extracted_trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY))
         logger.debug(
             "Extracted trace_id from carrier. [carrier=%s, context=%s, trace_id=%s]",
             carrier,
             context,
-            trace_id,
+            extracted_trace_id,
         )
-        span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY), default=span_id)
+        extracted_span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY))
         logger.debug(
             "Extracted span_id from carrier. [carrier=%s, context=%s, span_id=%s]",
             carrier,
             context,
-            span_id,
+            extracted_span_id,
         )
-        sampled = _extract_first_element(getter.get(carrier, self.SAMPLED_KEY), default=sampled)
+        sampled = _extract_first_element(getter.get(carrier, self.SAMPLED_KEY), default="0")
         logger.debug(
             "Extracted sampled from carrier. [carrier=%s, context=%s, sampled=%s]",
             carrier,
             context,
             sampled,
         )
-        flags = _extract_first_element(getter.get(carrier, self.FLAGS_KEY), default=flags)
+        flags = _extract_first_element(getter.get(carrier, self.FLAGS_KEY))
         logger.debug(
             "Extracted flags from carrier. [carrier=%s, context=%s, flags=%s]",
             carrier,
@@ -76,23 +72,23 @@ class RedditB3Format(TextMapPropagator):
 
         # If we receive an invalid `trace_id` according to the w3 spec we return an empty context.
         if (
-            trace_id == trace.INVALID_TRACE_ID
-            or span_id == trace.INVALID_SPAN_ID
-            or self._trace_id_regex.fullmatch(trace_id) is None
-            or self._span_id_regex.fullmatch(span_id) is None
+            extracted_trace_id is None
+            or self._trace_id_regex.fullmatch(extracted_trace_id) is None
+            or extracted_span_id is None
+            or self._span_id_regex.fullmatch(extracted_span_id) is None
         ):
             logger.debug(
                 "No valid b3 traces headers in request. Aborting. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",
                 carrier,
                 context,
-                trace_id,
-                span_id,
+                extracted_trace_id,
+                extracted_span_id,
             )
             return context
 
         # trace and span ids are encoded in hex, so must be converted
-        trace_id = int(trace_id, 16)
-        span_id = int(span_id, 16)
+        trace_id = int(extracted_trace_id, 16)
+        span_id = int(extracted_span_id, 16)
         logger.debug(
             "Converted IDs to integers. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",
             carrier,
@@ -154,7 +150,7 @@ class RedditB3Format(TextMapPropagator):
 
 
 def _extract_first_element(
-    items: Iterable[CarrierT],
+    items: Optional[Iterable[CarrierT]],
     default: Optional[Any] = None,
 ) -> Optional[CarrierT]:
     if items is None:
