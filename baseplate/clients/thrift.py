@@ -235,7 +235,6 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         # RPC specific headers
         # 1.20 doc https://github.com/open-telemetry/opentelemetry-specification/blob/v1.20.0/specification/trace/semantic_conventions/rpc.md
         otel_attributes = {
-            # 1.20 and above
             SpanAttributes.RPC_SYSTEM: "thrift",
             SpanAttributes.RPC_SERVICE: rpc_service,
             SpanAttributes.RPC_METHOD: rpc_method,

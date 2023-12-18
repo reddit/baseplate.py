@@ -42,7 +42,7 @@ PyramidInstrumentor().instrument()
 logger = logging.getLogger(__name__)
 
 
-class SpanFinishingAppIterWrapper:
+class SpanFinishingAppIterWrapper(Iterable):
     """Wrapper for Response.app_iter that finishes the span when the iterator is done.
 
     The WSGI spec expects applications to return an iterable object. In the
@@ -57,7 +57,7 @@ class SpanFinishingAppIterWrapper:
 
     """
 
-    def __init__(self, app_iter: Iterable[bytes], span: Optional[Span] = None) -> None:
+    def __init__(self, app_iter: Iterator[bytes], span: Optional[Span] = None) -> None:
         self.span = span
         self.app_iter = iter(app_iter)
 
