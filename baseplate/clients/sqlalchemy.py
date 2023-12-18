@@ -360,4 +360,4 @@ class SQLAlchemySessionSpanObserver(SpanObserver):
         self.session = session
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
-        self.session.close()
+        self.session.invalidate()
