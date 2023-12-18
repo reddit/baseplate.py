@@ -1,5 +1,8 @@
 import logging
-import typing
+from typing import Any
+from typing import Iterable
+from typing import Optional
+from typing import Set
 
 from re import compile as re_compile
 
@@ -32,15 +35,15 @@ class RedditB3Format(TextMapPropagator):
     def extract(
         self,
         carrier: CarrierT,
-        context: typing.Optional[Context] = None,
+        context: Optional[Context] = None,
         getter: Getter = default_getter,
     ) -> Context:
         if context is None:
             context = Context()
-        trace_id = trace.INVALID_TRACE_ID
-        span_id = trace.INVALID_SPAN_ID
-        sampled = "0"
-        flags = None
+        trace_id: Optional[int] = trace.INVALID_TRACE_ID
+        span_id: Optional[int] = trace.INVALID_SPAN_ID
+        sampled: Optional[int] = "0"
+        flags: Optional[Iterable[str]] = None
 
         trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY), default=trace_id)
         logger.debug(
@@ -122,7 +125,7 @@ class RedditB3Format(TextMapPropagator):
     def inject(
         self,
         carrier: CarrierT,
-        context: typing.Optional[Context] = None,
+        context: Optional[Context] = None,
         setter: Setter = default_setter,
     ) -> None:
         span = trace.get_current_span(context=context)
@@ -142,7 +145,7 @@ class RedditB3Format(TextMapPropagator):
         setter.set(carrier, self.SAMPLED_KEY, "1" if sampled else "0")
 
     @property
-    def fields(self) -> typing.Set[str]:
+    def fields(self) -> Set[str]:
         return {
             self.TRACE_ID_KEY,
             self.SPAN_ID_KEY,
@@ -151,9 +154,9 @@ class RedditB3Format(TextMapPropagator):
 
 
 def _extract_first_element(
-    items: typing.Iterable[CarrierT],
-    default: typing.Optional[typing.Any] = None,
-) -> typing.Optional[CarrierT]:
+    items: Iterable[CarrierT],
+    default: Optional[Any] = None,
+) -> Optional[CarrierT]:
     if items is None:
         return default
     return next(iter(items), default)
