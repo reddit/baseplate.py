@@ -26,7 +26,19 @@ class CustomJSONFormatterTests(TestBase):
         formatter = log_formatter.CustomJsonFormatter("")
         data = {"levelname": "INFO"}
 
-        with tracer.start_as_current_span("testing trace ID logging") as otelspan:
+        context = {}
+        ctx = trace.SpanContext(
+            trace_id=0x00C2ACCDF122E659ABEC55FA2DE925D3,
+            span_id=0x6E0C63257DE34C92,
+            trace_flags=trace.TraceFlags(trace.TraceFlags.SAMPLED),
+            is_remote=False,
+        )
+        parent = trace.set_span_in_context(trace.NonRecordingSpan(ctx), context)
+
+        with tracer.start_as_current_span("testing trace ID logging", context=parent) as otelspan:
             assert otelspan.is_recording()
-            trace_id = hex(otelspan.get_span_context().trace_id)[2:]
-            assert formatter.process_log_record(data) == {"level": "INFO", "traceID": trace_id}
+            assert otelspan.get_span_context().trace_id == 0xC2ACCDF122E659ABEC55FA2DE925D3
+            assert formatter.process_log_record(data) == {
+                "level": "INFO",
+                "traceID": "00c2accdf122e659abec55fa2de925d3",
+            }
