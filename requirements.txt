@@ -7,6 +7,7 @@
 black==21.10b0
 boto3==1.21.20
 flake8==5.0.4
+formenergy-observability==0.3.1
 lxml==4.9.1
 mypy==0.910
 prometheus-client==0.16.0
@@ -25,3 +26,10 @@ types-setuptools==57.0.2
 webtest==2.0.35
 wheel==0.38.1
 fakeredis==1.5.0
+opentelemetry-api==1.20.0
+opentelemetry-sdk==1.20.0
+opentelemetry-test-utils==0.41b0
+opentelemetry-instrumentation-pyramid==0.41b0
+opentelemetry-instrumentation-requests==0.41b0
+opentelemetry-exporter-otlp==1.20.0
+parameterized==0.9.0

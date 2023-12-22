@@ -7,8 +7,11 @@ from typing import Dict
 from typing import Tuple
 from typing import Union
 
+from form_observability import ctx
 from gevent.pool import Pool
 from gevent.server import StreamServer
+from opentelemetry import trace
+from opentelemetry.semconv.trace import SpanAttributes
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
 from thrift.Thrift import TProcessor
 from thrift.transport.THeaderTransport import THeaderClientType
@@ -21,6 +24,7 @@ from baseplate.server import runtime_monitor
 
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 Address = Union[Tuple[str, int], str]
@@ -49,9 +53,36 @@ class GeventServer(StreamServer):
         trans = self.transport_factory.getTransport(client)
         prot = self.protocol_factory.getProtocol(trans)
 
+        otel_attributes = {
+            SpanAttributes.RPC_SYSTEM: "thrift",
+            SpanAttributes.RPC_SERVICE: self.processor.baseplate.service_name,
+            SpanAttributes.NET_HOST_IP: self.server_host,
+            SpanAttributes.NET_HOST_PORT: self.server_port,
+        }
+
+        if otel_attributes.get(SpanAttributes.NET_HOST_IP) in ["127.0.0.1", "::1"]:
+            otel_attributes[SpanAttributes.NET_HOST_NAME] = "localhost"
+
+        client_addr = None
+        client_port = None
+        if isinstance(address, str):
+            client_addr = address
+        elif address is not None:
+            client_addr = address[0]
+            client_port = address[1]
+        if client_addr:
+            otel_attributes[SpanAttributes.NET_PEER_IP] = client_addr
+            if client_port:
+                otel_attributes[SpanAttributes.NET_PEER_PORT] = client_port
+            if otel_attributes.get(SpanAttributes.NET_PEER_IP) in ["127.0.0.1", "::1"]:
+                otel_attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
+
         try:
-            while self.started:
-                self.processor.process(prot, prot)
+            # set global thrift attributes in this context so that all children
+            # traces can just inherit them
+            with ctx.set(otel_attributes):
+                while self.started:
+                    self.processor.process(prot, prot)
         except TTransportException:
             pass
         finally:

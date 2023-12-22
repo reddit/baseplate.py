@@ -47,6 +47,11 @@ setup(
         "thrift-unofficial>=0.19.0,<1.0",
         "gevent>=20.5.0",
         "prometheus-client>=0.12.0",
+        "opentelemetry-api>=1.20.0",
+        "opentelemetry-sdk>=1.20.0",
+        "opentelemetry-exporter-otlp>=1.20.0",
+        "opentelemetry-instrumentation-pyramid>=0.41b0",
+        "opentelemetry-instrumentation-requests>=0.41b0",
     ],
     extras_require=extras_require,
     scripts=[
