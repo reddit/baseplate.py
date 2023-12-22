@@ -79,9 +79,9 @@ OK! Now let's try :program:`baseplate-serve` with our configuration file.
    Traceback (most recent call last):
      File "/home/user/tutorial/venv/bin/baseplate-serve", line 14, in <module>
        load_app_and_run_server()
-     File "/home/user/tutorial/venv/lib/python3.7/site-packages/baseplate/server/__init__.py", line 226, in load_app_and_run_server
+     File "/home/user/tutorial/venv/lib/python3.8/site-packages/baseplate/server/__init__.py", line 226, in load_app_and_run_server
        app = make_app(config.app)
-     File "/home/user/tutorial/venv/lib/python3.7/site-packages/baseplate/server/__init__.py", line 180, in make_app
+     File "/home/user/tutorial/venv/lib/python3.8/site-packages/baseplate/server/__init__.py", line 180, in make_app
        return factory(app_config)
    TypeError: make_wsgi_app() takes 0 positional arguments but 1 was given
 
