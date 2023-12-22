@@ -10,6 +10,7 @@ from typing import Union
 
 from advocate import AddrValidator
 from advocate import ValidatingHTTPAdapter
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -24,6 +25,9 @@ from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
+
+
+RequestsInstrumentor().instrument()
 
 
 def http_adapter_from_config(
