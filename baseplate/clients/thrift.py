@@ -164,6 +164,9 @@ class ThriftContextFactory(ContextFactory):
     def make_object_for_context(self, name: str, span: Span) -> "_PooledClientProxy":
         return self.proxy_cls(self.client_cls, self.pool, span, name)
 
+    def make_traced_object_for_context(self, name: str, span: trace.Span, legacy_span=None) -> "_PooledClientProxy":
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
 
 def _enumerate_service_methods(client: Any) -> Iterator[str]:
     """Return an iterable of service methods from a generated Iface class."""
@@ -189,12 +192,12 @@ class _PooledClientProxy:
 
     # pylint: disable=too-many-arguments
     def __init__(
-        self,
-        client_cls: Any,
-        pool: ThriftConnectionPool,
-        server_span: Span,
-        namespace: str,
-        retry_policy: Optional[RetryPolicy] = None,
+            self,
+            client_cls: Any,
+            pool: ThriftConnectionPool,
+            server_span: Span,
+            namespace: str,
+            retry_policy: Optional[RetryPolicy] = None,
     ):
         self.client_cls = client_cls
         self.pool = pool
@@ -248,7 +251,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         for time_remaining in self.retry_policy:
             try:
                 with self.pool.connection() as prot, ACTIVE_REQUESTS.labels(
-                    thrift_method=name, thrift_client_name=self.namespace
+                        thrift_method=name, thrift_client_name=self.namespace
                 ).track_inprogress():
                     start_time = time.perf_counter()
 
@@ -277,9 +280,9 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     )
 
                     with self.tracer.start_as_current_span(
-                        otelspan_name,
-                        kind=trace.SpanKind.CLIENT,
-                        attributes=otel_attributes,
+                            otelspan_name,
+                            kind=trace.SpanKind.CLIENT,
+                            attributes=otel_attributes,
                     ) as otelspan:
                         try:
                             baseplate = span.baseplate
@@ -386,7 +389,8 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                                     # but the status will be blank in the first case, and the baseplate name
                                     # in the second
                                     baseplate_status_code = current_exc.code  # type: ignore
-                                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
+                                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code,
+                                                                                        "")  # type: ignore
                                 except AttributeError:
                                     pass
 

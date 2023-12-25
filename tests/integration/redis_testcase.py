@@ -6,6 +6,8 @@ import baseplate.clients.redis as baseplate_redis
 
 from baseplate import Baseplate
 
+from opentelemetry.test.test_base import TestBase
+
 from . import get_endpoint_or_skip_container
 from . import TestBaseplateObserver
 
@@ -17,12 +19,13 @@ class RedisIntegrationTestConfigurationError(Exception):
     pass
 
 
-class RedisIntegrationTestCase(unittest.TestCase):
+class RedisIntegrationTestCase(TestBase, unittest.TestCase):
     baseplate_app_config = None
     redis_client_builder = None
     redis_context_name = "redis"
 
     def setUp(self):
+        super().setUp()
         if not self.baseplate_app_config:
             raise RedisIntegrationTestConfigurationError(
                 "Unable to run tests. `baseplate_app_config` is not set",
@@ -48,6 +51,7 @@ class RedisIntegrationTestCase(unittest.TestCase):
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def tearDown(self):
+        super().tearDown()
         # You can't use the Redis connection on the Baseplate context because its
         # parent server span has been closed already
         redis_cli = redis.Redis.from_url(redis_url)

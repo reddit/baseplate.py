@@ -1,5 +1,8 @@
 import unittest
 
+from opentelemetry.test.test_base import TestBase
+from opentelemetry import trace
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 try:
     from sqlalchemy import Column, Integer, String
     from sqlalchemy.dialects.sqlite import BOOLEAN
@@ -30,8 +33,10 @@ class TestObject(Base):
     name = Column(String)
 
 
-class SQLAlchemyEngineTests(unittest.TestCase):
+class SQLAlchemyEngineTests(TestBase):
     def setUp(self):
+        super().setUp()
+        self.tracer = trace.get_tracer(__name__)
         engine = engine_from_config({"database.url": "sqlite://"})  # in-memory db
         Base.metadata.create_all(bind=engine)
         factory = SQLAlchemyEngineContextFactory(engine)
@@ -46,9 +51,11 @@ class SQLAlchemyEngineTests(unittest.TestCase):
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple_query(self):
-        with self.server_span:
-            self.server_span.context.db.execute("SELECT * FROM test;")
+        with self.tracer.start_as_current_span("foo") as s:
+            with self.server_span:
+                self.server_span.context.db.execute("SELECT * FROM test;")
 
+        finished = self.get_finished_spans()
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
         self.assertTrue(span_observer.on_start_called)

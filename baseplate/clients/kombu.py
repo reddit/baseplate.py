@@ -9,6 +9,8 @@ from typing import TypeVar
 
 import kombu.serialization
 
+from opentelemetry import trace
+
 from kombu import Connection
 from kombu import Exchange
 from kombu.pools import Producers
@@ -239,6 +241,10 @@ class KombuProducerContextFactory(ContextFactory):
         return _KombuProducer(
             name, span, self.connection, self.exchange, self.producers, serializer=self.serializer
         )
+
+    def make_traced_object_for_context(self, name: str, span: trace.Span, legacy_span=None) -> "_KombuPoducer":
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
 
 
 class _KombuProducer:

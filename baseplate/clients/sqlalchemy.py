@@ -21,6 +21,9 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry import trace
+
 from baseplate import _ExcInfo
 from baseplate import Span
 from baseplate import SpanObserver
@@ -212,6 +215,11 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     def __init__(self, engine: Engine, name: str = "sqlalchemy"):
         self.engine = engine.execution_options()
+        SQLAlchemyInstrumentor().instrument(
+            engine=self.engine,
+            enable_commenter=True,
+            commenter_options={},
+        )
         self.name = name
         event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
@@ -235,6 +243,10 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     def make_object_for_context(self, name: str, span: Span) -> Engine:
         engine = self.engine.execution_options(context_name=name, server_span=span)
         return engine
+
+    def make_traced_object_for_context(self, name: str, span: trace.Span, legacy_span=None) -> Engine:
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
 
     # pylint: disable=unused-argument, too-many-arguments
     def on_before_execute(
@@ -265,14 +277,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         conn.info["span"] = span
 
-        # add a comment to the sql statement with the trace and span ids
-        # this is useful for slow query logs and active query views
-        if SAFE_TRACE_ID.match(span.trace_id) and SAFE_TRACE_ID.match(span.id):
-            annotated_statement = f"{statement} -- trace:{span.trace_id},span:{span.id}"
-        else:
-            annotated_statement = f"{statement} -- invalid trace id"
-
-        return annotated_statement, parameters
+        return statement, parameters
 
     # pylint: disable=unused-argument, too-many-arguments
     def on_after_execute(

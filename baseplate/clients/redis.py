@@ -6,6 +6,10 @@ from typing import Optional
 
 import redis
 
+from baseplate.clients.redis_utils import _format_command_args, _extract_conn_attributes
+
+from opentelemetry.instrumentation.redis import RedisInstrumentor
+
 # redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
 try:
     from redis.client import StrictPipeline as Pipeline  # type: ignore
@@ -16,6 +20,9 @@ from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
 
+from opentelemetry import trace
+from opentelemetry.semconv.trace import SpanAttributes
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
@@ -23,6 +30,8 @@ from baseplate.lib import message_queue
 from baseplate.lib import metrics
 
 from baseplate.lib.prometheus_metrics import default_latency_buckets
+
+tracer = trace.get_tracer(__name__)
 
 PROM_PREFIX = "redis_client"
 PROM_LABELS_PREFIX = "redis"
@@ -153,7 +162,6 @@ class RedisClient(config.Parser):
             redis_client_name=self.redis_client_name,
         )
 
-
 class RedisContextFactory(ContextFactory):
     """Redis client context factory.
 
@@ -203,6 +211,10 @@ class RedisContextFactory(ContextFactory):
             redis_client_name=self.redis_client_name,
         )
 
+    def make_traced_object_for_context(self, name: str, span: trace.Span, legacy_span=None) -> "MonitoredRedisConnection":
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
+
 
 # pylint: disable=too-many-public-methods
 class MonitoredRedisConnection(redis.StrictRedis):
@@ -230,7 +242,16 @@ class MonitoredRedisConnection(redis.StrictRedis):
 
         super().__init__(connection_pool=connection_pool)
 
+    def _set_connection_attributes(self, span):
+        if not span.is_recording():
+            return
+        for key, value in _extract_conn_attributes(
+            self.connection_pool.connection_kwargs
+        ).items():
+            span.set_attribute(key, value)
+
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
+        query = _format_command_args(args)
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
@@ -240,9 +261,14 @@ class MonitoredRedisConnection(redis.StrictRedis):
             f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get("db", ""),
             f"{PROM_LABELS_PREFIX}_type": "standalone",
         }
-        with self.server_span.make_child(trace_name), ACTIVE_REQUESTS.labels(
-            **labels
-        ).track_inprogress():
+        with (self.server_span.make_child(trace_name),
+              ACTIVE_REQUESTS.labels(**labels).track_inprogress(),
+              tracer.start_as_current_span(command, kind=trace.SpanKind.CLIENT) as otelspan):
+            if otelspan.is_recording():
+                otelspan.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                self._set_connection_attributes(otelspan)
+                otelspan.set_attribute(
+                    "db.redis.args_length", len(args))
             start_time = perf_counter()
             success = "true"
 
@@ -305,9 +331,55 @@ class MonitoredRedisPipeline(Pipeline):
         self.redis_client_name = redis_client_name
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
+    def _set_connection_attributes(self, span):
+        if not span.is_recording():
+            return
+        for key, value in _extract_conn_attributes(
+            self.connection_pool.connection_kwargs
+        ).items():
+            span.set_attribute(key, value)
+    def _build_span_meta_data_for_pipeline(self):
+        try:
+            command_stack = (
+                self.command_stack
+                if hasattr(self, "command_stack")
+                else self._command_stack
+            )
+
+            cmds = [
+                _format_command_args(c.args if hasattr(c, "args") else c[0])
+                for c in command_stack
+            ]
+            resource = "\n".join(cmds)
+
+            span_name = " ".join(
+                [
+                    (c.args[0] if hasattr(c, "args") else c[0][0])
+                    for c in command_stack
+                ]
+            )
+        except (AttributeError, IndexError):
+            command_stack = []
+            resource = ""
+            span_name = ""
+
+        return command_stack, resource, span_name
+
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
-        with self.server_span.make_child(self.trace_name):
+        (
+            command_stack,
+            resource,
+            span_name,
+        ) = self._build_span_meta_data_for_pipeline()
+        with (self.server_span.make_child(self.trace_name),
+              tracer.start_as_current_span(span_name, kind=trace.SpanKind.CLIENT) as otelspan):
+            if otelspan.is_recording():
+                otelspan.set_attribute(SpanAttributes.DB_STATEMENT, resource)
+                self._set_connection_attributes(otelspan)
+                otelspan.set_attribute(
+                    "db.redis.pipeline_length", len(command_stack)
+                )
             success = "true"
             start_time = perf_counter()
             labels = {

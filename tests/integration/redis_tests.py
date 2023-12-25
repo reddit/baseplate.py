@@ -11,6 +11,9 @@ from baseplate.clients.redis import REQUESTS_TOTAL
 from baseplate.clients.redis import LATENCY_SECONDS
 from baseplate.clients.redis import RedisClient
 
+from opentelemetry import trace
+from opentelemetry.test.test_base import TestBase
+
 from . import get_endpoint_or_skip_container
 from .redis_testcase import RedisIntegrationTestCase, redis_url
 
@@ -25,15 +28,15 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
     def setUp(self):
         self.baseplate_app_config = {"redis.url": redis_url}
         self.redis_client_builder = RedisClient
+        self.tracer = trace.get_tracer(__name__)
 
         super().setUp()
 
     def test_simple_command(self):
-        with self.server_span:
+        with self.server_span, self.tracer.start_as_current_span("test_simple_command"):
             result = self.context.redis.ping()
 
         self.assertTrue(result)
-
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
         self.assertEqual(span_observer.span.name, "redis.PING")
@@ -41,8 +44,15 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
 
+        # OTel Tracing Assertions
+        finished = self.get_finished_spans()
+        self.assertEqual(finished[0].name, "PING")
+        self.assertEqual(finished[0].kind, trace.SpanKind.CLIENT)
+        self.assertIsNotNone(finished[0].parent)
+        self.assertTrue(finished[0].status.is_ok)
+
     def test_error(self):
-        with self.server_span:
+        with self.server_span, self.tracer.start_as_current_span("test_error"):
             with self.assertRaises(redis.ResponseError):
                 self.context.redis.execute_command("crazycommand")
 
@@ -52,8 +62,15 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNotNone(span_observer.on_finish_exc_info)
 
+        # OTel Tracing Assertions
+        finished = self.get_finished_spans()
+        self.assertEqual(finished[0].name, "crazycommand")
+        self.assertEqual(finished[0].kind, trace.SpanKind.CLIENT)
+        self.assertIsNotNone(finished[0].parent)
+        self.assertFalse(finished[0].status.is_ok)
+
     def test_lock(self):
-        with self.server_span:
+        with self.server_span, self.tracer.start_as_current_span("test_lock"):
             with self.context.redis.lock("foo"):
                 pass
 
@@ -64,11 +81,22 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
             self.assertTrue(span_observer.on_start_called)
             self.assertTrue(span_observer.on_finish_called)
 
+        # OTel Tracing Assertions
+        finished = self.get_finished_spans()
+        self.assertEqual(finished[0].name, "SET")
+        self.assertEqual(finished[0].kind, trace.SpanKind.CLIENT)
+        self.assertEqual(finished[1].name, "EVALSHA")
+        self.assertEqual(finished[1].kind, trace.SpanKind.CLIENT)
+        self.assertIsNotNone(finished[0].parent)
+        self.assertTrue(finished[0].parent.span_id, finished[1].context.span_id)
+        self.assertTrue(finished[0].status.is_ok)
+
     def test_pipeline(self):
-        with self.server_span:
-            with self.context.redis.pipeline("foo") as pipeline:
-                pipeline.ping()
-                pipeline.execute()
+        with self.tracer.start_as_current_span("test_pipeline"):
+            with self.server_span:
+                with self.context.redis.pipeline("foo") as pipeline:
+                    pipeline.ping()
+                    pipeline.execute()
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
@@ -76,6 +104,13 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
+
+        # OTel Tracing Assertions
+        finished = self.get_finished_spans()
+        self.assertEqual(finished[0].name, "PING")
+        self.assertEqual(finished[0].kind, trace.SpanKind.CLIENT)
+        self.assertIsNotNone(finished[0].parent)
+        self.assertTrue(finished[0].status.is_ok)
 
     def test_metrics(self):
         client_name = "redisclient"
@@ -120,10 +155,11 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
                 self.tearDown()
 
 
-class RedisMessageQueueTests(unittest.TestCase):
+class RedisMessageQueueTests(TestBase):
     qname = "redisTestQueue"
 
     def setUp(self):
+        super().setUp()
         self.pool = redis.ConnectionPool(
             host=redis_endpoint.address.host, port=redis_endpoint.address.port
         )
@@ -155,4 +191,5 @@ class RedisMessageQueueTests(unittest.TestCase):
             self.assertEqual(message, b"x")
 
     def tearDown(self):
+        super().tearDown()
         redis.Redis(connection_pool=self.pool).delete(self.qname)

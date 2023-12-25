@@ -13,6 +13,12 @@ import rediscluster
 from redis import RedisError
 from rediscluster.pipeline import ClusterPipeline
 
+from opentelemetry import trace
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.instrumentation.redis import RedisInstrumentor
+from baseplate.clients.redis_utils import _format_command_args, _extract_conn_attributes
+
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.clients.redis import ACTIVE_REQUESTS
@@ -27,6 +33,7 @@ from baseplate.lib import metrics
 logger = logging.getLogger(__name__)
 randomizer = random.SystemRandom()
 
+tracer = trace.get_tracer(__name__)
 
 # Read commands that take a single key as their first parameter
 SINGLE_KEY_READ_COMMANDS = frozenset(
@@ -401,6 +408,10 @@ class ClusterRedisContextFactory(ContextFactory):
             self.redis_client_name,
         )
 
+    def make_traced_object_for_context(self, name: str, span: trace.Span, legacy_span=None) -> "MonitoredRedisClusterConnection":
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
+
 
 class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
     """Cluster Redis connection that collects diagnostic information.
@@ -436,11 +447,25 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
             skip_full_coverage_check=connection_pool.skip_full_coverage_check,
         )
 
+    def _set_connection_attributes(self, span):
+        if not span.is_recording():
+            return
+        for key, value in _extract_conn_attributes(
+            self.connection_pool.connection_kwargs
+        ).items():
+            span.set_attribute(key, value)
+
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
-        with self.server_span.make_child(trace_name):
+        with (self.server_span.make_child(trace_name),
+              tracer.start_as_current_span(command, kind=trace.SpanKind.CLIENT) as otelspan):
+            if otelspan.is_recording():
+                otelspan.set_attribute(SpanAttributes.DB_STATEMENT, query)
+                self._set_connection_attributes(otelspan)
+                otelspan.set_attribute(
+                    "db.redis.args_length", len(args))
             start_time = perf_counter()
             success = "true"
             labels = {

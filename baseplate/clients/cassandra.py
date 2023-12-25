@@ -14,6 +14,8 @@ from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
+from opentelemetry import trace
+
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import _NOT_SET  # pylint: disable=no-name-in-module
 from cassandra.cluster import Cluster  # pylint: disable=no-name-in-module
@@ -184,6 +186,10 @@ class CassandraContextFactory(ContextFactory):
             prometheus_client_name=self.prometheus_client_name,
             prometheus_cluster_name=self.prometheus_cluster_name,
         )
+
+    def make_traced_object_for_context(self, name: str, span: trace.Span, legacy_span=None) -> "CassandraSessionAdapter":
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
 
 
 class CQLMapperClient(config.Parser):
