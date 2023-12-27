@@ -2,6 +2,8 @@ import unittest
 
 from unittest import mock
 
+from opentelemetry import trace
+
 try:
     from pymemcache.exceptions import MemcacheClientError
 except ImportError:
@@ -12,12 +14,15 @@ from baseplate import Baseplate, LocalSpan, ServerSpan
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
+from opentelemetry.test.test_base import TestBase
+
 
 memcached_endpoint = get_endpoint_or_skip_container("memcached", 11211)
 
 
-class MemcacheIntegrationTests(unittest.TestCase):
+class MemcacheIntegrationTests(TestBase):
     def setUp(self):
+        super().setUp()
         self.baseplate_observer = TestBaseplateObserver()
 
         baseplate = Baseplate({"memcache.endpoint": str(memcached_endpoint)})
@@ -28,7 +33,7 @@ class MemcacheIntegrationTests(unittest.TestCase):
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple(self):
-        with self.server_span:
+        with self.server_span, trace.get_tracer(__name__).start_as_current_span('test_simple'):
             self.context.memcache.get("whatever")
 
         server_span_observer = self.baseplate_observer.get_only_child()
@@ -38,8 +43,10 @@ class MemcacheIntegrationTests(unittest.TestCase):
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
 
+        self.assertEqual(len(self.get_finished_spans()), 2)
+
     def test_error(self):
-        with self.server_span:
+        with self.server_span, trace.get_tracer(__name__).start_as_current_span('test_error'):
             with self.assertRaises(MemcacheClientError):
                 self.context.memcache.cas("key", b"value", b"whatever")
 
@@ -51,8 +58,9 @@ class MemcacheIntegrationTests(unittest.TestCase):
         self.assertIsNotNone(span_observer.on_finish_exc_info)
 
 
-class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
+class MonitoredMemcacheConnectionIntegrationTests(TestBase):
     def setUp(self):
+        super().setUp()
         self.mocked_pool = mock.Mock(server=memcached_endpoint.address)
         self.context_name = "memcache"
         self.server_span = mock.MagicMock(spec_set=ServerSpan)

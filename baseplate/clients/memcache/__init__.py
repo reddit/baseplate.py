@@ -9,6 +9,8 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from opentelemetry import trace
+from opentelemetry.semconv.trace import SpanAttributes, DbSystemValues
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -223,6 +225,16 @@ def _prom_instrument(func: Any) -> Any:
     return wrapper
 
 
+def _otel_instrument(func: Any) -> Any:
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+        with trace.get_tracer(__name__).start_as_current_span(f"memcached.{func.__name__}") as span:
+            if span.is_recording():
+                span.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.MEMCACHED)
+            return func(self, *args, **kwargs)
+    return wrapper
+
+
+
 class MonitoredMemcacheConnection:
     """Memcache connection that collects diagnostic information.
 
@@ -240,11 +252,13 @@ class MonitoredMemcacheConnection:
         self.pooled_client = pooled_client
 
     @_prom_instrument
+    @_otel_instrument
     def close(self) -> None:
         with self._make_span("close"):
             return self.pooled_client.close()
 
     @_prom_instrument
+    @_otel_instrument
     def set(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("set") as span:
             span.set_tag("key", key)
@@ -253,6 +267,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.set(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def set_many(
         self, values: Dict[Key, Any], expire: int = 0, noreply: Optional[bool] = None
     ) -> List[str]:
@@ -264,6 +279,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.set_many(values, expire=expire, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def replace(
         self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None
     ) -> bool:
@@ -274,6 +290,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.replace(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def append(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("append") as span:
             span.set_tag("key", key)
@@ -282,6 +299,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.append(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def prepend(
         self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None
     ) -> bool:
@@ -292,6 +310,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.prepend(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def cas(
         self, key: Key, value: Any, cas: int, expire: int = 0, noreply: Optional[bool] = None
     ) -> Optional[bool]:
@@ -303,6 +322,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.cas(key, value, cas, expire=expire, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def get(self, key: Key, default: Any = None) -> Any:
         with self._make_span("get") as span:
             span.set_tag("key", key)
@@ -312,6 +332,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.get(key, **kwargs)
 
     @_prom_instrument
+    @_otel_instrument
     def get_many(self, keys: Sequence[Key]) -> Dict[Key, Any]:
         with self._make_span("get_many") as span:
             span.set_tag("key_count", len(keys))
@@ -319,6 +340,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.get_many(keys)
 
     @_prom_instrument
+    @_otel_instrument
     def gets(
         self, key: Key, default: Optional[Any] = None, cas_default: Optional[Any] = None
     ) -> Tuple[Any, Any]:
@@ -327,6 +349,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.gets(key, default=default, cas_default=cas_default)
 
     @_prom_instrument
+    @_otel_instrument
     def gets_many(self, keys: Sequence[Key]) -> Dict[Key, Tuple[Any, Any]]:
         with self._make_span("gets_many") as span:
             span.set_tag("key_count", len(keys))
@@ -334,6 +357,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.gets_many(keys)
 
     @_prom_instrument
+    @_otel_instrument
     def delete(self, key: Key, noreply: Optional[bool] = None) -> bool:
         with self._make_span("delete") as span:
             span.set_tag("key", key)
@@ -341,6 +365,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.delete(key, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def delete_many(self, keys: Sequence[Key], noreply: Optional[bool] = None) -> bool:
         with self._make_span("delete_many") as span:
             span.set_tag("key_count", len(keys))
@@ -349,6 +374,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.delete_many(keys, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def add(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("add") as span:
             span.set_tag("key", key)
@@ -357,6 +383,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.add(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def incr(self, key: Key, value: int, noreply: Optional[bool] = False) -> Optional[int]:
         with self._make_span("incr") as span:
             span.set_tag("key", key)
@@ -364,6 +391,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.incr(key, value, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def decr(self, key: Key, value: int, noreply: Optional[bool] = False) -> Optional[int]:
         with self._make_span("decr") as span:
             span.set_tag("key", key)
@@ -371,6 +399,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.decr(key, value, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def touch(self, key: Key, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("touch") as span:
             span.set_tag("key", key)
@@ -379,11 +408,13 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.touch(key, expire=expire, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def stats(self, *args: str) -> Dict[str, Any]:
         with self._make_span("stats"):
             return self.pooled_client.stats(*args)
 
     @_prom_instrument
+    @_otel_instrument
     def flush_all(self, delay: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("flush_all") as span:
             span.set_tag("delay", delay)
@@ -391,6 +422,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.flush_all(delay=delay, noreply=noreply)
 
     @_prom_instrument
+    @_otel_instrument
     def quit(self) -> None:
         with self._make_span("quit"):
             return self.pooled_client.quit()

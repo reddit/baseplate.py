@@ -46,7 +46,7 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
 
         # OTel Tracing Assertions
         finished = self.get_finished_spans()
-        self.assertEqual(finished[0].name, "PING")
+        self.assertEqual(finished[0].name, "redis.PING")
         self.assertEqual(finished[0].kind, trace.SpanKind.CLIENT)
         self.assertIsNotNone(finished[0].parent)
         self.assertTrue(finished[0].status.is_ok)
@@ -64,7 +64,7 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
 
         # OTel Tracing Assertions
         finished = self.get_finished_spans()
-        self.assertEqual(finished[0].name, "crazycommand")
+        self.assertEqual(finished[0].name, "redis.crazycommand")
         self.assertEqual(finished[0].kind, trace.SpanKind.CLIENT)
         self.assertIsNotNone(finished[0].parent)
         self.assertFalse(finished[0].status.is_ok)
@@ -83,9 +83,9 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
 
         # OTel Tracing Assertions
         finished = self.get_finished_spans()
-        self.assertEqual(finished[0].name, "SET")
+        self.assertEqual(finished[0].name, "redis.SET")
         self.assertEqual(finished[0].kind, trace.SpanKind.CLIENT)
-        self.assertEqual(finished[1].name, "EVALSHA")
+        self.assertEqual(finished[1].name, "redis.EVALSHA")
         self.assertEqual(finished[1].kind, trace.SpanKind.CLIENT)
         self.assertIsNotNone(finished[0].parent)
         self.assertTrue(finished[0].parent.span_id, finished[1].context.span_id)
@@ -107,7 +107,7 @@ class RedisIntegrationTests(RedisIntegrationTestCase):
 
         # OTel Tracing Assertions
         finished = self.get_finished_spans()
-        self.assertEqual(finished[0].name, "PING")
+        self.assertEqual(finished[0].name, "redis.pipeline_foo")
         self.assertEqual(finished[0].kind, trace.SpanKind.CLIENT)
         self.assertIsNotNone(finished[0].parent)
         self.assertTrue(finished[0].status.is_ok)

@@ -14,14 +14,18 @@ except ImportError:
 from baseplate.clients.cassandra import CassandraClient
 from baseplate import Baseplate
 
+from opentelemetry.test.test_base import TestBase
+from opentelemetry import trace
+
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
 
 cassandra_endpoint = get_endpoint_or_skip_container("cassandra", 9042)
 
 
-class CassandraTests(unittest.TestCase):
+class CassandraTests(TestBase):
     def setUp(self):
+        super().setUp()
         self.baseplate_observer = TestBaseplateObserver()
 
         profiles = {"foo": ExecutionProfile(consistency_level=ConsistencyLevel.QUORUM)}
@@ -45,7 +49,8 @@ class CassandraTests(unittest.TestCase):
 
     def test_simple_query(self):
         with self.server_span:
-            self.context.cassandra.execute("SELECT * FROM system.local;")
+            with trace.get_tracer(__name__).start_as_current_span("test_simple_query"):
+                self.context.cassandra.execute("SELECT * FROM system.local;")
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
@@ -53,6 +58,9 @@ class CassandraTests(unittest.TestCase):
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
         span_observer.assert_tag("statement", "SELECT * FROM system.local;")
+
+        finished = self.get_finished_spans()
+        self.assertEqual(len(finished), 2)
 
     def test_error_in_query(self):
         with self.server_span:
@@ -67,8 +75,9 @@ class CassandraTests(unittest.TestCase):
 
     def test_async(self):
         with self.server_span:
-            future = self.context.cassandra.execute_async("SELECT * FROM system.local;")
-            future.result()
+            with trace.get_tracer(__name__).start_as_current_span("test_async"):
+                future = self.context.cassandra.execute_async("SELECT * FROM system.local;")
+                future.result()
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
@@ -76,6 +85,7 @@ class CassandraTests(unittest.TestCase):
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
         span_observer.assert_tag("statement", "SELECT * FROM system.local;")
+        self.assertEqual(len(self.get_finished_spans()), 2)
 
     def test_properties(self):
         with self.server_span:
