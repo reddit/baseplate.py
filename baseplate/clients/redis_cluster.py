@@ -16,7 +16,6 @@ from rediscluster.pipeline import ClusterPipeline
 from opentelemetry import trace
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.instrumentation.redis import RedisInstrumentor
-from baseplate.clients.redis_utils import _format_command_args, _extract_conn_attributes
 
 
 from baseplate import Span
@@ -109,6 +108,8 @@ SINGLE_KEY_WRITE_COMMANDS = frozenset(
         "ZREMRANGEBYSCORE",
     ]
 )
+
+RedisInstrumentor().instrument()
 
 # Write commands that take a list of keys as argument
 MULTI_KEY_WRITE_COMMANDS = frozenset(["DEL"])
@@ -447,25 +448,11 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
             skip_full_coverage_check=connection_pool.skip_full_coverage_check,
         )
 
-    def _set_connection_attributes(self, span):
-        if not span.is_recording():
-            return
-        for key, value in _extract_conn_attributes(
-            self.connection_pool.connection_kwargs
-        ).items():
-            span.set_attribute(key, value)
-
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
-        with (self.server_span.make_child(trace_name),
-              tracer.start_as_current_span(command, kind=trace.SpanKind.CLIENT) as otelspan):
-            if otelspan.is_recording():
-                otelspan.set_attribute(SpanAttributes.DB_STATEMENT, query)
-                self._set_connection_attributes(otelspan)
-                otelspan.set_attribute(
-                    "db.redis.args_length", len(args))
+        with self.server_span.make_child(trace_name):
             start_time = perf_counter()
             success = "true"
             labels = {

@@ -23,7 +23,11 @@ services:
     image: "memcached:1.5.6"
   redis:
     image: "redis:4.0.9"
+    ports:
+      - 6379:6379
   zookeeper:
     image: "zookeeper:3.4.10"
   redis-cluster-node:
     image: docker.io/grokzen/redis-cluster:6.2.0
+    ports:
+      - 7000:7000

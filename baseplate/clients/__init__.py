@@ -8,6 +8,7 @@ trace information is passed on and metrics are collected automatically.
 from typing import Any
 from typing import TYPE_CHECKING
 
+from opentelemetry import trace
 
 if TYPE_CHECKING:
     import baseplate.lib.metrics
@@ -38,4 +39,7 @@ class ContextFactory:
         :param span: The current span this object is being made for.
 
         """
+        raise NotImplementedError
+
+    def make_traced_object_for_context(selfself, name: str, span: trace.Span, legacy_span: "baseplate.Span"):
         raise NotImplementedError

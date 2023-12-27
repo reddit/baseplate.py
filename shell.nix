@@ -12,6 +12,7 @@ pkgs.mkShell {
     protobuf
     openssl
     gcc
+    docker-compose
     clang
     (python39.withPackages(ps: with ps; [
       virtualenv
