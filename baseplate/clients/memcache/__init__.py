@@ -227,9 +227,10 @@ def _prom_instrument(func: Any) -> Any:
 
 def _otel_instrument(func: Any) -> Any:
     def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
-        with trace.get_tracer(__name__).start_as_current_span(f"memcached.{func.__name__}") as span:
+        with trace.get_tracer(__name__).start_as_current_span(f"memcached.{func.__name__}", kind=trace.SpanKind.CLIENT) as span:
             if span.is_recording():
-                span.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.MEMCACHED)
+                span.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.MEMCACHED.value)
+                span.set_attribute("db.memcached.command", func.__name__)
             return func(self, *args, **kwargs)
     return wrapper
 
@@ -264,6 +265,11 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.set(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
@@ -276,6 +282,12 @@ class MonitoredMemcacheConnection:
             span.set_tag("keys", make_keys_str(values.keys()))
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.keys": values,
+                "db.memcached.key_count": len(values),
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.set_many(values, expire=expire, noreply=noreply)
 
     @_prom_instrument
@@ -287,6 +299,11 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.replace(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
@@ -296,6 +313,11 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.append(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
@@ -307,6 +329,11 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.prepend(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
@@ -319,6 +346,12 @@ class MonitoredMemcacheConnection:
             span.set_tag("cas", cas)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.cas": cas,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.cas(key, value, cas, expire=expire, noreply=noreply)
 
     @_prom_instrument
@@ -326,6 +359,9 @@ class MonitoredMemcacheConnection:
     def get(self, key: Key, default: Any = None) -> Any:
         with self._make_span("get") as span:
             span.set_tag("key", key)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+            })
             kwargs = {}
             if default is not None:
                 kwargs["default"] = default
@@ -337,6 +373,10 @@ class MonitoredMemcacheConnection:
         with self._make_span("get_many") as span:
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
+            trace.get_current_span().set_attributes({
+                "db.memcached.keys": keys,
+                "db.memcached.key_count": len(keys),
+            })
             return self.pooled_client.get_many(keys)
 
     @_prom_instrument
@@ -346,6 +386,9 @@ class MonitoredMemcacheConnection:
     ) -> Tuple[Any, Any]:
         with self._make_span("gets") as span:
             span.set_tag("key", key)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+            })
             return self.pooled_client.gets(key, default=default, cas_default=cas_default)
 
     @_prom_instrument
@@ -354,6 +397,10 @@ class MonitoredMemcacheConnection:
         with self._make_span("gets_many") as span:
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
+            trace.get_current_span().set_attributes({
+                "db.memcached.keys": keys,
+                "db.memcached.key_count": len(keys),
+            })
             return self.pooled_client.gets_many(keys)
 
     @_prom_instrument
@@ -362,6 +409,10 @@ class MonitoredMemcacheConnection:
         with self._make_span("delete") as span:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.noreply": noreply,
+            })
             return self.pooled_client.delete(key, noreply=noreply)
 
     @_prom_instrument
@@ -371,6 +422,11 @@ class MonitoredMemcacheConnection:
             span.set_tag("key_count", len(keys))
             span.set_tag("noreply", noreply)
             span.set_tag("keys", make_keys_str(keys))
+            trace.get_current_span().set_attributes({
+                "db.memcached.keys": keys,
+                "db.memcached.key_count": len(keys),
+                "db.memcached.noreply": noreply,
+            })
             return self.pooled_client.delete_many(keys, noreply=noreply)
 
     @_prom_instrument
@@ -380,6 +436,11 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.add(key, value, expire=expire, noreply=noreply)
 
     @_prom_instrument
@@ -388,6 +449,10 @@ class MonitoredMemcacheConnection:
         with self._make_span("incr") as span:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.incr(key, value, noreply=noreply)
 
     @_prom_instrument
@@ -396,6 +461,10 @@ class MonitoredMemcacheConnection:
         with self._make_span("decr") as span:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.decr(key, value, noreply=noreply)
 
     @_prom_instrument
@@ -405,6 +474,11 @@ class MonitoredMemcacheConnection:
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
+            trace.get_current_span().set_attributes({
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply
+            })
             return self.pooled_client.touch(key, expire=expire, noreply=noreply)
 
     @_prom_instrument

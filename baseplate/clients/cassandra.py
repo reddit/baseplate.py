@@ -368,7 +368,8 @@ class CassandraSessionAdapter:
         query_name: Optional[str] = None,
         **kwargs: Any,
     ) -> ResponseFuture:
-        with trace.get_tracer(__name__).start_as_current_span(name="Cassandra.query_name", kind=trace.SpanKind.CLIENT) as otelspan:
+
+        with trace.get_tracer(__name__).start_as_current_span(name=f"{self.context_name}.execute", kind=trace.SpanKind.CLIENT) as otelspan:
             prom_labels = CassandraPrometheusLabels(
                 cassandra_client_name=self.prometheus_client_name
                 if self.prometheus_client_name is not None
@@ -383,7 +384,13 @@ class CassandraSessionAdapter:
                 otelspan.set_attribute(SpanAttributes.DB_NAME, self.session.keyspace)
                 otelspan.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.CASSANDRA)
                 otelspan.set_attribute("cassandra.cluster", self.prometheus_cluster_name)
-                otelspan.set_attribute(SpanAttributes.DB_STATEMENT, str(query))
+                if isinstance(query, str):
+                    statement = query
+                if isinstance(query, (SimpleStatement, PreparedStatement)):
+                    statement = query.query_string
+                if isinstance(query, BoundStatement):
+                    statement = query.prepared_statement.query_string
+                otelspan.set_attribute(SpanAttributes.DB_STATEMENT, statement)
 
             REQUEST_ACTIVE.labels(**prom_labels._asdict()).inc()
             start_time = time.perf_counter()
