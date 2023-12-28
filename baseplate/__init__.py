@@ -28,7 +28,8 @@ from baseplate.lib import UnknownCallerError
 
 
 try:
-    __version__ = get_distribution(__name__).version
+    #__version__ = get_distribution(__name__).version
+    __version__ = "2.6.0"
 except DistributionNotFound:
     # package is not installed
     __version__ = "unknown"
