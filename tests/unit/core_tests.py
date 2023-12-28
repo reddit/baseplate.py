@@ -97,6 +97,7 @@ class BaseplateTests(unittest.TestCase):
         baseplate = Baseplate()
         forty_two_factory = mock.Mock(spec=ContextFactory)
         forty_two_factory.make_object_for_context = mock.Mock(return_value=42)
+        forty_two_factory.make_traced_object_for_context = mock.Mock(return_value=42)
         baseplate.add_to_context("forty_two", forty_two_factory)
         baseplate.add_to_context("true", True)
 
@@ -109,6 +110,7 @@ class BaseplateTests(unittest.TestCase):
         baseplate = Baseplate()
         forty_two_factory = mock.Mock(spec=ContextFactory)
         forty_two_factory.make_object_for_context = mock.Mock(return_value=42)
+        forty_two_factory.make_traced_object_for_context = mock.Mock(return_value=42)
         context_spec = {
             "forty_two": forty_two_factory,
             "true": True,
