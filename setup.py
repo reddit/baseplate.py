@@ -35,7 +35,7 @@ setup(
         "Documentation": "https://baseplate.readthedocs.io/en/stable/",
         "Source": "https://github.com/reddit/baseplate.py",
     },
-    use_scm_version=True,
+    use_scm_version=False,
     packages=find_packages(exclude=["tests", "tests.*"]),
     python_requires=">=3.8",
     setup_requires=["setuptools_scm"],
