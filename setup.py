@@ -53,6 +53,7 @@ setup(
         "opentelemetry-exporter-otlp>=1.20.0",
         "opentelemetry-instrumentation-pyramid>=0.41b0",
         "opentelemetry-instrumentation-requests>=0.41b0",
+        "formenergy-observability>=0.3.1",
     ],
     extras_require=extras_require,
     scripts=[
