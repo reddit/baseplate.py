@@ -276,7 +276,6 @@ class MonitoredRedisConnection(redis.StrictRedis):
             success = "true"
 
             if otelspan.is_recording():
-                # TODO(trevor): format and sanitize args
                 otelspan.set_attribute(SpanAttributes.DB_STATEMENT, _format_command_args(args))
                 otelspan.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.REDIS)
                 otelspan.set_attribute(SpanAttributes.DB_REDIS_DATABASE_INDEX, self.connection_pool.connection_kwargs.get("db", 0))
@@ -379,7 +378,6 @@ class MonitoredRedisPipeline(Pipeline):
         with (self.server_span.make_child(self.trace_name),
               trace.get_tracer(__name__).start_as_current_span(self.trace_name, kind=trace.SpanKind.CLIENT) as otelspan):
             if otelspan.is_recording():
-                # TODO(trevor): format and sanitize args
                 otelspan.set_attribute(SpanAttributes.DB_STATEMENT, resource)
                 otelspan.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.REDIS)
                 otelspan.set_attribute(SpanAttributes.DB_REDIS_DATABASE_INDEX, self.connection_pool.connection_kwargs.get("db", 0))
