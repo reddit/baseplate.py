@@ -4,8 +4,6 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
-from opentelemetry.instrumentation.redis import RedisInstrumentor
-
 import redis
 
 # redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
