@@ -36,6 +36,7 @@ setup(
         "Source": "https://github.com/reddit/baseplate.py",
     },
     use_scm_version=False,
+    version="2.6.0",
     packages=find_packages(exclude=["tests", "tests.*"]),
     python_requires=">=3.8",
     setup_requires=["setuptools_scm"],
