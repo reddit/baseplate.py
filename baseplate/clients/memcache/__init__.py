@@ -280,8 +280,8 @@ class MonitoredMemcacheConnection:
             attributes={
                 SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
                 "db.memcached.command": "set_many",
-                "db.memcached.keys": values,
-                "db.memcached.key_count": len(values),
+                "db.memcached.keys": values.keys(),
+                "db.memcached.key_count": len(values.keys()),
                 "db.memcached.expire": expire,
                 "db.memcached.noreply": noreply
             }
@@ -542,7 +542,7 @@ class MonitoredMemcacheConnection:
 
     @_prom_instrument
     def stats(self, *args: str) -> Dict[str, Any]:
-        with self._make_span("stats"), tracer.start_as_current_span(
+        with self._make_span("stats"), self.tracer.start_as_current_span(
             "memcached.stats",
             kind=trace.SpanKind.CLIENT,
             attributes={
