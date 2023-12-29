@@ -205,7 +205,7 @@ def baseplateify_processor(
                 flags = headers.get(b"Flags", None)
                 trace_info = TraceInfo.from_upstream(
                     headers[b"Trace"].decode(),
-                    headers[b"Parent"].decode(),
+                    headers.get(b"Parent", b"").decode(),
                     headers[b"Span"].decode(),
                     sampled,
                     int(flags) if flags is not None else None,
