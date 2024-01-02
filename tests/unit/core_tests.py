@@ -348,9 +348,7 @@ class TraceInfoTests(unittest.TestCase):
         self.assertIsNone(span.flags)
 
     def test_from_upstream_handles_no_parent(self):
-        """
-        Verify that `parent_id` can be left out without raising an exception.
-        """
+        """Verify that `parent_id` can be left out without raising an exception."""
         span = TraceInfo.from_upstream(1, None, 3, None, None)
         self.assertIsNone(span.parent_id)
         self.assertIsNotNone(span.trace_id)
