@@ -29,6 +29,10 @@ from baseplate.server.queue_consumer import MessageHandler
 from baseplate.server.queue_consumer import PumpWorker
 from baseplate.server.queue_consumer import QueueConsumerFactory
 
+from opentelemetry.instrumentation.confluent_kafka import ConfluentKafkaInstrumentor
+
+ConfluentKafkaInstrumentor().instrument()
+
 
 if TYPE_CHECKING:
     WorkQueue = queue.Queue[confluent_kafka.Message]  # pylint: disable=unsubscriptable-object
