@@ -389,12 +389,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                                     # but the status will be blank in the first case, and the baseplate name
                                     # in the second
                                     baseplate_status_code = current_exc.code  # type: ignore
-<<<<<<< HEAD
-                                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code,
-                                                                                        "")  # type: ignore
-=======
                                     baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
->>>>>>> reddit/aleksei.lesieur/opentelemetry2
                                 except AttributeError:
                                     pass
 
