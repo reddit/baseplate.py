@@ -156,7 +156,7 @@ class RedisClient(config.Parser):
 
     """
 
-    def __init__(self, redis_client_name: str = "", tracer_provider: trace.TracerProvider = None, **kwargs: Any):
+    def __init__(self, redis_client_name: str = "", **kwargs: Any):
         # This is for backwards compatibility. Originally we asked clients to
         # set the `client_name` attribute to get the `redis_client_name`
         # tag to appear on Prometheus metrics. Unfortunately this broke clients
