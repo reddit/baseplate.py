@@ -275,7 +275,10 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         span = server_span.make_child(trace_name)
         # remove comment from statement for tag
         tag_statement = statement.split("/*")[0].rstrip()
-        span.set_tag("statement", tag_statement[:1021] + "..." if len(tag_statement) > 1024 else tag_statement)
+        span.set_tag(
+            "statement",
+            tag_statement[:1021] + "..." if len(tag_statement) > 1024 else tag_statement,
+        )
         span.start()
 
         conn.info["span"] = span

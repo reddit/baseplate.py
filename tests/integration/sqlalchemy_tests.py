@@ -24,6 +24,7 @@ from . import TestBaseplateObserver
 
 Base = declarative_base()
 
+
 class TestObject(Base):
     __tablename__ = "test"
 
@@ -66,14 +67,12 @@ class SQLAlchemyEngineTests(TestBase):
         self.assertEqual(parent_span.get_span_context().span_id, connect_span.parent.span_id)
         self.assertEqual(select_span.attributes["db.statement"], "SELECT * FROM test;")
 
-
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
         span_observer.assert_tag("statement", "SELECT * FROM test")
-
 
     def test_very_long_query(self):
         with self.server_span, self.tracer.start_as_current_span("test_very_long_query"):
@@ -91,7 +90,9 @@ class SQLAlchemyEngineTests(TestBase):
         self.assertEqual(parent_span.get_span_context().span_id, connect_span.parent.span_id)
 
         # for OTel we will handle attribute truncation via the tracing pipeline.
-        self.assertSpanHasAttributes(select_span, {"db.statement": "SELECT *" + (" " * 1024) + "FROM test;"})
+        self.assertSpanHasAttributes(
+            select_span, {"db.statement": "SELECT *" + (" " * 1024) + "FROM test;"}
+        )
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
@@ -100,7 +101,6 @@ class SQLAlchemyEngineTests(TestBase):
         self.assertIsNone(span_observer.on_finish_exc_info)
         tag = span_observer.tags["statement"]
         assert len(tag) <= 1024
-
 
     def test_nested_local_span(self):
         with self.server_span:
