@@ -55,6 +55,7 @@ propagate.set_global_textmap(
 def serve_thrift(handler, server_spec, baseplate_observer=None, convert_to_baseplate_error=True):
     # create baseplate root
     baseplate = Baseplate()
+    baseplate.service_name = "test_service"
 
     if baseplate_observer:
         baseplate.register(baseplate_observer)
@@ -248,12 +249,12 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         )
         self.assertEqual(thrift_client_span.events[0].name, "message")
 
-        self.assertEqual(thrift_server_span.name, "tests.integration.otel_thrift_tests/example")
+        self.assertEqual(thrift_server_span.name, "test_service/example")
         self.assertSpanHasAttributes(
             thrift_server_span,
             {
                 SpanAttributes.RPC_SYSTEM: "thrift",
-                SpanAttributes.RPC_SERVICE: "tests.integration.otel_thrift_tests",
+                SpanAttributes.RPC_SERVICE: "test_service",
                 SpanAttributes.RPC_METHOD: "example",
                 SpanAttributes.NET_HOST_IP: "127.0.0.1",
                 SpanAttributes.NET_HOST_NAME: "localhost",

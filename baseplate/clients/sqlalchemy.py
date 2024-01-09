@@ -244,10 +244,6 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         engine = self.engine.execution_options(context_name=name, server_span=span)
         return engine
 
-    def make_traced_object_for_context(self, name: str, span: trace.Span, legacy_span=None) -> Engine:
-        trace.set_span_in_context(span)
-        return self.make_object_for_context(name, legacy_span)
-
     # pylint: disable=unused-argument, too-many-arguments
     def on_before_execute(
         self,

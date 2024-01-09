@@ -41,6 +41,3 @@ class ContextFactory:
         """
         raise NotImplementedError
 
-    def make_traced_object_for_context(self, name: str, span: trace.Span, legacy_span: "baseplate.Span"):
-        trace.set_span_in_context(span)
-        return self.make_object_for_context(name, legacy_span)
