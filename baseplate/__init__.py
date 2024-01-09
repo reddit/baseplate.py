@@ -429,7 +429,12 @@ class Baseplate:
 
         * An arbitrary object to be added to the :py:class:`~baseplate.RequestContext`.
 
-        * A factory with a method named ``make_object_for_context``.  On each
+        * A factory with a method named ``make_traced_object_for_context``.  On each
+          request, the factory will be asked to create an appropriate object to
+          attach to the :py:class:`~baseplate.RequestContext` This method allows you to pass in an
+          opentelemetry span and optionally a legacy baseplate span.
+
+        * Deprecated: A factory with a method named ``make_object_for_context``.  On each
           request, the factory will be asked to create an appropriate object to
           attach to the :py:class:`~baseplate.RequestContext`.
 

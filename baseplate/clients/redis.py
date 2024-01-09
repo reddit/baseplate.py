@@ -227,6 +227,12 @@ class RedisContextFactory(ContextFactory):
             redis_client_name=self.redis_client_name,
         )
 
+    def make_traced_object_for_context(
+        self, name: str, span: trace.Span, legacy_span=None
+    ) -> "MonitoredRedisConnection":
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
+
 
 # pylint: disable=too-many-public-methods
 class MonitoredRedisConnection(redis.StrictRedis):
@@ -380,9 +386,9 @@ class MonitoredRedisPipeline(Pipeline):
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         (command_stack, resource, span_name) = self._build_span_meta_data_for_pipeline()
-        with self.server_span.make_child(self.trace_name), trace.get_tracer(
-            __name__
-        ).start_as_current_span(self.trace_name, kind=trace.SpanKind.CLIENT) as otelspan:
+        with self.server_span.make_child(self.trace_name), tracer.start_as_current_span(
+            self.trace_name, kind=trace.SpanKind.CLIENT
+        ) as otelspan:
             if otelspan.is_recording():
                 otelspan.set_attribute(SpanAttributes.DB_STATEMENT, resource)
                 otelspan.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.REDIS)

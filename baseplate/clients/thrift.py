@@ -164,6 +164,12 @@ class ThriftContextFactory(ContextFactory):
     def make_object_for_context(self, name: str, span: Span) -> "_PooledClientProxy":
         return self.proxy_cls(self.client_cls, self.pool, span, name)
 
+    def make_traced_object_for_context(
+        self, name: str, span: trace.Span, legacy_span=None
+    ) -> "_PooledClientProxy":
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
+
 
 def _enumerate_service_methods(client: Any) -> Iterator[str]:
     """Return an iterable of service methods from a generated Iface class."""

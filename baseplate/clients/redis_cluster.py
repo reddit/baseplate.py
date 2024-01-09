@@ -425,6 +425,12 @@ class ClusterRedisContextFactory(ContextFactory):
             self.redis_client_name,
         )
 
+    def make_traced_object_for_context(
+        self, name: str, span: trace.Span, legacy_span=None
+    ) -> "MonitoredRedisClusterConnection":
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
+
 
 class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
     """Cluster Redis connection that collects diagnostic information.

@@ -353,6 +353,12 @@ class RequestsContextFactory(ContextFactory):
     def make_object_for_context(self, name: str, span: Span) -> BaseplateSession:
         return self.session_cls(self.adapter, name, span, client_name=self.client_name)
 
+    def make_traced_object_for_context(
+        self, name: str, span: trace.Span, legacy_span=None
+    ) -> BaseplateSession:
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
+
 
 class InternalRequestsClient(config.Parser):
     """Configure a Requests client for use with internal Baseplate HTTP services.
