@@ -9,11 +9,10 @@ from typing import TypeVar
 
 import kombu.serialization
 
-from opentelemetry import trace
-
 from kombu import Connection
 from kombu import Exchange
 from kombu.pools import Producers
+from opentelemetry import trace
 from prometheus_client import Counter
 from prometheus_client import Histogram
 from thrift import TSerialization
@@ -241,6 +240,7 @@ class KombuProducerContextFactory(ContextFactory):
         return _KombuProducer(
             name, span, self.connection, self.exchange, self.producers, serializer=self.serializer
         )
+
 
 class _KombuProducer:
     def __init__(

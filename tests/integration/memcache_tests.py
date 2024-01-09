@@ -33,7 +33,7 @@ class MemcacheIntegrationTests(TestBase):
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple(self):
-        with self.server_span, trace.get_tracer(__name__).start_as_current_span('test_simple'):
+        with self.server_span, trace.get_tracer(__name__).start_as_current_span("test_simple"):
             self.context.memcache.get("whatever")
 
         server_span_observer = self.baseplate_observer.get_only_child()
@@ -47,7 +47,7 @@ class MemcacheIntegrationTests(TestBase):
         self.assertEqual(len(finished), 2)
 
     def test_error(self):
-        with self.server_span, trace.get_tracer(__name__).start_as_current_span('test_error'):
+        with self.server_span, trace.get_tracer(__name__).start_as_current_span("test_error"):
             with self.assertRaises(MemcacheClientError):
                 self.context.memcache.cas("key", b"value", b"whatever")
 
@@ -98,7 +98,6 @@ class MonitoredMemcacheConnectionIntegrationTests(TestBase):
         self.assertEqual(span.attributes.get("db.memcached.key"), self.key.decode())
         self.assertEqual(span.attributes.get("db.memcached.expire"), self.expire)
         self.assertEqual(span.attributes.get("db.memcached.noreply"), self.noreply)
-
 
     def test_replace(self):
         self.connection.replace(self.key, self.value, expire=self.expire, noreply=self.noreply)
@@ -187,8 +186,9 @@ class MonitoredMemcacheConnectionIntegrationTests(TestBase):
         span = self.get_finished_spans()[0]
         self.assertEqual(span.name, "memcached.gets_many")
         self.assertEqual(span.attributes.get("db.memcached.command"), "gets_many")
-        self.assertEqual(span.attributes.get("db.memcached.keys"), tuple([k.decode() for k in keys]))
-
+        self.assertEqual(
+            span.attributes.get("db.memcached.keys"), tuple([k.decode() for k in keys])
+        )
 
     def test_delete(self):
         self.connection.delete(self.key, noreply=self.noreply)
@@ -210,7 +210,9 @@ class MonitoredMemcacheConnectionIntegrationTests(TestBase):
         span = self.get_finished_spans()[0]
         self.assertEqual(span.name, "memcached.delete_many")
         self.assertEqual(span.attributes.get("db.memcached.command"), "delete_many")
-        self.assertEqual(span.attributes.get("db.memcached.keys"), tuple([k.decode() for k in keys]))
+        self.assertEqual(
+            span.attributes.get("db.memcached.keys"), tuple([k.decode() for k in keys])
+        )
         self.assertEqual(span.attributes.get("db.memcached.noreply"), self.noreply)
 
     def test_add(self):
@@ -226,7 +228,6 @@ class MonitoredMemcacheConnectionIntegrationTests(TestBase):
         self.assertEqual(span.attributes.get("db.memcached.key"), self.key.decode())
         self.assertEqual(span.attributes.get("db.memcached.noreply"), self.noreply)
         self.assertEqual(span.attributes.get("db.memcached.expire"), self.expire)
-
 
     def test_incr(self):
         value = 1

@@ -8,6 +8,8 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from opentelemetry import trace
+from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -20,9 +22,6 @@ from sqlalchemy.engine.interfaces import ExecutionContext
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
-
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
-from opentelemetry import trace
 
 from baseplate import _ExcInfo
 from baseplate import Span

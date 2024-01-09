@@ -10,7 +10,8 @@ from typing import Tuple
 from typing import Union
 
 from opentelemetry import trace
-from opentelemetry.semconv.trace import SpanAttributes, DbSystemValues
+from opentelemetry.semconv.trace import DbSystemValues
+from opentelemetry.semconv.trace import SpanAttributes
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -25,6 +26,7 @@ from baseplate.lib.prometheus_metrics import default_latency_buckets
 
 Serializer = Callable[[str, Any], Tuple[bytes, int]]
 Deserializer = Callable[[str, bytes, int], Any]
+
 
 def pool_from_config(
     app_config: config.RawConfig,
@@ -244,12 +246,13 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def close(self) -> None:
         with self._make_span("close"), self.tracer.start_as_current_span(
-                "memcached.close",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "close",
-                }):
+            "memcached.close",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "close",
+            },
+        ):
             return self.pooled_client.close()
 
     @_prom_instrument
@@ -262,8 +265,8 @@ class MonitoredMemcacheConnection:
                 "db.memcached.command": "set",
                 "db.memcached.key": key,
                 "db.memcached.expire": expire,
-                "db.memcached.noreply": noreply
-            }
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key", key)
             span.set_tag("expire", expire)
@@ -283,8 +286,8 @@ class MonitoredMemcacheConnection:
                 "db.memcached.keys": values.keys(),
                 "db.memcached.key_count": len(values.keys()),
                 "db.memcached.expire": expire,
-                "db.memcached.noreply": noreply
-            }
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key_count", len(values))
             span.set_tag("keys", make_keys_str(values.keys()))
@@ -297,15 +300,15 @@ class MonitoredMemcacheConnection:
         self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None
     ) -> bool:
         with self._make_span("replace") as span, self.tracer.start_as_current_span(
-                "memcached.replace",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "replace",
-                    "db.memcached.key": key,
-                    "db.memcached.expire": expire,
-                    "db.memcached.noreply": noreply
-                }
+            "memcached.replace",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "replace",
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key", key)
             span.set_tag("expire", expire)
@@ -315,15 +318,15 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def append(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("append") as span, self.tracer.start_as_current_span(
-                "memcached.append",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "append",
-                    "db.memcached.key": key,
-                    "db.memcached.expire": expire,
-                    "db.memcached.noreply": noreply
-                }
+            "memcached.append",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "append",
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key", key)
             span.set_tag("expire", expire)
@@ -335,15 +338,15 @@ class MonitoredMemcacheConnection:
         self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None
     ) -> bool:
         with self._make_span("prepend") as span, self.tracer.start_as_current_span(
-                "memcached.prepend",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "prepend",
-                    "db.memcached.key": key,
-                    "db.memcached.expire": expire,
-                    "db.memcached.noreply": noreply
-                }
+            "memcached.prepend",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "prepend",
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key", key)
             span.set_tag("expire", expire)
@@ -355,16 +358,16 @@ class MonitoredMemcacheConnection:
         self, key: Key, value: Any, cas: int, expire: int = 0, noreply: Optional[bool] = None
     ) -> Optional[bool]:
         with self._make_span("cas") as span, self.tracer.start_as_current_span(
-                "memcached.cas",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "cas",
-                    "db.memcached.key": key,
-                    "db.memcached.cas": cas,
-                    "db.memcached.expire": expire,
-                    "db.memcached.noreply": noreply
-                }
+            "memcached.cas",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "cas",
+                "db.memcached.key": key,
+                "db.memcached.cas": cas,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key", key)
             span.set_tag("cas", cas)
@@ -375,13 +378,13 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def get(self, key: Key, default: Any = None) -> Any:
         with self._make_span("get") as span, self.tracer.start_as_current_span(
-                "memcached.get",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "get",
-                    "db.memcached.key": key,
-                }
+            "memcached.get",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "get",
+                "db.memcached.key": key,
+            },
         ):
             span.set_tag("key", key)
             kwargs = {}
@@ -392,14 +395,14 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def get_many(self, keys: Sequence[Key]) -> Dict[Key, Any]:
         with self._make_span("get_many") as span, self.tracer.start_as_current_span(
-                "memcached.get_many",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "get_many",
-                    "db.memcached.keys": keys,
-                    "db.memcached.key_count": len(keys),
-                }
+            "memcached.get_many",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "get_many",
+                "db.memcached.keys": keys,
+                "db.memcached.key_count": len(keys),
+            },
         ):
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
@@ -410,13 +413,13 @@ class MonitoredMemcacheConnection:
         self, key: Key, default: Optional[Any] = None, cas_default: Optional[Any] = None
     ) -> Tuple[Any, Any]:
         with self._make_span("gets") as span, self.tracer.start_as_current_span(
-                "memcached.gets",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "gets",
-                    "db.memcached.key": key,
-                }
+            "memcached.gets",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "gets",
+                "db.memcached.key": key,
+            },
         ):
             span.set_tag("key", key)
             return self.pooled_client.gets(key, default=default, cas_default=cas_default)
@@ -424,14 +427,14 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def gets_many(self, keys: Sequence[Key]) -> Dict[Key, Tuple[Any, Any]]:
         with self._make_span("gets_many") as span, self.tracer.start_as_current_span(
-                "memcached.gets_many",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "gets_many",
-                    "db.memcached.keys": keys,
-                    "db.memcached.key_count": len(keys),
-                }
+            "memcached.gets_many",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "gets_many",
+                "db.memcached.keys": keys,
+                "db.memcached.key_count": len(keys),
+            },
         ):
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
@@ -440,14 +443,14 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def delete(self, key: Key, noreply: Optional[bool] = None) -> bool:
         with self._make_span("delete") as span, self.tracer.start_as_current_span(
-                "memcached.delete",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "delete",
-                    "db.memcached.key": key,
-                    "db.memcached.noreply": noreply,
-                }
+            "memcached.delete",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "delete",
+                "db.memcached.key": key,
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
@@ -456,15 +459,15 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def delete_many(self, keys: Sequence[Key], noreply: Optional[bool] = None) -> bool:
         with self._make_span("delete_many") as span, self.tracer.start_as_current_span(
-                "memcached.delete_many",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "delete_many",
-                    "db.memcached.keys": keys,
-                    "db.memcached.key_count": len(keys),
-                    "db.memcached.noreply": noreply,
-                }
+            "memcached.delete_many",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "delete_many",
+                "db.memcached.keys": keys,
+                "db.memcached.key_count": len(keys),
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key_count", len(keys))
             span.set_tag("noreply", noreply)
@@ -474,33 +477,32 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def add(self, key: Key, value: Any, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("add") as span, self.tracer.start_as_current_span(
-                "memcached.add",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "add",
-                    "db.memcached.key": key,
-                    "db.memcached.expire": expire,
-                    "db.memcached.noreply": noreply
-                }
+            "memcached.add",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "add",
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key", key)
             span.set_tag("expire", expire)
             span.set_tag("noreply", noreply)
             return self.pooled_client.add(key, value, expire=expire, noreply=noreply)
 
-
     @_prom_instrument
     def incr(self, key: Key, value: int, noreply: Optional[bool] = False) -> Optional[int]:
         with self._make_span("incr") as span, self.tracer.start_as_current_span(
-                "memcached.incr",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "incr",
-                    "db.memcached.key": key,
-                    "db.memcached.noreply": noreply
-                }
+            "memcached.incr",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "incr",
+                "db.memcached.key": key,
+                "db.memcached.noreply": noreply,
+            },
         ) as otelspan:
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
@@ -509,14 +511,14 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def decr(self, key: Key, value: int, noreply: Optional[bool] = False) -> Optional[int]:
         with self._make_span("decr") as span, self.tracer.start_as_current_span(
-                "memcached.decr",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "decr",
-                    "db.memcached.key": key,
-                    "db.memcached.noreply": noreply
-                }
+            "memcached.decr",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "decr",
+                "db.memcached.key": key,
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key", key)
             span.set_tag("noreply", noreply)
@@ -525,15 +527,15 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def touch(self, key: Key, expire: int = 0, noreply: Optional[bool] = None) -> bool:
         with self._make_span("touch") as span, self.tracer.start_as_current_span(
-                "memcached.touch",
-                kind=trace.SpanKind.CLIENT,
-                attributes={
-                    SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
-                    "db.memcached.command": "touch",
-                    "db.memcached.key": key,
-                    "db.memcached.expire": expire,
-                    "db.memcached.noreply": noreply
-                }
+            "memcached.touch",
+            kind=trace.SpanKind.CLIENT,
+            attributes={
+                SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
+                "db.memcached.command": "touch",
+                "db.memcached.key": key,
+                "db.memcached.expire": expire,
+                "db.memcached.noreply": noreply,
+            },
         ):
             span.set_tag("key", key)
             span.set_tag("expire", expire)
@@ -548,7 +550,7 @@ class MonitoredMemcacheConnection:
             attributes={
                 SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
                 "db.memcached.command": "stats",
-            }
+            },
         ):
             return self.pooled_client.stats(*args)
 
@@ -560,7 +562,7 @@ class MonitoredMemcacheConnection:
             attributes={
                 SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
                 "db.memcached.command": "flush_all",
-            }
+            },
         ):
             span.set_tag("delay", delay)
             span.set_tag("noreply", noreply)
@@ -574,7 +576,7 @@ class MonitoredMemcacheConnection:
             attributes={
                 SpanAttributes.DB_SYSTEM: DbSystemValues.MEMCACHED.value,
                 "db.memcached.command": "quit",
-            }
+            },
         ):
             return self.pooled_client.quit()
 

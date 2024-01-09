@@ -2,11 +2,11 @@ import unittest
 
 import redis
 
+from opentelemetry.test.test_base import TestBase
+
 import baseplate.clients.redis as baseplate_redis
 
 from baseplate import Baseplate
-
-from opentelemetry.test.test_base import TestBase
 
 from . import get_endpoint_or_skip_container
 from . import TestBaseplateObserver

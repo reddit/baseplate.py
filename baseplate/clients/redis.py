@@ -27,6 +27,8 @@ from baseplate.lib import metrics
 
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 
+tracer = trace.get_tracer(__name__)
+
 PROM_PREFIX = "redis_client"
 PROM_LABELS_PREFIX = "redis"
 
@@ -91,14 +93,12 @@ def _format_command_args(args):
         out_str = " ".join(out)
 
         if len(out_str) > cmd_max_len:
-            out_str = (
-                out_str[: cmd_max_len - len(value_too_long_mark)]
-                + value_too_long_mark
-            )
+            out_str = out_str[: cmd_max_len - len(value_too_long_mark)] + value_too_long_mark
     else:
         out_str = ""
 
     return out_str
+
 
 def pool_from_config(
     app_config: config.RawConfig, prefix: str = "redis.", **kwargs: Any
@@ -176,6 +176,7 @@ class RedisClient(config.Parser):
             name=key_path,
             redis_client_name=self.redis_client_name,
         )
+
 
 class RedisContextFactory(ContextFactory):
     """Redis client context factory.
@@ -263,23 +264,39 @@ class MonitoredRedisConnection(redis.StrictRedis):
             f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get("db", ""),
             f"{PROM_LABELS_PREFIX}_type": "standalone",
         }
-        with (self.server_span.make_child(trace_name),
-              ACTIVE_REQUESTS.labels(**labels).track_inprogress(),
-              trace.get_tracer(__name__).start_as_current_span(trace_name, kind=trace.SpanKind.CLIENT) as otelspan):
+        with self.server_span.make_child(trace_name), ACTIVE_REQUESTS.labels(
+            **labels
+        ).track_inprogress(), tracer.start_as_current_span(
+            trace_name, kind=trace.SpanKind.CLIENT
+        ) as otelspan:
             start_time = perf_counter()
             success = "true"
 
             if otelspan.is_recording():
                 otelspan.set_attribute(SpanAttributes.DB_STATEMENT, _format_command_args(args))
                 otelspan.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.REDIS)
-                otelspan.set_attribute(SpanAttributes.DB_REDIS_DATABASE_INDEX, self.connection_pool.connection_kwargs.get("db", 0))
+                otelspan.set_attribute(
+                    SpanAttributes.DB_REDIS_DATABASE_INDEX,
+                    self.connection_pool.connection_kwargs.get("db", 0),
+                )
                 otelspan.set_attribute("db.redis.args_length", len(args))
                 try:
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_NAME, self.connection_pool.connection_kwargs.get("host", "localhost"))
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_PORT, self.connection_pool.connection_kwargs.get("port", "6739"))
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_NAME,
+                        self.connection_pool.connection_kwargs.get("host", "localhost"),
+                    )
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_PORT,
+                        self.connection_pool.connection_kwargs.get("port", "6739"),
+                    )
                 except KeyError:
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_NAME, self.connection_pool.connection_kwargs.get("path", ""))
-                    otelspan.set_attribute(SpanAttributes.NET_TRANSPORT, NetTransportValues.OTHER.value)
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_NAME,
+                        self.connection_pool.connection_kwargs.get("path", ""),
+                    )
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_TRANSPORT, NetTransportValues.OTHER.value
+                    )
             try:
                 res = super().execute_command(command, *args[1:], **kwargs)
                 if isinstance(res, redis.RedisError):
@@ -342,22 +359,16 @@ class MonitoredRedisPipeline(Pipeline):
     def _build_span_meta_data_for_pipeline(self):
         try:
             command_stack = (
-                self.command_stack
-                if hasattr(self, "command_stack")
-                else self._command_stack
+                self.command_stack if hasattr(self, "command_stack") else self._command_stack
             )
 
             cmds = [
-                _format_command_args(c.args if hasattr(c, "args") else c[0])
-                for c in command_stack
+                _format_command_args(c.args if hasattr(c, "args") else c[0]) for c in command_stack
             ]
             resource = "\n".join(cmds)
 
             span_name = " ".join(
-                [
-                    (c.args[0] if hasattr(c, "args") else c[0][0])
-                    for c in command_stack
-                ]
+                [(c.args[0] if hasattr(c, "args") else c[0][0]) for c in command_stack]
             )
         except (AttributeError, IndexError):
             command_stack = []
@@ -369,19 +380,34 @@ class MonitoredRedisPipeline(Pipeline):
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         (command_stack, resource, span_name) = self._build_span_meta_data_for_pipeline()
-        with (self.server_span.make_child(self.trace_name),
-              trace.get_tracer(__name__).start_as_current_span(self.trace_name, kind=trace.SpanKind.CLIENT) as otelspan):
+        with self.server_span.make_child(self.trace_name), trace.get_tracer(
+            __name__
+        ).start_as_current_span(self.trace_name, kind=trace.SpanKind.CLIENT) as otelspan:
             if otelspan.is_recording():
                 otelspan.set_attribute(SpanAttributes.DB_STATEMENT, resource)
                 otelspan.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.REDIS)
-                otelspan.set_attribute(SpanAttributes.DB_REDIS_DATABASE_INDEX, self.connection_pool.connection_kwargs.get("db", 0))
+                otelspan.set_attribute(
+                    SpanAttributes.DB_REDIS_DATABASE_INDEX,
+                    self.connection_pool.connection_kwargs.get("db", 0),
+                )
                 otelspan.set_attribute("db.redis.pipeline_length", len(command_stack))
                 try:
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_NAME, self.connection_pool.connection_kwargs.get("host", "localhost"))
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_PORT, self.connection_pool.connection_kwargs.get("port", "6739"))
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_NAME,
+                        self.connection_pool.connection_kwargs.get("host", "localhost"),
+                    )
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_PORT,
+                        self.connection_pool.connection_kwargs.get("port", "6739"),
+                    )
                 except KeyError:
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_NAME, self.connection_pool.connection_kwargs.get("path", ""))
-                    otelspan.set_attribute(SpanAttributes.NET_TRANSPORT, NetTransportValues.OTHER.value)
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_NAME,
+                        self.connection_pool.connection_kwargs.get("path", ""),
+                    )
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_TRANSPORT, NetTransportValues.OTHER.value
+                    )
             success = "true"
             start_time = perf_counter()
             labels = {

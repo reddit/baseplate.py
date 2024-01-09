@@ -1,8 +1,9 @@
 import unittest
 
-from opentelemetry.test.test_base import TestBase
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.test.test_base import TestBase
+
 try:
     from sqlalchemy import Column, Integer, String
     from sqlalchemy.dialects.sqlite import BOOLEAN

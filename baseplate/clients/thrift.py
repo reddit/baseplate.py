@@ -164,6 +164,7 @@ class ThriftContextFactory(ContextFactory):
     def make_object_for_context(self, name: str, span: Span) -> "_PooledClientProxy":
         return self.proxy_cls(self.client_cls, self.pool, span, name)
 
+
 def _enumerate_service_methods(client: Any) -> Iterator[str]:
     """Return an iterable of service methods from a generated Iface class."""
     ifaces_found = 0
@@ -188,12 +189,12 @@ class _PooledClientProxy:
 
     # pylint: disable=too-many-arguments
     def __init__(
-            self,
-            client_cls: Any,
-            pool: ThriftConnectionPool,
-            server_span: Span,
-            namespace: str,
-            retry_policy: Optional[RetryPolicy] = None,
+        self,
+        client_cls: Any,
+        pool: ThriftConnectionPool,
+        server_span: Span,
+        namespace: str,
+        retry_policy: Optional[RetryPolicy] = None,
     ):
         self.client_cls = client_cls
         self.pool = pool
@@ -247,7 +248,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         for time_remaining in self.retry_policy:
             try:
                 with self.pool.connection() as prot, ACTIVE_REQUESTS.labels(
-                        thrift_method=name, thrift_client_name=self.namespace
+                    thrift_method=name, thrift_client_name=self.namespace
                 ).track_inprogress():
                     start_time = time.perf_counter()
 

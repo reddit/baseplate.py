@@ -14,8 +14,6 @@ from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
-from opentelemetry import trace
-
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import _NOT_SET  # pylint: disable=no-name-in-module
 from cassandra.cluster import Cluster  # pylint: disable=no-name-in-module
@@ -25,7 +23,9 @@ from cassandra.cluster import Session  # pylint: disable=no-name-in-module
 from cassandra.query import BoundStatement  # pylint: disable=no-name-in-module
 from cassandra.query import PreparedStatement  # pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
-from opentelemetry.semconv.trace import SpanAttributes, DbSystemValues
+from opentelemetry import trace
+from opentelemetry.semconv.trace import DbSystemValues
+from opentelemetry.semconv.trace import SpanAttributes
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -369,7 +369,9 @@ class CassandraSessionAdapter:
         **kwargs: Any,
     ) -> ResponseFuture:
 
-        with trace.get_tracer(__name__).start_as_current_span(name=f"{self.context_name}.execute", kind=trace.SpanKind.CLIENT) as otelspan:
+        with trace.get_tracer(__name__).start_as_current_span(
+            name=f"{self.context_name}.execute", kind=trace.SpanKind.CLIENT
+        ) as otelspan:
             prom_labels = CassandraPrometheusLabels(
                 cassandra_client_name=self.prometheus_client_name
                 if self.prometheus_client_name is not None
@@ -404,7 +406,9 @@ class CassandraSessionAdapter:
                 span.set_tag("statement", query.query_string)
             elif isinstance(query, BoundStatement):
                 span.set_tag("statement", query.prepared_statement.query_string)
-            future = self.session.execute_async(query, parameters=parameters, timeout=timeout, **kwargs)
+            future = self.session.execute_async(
+                query, parameters=parameters, timeout=timeout, **kwargs
+            )
             callback_args = CassandraCallbackArgs(
                 span=span,
                 start_time=start_time,

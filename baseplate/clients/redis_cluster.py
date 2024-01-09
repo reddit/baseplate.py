@@ -10,11 +10,12 @@ from typing import Optional
 
 import rediscluster
 
+from opentelemetry import trace
+from opentelemetry.semconv.trace import DbSystemValues
+from opentelemetry.semconv.trace import NetTransportValues
+from opentelemetry.semconv.trace import SpanAttributes
 from redis import RedisError
 from rediscluster.pipeline import ClusterPipeline
-
-from opentelemetry import trace
-from opentelemetry.semconv.trace import SpanAttributes, DbSystemValues, NetTransportValues
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -127,14 +128,12 @@ def _format_command_args(args):
         out_str = " ".join(out)
 
         if len(out_str) > cmd_max_len:
-            out_str = (
-                out_str[: cmd_max_len - len(value_too_long_mark)]
-                + value_too_long_mark
-            )
+            out_str = out_str[: cmd_max_len - len(value_too_long_mark)] + value_too_long_mark
     else:
         out_str = ""
 
     return out_str
+
 
 class HotKeyTracker:
     """
@@ -162,10 +161,10 @@ class HotKeyTracker:
     """
 
     def __init__(
-            self,
-            redis_client: rediscluster.RedisCluster,
-            track_reads_sample_rate: float,
-            track_writes_sample_rate: float,
+        self,
+        redis_client: rediscluster.RedisCluster,
+        track_reads_sample_rate: float,
+        track_writes_sample_rate: float,
     ):
         self.redis_client = redis_client
         self.track_reads_sample_rate = track_reads_sample_rate
@@ -184,12 +183,12 @@ class HotKeyTracker:
         self._increment_hot_key_counter(key_list, self.reads_sorted_set_name, ignore_errors)
 
     def increment_keys_written_counter(
-            self, key_list: List[str], ignore_errors: bool = True
+        self, key_list: List[str], ignore_errors: bool = True
     ) -> None:
         self._increment_hot_key_counter(key_list, self.writes_sorted_set_name, ignore_errors)
 
     def _increment_hot_key_counter(
-            self, key_list: List[str], set_name: str, ignore_errors: bool = True
+        self, key_list: List[str], set_name: str, ignore_errors: bool = True
     ) -> None:
         if len(key_list) == 0:
             return
@@ -255,7 +254,7 @@ class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlocking
 
 
 def cluster_pool_from_config(
-        app_config: config.RawConfig, prefix: str = "rediscluster.", **kwargs: Any
+    app_config: config.RawConfig, prefix: str = "rediscluster.", **kwargs: Any
 ) -> rediscluster.ClusterConnectionPool:
     """Make a ClusterConnectionPool from a configuration dictionary.
 
@@ -395,10 +394,10 @@ class ClusterRedisContextFactory(ContextFactory):
     """
 
     def __init__(
-            self,
-            connection_pool: rediscluster.ClusterConnectionPool,
-            name: str = "redis",
-            redis_client_name: str = "",
+        self,
+        connection_pool: rediscluster.ClusterConnectionPool,
+        name: str = "redis",
+        redis_client_name: str = "",
     ):
         self.connection_pool = connection_pool
         self.name = name
@@ -438,13 +437,13 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
     """
 
     def __init__(
-            self,
-            context_name: str,
-            server_span: Span,
-            connection_pool: rediscluster.ClusterConnectionPool,
-            track_key_reads_sample_rate: float = 0,
-            track_key_writes_sample_rate: float = 0,
-            redis_client_name: str = "",
+        self,
+        context_name: str,
+        server_span: Span,
+        connection_pool: rediscluster.ClusterConnectionPool,
+        track_key_reads_sample_rate: float = 0,
+        track_key_writes_sample_rate: float = 0,
+        redis_client_name: str = "",
     ):
         self.context_name = context_name
         self.server_span = server_span
@@ -465,8 +464,9 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
-        with (self.server_span.make_child(trace_name),
-              trace.get_tracer(__name__).start_as_current_span(trace_name, kind=trace.SpanKind.CLIENT) as otelspan):
+        with self.server_span.make_child(trace_name), tracer.start_as_current_span(
+            trace_name, kind=trace.SpanKind.CLIENT
+        ) as otelspan:
             start_time = perf_counter()
             success = "true"
             labels = {
@@ -481,14 +481,28 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
             if otelspan.is_recording():
                 otelspan.set_attribute(SpanAttributes.DB_STATEMENT, _format_command_args(args))
                 otelspan.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.REDIS)
-                otelspan.set_attribute(SpanAttributes.DB_REDIS_DATABASE_INDEX, self.connection_pool.connection_kwargs.get("db", 0))
+                otelspan.set_attribute(
+                    SpanAttributes.DB_REDIS_DATABASE_INDEX,
+                    self.connection_pool.connection_kwargs.get("db", 0),
+                )
                 otelspan.set_attribute("db.redis.args_length", len(args))
                 try:
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_NAME, self.connection_pool.connection_kwargs.get("host", "localhost"))
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_PORT, self.connection_pool.connection_kwargs.get("port", "6739"))
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_NAME,
+                        self.connection_pool.connection_kwargs.get("host", "localhost"),
+                    )
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_PORT,
+                        self.connection_pool.connection_kwargs.get("port", "6739"),
+                    )
                 except KeyError:
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_NAME, self.connection_pool.connection_kwargs.get("path", ""))
-                    otelspan.set_attribute(SpanAttributes.NET_TRANSPORT, NetTransportValues.OTHER.value)
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_NAME,
+                        self.connection_pool.connection_kwargs.get("path", ""),
+                    )
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_TRANSPORT, NetTransportValues.OTHER.value
+                    )
 
             try:
                 with ACTIVE_REQUESTS.labels(**labels).track_inprogress():
@@ -535,14 +549,14 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
 # pylint: disable=abstract-method
 class MonitoredClusterRedisPipeline(ClusterPipeline):
     def __init__(
-            self,
-            trace_name: str,
-            server_span: Span,
-            connection_pool: rediscluster.ClusterConnectionPool,
-            response_callbacks: Dict,
-            hot_key_tracker: Optional[HotKeyTracker],
-            redis_client_name: str = "",
-            **kwargs: Any,
+        self,
+        trace_name: str,
+        server_span: Span,
+        connection_pool: rediscluster.ClusterConnectionPool,
+        response_callbacks: Dict,
+        hot_key_tracker: Optional[HotKeyTracker],
+        redis_client_name: str = "",
+        **kwargs: Any,
     ):
         self.trace_name = trace_name
         self.server_span = server_span
@@ -553,22 +567,16 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
     def _build_span_meta_data_for_pipeline(self):
         try:
             command_stack = (
-                self.command_stack
-                if hasattr(self, "command_stack")
-                else self._command_stack
+                self.command_stack if hasattr(self, "command_stack") else self._command_stack
             )
 
             cmds = [
-                _format_command_args(c.args if hasattr(c, "args") else c[0])
-                for c in command_stack
+                _format_command_args(c.args if hasattr(c, "args") else c[0]) for c in command_stack
             ]
             resource = "\n".join(cmds)
 
             span_name = " ".join(
-                [
-                    (c.args[0] if hasattr(c, "args") else c[0][0])
-                    for c in command_stack
-                ]
+                [(c.args[0] if hasattr(c, "args") else c[0][0]) for c in command_stack]
             )
         except (AttributeError, IndexError):
             command_stack = []
@@ -576,6 +584,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
             span_name = ""
 
         return command_stack, resource, span_name
+
     def execute_command(self, *args: Any, **kwargs: Any) -> Any:
         res = super().execute_command(*args, **kwargs)
 
@@ -587,19 +596,34 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         (command_stack, resource, span_name) = self._build_span_meta_data_for_pipeline()
-        with (self.server_span.make_child(self.trace_name),
-              trace.get_tracer(__name__).start_as_current_span(self.trace_name, kind=trace.SpanKind.CLIENT) as otelspan):
+        with self.server_span.make_child(self.trace_name), tracer.start_as_current_span(
+            self.trace_name, kind=trace.SpanKind.CLIENT
+        ) as otelspan:
             if otelspan.is_recording():
                 otelspan.set_attribute(SpanAttributes.DB_STATEMENT, resource)
                 otelspan.set_attribute(SpanAttributes.DB_SYSTEM, DbSystemValues.REDIS)
-                otelspan.set_attribute(SpanAttributes.DB_REDIS_DATABASE_INDEX, self.connection_pool.connection_kwargs.get("db", 0))
+                otelspan.set_attribute(
+                    SpanAttributes.DB_REDIS_DATABASE_INDEX,
+                    self.connection_pool.connection_kwargs.get("db", 0),
+                )
                 otelspan.set_attribute("db.redis.pipeline_length", len(command_stack))
                 try:
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_NAME, self.connection_pool.connection_kwargs.get("host", "localhost"))
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_PORT, self.connection_pool.connection_kwargs.get("port", "6739"))
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_NAME,
+                        self.connection_pool.connection_kwargs.get("host", "localhost"),
+                    )
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_PORT,
+                        self.connection_pool.connection_kwargs.get("port", "6739"),
+                    )
                 except KeyError:
-                    otelspan.set_attribute(SpanAttributes.NET_PEER_NAME, self.connection_pool.connection_kwargs.get("path", ""))
-                    otelspan.set_attribute(SpanAttributes.NET_TRANSPORT, NetTransportValues.OTHER.value)
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_PEER_NAME,
+                        self.connection_pool.connection_kwargs.get("path", ""),
+                    )
+                    otelspan.set_attribute(
+                        SpanAttributes.NET_TRANSPORT, NetTransportValues.OTHER.value
+                    )
             success = "true"
             start_time = perf_counter()
             labels = {

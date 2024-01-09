@@ -16,10 +16,9 @@ from typing import Type
 
 import gevent.monkey
 
+from opentelemetry import trace
 from pkg_resources import DistributionNotFound
 from pkg_resources import get_distribution
-
-from opentelemetry import trace
 
 from baseplate.lib import config
 from baseplate.lib import get_calling_module_name
@@ -223,7 +222,9 @@ class RequestContext:
         if isinstance(config_item, dict):
             obj = RequestContext(context_config=config_item, prefix=full_name, span=self.span)
         elif hasattr(config_item, "make_traced_object_for_context"):
-            obj = config_item.make_traced_object_for_context(full_name, trace.get_current_span(), legacy_span=self.span)
+            obj = config_item.make_traced_object_for_context(
+                full_name, trace.get_current_span(), legacy_span=self.span
+            )
         elif hasattr(config_item, "make_object_for_context"):
             obj = config_item.make_object_for_context(full_name, self.span)
         else:
