@@ -273,7 +273,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         trace_name = f"{context_name}.execute"
         span = server_span.make_child(trace_name)
-        span.set_tag("statement", statement[:1021] + "..." if len(statement) > 1024 else statement)
+        # remove comment from statement for tag
+        tag_statement = statement.split("/*")[0].rstrip()
+        span.set_tag("statement", tag_statement[:1021] + "..." if len(tag_statement) > 1024 else tag_statement)
         span.start()
 
         conn.info["span"] = span
@@ -353,6 +355,12 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
         session = Session(bind=engine)
         span.register(SQLAlchemySessionSpanObserver(session))
         return session
+
+    def make_traced_object_for_context(
+        self, name: str, span: trace.Span, legacy_span=None
+    ) -> Session:
+        trace.set_span_in_context(span)
+        return self.make_object_for_context(name, legacy_span)
 
 
 class SQLAlchemySessionSpanObserver(SpanObserver):
