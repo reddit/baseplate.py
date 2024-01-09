@@ -27,8 +27,6 @@ from baseplate.lib import metrics
 
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 
-tracer = trace.get_tracer(__name__)
-
 PROM_PREFIX = "redis_client"
 PROM_LABELS_PREFIX = "redis"
 
@@ -257,6 +255,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         self.context_name = context_name
         self.server_span = server_span
         self.redis_client_name = redis_client_name
+        self.tracer = trace.get_tracer(__name__)
 
         super().__init__(connection_pool=connection_pool)
 
@@ -272,7 +271,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         }
         with self.server_span.make_child(trace_name), ACTIVE_REQUESTS.labels(
             **labels
-        ).track_inprogress(), tracer.start_as_current_span(
+        ).track_inprogress(), self.tracer.start_as_current_span(
             trace_name, kind=trace.SpanKind.CLIENT
         ) as otelspan:
             start_time = perf_counter()
@@ -360,6 +359,7 @@ class MonitoredRedisPipeline(Pipeline):
         self.trace_name = trace_name
         self.server_span = server_span
         self.redis_client_name = redis_client_name
+        self.tracer = trace.get_tracer(__name__)
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
     def _build_span_meta_data_for_pipeline(self):
@@ -386,7 +386,7 @@ class MonitoredRedisPipeline(Pipeline):
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         (command_stack, resource, span_name) = self._build_span_meta_data_for_pipeline()
-        with self.server_span.make_child(self.trace_name), tracer.start_as_current_span(
+        with self.server_span.make_child(self.trace_name), self.tracer.start_as_current_span(
             self.trace_name, kind=trace.SpanKind.CLIENT
         ) as otelspan:
             if otelspan.is_recording():

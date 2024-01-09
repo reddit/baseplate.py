@@ -24,8 +24,6 @@ from baseplate.server import runtime_monitor
 
 
 logger = logging.getLogger(__name__)
-tracer = trace.get_tracer(__name__)
-
 
 Address = Union[Tuple[str, int], str]
 

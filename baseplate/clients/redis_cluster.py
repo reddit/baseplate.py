@@ -31,8 +31,6 @@ from baseplate.lib import metrics
 logger = logging.getLogger(__name__)
 randomizer = random.SystemRandom()
 
-tracer = trace.get_tracer(__name__)
-
 # Read commands that take a single key as their first parameter
 SINGLE_KEY_READ_COMMANDS = frozenset(
     [
@@ -459,6 +457,7 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
             self, self.track_key_reads_sample_rate, self.track_key_writes_sample_rate
         )
         self.redis_client_name = redis_client_name
+        self.tracer = trace.get_tracer(__name__)
 
         super().__init__(
             connection_pool=connection_pool,
@@ -470,7 +469,7 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
-        with self.server_span.make_child(trace_name), tracer.start_as_current_span(
+        with self.server_span.make_child(trace_name), self.tracer.start_as_current_span(
             trace_name, kind=trace.SpanKind.CLIENT
         ) as otelspan:
             start_time = perf_counter()
@@ -568,6 +567,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
         self.server_span = server_span
         self.hot_key_tracker = hot_key_tracker
         self.redis_client_name = redis_client_name
+        self.tracer = trace.get_tracer(__name__)
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
     def _build_span_meta_data_for_pipeline(self):
@@ -602,7 +602,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         (command_stack, resource, span_name) = self._build_span_meta_data_for_pipeline()
-        with self.server_span.make_child(self.trace_name), tracer.start_as_current_span(
+        with self.server_span.make_child(self.trace_name), self.tracer.start_as_current_span(
             self.trace_name, kind=trace.SpanKind.CLIENT
         ) as otelspan:
             if otelspan.is_recording():
