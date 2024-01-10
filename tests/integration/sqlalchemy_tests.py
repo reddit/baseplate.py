@@ -72,7 +72,7 @@ class SQLAlchemyEngineTests(TestBase):
         self.assertTrue(span_observer.on_start_called)
         self.assertTrue(span_observer.on_finish_called)
         self.assertIsNone(span_observer.on_finish_exc_info)
-        span_observer.assert_tag("statement", "SELECT * FROM test")
+        span_observer.assert_tag("statement", "SELECT * FROM test;")
 
     def test_very_long_query(self):
         with self.server_span, self.tracer.start_as_current_span("test_very_long_query"):
@@ -153,7 +153,7 @@ class SQLAlchemySessionTests(TestBase):
         self.server_span = baseplate.make_server_span(self.context, "test")
 
     def test_simple_session(self):
-        with self.server_span:
+        with self.server_span, trace.get_tracer("test").start_as_current_span("test"):
             new_object = TestObject(name="cool")
             self.context.db.add(new_object)
             self.context.db.commit()

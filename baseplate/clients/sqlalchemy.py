@@ -8,11 +8,17 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from wrapt import wrap_function_wrapper as _w
+
 from opentelemetry import trace
-from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
+from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
+from opentelemetry.instrumentation.utils import _get_opentelemetry_values
+from opentelemetry.semconv.trace import SpanAttributes, NetTransportValues
+from opentelemetry.trace.status import Status, StatusCode
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
+import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
@@ -132,6 +138,7 @@ class SQLAlchemySession(config.Parser):
         engine = engine_from_config(
             raw_config, secrets=self.secrets, prefix=f"{key_path}.", **self.kwargs
         )
+
         return SQLAlchemySessionContextFactory(engine, key_path)
 
 
@@ -139,6 +146,77 @@ Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
 
 
 SAFE_TRACE_ID = re.compile("^[A-Za-z0-9_-]+$")
+
+def _normalize_vendor(vendor):
+    """Return a canonical name for a type of database"""
+
+    if not vendor:
+        return "db"
+    if "sqlite" in vendor:
+        return "sqlite"
+    if "postgres" in vendor or vendor == "psycopg2":
+        return "postgresql"
+
+    return vendor
+
+
+def _get_attributes_from_url(url):
+    """Set connection tags from the url. return true if successful."""
+    attrs = {}
+    if url.host:
+        attrs[SpanAttributes.NET_PEER_NAME] = url.host
+    if url.port:
+        attrs[SpanAttributes.NET_PEER_PORT] = url.port
+    if url.database:
+        attrs[SpanAttributes.DB_NAME] = url.database
+    if url.username:
+        attrs[SpanAttributes.DB_USER] = url.username
+    return attrs, bool(url.host)
+
+def _get_attributes_from_cursor(vendor, cursor, attrs):
+    """Attempt to set db connection attributes by introspecting the cursor."""
+    if vendor == "postgresql":
+        info = getattr(getattr(cursor, "connection", None), "info", None)
+        if not info:
+            return attrs
+
+        attrs[SpanAttributes.DB_NAME] = info.dbname
+        is_unix_socket = info.host and info.host.startswith("/")
+
+        if is_unix_socket:
+            attrs[
+                SpanAttributes.NET_TRANSPORT
+            ] = NetTransportValues.OTHER.value
+            if info.port:
+                # postgresql enforces this pattern on all socket names
+                attrs[SpanAttributes.NET_PEER_NAME] = os.path.join(
+                    info.host, f".s.PGSQL.{info.port}"
+                )
+        else:
+            attrs[
+                SpanAttributes.NET_TRANSPORT
+            ] = NetTransportValues.IP_TCP.value
+            attrs[SpanAttributes.NET_PEER_NAME] = info.host
+            if info.port:
+                attrs[SpanAttributes.NET_PEER_PORT] = int(info.port)
+    return attrs
+
+
+def _wrap_connect(tracer):
+    # pylint: disable=unused-argument
+    def _wrap_connect_internal(func, module, args, kwargs):
+        with tracer.start_as_current_span(
+            "connect", kind=trace.SpanKind.CLIENT
+        ) as span:
+            if span.is_recording():
+                attrs, _ = _get_attributes_from_url(module.url)
+                span.set_attributes(attrs)
+                span.set_attribute(
+                    SpanAttributes.DB_SYSTEM, _normalize_vendor(module.name)
+                )
+            return func(*args, **kwargs)
+
+    return _wrap_connect_internal
 
 
 class SQLAlchemyEngineContextFactory(ContextFactory):
@@ -214,16 +292,27 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     def __init__(self, engine: Engine, name: str = "sqlalchemy"):
         self.engine = engine.execution_options()
-        SQLAlchemyInstrumentor().instrument(
-            engine=self.engine,
-            enable_commenter=True,
-            commenter_options={},
-        )
         self.name = name
         event.listen(self.engine, "before_cursor_execute", self.on_before_execute, retval=True)
         event.listen(self.engine, "after_cursor_execute", self.on_after_execute)
         event.listen(self.engine, "handle_error", self.on_error)
         self.time_started = 0.0
+        self.tracer = trace.get_tracer(__name__)
+        self._leading_comment_remover = re.compile(r"^/\*.*?\*/")
+
+        _w("sqlalchemy.engine.base", "Engine.connect", _wrap_connect(self.tracer))
+
+    def _operation_name(self, db_name, statement):
+        parts = []
+        if isinstance(statement, str):
+            parts.append(
+                self._leading_comment_remover.sub("", statement).split()[0]
+            )
+        if db_name:
+            parts.append(db_name)
+        if not parts:
+            return _normalize_vendor(self.engine.name)
+        return " ".join(parts)
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
         pool = self.engine.pool
@@ -241,6 +330,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     def make_object_for_context(self, name: str, span: Span) -> Engine:
         engine = self.engine.execution_options(context_name=name, server_span=span)
+
         return engine
 
     def make_traced_object_for_context(
@@ -271,15 +361,37 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         context_name = conn._execution_options["context_name"]
         server_span = conn._execution_options["server_span"]
 
+        attrs, found = _get_attributes_from_url(conn.engine.url)
+        if not found:
+            attrs = _get_attributes_from_cursor(_normalize_vendor(self.engine.name), cursor, attrs)
+
+        db_name = attrs.get(SpanAttributes.DB_NAME, "")
         trace_name = f"{context_name}.execute"
         span = server_span.make_child(trace_name)
-        # remove comment from statement for tag
-        tag_statement = statement.split("/*")[0].rstrip()
+        otelspan = self.tracer.start_span(
+                self._operation_name(db_name, statement),
+                kind=trace.SpanKind.CLIENT,
+        )
         span.set_tag(
             "statement",
-            tag_statement[:1021] + "..." if len(tag_statement) > 1024 else tag_statement,
+            statement[:1021] + "..." if len(statement) > 1024 else statement,
         )
         span.start()
+        with trace.use_span(otelspan, end_on_exit=False):
+            if otelspan.is_recording():
+                otelspan.set_attribute(SpanAttributes.DB_STATEMENT, statement)
+                otelspan.set_attribute(SpanAttributes.DB_SYSTEM, _normalize_vendor(self.name))
+                for k, v in attrs.items():
+                    otelspan.set_attribute(k, v)
+            commenter_data = {
+                    "db_driver": conn.engine.driver,
+                    "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
+            }
+            commenter_data.update(**_get_opentelemetry_values())
+
+            statement = _add_sql_comment(statement, **commenter_data)
+
+        context._otel_span = otelspan
 
         conn.info["span"] = span
 
@@ -311,6 +423,12 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
             perf_counter() - self.time_started
         )
 
+        otelspan = getattr(context, "_otel_span", None)
+        if otelspan is None:
+            return
+
+        otelspan.end()
+
     def on_error(self, context: ExceptionContext) -> None:
         """Handle the event which happens on exceptions during execution."""
         if "span" in context.connection.info and context.connection.info["span"] is not None:
@@ -329,6 +447,19 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         self.latency_seconds.labels(**labels, sql_success="false").observe(
             perf_counter() - self.time_started
         )
+
+        otelspan = getattr(context.execution_context, "_otel_span", None)
+        if otelspan is None:
+            return
+        
+        if otelspan.is_recording():
+            otelspan.set_status(
+                    Status(
+                        StatusCode.ERROR,
+                        str(context.original_exception),
+                    )
+            )
+        otelspan.end()
 
 
 class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
