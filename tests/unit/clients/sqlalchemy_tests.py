@@ -13,6 +13,7 @@ from baseplate.testing.lib.secrets import FakeSecretsStore
 
 from prometheus_client import REGISTRY
 from sqlalchemy.pool import QueuePool
+from sqlalchemy.engine import ExecutionContext
 
 
 class EngineFromConfigTests(unittest.TestCase):
@@ -148,9 +149,9 @@ class EngineContextFactoryTest(unittest.TestCase):
         self.factory.on_before_execute(
             conn=conn,
             cursor=None,
-            statement="",
+            statement="select * from foo",
             parameters=None,
-            context=None,
+            context=ExecutionContext(),
             executemany=False,
         )
 

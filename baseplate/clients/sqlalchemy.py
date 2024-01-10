@@ -8,17 +8,18 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
-from wrapt import wrap_function_wrapper as _w
+import sqlalchemy
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.sqlcommenter_utils import _add_sql_comment
 from opentelemetry.instrumentation.utils import _get_opentelemetry_values
-from opentelemetry.semconv.trace import SpanAttributes, NetTransportValues
-from opentelemetry.trace.status import Status, StatusCode
+from opentelemetry.semconv.trace import NetTransportValues
+from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.trace.status import Status
+from opentelemetry.trace.status import StatusCode
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
-import sqlalchemy
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.engine import Connection
@@ -28,6 +29,7 @@ from sqlalchemy.engine.interfaces import ExecutionContext
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
+from wrapt import wrap_function_wrapper as _w
 
 from baseplate import _ExcInfo
 from baseplate import Span
@@ -147,6 +149,7 @@ Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
 
 SAFE_TRACE_ID = re.compile("^[A-Za-z0-9_-]+$")
 
+
 def _normalize_vendor(vendor):
     """Return a canonical name for a type of database"""
 
@@ -173,6 +176,7 @@ def _get_attributes_from_url(url):
         attrs[SpanAttributes.DB_USER] = url.username
     return attrs, bool(url.host)
 
+
 def _get_attributes_from_cursor(vendor, cursor, attrs):
     """Attempt to set db connection attributes by introspecting the cursor."""
     if vendor == "postgresql":
@@ -184,18 +188,14 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
         is_unix_socket = info.host and info.host.startswith("/")
 
         if is_unix_socket:
-            attrs[
-                SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.OTHER.value
+            attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.OTHER.value
             if info.port:
                 # postgresql enforces this pattern on all socket names
                 attrs[SpanAttributes.NET_PEER_NAME] = os.path.join(
                     info.host, f".s.PGSQL.{info.port}"
                 )
         else:
-            attrs[
-                SpanAttributes.NET_TRANSPORT
-            ] = NetTransportValues.IP_TCP.value
+            attrs[SpanAttributes.NET_TRANSPORT] = NetTransportValues.IP_TCP.value
             attrs[SpanAttributes.NET_PEER_NAME] = info.host
             if info.port:
                 attrs[SpanAttributes.NET_PEER_PORT] = int(info.port)
@@ -205,15 +205,11 @@ def _get_attributes_from_cursor(vendor, cursor, attrs):
 def _wrap_connect(tracer):
     # pylint: disable=unused-argument
     def _wrap_connect_internal(func, module, args, kwargs):
-        with tracer.start_as_current_span(
-            "connect", kind=trace.SpanKind.CLIENT
-        ) as span:
+        with tracer.start_as_current_span("connect", kind=trace.SpanKind.CLIENT) as span:
             if span.is_recording():
                 attrs, _ = _get_attributes_from_url(module.url)
                 span.set_attributes(attrs)
-                span.set_attribute(
-                    SpanAttributes.DB_SYSTEM, _normalize_vendor(module.name)
-                )
+                span.set_attribute(SpanAttributes.DB_SYSTEM, _normalize_vendor(module.name))
             return func(*args, **kwargs)
 
     return _wrap_connect_internal
@@ -305,9 +301,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
     def _operation_name(self, db_name, statement):
         parts = []
         if isinstance(statement, str):
-            parts.append(
-                self._leading_comment_remover.sub("", statement).split()[0]
-            )
+            parts.append(self._leading_comment_remover.sub("", statement).split()[0])
         if db_name:
             parts.append(db_name)
         if not parts:
@@ -369,8 +363,8 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         trace_name = f"{context_name}.execute"
         span = server_span.make_child(trace_name)
         otelspan = self.tracer.start_span(
-                self._operation_name(db_name, statement),
-                kind=trace.SpanKind.CLIENT,
+            self._operation_name(db_name, statement),
+            kind=trace.SpanKind.CLIENT,
         )
         span.set_tag(
             "statement",
@@ -384,8 +378,8 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
                 for k, v in attrs.items():
                     otelspan.set_attribute(k, v)
             commenter_data = {
-                    "db_driver": conn.engine.driver,
-                    "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
+                "db_driver": conn.engine.driver,
+                "db_framework": f"sqlalchemy:{sqlalchemy.__version__}",
             }
             commenter_data.update(**_get_opentelemetry_values())
 
@@ -451,13 +445,13 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         otelspan = getattr(context.execution_context, "_otel_span", None)
         if otelspan is None:
             return
-        
+
         if otelspan.is_recording():
             otelspan.set_status(
-                    Status(
-                        StatusCode.ERROR,
-                        str(context.original_exception),
-                    )
+                Status(
+                    StatusCode.ERROR,
+                    str(context.original_exception),
+                )
             )
         otelspan.end()
 
