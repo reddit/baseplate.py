@@ -56,7 +56,7 @@ pycodestyle==2.9.1
 pycparser==2.20
 pyenchant==3.2.0
 pyflakes==2.5.0
-Pygments==2.7.4
+Pygments==2.15.0
 pymemcache==1.4.3
 pyOpenSSL==23.0.0
 pyparsing==2.4.7
