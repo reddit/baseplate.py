@@ -26,6 +26,7 @@ cryptography==39.0.1
 dill==0.3.7
 distlib==0.3.8
 docutils==0.16
+exceptiongroup==1.2.0
 filelock==3.13.1
 geomet==0.2.1.post1
 gevent==23.9.1

@@ -14,7 +14,7 @@ pre-commit==3.5.0
 prometheus-client==0.19.0
 pydocstyle==5.1.1
 pylint==2.15.3
-pytest==6.2.2
+pytest==7.4.4
 pytest-cov==2.11.1
 pytz==2021.1
 reorder-python-imports==2.4.0
