@@ -62,10 +62,10 @@ pluggy==0.13.1
 posix-ipc==1.0.5
 py==1.10.0
 pyasn1==0.4.8
-pycodestyle==2.9.1
+pycodestyle==2.11.1
 pycparser==2.20
 pyenchant==3.2.0
-pyflakes==2.5.0
+pyflakes==3.2.0
 Pygments==2.7.4
 pymemcache==1.4.3
 pyOpenSSL==23.0.0
