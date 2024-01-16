@@ -155,9 +155,6 @@ generated-members=REQUEST,acl_users,aq_parent
 
 [BASIC]
 
-# List of builtins function names that should not be used, separated by a comma
-bad-builtin=map,filter,apply,input
-
 # Regular expression which should only match correct module names
 module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
 
@@ -273,4 +270,4 @@ max-public-methods=20
 
 # Exceptions that will emit a warning when being caught. Defaults to
 # "Exception"
-overgeneral-exceptions=Exception
+overgeneral-exceptions=builtins.Exception
