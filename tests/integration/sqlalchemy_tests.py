@@ -1,7 +1,7 @@
 import unittest
 
 try:
-    from sqlalchemy import Column, Integer, String
+    from sqlalchemy import Column, Integer, String, text
     from sqlalchemy.dialects.sqlite import BOOLEAN
     from sqlalchemy.exc import OperationalError, StatementError
     from sqlalchemy.ext.declarative import declarative_base
@@ -47,7 +47,7 @@ class SQLAlchemyEngineTests(unittest.TestCase):
 
     def test_simple_query(self):
         with self.server_span:
-            self.server_span.context.db.execute("SELECT * FROM test;")
+            self.server_span.context.db.connect().execute(text("SELECT * FROM test;"))
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
@@ -58,7 +58,9 @@ class SQLAlchemyEngineTests(unittest.TestCase):
 
     def test_very_long_query(self):
         with self.server_span:
-            self.server_span.context.db.execute("SELECT *" + (" " * 1024) + "FROM test;")
+            self.server_span.context.db.connect().execute(
+                text("SELECT *" + (" " * 1024) + "FROM test;")
+            )
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
@@ -73,7 +75,7 @@ class SQLAlchemyEngineTests(unittest.TestCase):
             with self.server_span.make_child(
                 "local", local=True, component_name="example"
             ) as local:
-                local.context.db.execute("SELECT * FROM test;")
+                local.context.db.connect().execute(text("SELECT * FROM test;"))
 
         server_span_observer = self.baseplate_observer.get_only_child()
         local_span_observer = server_span_observer.get_only_child()
@@ -86,7 +88,7 @@ class SQLAlchemyEngineTests(unittest.TestCase):
     def test_error_in_query(self):
         with self.server_span:
             with self.assertRaises(OperationalError):
-                self.context.db.execute("SELECT * FROM does_not_exist;")
+                self.context.db.connect().execute(text("SELECT * FROM does_not_exist;"))
 
         server_span_observer = self.baseplate_observer.get_only_child()
         span_observer = server_span_observer.get_only_child()
@@ -139,4 +141,4 @@ class SQLAlchemySessionConfigTests(unittest.TestCase):
 
         context = baseplate.make_context_object()
         with baseplate.make_server_span(context, "test"):
-            context.db.execute("SELECT 1;")
+            context.db.execute(text("SELECT 1;"))

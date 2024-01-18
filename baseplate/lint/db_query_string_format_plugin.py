@@ -14,7 +14,7 @@ class NoDbQueryStringFormatChecker(BaseChecker):
         )
     }
 
-    def __init__(self, linter: PyLinter = None):
+    def __init__(self, linter: PyLinter):
         super().__init__(linter)
         self.string_sub_queries: set = set()
         self.query_verbs = {"select", "update", "delete", "insertinto", "truncate"}

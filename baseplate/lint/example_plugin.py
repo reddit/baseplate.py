@@ -33,7 +33,7 @@ class NoReassignmentChecker(BaseChecker):
         )
     }
 
-    def __init__(self, linter: PyLinter = None):
+    def __init__(self, linter: PyLinter):
         super().__init__(linter)
         self.variables: set = set()
 

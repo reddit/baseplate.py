@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import re
+import typing
 
 from time import perf_counter
 from typing import Any
@@ -102,8 +105,8 @@ def engine_from_config(
         if hasattr(url, "set"):
             url = url.set(username=credentials.username, password=credentials.password)
         else:
-            url.username = credentials.username
-            url.password = credentials.password
+            url.username = credentials.username  # type: ignore
+            url.password = credentials.password  # type: ignore
 
     return create_engine(url, **kwargs)
 
@@ -232,7 +235,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         batch.gauge("pool.in_use").replace(pool.checkedout())
         batch.gauge("pool.overflow").replace(max(pool.overflow(), 0))
 
-    def make_object_for_context(self, name: str, span: Span) -> Engine:
+    def make_object_for_context(self, name: str, span: Span) -> Engine | Session:
         engine = self.engine.execution_options(context_name=name, server_span=span)
         return engine
 
@@ -302,6 +305,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
     def on_error(self, context: ExceptionContext) -> None:
         """Handle the event which happens on exceptions during execution."""
+        assert context.connection is not None, context.connection
         if "span" in context.connection.info and context.connection.info["span"] is not None:
             exc_info = (type(context.original_exception), context.original_exception, None)
             context.connection.info["span"].finish(exc_info=exc_info)
@@ -343,7 +347,7 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
     """
 
     def make_object_for_context(self, name: str, span: Span) -> Session:
-        engine = super().make_object_for_context(name, span)
+        engine = typing.cast(Engine, super().make_object_for_context(name, span))
         session = Session(bind=engine)
         span.register(SQLAlchemySessionSpanObserver(session))
         return session
