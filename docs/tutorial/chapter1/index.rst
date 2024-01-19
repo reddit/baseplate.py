@@ -8,10 +8,10 @@ Prerequisites
 -------------
 
 This tutorial expects you to be familiar with Python and the basics of web
-application development.  We will use `Python 3.10`_ and `virtual
+application development.  We will use `Python 3.9`_ and `virtual
 environments`_. To get set up, see `this guide on installing Python`_.
 
-.. _`Python 3.10`: https://www.python.org/
+.. _`Python 3.9`: https://www.python.org/
 .. _`virtual environments`: https://virtualenv.pypa.io/en/stable/
 .. _`this guide on installing python`: https://realpython.com/installing-python/
 
@@ -25,10 +25,10 @@ dependencies for this project.
 
    $ mkdir tutorial
    $ cd tutorial
-   $ virtualenv --python=python3.10 venv
-   Running virtualenv with interpreter /usr/bin/python3.10
+   $ virtualenv --python=python3.9 venv
+   Running virtualenv with interpreter /usr/bin/python3.9
    Using base prefix '/usr'
-   New python executable in /home/user/tutorial/venv/bin/python3.10
+   New python executable in /home/user/tutorial/venv/bin/python3.9
    Also creating executable in /home/user/tutorial/venv/bin/python
    Installing setuptools, pkg_resources, pip, wheel...done.
    $ source venv/bin/activate

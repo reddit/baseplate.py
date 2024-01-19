@@ -24,7 +24,7 @@ extensions = [
 ]
 
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3.10", None),
+    "python": ("https://docs.python.org/3.9", None),
     "pyramid": (
         "https://docs.pylonsproject.org/projects/pyramid/en/1.9-branch",
         None,
