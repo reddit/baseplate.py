@@ -37,7 +37,7 @@ setup(
     },
     use_scm_version=True,
     packages=find_packages(exclude=["tests", "tests.*"]),
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     setup_requires=["setuptools_scm"],
     install_requires=[
         "boto3>=1.18",
@@ -70,7 +70,6 @@ setup(
         "License :: OSI Approved :: BSD License",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Topic :: Software Development :: Libraries",
