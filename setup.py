@@ -18,7 +18,7 @@ extras_require = {
     "requests": ["advocate>=1.0.0,<2.0"],
     "s3fetcher": [],  # Kept for backwards compatibility, these are now main requirements
     "sentry": ["sentry-sdk>=1.35.0,<2.0"],
-    "sql": ["sqlalchemy>=2.0.16"],
+    "sql": ["sqlalchemy>=1.4.49,<2"],
     "zookeeper": ["kazoo>=2.5.0,<3.0"],
 }
 extras_require["all"] = list(itertools.chain.from_iterable(extras_require.values()))

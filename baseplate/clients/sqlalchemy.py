@@ -105,8 +105,8 @@ def engine_from_config(
         if hasattr(url, "set"):
             url = url.set(username=credentials.username, password=credentials.password)
         else:
-            url.username = credentials.username  # type: ignore
-            url.password = credentials.password  # type: ignore
+            url.username = credentials.username
+            url.password = credentials.password
 
     return create_engine(url, **kwargs)
 
