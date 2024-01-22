@@ -11,6 +11,7 @@ from pyramid.response import Response
 
 from baseplate import Baseplate
 from baseplate.lib.propagator_redditb3 import RedditB3Format
+from baseplate.server import otel_tracing_autoinstrumentation
 
 from . import FakeEdgeContextFactory
 
@@ -18,6 +19,7 @@ from . import FakeEdgeContextFactory
 propagate.set_global_textmap(
     CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()])
 )
+otel_tracing_autoinstrumentation()
 
 
 try:
