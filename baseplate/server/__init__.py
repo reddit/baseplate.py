@@ -44,6 +44,8 @@ from opentelemetry import propagate
 from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.resources import SERVICE_NAME
@@ -288,11 +290,17 @@ def configure_tracing(config: Configuration) -> None:
                 )
             )
             trace.set_tracer_provider(provider)
+            otel_tracing_autoinstrumentation()
             logger.info("Tracing Configured")
         else:
             logger.warning(
                 "Tracing disabled: service_name and endpoint are required fields in the tracing config."
             )
+
+
+def otel_tracing_autoinstrumentation() -> None:
+    PyramidInstrumentor().instrument()
+    RequestsInstrumentor().instrument()
 
 
 def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
