@@ -70,7 +70,7 @@ Pygments==2.7.4
 pymemcache==1.4.3
 pyOpenSSL==23.0.0
 pyparsing==2.4.7
-pyramid==2.0.2
+pyramid==1.10.8
 python-dateutil==2.8.2
 python-json-logger==2.0.7
 PyYAML==6.0.1
