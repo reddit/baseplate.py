@@ -271,16 +271,16 @@ class CassandraTests(unittest.TestCase):
         prom_labels = prom_labels_tuple._asdict()
         prom_labels_w_success = {**prom_labels, **{"cassandra_success": "true"}}
 
-        self.assertEquals(
+        self.assertEqual(
             REGISTRY.get_sample_value("cassandra_client_requests_total", prom_labels_w_success), 1
         )
 
         # we start from 0 here since this is a unit test, so -1 is the expected result
-        self.assertEquals(
+        self.assertEqual(
             REGISTRY.get_sample_value("cassandra_client_active_requests", prom_labels), -1
         )
 
-        self.assertEquals(
+        self.assertEqual(
             REGISTRY.get_sample_value(
                 "cassandra_client_latency_seconds_bucket",
                 {**prom_labels_w_success, **{"le": "+Inf"}},
@@ -313,16 +313,16 @@ class CassandraTests(unittest.TestCase):
         prom_labels = prom_labels_tuple._asdict()
         prom_labels_w_success = {**prom_labels, **{"cassandra_success": "false"}}
 
-        self.assertEquals(
+        self.assertEqual(
             REGISTRY.get_sample_value("cassandra_client_requests_total", prom_labels_w_success), 1
         )
 
         # we start from 0 here since this is a unit test, so -1 is the expected result
-        self.assertEquals(
+        self.assertEqual(
             REGISTRY.get_sample_value("cassandra_client_active_requests", prom_labels), -1
         )
 
-        self.assertEquals(
+        self.assertEqual(
             REGISTRY.get_sample_value(
                 "cassandra_client_latency_seconds_bucket",
                 {**prom_labels_w_success, **{"le": "+Inf"}},

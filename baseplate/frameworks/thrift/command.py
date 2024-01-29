@@ -25,7 +25,7 @@ class BuildThriftCommand(Command):
         temp_dir = os.path.join(self.build_base, "thrift")  # type: ignore
         self.mkpath(temp_dir)
 
-        for package in self.distribution.packages:  # type: ignore
+        for package in self.distribution.packages:
             package_dir = os.path.join(*package.split("."))
 
             for thriftfile in glob.glob(os.path.join(package_dir, "*.thrift")):

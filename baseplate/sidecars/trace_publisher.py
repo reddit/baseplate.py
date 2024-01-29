@@ -97,11 +97,11 @@ class ZipkinPublisher:
                 response.raise_for_status()
             except requests.HTTPError as exc:
                 self.metrics.counter("error.http").increment()
-                response = getattr(exc, "response", None)
-                if response is not None:
-                    logger.exception("HTTP Request failed. Error: %s", response.text)
+                exc_response = getattr(exc, "response", None)
+                if exc_response is not None:
+                    logger.exception("HTTP Request failed. Error: %s", exc_response.text)
                     # If client error, skip retries
-                    if response.status_code < 500:
+                    if exc_response.status_code < 500:
                         self.metrics.counter("error.http.client").increment()
                         return
                 else:

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import gc
 import logging
 import os
@@ -217,7 +219,7 @@ def _report_runtime_metrics_periodically(
 
 
 def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
-    baseplate: Baseplate = getattr(application, "baseplate", None)
+    baseplate: Baseplate | None = getattr(application, "baseplate", None)
     # As of October 1, 2022 Reddit uses Prometheus to track metrics, not Statsd
     # this checks to see if Prometheus metrics are enabled and uses this to determine
     # if runtime metrics should be reported. Prometheus metrics default to "on".

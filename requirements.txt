@@ -5,14 +5,16 @@
 # supported.
 -r requirements-transitive.txt
 black==21.10b0
-boto3==1.21.20
-flake8==5.0.4
-lxml==4.9.1
-mypy==0.910
-prometheus-client==0.16.0
+boto3==1.34.19
+fakeredis==1.5.0
+flake8==7.0.0
+lxml==5.1.0
+mypy==1.8.0
+pre-commit==3.5.0
+prometheus-client==0.19.0
 pydocstyle==5.1.1
-pylint==2.15.3
-pytest==6.2.2
+pylint==3.0.3
+pytest==7.4.4
 pytest-cov==2.11.1
 pytz==2021.1
 reorder-python-imports==2.4.0
@@ -23,5 +25,3 @@ types-redis==3.5.3
 types-requests==2.25.6
 types-setuptools==57.0.2
 webtest==2.0.35
-wheel==0.38.1
-fakeredis==1.5.0
