@@ -331,6 +331,10 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
             # this means that when a new consumer group is created it will only
             # process new messages.
             "auto.offset.reset": "latest",
+            # Use the cooperative sticky assignor for consumer group rebalances.
+            # This *dramatically* reduces the time taken to rebalance the consumer group
+            # when the underlying topic metadata changes (leadership changes etc).
+            "partition.assignment.strategy": "cooperative-sticky",
         }
         consumer_config.update(cls._consumer_config())
         if kafka_config:
