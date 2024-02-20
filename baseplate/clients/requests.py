@@ -379,7 +379,7 @@ class InternalRequestsClient(config.Parser):
         self.kwargs = kwargs
 
         if "validator" in kwargs:
-            raise Exception("validator is hard-coded for internal clients")
+            raise ValueError("validator is hard-coded for internal clients")
 
     def parse(self, key_path: str, raw_config: config.RawConfig) -> RequestsContextFactory:
         # use advocate to ensure this client only ever gets used

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import datetime
 import logging
@@ -31,7 +33,8 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    from wsgiref.types import StartResponse  # pylint: disable=import-error,no-name-in-module
+    # TODO: Replace with wsgiref.types once on 3.11+
+    from _typeshed.wsgi import StartResponse
 
 WSGIEnvironment = Dict[str, Any]
 HealthcheckCallback = Callable[[WSGIEnvironment], bool]
@@ -41,7 +44,7 @@ class HealthcheckApp:
     def __init__(self, callback: Optional[HealthcheckCallback] = None) -> None:
         self.callback = callback
 
-    def __call__(self, environ: WSGIEnvironment, start_response: "StartResponse") -> List[bytes]:
+    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse) -> List[bytes]:
         ok = True
         if self.callback:
             ok = self.callback(environ)

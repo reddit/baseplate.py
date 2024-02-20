@@ -3,6 +3,6 @@
 # alabaster theme. so we limit it to keep things sane.
 line-length = 74
 
-# no need for legacy stuff here in the docs! always use the latest supported
-# version here.
-target-version = ['py37']
+# Always use our latest supported version here since we want code snippets in
+# docs to use the most up-to-date syntax.
+target-version = ['py312']

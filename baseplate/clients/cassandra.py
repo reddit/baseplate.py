@@ -277,9 +277,7 @@ def wrap_future(
         return result
 
     # call __get__ to turn wait_for_callbacks_result into a bound method
-    bound_method = wait_for_callbacks_result.__get__(  # type: ignore
-        response_future, ResponseFuture
-    )
+    bound_method = wait_for_callbacks_result.__get__(response_future, ResponseFuture)
     # patch the ResponseFuture instance
     response_future.result = bound_method
     return response_future
