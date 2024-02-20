@@ -235,7 +235,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
         trace_name = f"{self.context_name}.{command}"
 
         labels = {
-            f"{PROM_LABELS_PREFIX}_command": command,
+            f"{PROM_LABELS_PREFIX}_command": command.lower(),
             f"{PROM_LABELS_PREFIX}_client_name": self.redis_client_name,
             f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get("db", ""),
             f"{PROM_LABELS_PREFIX}_type": "standalone",
