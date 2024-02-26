@@ -497,6 +497,7 @@ class VaultCSISecretsStore(SecretsStore):
         raise NotImplementedError
 
     def make_object_for_context(self, name: str, span: Span) -> "DirectorySecretsStore":
+        raise NotImplementedError
 
 
 
