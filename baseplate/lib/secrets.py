@@ -401,7 +401,7 @@ class DirectorySecretsStore(SecretsStore):
         backoff: Optional[float] = None,
     ):  # pylint: disable=super-init-not-called
         self.parser = parser
-        self._filewatchers = {}
+        self._filewatchers: dict[str, FileWatcher] = {}
         root = Path(path)
         for p in root.glob("**"):
             file_path = str(p.relative_to(path))
@@ -462,6 +462,55 @@ class _CachingDirectorySecretsStore(DirectorySecretsStore):
             result = super()._get_file_data(filename)
             self._cached_data[filename] = result
         return result
+
+
+class VaultCSISecretsStore(SecretsStore):
+    """Access to secret tokens with automatic refresh when changed.
+
+    This local vault allows access to the secrets cached on disk given a path to
+    a directory. It will automatically reload the cache when it is changed. Do not
+    cache or store the values returned by this class's methods but rather get
+    them from this class each time you need them. The secrets are served from
+    memory so there's little performance impact to doing so and you will be
+    sure to always have the current version in the face of key rotation etc.
+    """
+
+    def __init__(
+            self,
+            path: str,
+            parser: SecretParser,
+            timeout: Optional[int] = None,
+            backoff: Optional[float] = None,
+    ):
+        raise NotImplementedError
+
+    def get_vault_url(self) -> str:
+        raise NotImplementedError
+
+    def get_vault_token(self) -> str:
+        raise NotImplementedError
+
+    def _get_file_data(self, filename: str) -> Tuple[Any, float]:
+        raise NotImplementedError
+
+    def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
+        raise NotImplementedError
+
+    def make_object_for_context(self, name: str, span: Span) -> "DirectorySecretsStore":
+
+
+
+# pylint: disable=abstract-method
+class _CachingVaultCSISecretsStore(DirectorySecretsStore):
+    """Lazily load and cache the parsed data until the server span ends."""
+
+    def __init__(
+            self, filewatchers: Dict[str, FileWatcher], parser: SecretParser
+    ):
+        raise NotImplementedError
+
+    def _get_file_data(self, filename: str) -> Tuple[Dict, float]:
+        raise NotImplementedError
 
 
 def secrets_store_from_config(
