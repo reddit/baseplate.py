@@ -112,12 +112,12 @@ class StoreTests(unittest.TestCase):
         shutil.rmtree(self.csi_dir)
 
     def test_can_load_secrets(self):
-        secrets_store = get_secrets_store(str(self.csi_dir.joinpath("..data")))
-        secrets_store.get_raw("example-service/example-secret")
+        secrets_store = get_secrets_store(str(self.csi_dir))
+        data = secrets_store.get_credentials("secret/example-service/example-secret")
+        assert data.username == "reddit"
+        assert data.password == "password"
 
     def test_symlink_updated(self):
-        secrets_store = secrets_store_from_config(
-            {"secrets": {"path": self.csi_dir, "provider": "vault_csi"}}, self.csi_dir
-        )
+        secrets_store = get_secrets_store(str(self.csi_dir))
         simulate_secret_update(self.csi_dir)
         raise NotImplementedError

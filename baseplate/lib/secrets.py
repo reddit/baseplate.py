@@ -1,5 +1,7 @@
 """Application integration with the secret fetcher daemon."""
 import base64
+import os
+
 import binascii
 import json
 import logging
@@ -464,6 +466,13 @@ class _CachingDirectorySecretsStore(DirectorySecretsStore):
         return result
 
 
+class VaultCSIEntry(NamedTuple):
+    mtime: float
+    data: Any
+    # A mutex to prevent possible duplicate work from event loops
+    updating: bool
+
+
 class VaultCSISecretsStore(SecretsStore):
     """Access to secret tokens with automatic refresh when changed.
 
@@ -475,14 +484,20 @@ class VaultCSISecretsStore(SecretsStore):
     sure to always have the current version in the face of key rotation etc.
     """
 
+    path: Path
+    data_symlink: Path
+    cache: dict[str, VaultCSIEntry]
+
     def __init__(
             self,
             path: str,
             parser: SecretParser,
             timeout: Optional[int] = None,
             backoff: Optional[float] = None,
-    ):
-        raise NotImplementedError
+    ):  # pylint: disable=super-init-not-called
+        self.path = Path(path)
+        self.cache = {}
+        self.data_symlink = self.path.joinpath("..data")
 
     def get_vault_url(self) -> str:
         raise NotImplementedError
@@ -490,28 +505,40 @@ class VaultCSISecretsStore(SecretsStore):
     def get_vault_token(self) -> str:
         raise NotImplementedError
 
-    def _get_file_data(self, filename: str) -> Tuple[Any, float]:
-        raise NotImplementedError
+    def _get_mtime(self) -> float:
+        """Modification time is store-wide for CSI secrets."""
+        return os.path.getmtime(self.data_symlink)
+
+    def _raw_secret(self, name: str) -> Any:
+        try:
+            with open(self.data_symlink.joinpath(name), "r") as fp:
+                return json.load(fp)["data"]
+        except FileNotFoundError:
+            # Try a second time in case the file was deleted while we tried to read it
+            with open(self.data_symlink.joinpath(name), "r") as fp:
+                return json.load(fp)["data"]
 
     def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
-        raise NotImplementedError
+        mtime = self._get_mtime()
+        cache_entry = self.cache.get(secret_path, VaultCSIEntry(mtime=0, data=None, updating=False))
+        if cache_entry.mtime == mtime or cache_entry.updating is True:
+            return cache_entry.data, mtime
+        else:
+            # Prevent multiple requests from updating the cache at the same time by setting the
+            # `updating` flag
+            self.cache[secret_path] = VaultCSIEntry(
+                mtime=cache_entry.mtime, data=cache_entry.data, updating=True
+            )
+            secret_data = self._raw_secret(secret_path)
+            self.cache[secret_path] = VaultCSIEntry(
+                # Note that there is a potential data race here around mtime, but it's
+                # not a big deal since we'll just update it at the next interval.
+                mtime=mtime, data=secret_data, updating=False
+            )
+            return secret_data, mtime
 
-    def make_object_for_context(self, name: str, span: Span) -> "DirectorySecretsStore":
-        raise NotImplementedError
-
-
-
-# pylint: disable=abstract-method
-class _CachingVaultCSISecretsStore(DirectorySecretsStore):
-    """Lazily load and cache the parsed data until the server span ends."""
-
-    def __init__(
-            self, filewatchers: Dict[str, FileWatcher], parser: SecretParser
-    ):
-        raise NotImplementedError
-
-    def _get_file_data(self, filename: str) -> Tuple[Dict, float]:
-        raise NotImplementedError
+    def make_object_for_context(self, name: str, span: Span) -> "SecretsStore":
+        return self
 
 
 def secrets_store_from_config(
@@ -560,7 +587,7 @@ def secrets_store_from_config(
 
     if options.provider == "vault_csi":
         parser = parse_vault_csi
-        return DirectorySecretsStore(options.path, parser, timeout=timeout, backoff=backoff)
+        return VaultCSISecretsStore(options.path, parser=parser, timeout=timeout, backoff=backoff)
 
     return SecretsStore(
         options.path, timeout=timeout, backoff=backoff, parser=parse_secrets_fetcher
