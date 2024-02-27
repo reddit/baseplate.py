@@ -495,11 +495,13 @@ class VaultCSISecretsStore(SecretsStore):
         backoff: Optional[float] = None,
     ):  # pylint: disable=super-init-not-called
         self.path = Path(path)
-        if not self.path.is_dir():
-            raise ValueError(f"{self.path} must be a directory")
+        self.parser = parser
         self.cache = {}
         self.data_symlink = self.path.joinpath("..data")
-        self.parser = parser
+        if not self.path.is_dir():
+            raise ValueError(f"Expected {self.path} to be a directory.")
+        if not self.data_symlink.is_dir():
+            raise ValueError(f"Expected {self.data_symlink} to be a directory. Verify {self.path} is the root of the Vault CSI mount.")
 
     def get_vault_url(self) -> str:
         raise NotImplementedError
