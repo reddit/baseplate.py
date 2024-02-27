@@ -14,6 +14,8 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
 
+from typing_extensions import Protocol
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import cached_property
@@ -120,7 +122,9 @@ def _decode_secret(path: str, encoding: str, value: str) -> bytes:
     raise CorruptSecretError(path, f"unknown encoding: {encoding!r}")
 
 
-SecretParser = Callable[[Dict[str, Any], str], Dict[str, str]]
+class SecretParser(Protocol):
+    def __call__(self, data: Dict[str, Any], secret_path: Optional[str] = None) -> Dict[str, str]:
+        ...
 
 
 def parse_secrets_fetcher(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
@@ -545,7 +549,7 @@ class VaultCSISecretsStore(SecretsStore):
         )
         return secret_data, mtime
 
-    def make_object_for_context(self, name: str, span: Span) -> "SecretsStore":
+    def make_object_for_context(self, name: str, span: Span) -> SecretsStore:
         return self
 
 
