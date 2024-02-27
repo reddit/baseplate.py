@@ -55,7 +55,7 @@ def new_fake_csi(data: typing.Dict[str, SecretType]) -> Path:
 
 
 def simulate_secret_update(
-    csi_dir: Path, updated_data: typing.Dict[str, SecretType] | None = None
+    csi_dir: Path, updated_data: typing.Optional[typing.Dict[str, SecretType]] = None
 ) -> None:
     """Simulates either TTL expiry / a secret update."""
     old_data_path = csi_dir.joinpath("..data").resolve()
@@ -121,7 +121,7 @@ class StoreTests(unittest.TestCase):
         original_data_path = self.csi_dir.joinpath("..data").resolve()
         secrets_store = get_secrets_store(str(self.csi_dir))
         data = secrets_store.get_credentials("secret/example-service/example-secret")
-        gevent.sleep(0.1)
+        gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
         assert data.username == "reddit"
         assert data.password == "password"
         simulate_secret_update(self.csi_dir)
@@ -133,7 +133,7 @@ class StoreTests(unittest.TestCase):
     def test_secret_updated(self):
         secrets_store = get_secrets_store(str(self.csi_dir))
         data = secrets_store.get_credentials("secret/example-service/example-secret")
-        gevent.sleep(0.1)
+        gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
         assert data.username == "reddit"
         assert data.password == "password"
         simulate_secret_update(
@@ -163,7 +163,7 @@ class StoreTests(unittest.TestCase):
         secrets_store = get_secrets_store(str(self.csi_dir))
         # Populate the cache
         secrets_store.get_credentials("secret/example-service/example-secret")
-        gevent.sleep(0.1)
+        gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
         original_raw_secret_callable = secrets_store._raw_secret
 
         def mock_raw_secret(*args):
@@ -198,7 +198,7 @@ class StoreTests(unittest.TestCase):
         first_request_result = secrets_store.get_credentials(
             "secret/example-service/example-secret"
         )
-        gevent.sleep(0.1)
+        gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
         assert first_request_result.username == "new_reddit"
         assert first_request_result.password == "new_password"
         assert original_data_path != self.csi_dir.joinpath("..data").resolve()
