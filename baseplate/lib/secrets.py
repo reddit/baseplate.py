@@ -510,11 +510,11 @@ class VaultCSISecretsStore(SecretsStore):
 
     def _raw_secret(self, name: str) -> Any:
         try:
-            with open(self.data_symlink.joinpath(name), "r") as fp:
+            with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
                 return json.load(fp)["data"]
         except FileNotFoundError:
             # Try a second time in case the file was deleted while we tried to read it
-            with open(self.data_symlink.joinpath(name), "r") as fp:
+            with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
                 return json.load(fp)["data"]
 
     def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
@@ -522,21 +522,20 @@ class VaultCSISecretsStore(SecretsStore):
         cache_entry = self.cache.get(secret_path, VaultCSIEntry(mtime=0, data=None, updating=False))
         if cache_entry.mtime == mtime or cache_entry.updating is True:
             return cache_entry.data, mtime
-        else:
-            # Prevent multiple requests from updating the cache at the same time by setting the
-            # `updating` flag
-            self.cache[secret_path] = VaultCSIEntry(
-                mtime=cache_entry.mtime, data=cache_entry.data, updating=True
-            )
-            secret_data = self._raw_secret(secret_path)
-            self.cache[secret_path] = VaultCSIEntry(
-                # Note that there is a potential data race here around mtime, but it's
-                # not a big deal since we'll just update it at the next interval.
-                mtime=mtime,
-                data=secret_data,
-                updating=False,
-            )
-            return secret_data, mtime
+        # Prevent multiple requests from updating the cache at the same time by setting the
+        # `updating` flag
+        self.cache[secret_path] = VaultCSIEntry(
+            mtime=cache_entry.mtime, data=cache_entry.data, updating=True
+        )
+        secret_data = self._raw_secret(secret_path)
+        self.cache[secret_path] = VaultCSIEntry(
+            # Note that there is a potential data race here around mtime, but it's
+            # not a big deal since we'll just update it at the next interval.
+            mtime=mtime,
+            data=secret_data,
+            updating=False,
+        )
+        return secret_data, mtime
 
     def make_object_for_context(self, name: str, span: Span) -> "SecretsStore":
         return self
