@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 
 import gevent
+import pytest
 import typing_extensions
 
 from baseplate.lib.secrets import secrets_store_from_config
@@ -192,3 +193,12 @@ class StoreTests(unittest.TestCase):
         assert first_request_result.username == "new_reddit"
         assert first_request_result.password == "new_password"
         assert original_data_path != self.csi_dir.joinpath("..data").resolve()
+
+    def test_invalid_secret_raises(self):
+        self.csi_dir.joinpath("..data").resolve()
+        secrets_store = get_secrets_store(str(self.csi_dir))
+        with pytest.raises(FileNotFoundError):
+            secrets_store.get_credentials("secret/example-service/does-not-exist")
+        # While cache is updating we should still fail
+        with pytest.raises(FileNotFoundError):
+            secrets_store.get_credentials("secret/example-service/does-not-exist")

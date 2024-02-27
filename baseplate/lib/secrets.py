@@ -501,7 +501,9 @@ class VaultCSISecretsStore(SecretsStore):
         if not self.path.is_dir():
             raise ValueError(f"Expected {self.path} to be a directory.")
         if not self.data_symlink.is_dir():
-            raise ValueError(f"Expected {self.data_symlink} to be a directory. Verify {self.path} is the root of the Vault CSI mount.")
+            raise ValueError(
+                f"Expected {self.data_symlink} to be a directory. Verify {self.path} is the root of the Vault CSI mount."
+            )
 
     def get_vault_url(self) -> str:
         raise NotImplementedError
@@ -524,14 +526,15 @@ class VaultCSISecretsStore(SecretsStore):
 
     def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         mtime = self._get_mtime()
-        cache_entry = self.cache.get(secret_path, VaultCSIEntry(mtime=0, data=None, updating=False))
-        if cache_entry.mtime == mtime or cache_entry.updating is True:
-            return cache_entry.data, mtime
-        # Prevent multiple requests from updating the cache at the same time by setting the
-        # `updating` flag
-        self.cache[secret_path] = VaultCSIEntry(
-            mtime=cache_entry.mtime, data=cache_entry.data, updating=True
-        )
+        if cache_entry := self.cache.get(secret_path):
+            if cache_entry.mtime == mtime or cache_entry.updating is True:
+                return cache_entry.data, mtime
+            # Prevent multiple requests from updating the cache at the same time by setting the
+            # `updating` flag. Unfortunately we can only prevent this when the cache currently
+            # has a valid entry.
+            self.cache[secret_path] = VaultCSIEntry(
+                mtime=cache_entry.mtime, data=cache_entry.data, updating=True
+            )
         secret_data = self._raw_secret(secret_path)
         self.cache[secret_path] = VaultCSIEntry(
             # Note that there is a potential data race here around mtime, but it's
@@ -591,7 +594,9 @@ def secrets_store_from_config(
         backoff = None
 
     if options.provider == "vault_csi":
-        return VaultCSISecretsStore(options.path, parser=parse_vault_csi, timeout=timeout, backoff=backoff)
+        return VaultCSISecretsStore(
+            options.path, parser=parse_vault_csi, timeout=timeout, backoff=backoff
+        )
 
     return SecretsStore(
         options.path, timeout=timeout, backoff=backoff, parser=parse_secrets_fetcher
