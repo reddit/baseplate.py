@@ -7,14 +7,12 @@ import os
 
 from pathlib import Path
 from typing import Any
-from typing import Callable
 from typing import Dict
 from typing import Iterator
 from typing import NamedTuple
 from typing import Optional
+from typing import Protocol
 from typing import Tuple
-
-from typing_extensions import Protocol
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -123,7 +121,7 @@ def _decode_secret(path: str, encoding: str, value: str) -> bytes:
 
 
 class SecretParser(Protocol):
-    def __call__(self, data: Dict[str, Any], secret_path: Optional[str] = None) -> Dict[str, str]:
+    def __call__(self, data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
         ...
 
 
@@ -576,7 +574,6 @@ def secrets_store_from_config(
     :param provider: The secrets provider, acceptable values are 'vault' and 'vault_csi'. Defaults to 'vault'
 
     """
-    parser: SecretParser
     assert prefix.endswith(".")
     config_prefix = prefix[:-1]
 
