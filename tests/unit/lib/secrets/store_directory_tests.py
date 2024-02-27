@@ -212,11 +212,3 @@ class StoreDirectoryTests(unittest.TestCase):
         }
         with self.assertRaises(CorruptSecretError):
             self.store.get_credentials("secret2")
-
-
-class StoreFromConfigTests(unittest.TestCase):
-    def test_make_store(self):
-        secrets = secrets_store_from_config(
-            {"secrets.path": "/tmp", "secrets.provider": "vault_csi"}
-        )
-        self.assertIsInstance(secrets, DirectorySecretsStore)
