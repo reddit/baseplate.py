@@ -9,8 +9,9 @@ from pathlib import Path
 
 import typing_extensions
 
-from baseplate.lib.secrets import secrets_store_from_config, VaultCSISecretsStore
+from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.lib.secrets import SecretsStore
+from baseplate.lib.secrets import VaultCSISecretsStore
 
 SecretType: typing_extensions.TypeAlias = dict[str, any]
 
