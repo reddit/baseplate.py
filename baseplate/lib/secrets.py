@@ -495,6 +495,8 @@ class VaultCSISecretsStore(SecretsStore):
         backoff: Optional[float] = None,
     ):  # pylint: disable=super-init-not-called
         self.path = Path(path)
+        if not self.path.is_dir():
+            raise ValueError(f"{self.path} must be a directory")
         self.cache = {}
         self.data_symlink = self.path.joinpath("..data")
 
