@@ -5,7 +5,6 @@ from baseplate.lib.secrets import CredentialSecret
 from baseplate.lib.secrets import DirectorySecretsStore
 from baseplate.lib.secrets import parse_vault_csi
 from baseplate.lib.secrets import SecretNotFoundError
-from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.testing.lib.file_watcher import FakeFileWatcher
 
 
