@@ -495,8 +495,13 @@ class VaultCSISecretsStore(SecretsStore):
         backoff: Optional[float] = None,
     ):  # pylint: disable=super-init-not-called
         self.path = Path(path)
+        self.parser = parser
         self.cache = {}
         self.data_symlink = self.path.joinpath("..data")
+        if not self.path.is_dir():
+            raise ValueError(f"Expected {self.path} to be a directory.")
+        if not self.data_symlink.is_dir():
+            raise ValueError(f"Expected {self.data_symlink} to be a directory. Verify {self.path} is the root of the Vault CSI mount.")
 
     def get_vault_url(self) -> str:
         raise NotImplementedError
@@ -511,11 +516,11 @@ class VaultCSISecretsStore(SecretsStore):
     def _raw_secret(self, name: str) -> Any:
         try:
             with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
-                return json.load(fp)["data"]
+                return self.parser(json.load(fp))
         except FileNotFoundError:
             # Try a second time in case the file was deleted while we tried to read it
             with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
-                return json.load(fp)["data"]
+                return self.parser(json.load(fp))
 
     def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         mtime = self._get_mtime()
@@ -586,8 +591,7 @@ def secrets_store_from_config(
         backoff = None
 
     if options.provider == "vault_csi":
-        parser = parse_vault_csi
-        return VaultCSISecretsStore(options.path, parser=parser, timeout=timeout, backoff=backoff)
+        return VaultCSISecretsStore(options.path, parser=parse_vault_csi, timeout=timeout, backoff=backoff)
 
     return SecretsStore(
         options.path, timeout=timeout, backoff=backoff, parser=parse_secrets_fetcher
