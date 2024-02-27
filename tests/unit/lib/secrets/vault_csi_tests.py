@@ -103,6 +103,24 @@ EXAMPLE_SECRETS_DATA = {
     },
 }
 
+EXAMPLE_UPDATED_SECRETS = EXAMPLE_SECRETS_DATA.copy()
+EXAMPLE_UPDATED_SECRETS.update(
+    {
+        "secret/example-service/example-secret": {
+            "request_id": "8487d906-2154-0151-d07e-57f41447326a",
+            "lease_id": "",
+            "lease_duration": 2764800,
+            "renewable": False,
+            "data": {
+                "password": "new_password",
+                "type": "credential",
+                "username": "new_reddit",
+            },
+            "warnings": None,
+        },
+    }
+)
+
 
 class StoreTests(unittest.TestCase):
     def setUp(self):
@@ -138,21 +156,7 @@ class StoreTests(unittest.TestCase):
         assert data.password == "password"
         simulate_secret_update(
             self.csi_dir,
-            updated_data=EXAMPLE_SECRETS_DATA
-            | {
-                "secret/example-service/example-secret": {
-                    "request_id": "8487d906-2154-0151-d07e-57f41447326a",
-                    "lease_id": "",
-                    "lease_duration": 2764800,
-                    "renewable": False,
-                    "data": {
-                        "password": "new_password",
-                        "type": "credential",
-                        "username": "new_reddit",
-                    },
-                    "warnings": None,
-                },
-            },
+            updated_data=EXAMPLE_UPDATED_SECRETS,
         )
         data = secrets_store.get_credentials("secret/example-service/example-secret")
         assert data.username == "new_reddit", f"{data.username} != new_reddit"
@@ -179,21 +183,7 @@ class StoreTests(unittest.TestCase):
         secrets_store._raw_secret = mock_raw_secret
         simulate_secret_update(
             self.csi_dir,
-            EXAMPLE_SECRETS_DATA
-            | {
-                "secret/example-service/example-secret": {
-                    "request_id": "8487d906-2154-0151-d07e-57f41447326a",
-                    "lease_id": "",
-                    "lease_duration": 2764800,
-                    "renewable": False,
-                    "data": {
-                        "password": "new_password",
-                        "type": "credential",
-                        "username": "new_reddit",
-                    },
-                    "warnings": None,
-                },
-            },
+            EXAMPLE_UPDATED_SECRETS,
         )
         first_request_result = secrets_store.get_credentials(
             "secret/example-service/example-secret"
