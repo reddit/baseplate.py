@@ -111,7 +111,7 @@ class StoreTests(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.csi_dir)
 
-    def test_can_load_secrets(self):
+    def test_can_load_credential_secret(self):
         secrets_store = get_secrets_store(str(self.csi_dir))
         data = secrets_store.get_credentials("secret/example-service/example-secret")
         assert data.username == "reddit"
