@@ -402,7 +402,7 @@ class DirectorySecretsStore(SecretsStore):
         backoff: Optional[float] = None,
     ):  # pylint: disable=super-init-not-called
         self.parser = parser
-        self._filewatchers: dict[str, FileWatcher] = {}
+        self._filewatchers = {}
         root = Path(path)
         for p in root.glob("**"):
             file_path = str(p.relative_to(path))
@@ -485,7 +485,7 @@ class VaultCSISecretsStore(SecretsStore):
 
     path: Path
     data_symlink: Path
-    cache: dict[str, VaultCSIEntry]
+    cache: Dict[str, VaultCSIEntry]
 
     def __init__(
         self,
