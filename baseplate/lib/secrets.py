@@ -1,10 +1,9 @@
 """Application integration with the secret fetcher daemon."""
 import base64
-import os
-
 import binascii
 import json
 import logging
+import os
 
 from pathlib import Path
 from typing import Any
@@ -489,11 +488,11 @@ class VaultCSISecretsStore(SecretsStore):
     cache: dict[str, VaultCSIEntry]
 
     def __init__(
-            self,
-            path: str,
-            parser: SecretParser,
-            timeout: Optional[int] = None,
-            backoff: Optional[float] = None,
+        self,
+        path: str,
+        parser: SecretParser,
+        timeout: Optional[int] = None,
+        backoff: Optional[float] = None,
     ):  # pylint: disable=super-init-not-called
         self.path = Path(path)
         self.cache = {}
@@ -533,7 +532,9 @@ class VaultCSISecretsStore(SecretsStore):
             self.cache[secret_path] = VaultCSIEntry(
                 # Note that there is a potential data race here around mtime, but it's
                 # not a big deal since we'll just update it at the next interval.
-                mtime=mtime, data=secret_data, updating=False
+                mtime=mtime,
+                data=secret_data,
+                updating=False,
             )
             return secret_data, mtime
 
