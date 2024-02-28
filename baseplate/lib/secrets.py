@@ -539,8 +539,6 @@ class VaultCSISecretsStore(SecretsStore):
             )
         secret_data = self._raw_secret(secret_path)
         self.cache[secret_path] = VaultCSIEntry(
-            # Note that there is a potential data race here around mtime, but it's
-            # not a big deal since we'll just update it at the next interval.
             mtime=mtime,
             data=secret_data,
             updating=False,
