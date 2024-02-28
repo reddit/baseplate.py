@@ -475,13 +475,13 @@ class VaultCSIEntry(NamedTuple):
 
 
 class VaultCSISecretsStore(SecretsStore):
-    """Access to secret tokens with automatic refresh when changed.
+    """Access to secret tokens using a vault CSI mount with automatic refresh.
 
-    This local vault allows access to the secrets cached on disk given a path to
-    a directory. It will automatically reload the cache when it is changed. Do not
-    cache or store the values returned by this class's methods but rather get
-    them from this class each time you need them. The secrets are served from
-    memory so there's little performance impact to doing so and you will be
+    This store allows access to secrets stored in vault through the CSI interface.
+    It performs caching and will automatically reload secrets from disk. Generally
+    do not cache or store the values returned by this class's methods, rather get
+    them from this class each time you need them. The secrets are served from memory
+    when possible, so there's little performance impact in doing so, and you will be
     sure to always have the current version in the face of key rotation etc.
     """
 
@@ -493,8 +493,6 @@ class VaultCSISecretsStore(SecretsStore):
         self,
         path: str,
         parser: SecretParser,
-        timeout: Optional[int] = None,
-        backoff: Optional[float] = None,
     ):  # pylint: disable=super-init-not-called
         self.path = Path(path)
         self.parser = parser
@@ -508,9 +506,11 @@ class VaultCSISecretsStore(SecretsStore):
             )
 
     def get_vault_url(self) -> str:
+        """Deprecated and will be removed in 3.0.0"""
         raise NotImplementedError
 
     def get_vault_token(self) -> str:
+        """Deprecated and will be removed in 3.0.0"""
         raise NotImplementedError
 
     def _get_mtime(self) -> float:
@@ -523,8 +523,11 @@ class VaultCSISecretsStore(SecretsStore):
                 return self.parser(json.load(fp))
         except FileNotFoundError:
             # Try a second time in case the file was deleted while we tried to read it
-            with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
-                return self.parser(json.load(fp))
+            try:
+                with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
+                    return self.parser(json.load(fp))
+            except FileNotFoundError:
+                raise SecretNotFoundError(name)
 
     def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         mtime = self._get_mtime()
@@ -593,9 +596,7 @@ def secrets_store_from_config(
         backoff = None
 
     if options.provider == "vault_csi":
-        return VaultCSISecretsStore(
-            options.path, parser=parse_vault_csi, timeout=timeout, backoff=backoff
-        )
+        return VaultCSISecretsStore(options.path, parser=parse_vault_csi)
 
     return SecretsStore(
         options.path, timeout=timeout, backoff=backoff, parser=parse_secrets_fetcher
