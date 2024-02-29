@@ -526,8 +526,8 @@ class VaultCSISecretsStore(SecretsStore):
             try:
                 with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
                     return self.parser(json.load(fp))
-            except FileNotFoundError:
-                raise SecretNotFoundError(name)
+            except FileNotFoundError as exc:
+                raise SecretNotFoundError(name) from exc
 
     def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         mtime = self._get_mtime()
