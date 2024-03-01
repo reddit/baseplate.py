@@ -522,7 +522,12 @@ class VaultCSISecretsStore(SecretsStore):
             with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
                 return self.parser(json.load(fp))
         except FileNotFoundError:
-            # Try a second time in case the file was deleted while we tried to read it
+            # Every few minutes, the Vault CSI will create a new directory and swap over to it.
+            # There is a race condition where we could resolve the symlink and then the file could
+            # There is a race condition where we could resolve the symlink and then the file could
+            # be deleted. Given the timeframe between such deletions, a single retry is sufficient
+            # to double-check whether the FileNotFoundError was due to this race or an
+            # actually-nonexistent path.
             try:
                 with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
                     return self.parser(json.load(fp))

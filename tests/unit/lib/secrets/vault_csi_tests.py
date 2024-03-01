@@ -1,6 +1,7 @@
 import datetime
 import json
 import shutil
+import string
 import tempfile
 import typing
 import unittest
@@ -103,6 +104,43 @@ EXAMPLE_SECRETS_DATA = {
         "data": {"password": "password", "type": "credential", "username": "reddit"},
         "warnings": None,
     },
+    "secret/simple-secret": {
+        "request_id": "8487d906-2154-0151-d07e-57f41447326a",
+        "lease_id": "",
+        "lease_duration": 2764800,
+        "renewable": False,
+        "data": {"type": "simple", "value": "simply a secret"},
+        "warnings": None,
+    },
+    "secret/simple-encoded-secret": {
+        "request_id": "8487d906-2154-0151-d07e-57f41447326a",
+        "lease_id": "",
+        "lease_duration": 2764800,
+        "renewable": False,
+        "data": {"type": "simple", "encoding": "base64", "value": "MTMzNw=="},
+        "warnings": None,
+    },
+    "secret/versioned-secret": {
+        "request_id": "8487d906-2154-0151-d07e-57f41447326a",
+        "lease_id": "",
+        "lease_duration": 2764800,
+        "renewable": False,
+        "data": {"type": "versioned", "current": "current value", "previous": "previous value"},
+        "warnings": None,
+    },
+    "secret/versioned-encoded-secret": {
+        "request_id": "8487d906-2154-0151-d07e-57f41447326a",
+        "lease_id": "",
+        "lease_duration": 2764800,
+        "renewable": False,
+        "data": {
+            "type": "versioned",
+            "encoding": "base64",
+            "current": "Y3VycmVudCBlbmNvZGVkIHZhbHVl",
+            "previous": "cHJldmlvdXMgZW5jb2RlZCB2YWx1ZQ==",
+        },
+        "warnings": None,
+    },
 }
 
 EXAMPLE_UPDATED_SECRETS = EXAMPLE_SECRETS_DATA.copy()
@@ -137,16 +175,43 @@ class StoreTests(unittest.TestCase):
         assert data.username == "reddit"
         assert data.password == "password"
 
+    def test_get_raw_secret(self):
+        secrets_store = get_secrets_store(str(self.csi_dir))
+        data = secrets_store.get_raw("secret/example-service/nested/example-nested-secret")
+        assert data == {"password": "password", "type": "credential", "username": "reddit"}
+
+    def test_get_simple_secret(self):
+        secrets_store = get_secrets_store(str(self.csi_dir))
+        data = secrets_store.get_simple("secret/simple-secret")
+        assert data == b"simply a secret"
+
+    def test_get_versioned_secret(self):
+        secrets_store = get_secrets_store(str(self.csi_dir))
+        data = secrets_store.get_versioned("secret/versioned-secret")
+        assert data.current == b"current value"
+        assert data.previous == b"previous value"
+
+    def test_simple_encoding(self):
+        secrets_store = get_secrets_store(str(self.csi_dir))
+        data = secrets_store.get_simple("secret/simple-encoded-secret")
+        assert data == b"1337"
+
+    def test_versioned_encoding(self):
+        secrets_store = get_secrets_store(str(self.csi_dir))
+        data = secrets_store.get_versioned("secret/versioned-encoded-secret")
+        assert data.current == b"current encoded value"
+        assert data.previous == b"previous encoded value"
+
     def test_symlink_updated(self):
         original_data_path = self.csi_dir.joinpath("..data").resolve()
         secrets_store = get_secrets_store(str(self.csi_dir))
-        data = secrets_store.get_credentials("secret/example-service/example-secret")
+        data = secrets_store.get_credentials("secret/bare-secret")
         gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
         assert data.username == "reddit"
         assert data.password == "password"
         simulate_secret_update(self.csi_dir)
         assert original_data_path != self.csi_dir.joinpath("..data").resolve()
-        data = secrets_store.get_credentials("secret/example-service/example-secret")
+        data = secrets_store.get_credentials("secret/bare-secret")
         assert data.username == "reddit"
         assert data.password == "password"
 
@@ -154,15 +219,29 @@ class StoreTests(unittest.TestCase):
         secrets_store = get_secrets_store(str(self.csi_dir))
         data = secrets_store.get_credentials("secret/example-service/example-secret")
         gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
+
         assert data.username == "reddit"
         assert data.password == "password"
-        simulate_secret_update(
-            self.csi_dir,
-            updated_data=EXAMPLE_UPDATED_SECRETS,
-        )
-        data = secrets_store.get_credentials("secret/example-service/example-secret")
-        assert data.username == "new_reddit", f"{data.username} != new_reddit"
-        assert data.password == "new_password", f"{data.password} != new_password"
+
+        printable_ascii = list(string.printable)
+        for i in range(0, len(printable_ascii), 6):
+            chars = printable_ascii[i : i + 6]
+            expected_username = "".join(chars[:3])
+            expected_password = "".join(chars[3:])
+            new_secrets = EXAMPLE_UPDATED_SECRETS.copy()
+            new_secrets["secret/example-service/example-secret"]["data"][
+                "username"
+            ] = expected_username
+            new_secrets["secret/example-service/example-secret"]["data"][
+                "password"
+            ] = expected_password
+            simulate_secret_update(
+                self.csi_dir,
+                updated_data=EXAMPLE_UPDATED_SECRETS,
+            )
+            data = secrets_store.get_credentials("secret/example-service/example-secret")
+            assert data.username == expected_username, f"{data.username} != {expected_username}"
+            assert data.password == expected_password, f"{data.password} != {expected_password}"
 
     def test_multiple_requests_during_symlink_update(self):
         original_data_path = self.csi_dir.joinpath("..data").resolve()
