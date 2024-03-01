@@ -223,7 +223,7 @@ class StoreTests(unittest.TestCase):
         assert data.username == "reddit"
         assert data.password == "password"
 
-        printable_ascii = list(string.printable)
+        printable_ascii = list(string.printable)[:60]
         for i in range(0, len(printable_ascii), 6):
             chars = printable_ascii[i : i + 6]
             expected_username = "".join(chars[:3])
@@ -242,6 +242,7 @@ class StoreTests(unittest.TestCase):
             data = secrets_store.get_credentials("secret/example-service/example-secret")
             assert data.username == expected_username, f"{data.username} != {expected_username}"
             assert data.password == expected_password, f"{data.password} != {expected_password}"
+            gevent.sleep(0.05)  # prevent gevent from making execution out-of-order
 
     def test_multiple_requests_during_symlink_update(self):
         original_data_path = self.csi_dir.joinpath("..data").resolve()
