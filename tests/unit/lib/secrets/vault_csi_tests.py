@@ -219,6 +219,7 @@ class StoreTests(unittest.TestCase):
     def test_secret_updated(self):
         secrets_store = get_secrets_store(str(self.csi_dir))
         data = secrets_store.get_credentials("secret/example-service/example-secret")
+        gevent.sleep(0.1)  # prevent gevent shenanigans
 
         assert data.username == "reddit"
         assert data.password == "password"
@@ -242,7 +243,7 @@ class StoreTests(unittest.TestCase):
             data = secrets_store.get_credentials("secret/example-service/example-secret")
             assert data.username == expected_username, f"{data.username} != {expected_username}"
             assert data.password == expected_password, f"{data.password} != {expected_password}"
-            gevent.sleep(0.05)  # prevent gevent shenanigans
+            gevent.sleep(0.075)  # prevent gevent shenanigans
 
     def test_cache_works(self):
         self.csi_dir.joinpath("..data").resolve()
