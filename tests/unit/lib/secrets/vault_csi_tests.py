@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import mock_open
 from unittest.mock import patch
 
+import gevent
 import pytest
 import typing_extensions
 
@@ -241,6 +242,7 @@ class StoreTests(unittest.TestCase):
             data = secrets_store.get_credentials("secret/example-service/example-secret")
             assert data.username == expected_username, f"{data.username} != {expected_username}"
             assert data.password == expected_password, f"{data.password} != {expected_password}"
+            gevent.sleep(0.05)  # prevent gevent shenanigans
 
     def test_cache_works(self):
         self.csi_dir.joinpath("..data").resolve()
