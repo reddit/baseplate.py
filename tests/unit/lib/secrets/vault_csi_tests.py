@@ -7,8 +7,9 @@ import typing
 import unittest
 
 from pathlib import Path
+from unittest.mock import mock_open
+from unittest.mock import patch
 
-import gevent
 import pytest
 import typing_extensions
 
@@ -206,7 +207,6 @@ class StoreTests(unittest.TestCase):
         original_data_path = self.csi_dir.joinpath("..data").resolve()
         secrets_store = get_secrets_store(str(self.csi_dir))
         data = secrets_store.get_credentials("secret/bare-secret")
-        gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
         assert data.username == "reddit"
         assert data.password == "password"
         simulate_secret_update(self.csi_dir)
@@ -218,7 +218,6 @@ class StoreTests(unittest.TestCase):
     def test_secret_updated(self):
         secrets_store = get_secrets_store(str(self.csi_dir))
         data = secrets_store.get_credentials("secret/example-service/example-secret")
-        gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
 
         assert data.username == "reddit"
         assert data.password == "password"
@@ -242,38 +241,21 @@ class StoreTests(unittest.TestCase):
             data = secrets_store.get_credentials("secret/example-service/example-secret")
             assert data.username == expected_username, f"{data.username} != {expected_username}"
             assert data.password == expected_password, f"{data.password} != {expected_password}"
-            gevent.sleep(0.05)  # prevent gevent from making execution out-of-order
 
-    def test_multiple_requests_during_symlink_update(self):
-        original_data_path = self.csi_dir.joinpath("..data").resolve()
+    def test_cache_works(self):
+        self.csi_dir.joinpath("..data").resolve()
         secrets_store = get_secrets_store(str(self.csi_dir))
-        # Populate the cache
-        secrets_store.get_credentials("secret/example-service/example-secret")
-        gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
-        original_raw_secret_callable = secrets_store._raw_secret
-
-        def mock_raw_secret(*args):
-            """Inverts control back to the test during the symlink update."""
-            second_request_result = secrets_store.get_credentials(
-                "secret/example-service/example-secret"
-            )
-            # We should get stale data back from the store
-            assert second_request_result.username == "reddit"
-            assert second_request_result.password == "password"
-            return original_raw_secret_callable(*args)
-
-        secrets_store._raw_secret = mock_raw_secret
-        simulate_secret_update(
-            self.csi_dir,
-            EXAMPLE_UPDATED_SECRETS,
-        )
-        first_request_result = secrets_store.get_credentials(
-            "secret/example-service/example-secret"
-        )
-        gevent.sleep(0.1)  # prevent gevent from making execution out-of-order
-        assert first_request_result.username == "new_reddit"
-        assert first_request_result.password == "new_password"
-        assert original_data_path != self.csi_dir.joinpath("..data").resolve()
+        with patch(
+            "builtins.open",
+            mock_open(
+                read_data=json.dumps(EXAMPLE_SECRETS_DATA["secret/example-service/example-secret"])
+            ),
+        ) as mock_open_:
+            secrets_store.get_credentials("secret/example-service/example-secret")
+            secrets_store.get_credentials("secret/example-service/example-secret")
+            secrets_store.get_credentials("secret/example-service/example-secret")
+            secrets_store.get_credentials("secret/example-service/example-secret")
+        assert mock_open_.call_count == 1
 
     def test_invalid_secret_raises(self):
         self.csi_dir.joinpath("..data").resolve()

@@ -470,8 +470,6 @@ class _CachingDirectorySecretsStore(DirectorySecretsStore):
 class VaultCSIEntry(NamedTuple):
     mtime: float
     data: Any
-    # A mutex to prevent possible duplicate work from event loops
-    updating: bool
 
 
 class VaultCSISecretsStore(SecretsStore):
@@ -537,19 +535,12 @@ class VaultCSISecretsStore(SecretsStore):
     def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         mtime = self._get_mtime()
         if cache_entry := self.cache.get(secret_path):
-            if cache_entry.mtime == mtime or cache_entry.updating is True:
+            if cache_entry.mtime == mtime:
                 return cache_entry.data, mtime
-            # Prevent multiple requests from updating the cache at the same time by setting the
-            # `updating` flag. Unfortunately we can only prevent this when the cache currently
-            # has a valid entry.
-            self.cache[secret_path] = VaultCSIEntry(
-                mtime=cache_entry.mtime, data=cache_entry.data, updating=True
-            )
         secret_data = self._raw_secret(secret_path)
         self.cache[secret_path] = VaultCSIEntry(
             mtime=mtime,
             data=secret_data,
-            updating=False,
         )
         return secret_data, mtime
 
