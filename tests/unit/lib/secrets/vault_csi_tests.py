@@ -258,6 +258,7 @@ class StoreTests(unittest.TestCase):
             secrets_store.get_credentials("secret/example-service/example-secret")
             secrets_store.get_credentials("secret/example-service/example-secret")
             secrets_store.get_credentials("secret/example-service/example-secret")
+        gevent.sleep(0.1)  # prevent gevent shenanigans
         assert mock_open_.call_count == 1
 
     def test_invalid_secret_raises(self):
