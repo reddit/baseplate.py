@@ -35,13 +35,10 @@ def write_symlinks(data_path: Path) -> None:
     # This path can be monitored for changes
     # https://github.com/kubernetes-sigs/secrets-store-csi-driver/blob/c697863c35d5431ec048b440d36550eb3ceb338f/pkg/util/fileutil/atomic_writer.go#L60-L62
     data_link = Path(csi_path, "..data")
-    if data_link.exists():
-        # Simulate atomic update
-        new_data_link = Path(csi_path, "..data-new")
-        new_data_link.symlink_to(data_path)
-        new_data_link.rename(data_link)
-    else:
-        data_link.symlink_to(data_path)
+    # Simulate atomic update
+    new_data_link = Path(csi_path, "..data-new")
+    new_data_link.symlink_to(data_path)
+    new_data_link.rename(data_link)
     human_path = Path(csi_path, "secret")
     if not human_path.exists():
         human_path.symlink_to(csi_path.joinpath("..data/secret"))
