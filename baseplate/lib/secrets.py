@@ -519,18 +519,8 @@ class VaultCSISecretsStore(SecretsStore):
         try:
             with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
                 return self.parser(json.load(fp))
-        except FileNotFoundError:
-            # Every few minutes, the Vault CSI will create a new directory and swap over to it.
-            # There is a race condition where we could resolve the symlink and then the file could
-            # There is a race condition where we could resolve the symlink and then the file could
-            # be deleted. Given the timeframe between such deletions, a single retry is sufficient
-            # to double-check whether the FileNotFoundError was due to this race or an
-            # actually-nonexistent path.
-            try:
-                with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
-                    return self.parser(json.load(fp))
-            except FileNotFoundError as exc:
-                raise SecretNotFoundError(name) from exc
+        except FileNotFoundError as exc:
+            raise SecretNotFoundError(name) from exc
 
     def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         mtime = self._get_mtime()
