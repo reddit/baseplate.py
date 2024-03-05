@@ -27,8 +27,7 @@ def write_secrets(secrets_data_path: Path, data: typing.Dict[str, SecretType]) -
     for key, value in data.items():
         secret_path = secrets_data_path.joinpath(key)
         secret_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(secret_path, "w") as fp:
-            json.dump(value, fp)
+        secret_path.write_text(json.dumps(value))
 
 
 def write_symlinks(data_path: Path) -> None:
