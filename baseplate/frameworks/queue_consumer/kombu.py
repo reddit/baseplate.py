@@ -14,13 +14,6 @@ from typing import TYPE_CHECKING
 
 import kombu
 
-from gevent.server import StreamServer
-from kombu.mixins import ConsumerMixin
-from kombu.transport.virtual import Channel
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
-
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate.clients.kombu import KombuSerializer
@@ -31,6 +24,12 @@ from baseplate.server.queue_consumer import make_simple_healthchecker
 from baseplate.server.queue_consumer import MessageHandler
 from baseplate.server.queue_consumer import PumpWorker
 from baseplate.server.queue_consumer import QueueConsumerFactory
+from gevent.server import StreamServer
+from kombu.mixins import ConsumerMixin
+from kombu.transport.virtual import Channel
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 
 
 class AmqpConsumerPrometheusLabels(NamedTuple):

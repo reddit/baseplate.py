@@ -14,6 +14,11 @@ from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
+from baseplate import Span
+from baseplate.clients import ContextFactory
+from baseplate.lib import config
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.secrets import SecretsStore
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import _NOT_SET  # pylint: disable=no-name-in-module
 from cassandra.cluster import Cluster  # pylint: disable=no-name-in-module
@@ -26,12 +31,6 @@ from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
-
-from baseplate import Span
-from baseplate.clients import ContextFactory
-from baseplate.lib import config
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.lib.secrets import SecretsStore
 
 
 class CassandraPrometheusLabels(NamedTuple):
@@ -364,14 +363,16 @@ class CassandraSessionAdapter:
         **kwargs: Any,
     ) -> ResponseFuture:
         prom_labels = CassandraPrometheusLabels(
-            cassandra_client_name=self.prometheus_client_name
-            if self.prometheus_client_name is not None
-            else self.context_name,
+            cassandra_client_name=(
+                self.prometheus_client_name
+                if self.prometheus_client_name is not None
+                else self.context_name
+            ),
             cassandra_keyspace=self.session.keyspace,
             cassandra_query_name=query_name if query_name is not None else "",
-            cassandra_cluster_name=self.prometheus_cluster_name
-            if self.prometheus_cluster_name is not None
-            else "",
+            cassandra_cluster_name=(
+                self.prometheus_cluster_name if self.prometheus_cluster_name is not None else ""
+            ),
         )
 
         REQUEST_ACTIVE.labels(**prom_labels._asdict()).inc()

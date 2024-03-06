@@ -9,6 +9,11 @@ from typing import TypeVar
 
 import kombu.serialization
 
+from baseplate import Span
+from baseplate.clients import ContextFactory
+from baseplate.lib import config
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.secrets import SecretsStore
 from kombu import Connection
 from kombu import Exchange
 from kombu.pools import Producers
@@ -18,12 +23,6 @@ from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.protocol.TProtocol import TProtocolFactory
 from vine.promises import promise  # type: ignore
-
-from baseplate import Span
-from baseplate.clients import ContextFactory
-from baseplate.lib import config
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.lib.secrets import SecretsStore
 
 
 T = TypeVar("T")

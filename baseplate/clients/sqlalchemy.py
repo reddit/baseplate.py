@@ -11,6 +11,14 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from baseplate import _ExcInfo
+from baseplate import Span
+from baseplate import SpanObserver
+from baseplate.clients import ContextFactory
+from baseplate.lib import config
+from baseplate.lib import metrics
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.secrets import SecretsStore
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -23,15 +31,6 @@ from sqlalchemy.engine.interfaces import ExecutionContext
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
-
-from baseplate import _ExcInfo
-from baseplate import Span
-from baseplate import SpanObserver
-from baseplate.clients import ContextFactory
-from baseplate.lib import config
-from baseplate.lib import metrics
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.lib.secrets import SecretsStore
 
 
 def engine_from_config(

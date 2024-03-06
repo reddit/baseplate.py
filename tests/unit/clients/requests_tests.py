@@ -65,9 +65,11 @@ class TestBaseplateSessionProm:
     def test_send(self, req, response, baseplate_session):
         prom_labels = {
             "http_method": req.method.lower(),
-            "http_client_name": baseplate_session.client_name
-            if baseplate_session.client_name is not None
-            else baseplate_session.name,
+            "http_client_name": (
+                baseplate_session.client_name
+                if baseplate_session.client_name is not None
+                else baseplate_session.name
+            ),
         }
 
         http_success = "true"

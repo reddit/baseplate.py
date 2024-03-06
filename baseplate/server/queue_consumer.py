@@ -18,15 +18,14 @@ from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
 
-from gevent.pywsgi import LoggingLogAdapter
-from gevent.pywsgi import WSGIServer
-from gevent.server import StreamServer
-
 import baseplate.lib.config
 
 from baseplate.lib.retry import RetryPolicy
 from baseplate.observers.timeout import ServerTimeout
 from baseplate.server import runtime_monitor
+from gevent.pywsgi import LoggingLogAdapter
+from gevent.pywsgi import WSGIServer
+from gevent.server import StreamServer
 
 
 logger = logging.getLogger(__name__)

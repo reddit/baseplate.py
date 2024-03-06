@@ -7,6 +7,8 @@ from typing import Dict
 from typing import Tuple
 from typing import Union
 
+from baseplate.lib import config
+from baseplate.server import runtime_monitor
 from gevent.pool import Pool
 from gevent.server import StreamServer
 from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
@@ -15,9 +17,6 @@ from thrift.transport.THeaderTransport import THeaderClientType
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TBufferedTransportFactory
 from thrift.transport.TTransport import TTransportException
-
-from baseplate.lib import config
-from baseplate.server import runtime_monitor
 
 
 logger = logging.getLogger(__name__)

@@ -38,7 +38,9 @@ class BaseplateTests(unittest.TestCase):
         mock_context = baseplate.make_context_object()
         mock_observer = mock.Mock(spec=BaseplateObserver)
         baseplate.register(mock_observer)
-        server_span = baseplate.make_server_span(mock_context, "name", TraceInfo(1, 2, 3, None, 0))
+        server_span = baseplate.make_server_span(
+            mock_context, "name", TraceInfo("1", "2", "3", None, 0)
+        )
 
         self.assertEqual(baseplate.observers, [mock_observer])
         self.assertEqual(mock_observer.on_server_span_created.call_count, 1)
@@ -52,7 +54,9 @@ class BaseplateTests(unittest.TestCase):
         mock_observer = mock.Mock(spec=BaseplateObserver)
         mock_observer.on_server_span_created.return_value = None
         baseplate.register(mock_observer)
-        server_span = baseplate.make_server_span(mock_context, "name", TraceInfo(1, 2, 3, None, 0))
+        server_span = baseplate.make_server_span(
+            mock_context, "name", TraceInfo("1", "2", "3", None, 0)
+        )
 
         self.assertEqual(server_span.observers, [])
 

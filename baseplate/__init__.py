@@ -16,13 +16,13 @@ from typing import Type
 
 import gevent.monkey
 
-from pkg_resources import DistributionNotFound
-from pkg_resources import get_distribution
-
 from baseplate.lib import config
 from baseplate.lib import get_calling_module_name
 from baseplate.lib import metrics
 from baseplate.lib import UnknownCallerError
+from opentelemetry import trace
+from pkg_resources import DistributionNotFound
+from pkg_resources import get_distribution
 
 
 try:
@@ -33,6 +33,7 @@ except DistributionNotFound:
 
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 class BaseplateObserver:
@@ -124,8 +125,9 @@ class TraceInfo(NamedTuple):
         with any upstream requests.
 
         """
-        trace_id = str(random.getrandbits(64))
-        return cls(trace_id=trace_id, parent_id=None, span_id=trace_id, sampled=None, flags=None)
+        trace_id = str(random.getrandbits(128))
+        span_id = str(random.getrandbits(64))
+        return cls(trace_id=trace_id, parent_id=None, span_id=span_id, sampled=None, flags=None)
 
     @classmethod
     def from_upstream(
@@ -157,10 +159,34 @@ class TraceInfo(NamedTuple):
             raise ValueError("invalid sampled value")
 
         if flags is not None:
-            if not 0 <= flags < 2 ** 64:
+            if not 0 <= flags < 2**64:
                 raise ValueError("invalid flags value")
 
         return cls(trace_id, parent_id, span_id, sampled, flags)
+
+    def to_otel(self):
+        if self.sampled:
+            sampled = trace.TraceFlags.SAMPLED
+        else:
+            sampled = trace.TraceFlags.DEFAULT
+        ctx = trace.SpanContext(
+            trace_id=int(self.trace_id, 16),
+            span_id=int(self.span_id, 16),
+            trace_flags=trace.TraceFlags(sampled),
+            is_remote=True,
+        )
+        return trace.NonRecordingSpan(ctx)
+
+    @classmethod
+    def from_otel(cls, ctx):
+        span: trace.NonRecordingSpan = list(ctx.values())[0]
+
+        spanctx: trace.SpanContext = span.get_span_context()
+        if spanctx.trace_flags == trace.TraceFlags.SAMPLED:
+            sampled = True
+        else:
+            sampled = False
+        return cls(str(spanctx.trace_id), None, str(spanctx.span_id), sampled, None)
 
 
 class RequestContext:
@@ -190,6 +216,7 @@ class RequestContext:
         self.__context_config = context_config
         self.__prefix = prefix
         self.__wrapped = wrapped
+        self.otelspan = None
 
         # the context and span reference eachother (unfortunately) so we can't
         # construct 'em both with references from the start. however, we can
@@ -477,6 +504,7 @@ class Baseplate:
             name,
             context,
             baseplate=self,
+            trace_info=trace_info,
         )
         context.span = server_span
 
@@ -553,6 +581,13 @@ class Span:
         self.component_name: Optional[str] = None
         self.observers: List[SpanObserver] = []
 
+        if self.context.otelspan:
+            ctx = trace.set_span_in_context(self.context.otelspan)
+            self.otelspan = tracer.start_span(name, ctx, kind=trace.SpanKind.CLIENT)
+        else:
+            self.otelspan = tracer.start_span(name, kind=trace.SpanKind.CLIENT)
+        self.context.otelspan = self.otelspan
+
     def register(self, observer: SpanObserver) -> None:
         """Register an observer to receive events from this span."""
         self.observers.append(observer)
@@ -588,6 +623,8 @@ class Span:
         """
         for observer in self.observers:
             observer.on_set_tag(key, value)
+
+        self.otelspan.set_attribute(key, value)
 
     def incr_tag(self, key: str, delta: float = 1) -> None:
         """Increment a tag value on the span.
@@ -634,6 +671,7 @@ class Span:
         # clean up reference cycles
         self.context = None  # type: ignore
         self.observers.clear()
+        self.otelspan.end()
 
     def __enter__(self) -> "Span":
         self.start()
@@ -679,6 +717,25 @@ class ParentSpanAlreadyFinishedError(Exception):
 
 
 class LocalSpan(Span):
+    def __init__(
+        self,
+        trace_id: str,
+        parent_id: Optional[str],
+        span_id: str,
+        sampled: Optional[bool],
+        flags: Optional[int],
+        name: str,
+        context: RequestContext,
+        baseplate: Optional[Baseplate] = None,
+    ):
+        super().__init__(trace_id, parent_id, span_id, sampled, flags, name, context, baseplate)
+        if self.context.otelspan:
+            ctx = trace.set_span_in_context(self.context.otelspan)
+            self.otelspan = tracer.start_span(name, ctx, kind=trace.SpanKind.INTERNAL)
+        else:
+            self.otelspan = tracer.start_span(name, kind=trace.SpanKind.INTERNAL)
+        self.context.otelspan = self.otelspan
+
     def make_child(
         self, name: str, local: bool = False, component_name: Optional[str] = None
     ) -> "Span":
@@ -743,6 +800,26 @@ class ServerSpan(LocalSpan):
     during requests as the ``span`` attribute.
 
     """
+
+    def __init__(
+        self,
+        trace_id: str,
+        parent_id: Optional[str],
+        span_id: str,
+        sampled: Optional[bool],
+        flags: Optional[int],
+        name: str,
+        context: RequestContext,
+        baseplate: Optional[Baseplate] = None,
+        trace_info: TraceInfo = None,
+    ):
+        super().__init__(trace_id, parent_id, span_id, sampled, flags, name, context, baseplate)
+        if trace_info:
+            ctx = trace.set_span_in_context(trace_info.to_otel())
+            self.otelspan = tracer.start_span(name, ctx, kind=trace.SpanKind.SERVER)
+        else:
+            self.otelspan = tracer.start_span(name, kind=trace.SpanKind.SERVER)
+        self.context.otelspan = self.otelspan
 
 
 __all__ = ["Baseplate"]

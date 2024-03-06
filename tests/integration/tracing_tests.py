@@ -2,7 +2,13 @@ import unittest
 
 from unittest import mock
 
+from opentelemetry import propagate
+from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+
 from baseplate import Baseplate
+from baseplate.lib.propagator_redditb3 import RedditB3Format
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.observers.tracing import make_client
 from baseplate.observers.tracing import NullRecorder
 from baseplate.observers.tracing import TraceBaseplateObserver
@@ -16,8 +22,14 @@ try:
 
     from baseplate.frameworks.pyramid import BaseplateConfigurator
     from baseplate.frameworks.pyramid import StaticTrustHandler
+    from opentelemetry.test.test_base import TestBase
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
+
+
+propagate.set_global_textmap(
+    CompositePropagator([RedditB3ThriftFormat(), RedditB3Format(), TraceContextTextMapPropagator()])
+)
 
 
 class TestException(Exception):
@@ -38,7 +50,7 @@ def local_parent_trace_within_context(request):
             pass
 
 
-class TracingTests(unittest.TestCase):
+class TracingTests(TestBase):
     def _register_server_mock(self, context, server_span):
         server_span_observer = TraceServerSpanObserver(
             "test-service", "test-hostname", server_span, NullRecorder()
@@ -82,6 +94,7 @@ class TracingTests(unittest.TestCase):
         self.local_span_ids = []
         self.local_span_observers = []
         self.test_app = webtest.TestApp(app)
+        super().setUp()
 
     def test_trace_on_inbound_request(self):
         with mock.patch.object(

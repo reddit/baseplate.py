@@ -1,11 +1,10 @@
-from redis import ConnectionPool
-
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.clients.redis import MonitoredRedisConnection
 from baseplate.clients.redis import RedisContextFactory
 from baseplate.lib.ratelimit.backends import _get_current_bucket
 from baseplate.lib.ratelimit.backends import RateLimitBackend
+from redis import ConnectionPool
 
 
 class RedisRateLimitBackendContextFactory(ContextFactory):

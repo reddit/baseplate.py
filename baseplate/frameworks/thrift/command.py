@@ -2,10 +2,10 @@ import glob
 import os
 import subprocess
 
+import baseplate.thrift
+
 from distutils.command.build_py import build_py
 from distutils.core import Command
-
-import baseplate.thrift
 
 
 class BuildThriftCommand(Command):

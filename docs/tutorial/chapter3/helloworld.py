@@ -1,7 +1,8 @@
-from baseplate import Baseplate
-from baseplate.frameworks.pyramid import BaseplateConfigurator
 from pyramid.config import Configurator
 from pyramid.view import view_config
+
+from baseplate import Baseplate
+from baseplate.frameworks.pyramid import BaseplateConfigurator
 
 
 @view_config(route_name="hello_world", renderer="json")

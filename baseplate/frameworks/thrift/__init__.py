@@ -7,6 +7,14 @@ from typing import Callable
 from typing import Mapping
 from typing import Optional
 
+from baseplate import Baseplate
+from baseplate import RequestContext
+from baseplate import TraceInfo
+from baseplate.lib.edgecontext import EdgeContextFactory
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
+from opentelemetry.propagate import extract
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -17,14 +25,6 @@ from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
 from thrift.Thrift import TProcessor
 from thrift.transport.TTransport import TTransportException
-
-from baseplate import Baseplate
-from baseplate import RequestContext
-from baseplate import TraceInfo
-from baseplate.lib.edgecontext import EdgeContextFactory
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.thrift.ttypes import Error
-from baseplate.thrift.ttypes import ErrorCode
 
 
 PROM_NAMESPACE = "thrift_server"
@@ -199,18 +199,17 @@ def baseplateify_processor(
                 data=iprot.get_headers()
             )
 
-            trace_info: Optional[TraceInfo]
-            try:
-                sampled = bool(headers.get(b"Sampled") == b"1")
-                flags = headers.get(b"Flags", None)
-                trace_info = TraceInfo.from_upstream(
-                    headers[b"Trace"].decode(),
-                    headers.get(b"Parent", b"").decode(),
-                    headers[b"Span"].decode(),
-                    sampled,
-                    int(flags) if flags is not None else None,
-                )
-            except (KeyError, ValueError):
+            headers_str = {}
+            for k, v in headers.items():
+                try:
+                    headers_str[k.decode()] = v.decode()
+                except UnicodeDecodeError:
+                    self.logger.info("Unable to decode header %s, ignoring." % k.decode())
+
+            ctx = extract(headers_str)
+            if ctx:
+                trace_info = TraceInfo.from_otel(ctx)
+            else:
                 trace_info = None
 
             edge_payload = headers.get(b"Edge-Request", None)

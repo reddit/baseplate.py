@@ -16,14 +16,13 @@ from typing import Callable
 from typing import Generic
 from typing import TypeVar
 
-from thrift import TSerialization
-from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
-
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
+from thrift import TSerialization
+from thrift.protocol.TJSONProtocol import TJSONProtocolFactory
 
 
 MAX_EVENT_SIZE = 102400

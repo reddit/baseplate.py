@@ -19,8 +19,6 @@ from typing import Optional
 
 import requests
 
-from requests.exceptions import RequestException
-
 from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
 from baseplate import LocalSpan
@@ -32,6 +30,7 @@ from baseplate.lib import warn_deprecated
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.observers.timeout import ServerTimeout
+from requests.exceptions import RequestException
 
 
 if typing.TYPE_CHECKING:
@@ -203,6 +202,7 @@ class TraceSpanObserver(SpanObserver):
         self.binary_annotations: List[Dict[str, Any]] = []
         self.counters: DefaultDict[str, float] = collections.defaultdict(float)
         self.on_set_tag(ANNOTATIONS["COMPONENT"], "baseplate")
+
         super().__init__()
 
     def on_start(self) -> None:
@@ -323,9 +323,6 @@ class TraceLocalSpanObserver(TraceSpanObserver):
             self._create_binary_annotation(ANNOTATIONS["LOCAL_COMPONENT"], self.component_name)
         )
 
-    def on_start(self) -> None:
-        self.start = current_epoch_microseconds()
-
     def on_child_span_created(self, span: Span) -> None:
         """Perform tracing-related actions for child spans creation.
 
@@ -364,9 +361,6 @@ class TraceServerSpanObserver(TraceSpanObserver):
         self.span = span
         self.recorder = recorder
         super().__init__(service_name, hostname, span, recorder)
-
-    def on_start(self) -> None:
-        self.start = current_epoch_microseconds()
 
     def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
         if exc_info and exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):

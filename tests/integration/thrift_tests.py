@@ -8,6 +8,11 @@ from unittest import mock
 import gevent.monkey
 import pytest
 
+from opentelemetry import propagate
+from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
 from baseplate import ServerSpanObserver
@@ -16,6 +21,8 @@ from baseplate import TraceInfo
 from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
+from baseplate.lib.propagator_redditb3 import RedditB3Format
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.observers.timeout import ServerTimeout
 from baseplate.observers.timeout import TimeoutBaseplateObserver
@@ -30,6 +37,10 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
+
+propagate.set_global_textmap(
+    CompositePropagator([RedditB3ThriftFormat(), RedditB3Format(), TraceContextTextMapPropagator()])
+)
 
 
 @contextlib.contextmanager
@@ -134,7 +145,7 @@ class GeventPatchedTestCase(unittest.TestCase):
         gevent.monkey.saved.clear()
 
 
-class ThriftTraceHeaderTests(GeventPatchedTestCase):
+class ThriftTraceHeaderTests(TestBase, GeventPatchedTestCase):
     def test_user_agent(self):
         """We should accept user-agent headers and apply them to the server span tags."""
 
@@ -202,9 +213,11 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
         self.assertIsNotNone(handler.server_span)
         self.assertEqual(handler.server_span.trace_id, trace_id)
-        self.assertEqual(handler.server_span.parent_id, parent_id)
+        # we ignore parent span
+        self.assertEqual(handler.server_span.parent_id, None)
         self.assertEqual(handler.server_span.id, span_id)
-        self.assertEqual(handler.server_span.flags, flags)
+        # We ignore zipkin flags
+        self.assertEqual(handler.server_span.flags, None)
         self.assertEqual(handler.server_span.sampled, sampled)
         self.assertTrue(client_result)
 
@@ -234,7 +247,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
 
         self.assertIsNotNone(handler.server_span)
         self.assertEqual(handler.server_span.trace_id, trace_id)
-        self.assertEqual(handler.server_span.parent_id, parent_id)
+        # We ignore parent_id with otel tracing
+        self.assertEqual(handler.server_span.parent_id, None)
         self.assertEqual(handler.server_span.id, span_id)
         self.assertEqual(handler.server_span.flags, None)
         self.assertEqual(handler.server_span.sampled, False)
@@ -427,7 +441,7 @@ class ThriftClientSpanTests(GeventPatchedTestCase):
         self.assertIsInstance(captured_exc, Error)
 
 
-class ThriftEndToEndTests(GeventPatchedTestCase):
+class ThriftEndToEndTests(TestBase, GeventPatchedTestCase):
     def test_end_to_end(self):
         class Handler(TestService.Iface):
             def __init__(self):
@@ -546,7 +560,7 @@ class ThriftEndToEndTests(GeventPatchedTestCase):
         self.assertAlmostEqual(handler.context.deadline_budget, retry_timeout_seconds)
 
 
-class ThriftHealthcheck(GeventPatchedTestCase):
+class ThriftHealthcheck(TestBase, GeventPatchedTestCase):
     def test_v2_client_v1_server(self):
         class Handler(BaseplateService.Iface):
             def is_healthy(self, context):

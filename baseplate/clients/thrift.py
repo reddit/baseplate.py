@@ -9,14 +9,6 @@ from typing import Callable
 from typing import Iterator
 from typing import Optional
 
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
-from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException
-from thrift.Thrift import TException
-from thrift.transport.TTransport import TTransportException
-
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
@@ -27,6 +19,13 @@ from baseplate.lib.thrift_pool import thrift_pool_from_config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
+from thrift.protocol.TProtocol import TProtocolException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
+from thrift.transport.TTransport import TTransportException
 
 PROM_NAMESPACE = "thrift_client"
 

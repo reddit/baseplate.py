@@ -10,6 +10,11 @@ from typing import Union
 
 from advocate import AddrValidator
 from advocate import ValidatingHTTPAdapter
+from baseplate import Span
+from baseplate.clients import ContextFactory
+from baseplate.lib import config
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -18,12 +23,6 @@ from requests import Request
 from requests import Response
 from requests import Session
 from requests.adapters import HTTPAdapter
-
-from baseplate import Span
-from baseplate.clients import ContextFactory
-from baseplate.lib import config
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 
 
 def http_adapter_from_config(

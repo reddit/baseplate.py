@@ -19,7 +19,7 @@ certifi==2022.12.7
 cffi==1.16.0
 cfgv==3.4.0
 chardet==4.0.0
-click==7.1.2
+click>=8.0.0
 confluent-kafka==2.3.0
 coverage==5.4
 cryptography==39.0.1
@@ -36,7 +36,7 @@ hupper==1.10.2
 identify==2.5.33
 idna==2.10
 imagesize==1.2.0
-importlib-metadata==4.2.0
+importlib-metadata>=6.0
 iniconfig==1.1.1
 isort==5.7.0
 Jinja2==2.11.3
@@ -52,7 +52,9 @@ ndg-httpsclient==0.5.1
 netifaces==0.10.9
 nodeenv==1.8.0
 objgraph==3.6.0
-packaging==20.9
+opentelemetry-api==1.20.0
+opentelemetry-sdk==1.20.0
+packaging>=22.8
 PasteDeploy==3.0
 pathspec==0.9.0
 plaster==1.0
