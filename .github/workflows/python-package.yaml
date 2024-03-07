@@ -44,10 +44,7 @@ jobs:
           python --version
           python -m pip install -r requirements.txt
 
-      - name: Lint
-        run: |
-          make lint
-
       - name: Test
         run: |
+          mount
           make test

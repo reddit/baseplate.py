@@ -513,6 +513,8 @@ class VaultCSISecretsStore(SecretsStore):
 
     def _get_mtime(self) -> float:
         """Modification time is store-wide for CSI secrets."""
+        import subprocess
+        subprocess.Popen(("stat", str(self.data_symlink)))
         return os.path.getmtime(self.data_symlink)
 
     def _raw_secret(self, name: str) -> Any:
@@ -524,9 +526,18 @@ class VaultCSISecretsStore(SecretsStore):
 
     def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         mtime = self._get_mtime()
+        try:
+            contents = open(os.path.join(self.data_symlink, secret_path), "r").read()
+        except FileNotFoundError:
+            contents = "<DNE>"
+        print("file mtime:", mtime, "contents:", contents, "mtime after:", self._get_mtime())
         if cache_entry := self.cache.get(secret_path):
+            print("cache_entry.mtime:", cache_entry.mtime, "contents:", cache_entry.data)
             if cache_entry.mtime == mtime:
+                print("cache mtime HIT")
                 return cache_entry.data, mtime
+            else:
+                print("cache mtime MISS")
         secret_data = self._raw_secret(secret_path)
         self.cache[secret_path] = VaultCSIEntry(
             mtime=mtime,
