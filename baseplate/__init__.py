@@ -729,7 +729,17 @@ class LocalSpan(Span):
         context: RequestContext,
         baseplate: Optional[Baseplate] = None,
     ):
-        super().__init__(trace_id, parent_id, span_id, sampled, flags, name, context, baseplate)
+        self.trace_id = trace_id
+        self.parent_id = parent_id
+        self.id = span_id
+        self.sampled = sampled
+        self.flags = flags
+        self.name = name
+        self.context = context
+        self.baseplate = baseplate
+        self.component_name: Optional[str] = None
+        self.observers: List[SpanObserver] = []
+
         if self.context.otelspan:
             ctx = trace.set_span_in_context(self.context.otelspan)
             self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.INTERNAL)
@@ -814,7 +824,17 @@ class ServerSpan(LocalSpan):
         baseplate: Optional[Baseplate] = None,
         trace_info: Optional[TraceInfo] = None,
     ):
-        super().__init__(trace_id, parent_id, span_id, sampled, flags, name, context, baseplate)
+        self.trace_id = trace_id
+        self.parent_id = parent_id
+        self.id = span_id
+        self.sampled = sampled
+        self.flags = flags
+        self.name = name
+        self.context = context
+        self.baseplate = baseplate
+        self.component_name: Optional[str] = None
+        self.observers: List[SpanObserver] = []
+
         if trace_info:
             ctx = trace.set_span_in_context(trace_info.to_otel())
             self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.SERVER)
