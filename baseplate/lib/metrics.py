@@ -42,6 +42,7 @@ ends.
 .. _StatsD: https://github.com/statsd/statsd
 
 """
+
 import collections
 import errno
 import logging

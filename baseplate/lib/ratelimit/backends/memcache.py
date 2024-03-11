@@ -1,10 +1,11 @@
+from pymemcache.client import PooledClient
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.clients.memcache import MemcacheContextFactory
 from baseplate.clients.memcache import MonitoredMemcacheConnection
 from baseplate.lib.ratelimit.backends import _get_current_bucket
 from baseplate.lib.ratelimit.backends import RateLimitBackend
-from pymemcache.client import PooledClient
 
 
 class MemcacheRateLimitBackendContextFactory(ContextFactory):

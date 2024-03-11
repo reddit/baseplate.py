@@ -2,6 +2,7 @@
 
 This command serves your application from the given configuration file.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,20 +40,6 @@ from typing import Sequence
 from typing import TextIO
 from typing import Tuple
 
-from baseplate import Baseplate
-from baseplate.lib import warn_deprecated
-from baseplate.lib.config import Endpoint
-from baseplate.lib.config import EndpointConfiguration
-from baseplate.lib.config import Optional as OptionalConfig
-from baseplate.lib.config import parse_config
-from baseplate.lib.config import Timespan
-from baseplate.lib.log_formatter import CustomJsonFormatter
-from baseplate.lib.prometheus_metrics import is_metrics_enabled
-from baseplate.lib.propagator_redditb3 import RedditB3Format
-from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
-from baseplate.server import einhorn
-from baseplate.server import reloader
-from baseplate.server.net import bind_socket
 from gevent.server import StreamServer
 from opentelemetry import propagate
 from opentelemetry import trace
@@ -69,6 +56,21 @@ from opentelemetry.sdk.trace.sampling import DEFAULT_ON
 from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
 from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+
+from baseplate import Baseplate
+from baseplate.lib import warn_deprecated
+from baseplate.lib.config import Endpoint
+from baseplate.lib.config import EndpointConfiguration
+from baseplate.lib.config import Optional as OptionalConfig
+from baseplate.lib.config import parse_config
+from baseplate.lib.config import Timespan
+from baseplate.lib.log_formatter import CustomJsonFormatter
+from baseplate.lib.prometheus_metrics import is_metrics_enabled
+from baseplate.lib.propagator_redditb3 import RedditB3Format
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
+from baseplate.server import einhorn
+from baseplate.server import reloader
+from baseplate.server.net import bind_socket
 
 
 logger = logging.getLogger(__name__)

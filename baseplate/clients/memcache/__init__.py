@@ -9,15 +9,16 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
+from pymemcache.client.base import PooledClient
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.prometheus_metrics import default_latency_buckets
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
-from pymemcache.client.base import PooledClient
 
 
 Serializer = Callable[[str, Any], Tuple[bytes, int]]

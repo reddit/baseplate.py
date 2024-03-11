@@ -16,6 +16,8 @@ from typing import Optional
 
 import gevent.events
 
+from gevent.pool import Pool
+
 from baseplate import _ExcInfo
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
@@ -25,7 +27,6 @@ from baseplate import ServerSpanObserver
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib import prometheus_metrics
-from gevent.pool import Pool
 
 
 REPORT_INTERVAL_SECONDS = 10

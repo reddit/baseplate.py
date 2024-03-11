@@ -1,4 +1,5 @@
 """Extensions to the standard library `random` module."""
+
 import bisect
 import random
 import typing

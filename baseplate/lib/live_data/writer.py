@@ -1,4 +1,5 @@
 """Write a file's contents to a node in ZooKeeper."""
+
 import argparse
 import configparser
 import difflib
@@ -7,12 +8,13 @@ import sys
 
 from typing import BinaryIO
 
-from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
-from baseplate.lib.secrets import secrets_store_from_config
-from baseplate.server import EnvironmentInterpolation
 from kazoo.client import KazooClient
 from kazoo.exceptions import BadVersionError
 from kazoo.exceptions import NoNodeError
+
+from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
+from baseplate.lib.secrets import secrets_store_from_config
+from baseplate.server import EnvironmentInterpolation
 
 
 logger = logging.getLogger(__name__)

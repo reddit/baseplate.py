@@ -453,7 +453,8 @@ class ConfigNamespace(dict):
         super().__init__()
         self.__dict__ = self
 
-    def __getattr__(self, name: str) -> Any: ...
+    def __getattr__(self, name: str) -> Any:
+        """This is just here to define the type for __getattr__."""
 
 
 ConfigSpecItem = Union["Parser", Dict[str, Any], Callable[[str], T]]

@@ -14,11 +14,6 @@ from typing import Tuple
 from typing import TYPE_CHECKING
 from typing import Union
 
-from baseplate import Span
-from baseplate.clients import ContextFactory
-from baseplate.lib import config
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.lib.secrets import SecretsStore
 from cassandra.auth import PlainTextAuthProvider
 from cassandra.cluster import _NOT_SET  # pylint: disable=no-name-in-module
 from cassandra.cluster import Cluster  # pylint: disable=no-name-in-module
@@ -31,6 +26,12 @@ from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
+
+from baseplate import Span
+from baseplate.clients import ContextFactory
+from baseplate.lib import config
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.secrets import SecretsStore
 
 
 class CassandraPrometheusLabels(NamedTuple):

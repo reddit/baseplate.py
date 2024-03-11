@@ -15,6 +15,11 @@ from typing import TYPE_CHECKING
 
 import confluent_kafka
 
+from gevent.server import StreamServer
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
+
 from baseplate import Baseplate
 from baseplate import RequestContext
 from baseplate.lib.prometheus_metrics import default_latency_buckets
@@ -23,10 +28,6 @@ from baseplate.server.queue_consumer import make_simple_healthchecker
 from baseplate.server.queue_consumer import MessageHandler
 from baseplate.server.queue_consumer import PumpWorker
 from baseplate.server.queue_consumer import QueueConsumerFactory
-from gevent.server import StreamServer
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
 
 
 if TYPE_CHECKING:

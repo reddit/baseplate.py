@@ -1,4 +1,5 @@
 """A Gevent-friendly POSIX message queue."""
+
 import select
 
 from typing import Optional

@@ -7,13 +7,6 @@ from typing import Callable
 from typing import Mapping
 from typing import Optional
 
-from baseplate import Baseplate
-from baseplate import RequestContext
-from baseplate import TraceInfo
-from baseplate.lib.edgecontext import EdgeContextFactory
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.thrift.ttypes import Error
-from baseplate.thrift.ttypes import ErrorCode
 from opentelemetry.propagate import extract
 from prometheus_client import Counter
 from prometheus_client import Gauge
@@ -25,6 +18,14 @@ from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
 from thrift.Thrift import TProcessor
 from thrift.transport.TTransport import TTransportException
+
+from baseplate import Baseplate
+from baseplate import RequestContext
+from baseplate import TraceInfo
+from baseplate.lib.edgecontext import EdgeContextFactory
+from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
 
 
 PROM_NAMESPACE = "thrift_server"

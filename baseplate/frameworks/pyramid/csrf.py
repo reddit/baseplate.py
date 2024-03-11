@@ -4,12 +4,13 @@ from datetime import timedelta
 from typing import Any
 from typing import Tuple
 
+from zope.interface import implementer
+
 from baseplate.lib.crypto import make_signature
 from baseplate.lib.crypto import SignatureError
 from baseplate.lib.crypto import validate_signature
 from baseplate.lib.secrets import SecretsStore
 from baseplate.lib.secrets import VersionedSecret
-from zope.interface import implementer
 
 
 logger = logging.getLogger(__name__)

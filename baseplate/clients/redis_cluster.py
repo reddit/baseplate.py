@@ -10,6 +10,9 @@ from typing import Optional
 
 import rediscluster
 
+from redis import RedisError
+from rediscluster.pipeline import ClusterPipeline
+
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.clients.redis import ACTIVE_REQUESTS
@@ -20,8 +23,6 @@ from baseplate.clients.redis import PROM_LABELS_PREFIX
 from baseplate.clients.redis import REQUESTS_TOTAL
 from baseplate.lib import config
 from baseplate.lib import metrics
-from redis import RedisError
-from rediscluster.pipeline import ClusterPipeline
 
 logger = logging.getLogger(__name__)
 randomizer = random.SystemRandom()

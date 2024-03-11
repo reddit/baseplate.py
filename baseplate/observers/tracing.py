@@ -1,4 +1,5 @@
 """Components for processing Baseplate spans for service request tracing."""
+
 import collections
 import json
 import logging
@@ -19,6 +20,8 @@ from typing import Optional
 
 import requests
 
+from requests.exceptions import RequestException
+
 from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
 from baseplate import LocalSpan
@@ -30,7 +33,6 @@ from baseplate.lib import warn_deprecated
 from baseplate.lib.message_queue import MessageQueue
 from baseplate.lib.message_queue import TimedOutError
 from baseplate.observers.timeout import ServerTimeout
-from requests.exceptions import RequestException
 
 
 if typing.TYPE_CHECKING:

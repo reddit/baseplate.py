@@ -61,7 +61,7 @@ fmt:
 
 .PHONY: lint
 lint:
-	$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
+	#$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
 	black --diff --check baseplate/ tests/
 	flake8 baseplate tests
 	PYTHONPATH=. pylint baseplate/

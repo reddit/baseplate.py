@@ -14,6 +14,7 @@ A basic example of usage::
         client.do_example_thing()
 
 """
+
 import contextlib
 import logging
 import queue
@@ -26,8 +27,6 @@ from typing import Optional
 from typing import Type
 from typing import TYPE_CHECKING
 
-from baseplate.lib import config
-from baseplate.lib.retry import RetryPolicy
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase
 from thrift.protocol.TProtocol import TProtocolException
@@ -36,6 +35,9 @@ from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TTransportException
+
+from baseplate.lib import config
+from baseplate.lib.retry import RetryPolicy
 
 
 logger = logging.getLogger(__name__)

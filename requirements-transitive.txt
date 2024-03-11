@@ -21,7 +21,7 @@ cfgv==3.4.0
 chardet==4.0.0
 click>=8.0.0
 confluent-kafka==2.3.0
-coverage==5.4
+coverage==7.4.3
 cryptography==39.0.1
 dill==0.3.7
 distlib==0.3.8
@@ -54,6 +54,7 @@ nodeenv==1.8.0
 objgraph==3.6.0
 opentelemetry-api==1.20.0
 opentelemetry-sdk==1.20.0
+opentelemetry-exporter-otlp==1.20.0
 packaging>=22.8
 PasteDeploy==3.0
 pathspec==0.9.0

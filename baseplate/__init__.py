@@ -15,14 +15,17 @@ from typing import Tuple
 from typing import Type
 
 import gevent.monkey
+import opentelemetry.context
+
+from opentelemetry import trace
+from opentelemetry.propagate import inject
+from pkg_resources import DistributionNotFound
+from pkg_resources import get_distribution
 
 from baseplate.lib import config
 from baseplate.lib import get_calling_module_name
 from baseplate.lib import metrics
 from baseplate.lib import UnknownCallerError
-from opentelemetry import trace
-from pkg_resources import DistributionNotFound
-from pkg_resources import get_distribution
 
 
 try:
@@ -164,7 +167,7 @@ class TraceInfo(NamedTuple):
 
         return cls(trace_id, parent_id, span_id, sampled, flags)
 
-    def to_otel(self):
+    def to_otel(self) -> trace.Span:
         if self.sampled:
             sampled = trace.TraceFlags.SAMPLED
         else:
@@ -178,15 +181,13 @@ class TraceInfo(NamedTuple):
         return trace.NonRecordingSpan(ctx)
 
     @classmethod
-    def from_otel(cls, ctx):
-        span: trace.NonRecordingSpan = list(ctx.values())[0]
-
-        spanctx: trace.SpanContext = span.get_span_context()
-        if spanctx.trace_flags == trace.TraceFlags.SAMPLED:
-            sampled = True
-        else:
-            sampled = False
-        return cls(str(spanctx.trace_id), None, str(spanctx.span_id), sampled, None)
+    def from_otel(cls, ctx: opentelemetry.context.Context) -> "TraceInfo":
+        data: Dict = {}
+        # Inject our tracing headers into the data dict. Then we can use our redditb3 headers to capture
+        # the values needed.
+        inject(data, ctx)
+        sampled: bool = bool(data["X-Sampled"] == "1")
+        return cls(data["X-Trace"], None, data["X-Span"], sampled, None)
 
 
 class RequestContext:
@@ -216,7 +217,7 @@ class RequestContext:
         self.__context_config = context_config
         self.__prefix = prefix
         self.__wrapped = wrapped
-        self.otelspan = None
+        self.otelspan: Optional[trace.Span] = None
 
         # the context and span reference eachother (unfortunately) so we can't
         # construct 'em both with references from the start. however, we can
@@ -583,7 +584,7 @@ class Span:
 
         if self.context.otelspan:
             ctx = trace.set_span_in_context(self.context.otelspan)
-            self.otelspan = tracer.start_span(name, ctx, kind=trace.SpanKind.CLIENT)
+            self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.CLIENT)
         else:
             self.otelspan = tracer.start_span(name, kind=trace.SpanKind.CLIENT)
         self.context.otelspan = self.otelspan
@@ -731,7 +732,7 @@ class LocalSpan(Span):
         super().__init__(trace_id, parent_id, span_id, sampled, flags, name, context, baseplate)
         if self.context.otelspan:
             ctx = trace.set_span_in_context(self.context.otelspan)
-            self.otelspan = tracer.start_span(name, ctx, kind=trace.SpanKind.INTERNAL)
+            self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.INTERNAL)
         else:
             self.otelspan = tracer.start_span(name, kind=trace.SpanKind.INTERNAL)
         self.context.otelspan = self.otelspan
@@ -811,12 +812,12 @@ class ServerSpan(LocalSpan):
         name: str,
         context: RequestContext,
         baseplate: Optional[Baseplate] = None,
-        trace_info: TraceInfo = None,
+        trace_info: Optional[TraceInfo] = None,
     ):
         super().__init__(trace_id, parent_id, span_id, sampled, flags, name, context, baseplate)
         if trace_info:
             ctx = trace.set_span_in_context(trace_info.to_otel())
-            self.otelspan = tracer.start_span(name, ctx, kind=trace.SpanKind.SERVER)
+            self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.SERVER)
         else:
             self.otelspan = tracer.start_span(name, kind=trace.SpanKind.SERVER)
         self.context.otelspan = self.otelspan
