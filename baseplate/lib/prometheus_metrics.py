@@ -32,7 +32,7 @@ default_size_start = 8
 default_size_factor = 2
 default_size_count = 20
 default_size_buckets = [
-    default_size_start * default_size_factor**i for i in range(default_size_count)
+    default_size_start * default_size_factor ** i for i in range(default_size_count)
 ]
 
 

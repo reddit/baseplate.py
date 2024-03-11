@@ -19,7 +19,7 @@ certifi==2022.12.7
 cffi==1.16.0
 cfgv==3.4.0
 chardet==4.0.0
-click>=8.0.0
+click==7.1.2
 confluent-kafka==2.3.0
 coverage==7.4.3
 cryptography==39.0.1

@@ -105,9 +105,9 @@ class BatchPublisher:
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
         self.session = requests.Session()
-        self.session.headers["User-Agent"] = (
-            f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
-        )
+        self.session.headers[
+            "User-Agent"
+        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
 
     def _sign_payload(self, payload: bytes) -> str:
         digest = hmac.new(self.key_secret, payload, hashlib.sha256).hexdigest()

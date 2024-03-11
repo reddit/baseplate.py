@@ -1,5 +1,4 @@
 """Write a file's contents to a node in ZooKeeper."""
-
 import argparse
 import configparser
 import difflib

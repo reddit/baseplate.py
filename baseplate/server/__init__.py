@@ -2,7 +2,6 @@
 
 This command serves your application from the given configuration file.
 """
-
 from __future__ import annotations
 
 import argparse

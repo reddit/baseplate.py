@@ -1,5 +1,4 @@
 """Check health of a baseplate service on localhost."""
-
 import argparse
 import socket
 import sys

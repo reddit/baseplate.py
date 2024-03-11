@@ -10,7 +10,6 @@ their metrics. Each application worker will be serving the exporter as well and
 can aggregate and serve metrics for all workers.
 
 """
-
 import atexit
 import logging
 import os

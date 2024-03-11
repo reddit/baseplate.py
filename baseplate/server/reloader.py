@@ -5,7 +5,6 @@ restart the app if anything changes. This should not be used in production
 settings.
 
 """
-
 import logging
 import os
 import re

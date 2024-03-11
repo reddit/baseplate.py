@@ -1,5 +1,4 @@
 """Internal library helpers."""
-
 import functools
 import inspect
 import warnings

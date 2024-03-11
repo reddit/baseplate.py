@@ -162,7 +162,7 @@ class TraceInfo(NamedTuple):
             raise ValueError("invalid sampled value")
 
         if flags is not None:
-            if not 0 <= flags < 2**64:
+            if not 0 <= flags < 2 ** 64:
                 raise ValueError("invalid flags value")
 
         return cls(trace_id, parent_id, span_id, sampled, flags)

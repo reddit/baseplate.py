@@ -1,5 +1,4 @@
 """Application integration with the secret fetcher daemon."""
-
 import base64
 import binascii
 import json

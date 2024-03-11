@@ -5,7 +5,6 @@ Baseplate.py's instrumentation. When using these client library integrations,
 trace information is passed on and metrics are collected automatically.
 
 """
-
 from typing import Any
 from typing import TYPE_CHECKING
 

@@ -9,7 +9,6 @@ serialized events are then consumed and published to the remote event collector
 by a separate daemon.
 
 """
-
 import logging
 
 from typing import Any

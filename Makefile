@@ -55,14 +55,14 @@ fmt:
 		exit 1; \
 	fi
 	$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
-	black baseplate/ tests/
+	black -t py310 baseplate/ tests/
 	$(REORDER_PYTHON_IMPORTS) --application-directories /tmp --exit-zero-even-if-changed $(PYTHON_EXAMPLES)
-	black docs/  # separate so it uses its own pyproject.toml
+	black -t py310 docs/  # separate so it uses its own pyproject.toml
 
 .PHONY: lint
 lint:
-	#$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
-	black --diff --check baseplate/ tests/
+	$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
+	black -t py310 --diff --check baseplate/ tests/
 	flake8 baseplate tests
 	PYTHONPATH=. pylint baseplate/
 	mypy baseplate/

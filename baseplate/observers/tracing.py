@@ -1,5 +1,4 @@
 """Components for processing Baseplate spans for service request tracing."""
-
 import collections
 import json
 import logging
