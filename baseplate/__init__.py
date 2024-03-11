@@ -570,6 +570,7 @@ class Span:
         name: str,
         context: RequestContext,
         baseplate: Optional[Baseplate] = None,
+        otelspan: Optional[Baseplate] = None,
     ):
         self.trace_id = trace_id
         self.parent_id = parent_id
@@ -582,12 +583,8 @@ class Span:
         self.component_name: Optional[str] = None
         self.observers: List[SpanObserver] = []
 
-        if self.context.otelspan:
-            ctx = trace.set_span_in_context(self.context.otelspan)
-            self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.CLIENT)
-        else:
-            self.otelspan = tracer.start_span(name, kind=trace.SpanKind.CLIENT)
-        self.context.otelspan = self.otelspan
+        ctx = trace.set_span_in_context(otelspan)
+        self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.CLIENT)
 
     def register(self, observer: SpanObserver) -> None:
         """Register an observer to receive events from this span."""
@@ -728,6 +725,7 @@ class LocalSpan(Span):
         name: str,
         context: RequestContext,
         baseplate: Optional[Baseplate] = None,
+        otelspan: Optional[trace.Span] = None,
     ):
         self.trace_id = trace_id
         self.parent_id = parent_id
@@ -740,8 +738,8 @@ class LocalSpan(Span):
         self.component_name: Optional[str] = None
         self.observers: List[SpanObserver] = []
 
-        if self.context.otelspan:
-            ctx = trace.set_span_in_context(self.context.otelspan)
+        if otelspan:
+            ctx = trace.set_span_in_context(otelspan)
             self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.INTERNAL)
         else:
             self.otelspan = tracer.start_span(name, kind=trace.SpanKind.INTERNAL)
@@ -784,6 +782,7 @@ class LocalSpan(Span):
                 name,
                 context_copy,
                 self.baseplate,
+                self.otelspan
             )
             span.component_name = component_name
         else:
@@ -796,6 +795,7 @@ class LocalSpan(Span):
                 name,
                 context_copy,
                 self.baseplate,
+                self.otelspan
             )
         context_copy.span = span
 
