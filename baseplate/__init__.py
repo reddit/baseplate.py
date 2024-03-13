@@ -495,4 +495,66 @@ class Baseplate:
             yield context
 
 
+class Span:
+    """DEPRECATED"""
+    def __init__(
+            self,
+            trace_id: str,
+            _parent_id: Optional[str],
+            span_id: str,
+            sampled: Optional[bool],
+            _flags: Optional[int],
+            name: str,
+            context: RequestContext,
+            baseplate: Optional[Baseplate] = None,
+    ):
+        spanctx = trace.SpanContext(
+            trace_id=int(trace_id),
+            span_id=int(span_id),
+            is_remote=False,
+            trace_flags=trace.TraceFlags(trace.TraceFlags.SAMPLED) if sampled else trace.TraceFlags(trace.TraceFlags.DEFAULT),
+        )
+        input_span = trace.NonRecordingSpan(spanctx)
+        ctx = trace.set_span_in_context(input_span)
+        self.span = tracer.start_span(name, input_span, kind=trace.SpanKind.CLIENT)
+        context.span = self.span
+
+    def register(self, observer: SpanObserver) -> None:
+        """DEPRECATED"""
+
+    def start(self):
+        """Span is already started, noop"""
+
+    def set_tag(self, key: str, value: Any):
+        self.span.set_attribute(key, value)
+
+    def incr_tag(self, key: str, delta: float = 1):
+        """No longer supported"""
+
+    def log(self, name: str, payload: Optional[Any] = None) -> None:
+        """No longer supported"""
+
+    def finish(self, exc_info: Optional[_ExcInfo] = None) -> None:
+        if exc_info:
+            (_, e, _) = exc_info
+            self.span.set_status(trace.StatusCode.ERROR)
+            self.span.record_exception(Exception(e))
+        self.span.end()
+
+    def __enter__(self) -> trace.Span:
+        return self.span
+
+    def __exit__(self, exc_type: Optional[Type[BaseException]], value: Optional[BaseException], traceback: Optional[TracebackType]) -> None:
+        if exc_type is not None:
+            self.finish(exc_info=(exc_type, value, traceback))
+        else:
+            self.finish()
+
+    def with_tags(self, tags: Dict[str, Any]) -> "Span":
+        for k, v in tags.items():
+            self.set_tag(k, v)
+        return self
+
+
+
 __all__ = ["Baseplate"]
