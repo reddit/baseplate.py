@@ -12,6 +12,7 @@ import kombu.serialization
 from kombu import Connection
 from kombu import Exchange
 from kombu.pools import Producers
+from opentelemetry import trace
 from prometheus_client import Counter
 from prometheus_client import Histogram
 from thrift import TSerialization
@@ -19,7 +20,6 @@ from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.protocol.TProtocol import TProtocolFactory
 from vine.promises import promise  # type: ignore
 
-from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.prometheus_metrics import default_latency_buckets
@@ -235,7 +235,7 @@ class KombuProducerContextFactory(ContextFactory):
         self.producers = Producers(limit=max_connections)
         self.serializer = serializer
 
-    def make_object_for_context(self, name: str, span: Span) -> "_KombuProducer":
+    def make_object_for_context(self, name: str, span: trace.Span) -> "_KombuProducer":
         return _KombuProducer(
             name, span, self.connection, self.exchange, self.producers, serializer=self.serializer
         )
@@ -245,7 +245,7 @@ class _KombuProducer:
     def __init__(
         self,
         name: str,
-        span: Span,
+        span: trace.Span,
         connection: Connection,
         exchange: Exchange,
         producers: Producers,
@@ -284,11 +284,13 @@ class _KombuProducer:
             kwargs.setdefault("serializer", self.serializer.name)
 
         trace_name = f"{self.name}.publish"
-        child_span = self.span.make_child(trace_name)
+        ctx = trace.set_span_in_context(self.span)
+        tracer = trace.get_tracer(__name__)
+        child_span = tracer.start_span(trace_name, ctx, kind=trace.SpanKind.CLIENT)
 
-        child_span.set_tag("kind", "producer")
+        child_span.set_attribute("kind", "producer")
         if routing_key:
-            child_span.set_tag("message_bus.destination", routing_key)
+            child_span.set_attribute("message_bus.destination", routing_key)
 
         with child_span:
             producer_pool = self.producers[self.connection]

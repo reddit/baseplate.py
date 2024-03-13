@@ -2,10 +2,11 @@ from typing import Optional
 
 import gevent
 
+from opentelemetry import trace
+
 from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
 from baseplate import RequestContext
-from baseplate import ServerSpan
 from baseplate import SpanObserver
 from baseplate.lib import config
 
@@ -42,7 +43,7 @@ class TimeoutBaseplateObserver(BaseplateObserver):
     def __init__(self, timeout_config: config.ConfigNamespace):
         self.config = timeout_config
 
-    def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
+    def on_server_span_created(self, context: RequestContext, server_span: trace.Span) -> None:
         timeout = self.config.by_endpoint.get(server_span.name, self.config.default)
 
         min_timeout = None
@@ -58,14 +59,12 @@ class TimeoutBaseplateObserver(BaseplateObserver):
             # no deadline budget in request header
             pass
 
-        if min_timeout:
-            observer = TimeoutServerSpanObserver(server_span, min_timeout, self.config.debug)
-            server_span.register(observer)
-
 
 class TimeoutServerSpanObserver(SpanObserver):
-    def __init__(self, span: ServerSpan, timeout_seconds: float, debug: bool):
-        exception = ServerTimeout(span.name, timeout_seconds, debug)
+    def __init__(self, span: trace.Span, timeout_seconds: float, debug: bool):
+        exception = ServerTimeout(
+            "Span: " + trace.format_span_id(span.get_span_context().span_id), timeout_seconds, debug
+        )
         self.timeout = gevent.Timeout(timeout_seconds, exception)
 
     def on_start(self) -> None:

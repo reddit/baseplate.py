@@ -7,11 +7,11 @@ import confluent_kafka
 import pytest
 
 from gevent.server import StreamServer
+from opentelemetry import trace
 from prometheus_client import REGISTRY
 
 from baseplate import Baseplate
 from baseplate import RequestContext
-from baseplate import ServerSpan
 from baseplate.frameworks.queue_consumer.kafka import FastConsumerFactory
 from baseplate.frameworks.queue_consumer.kafka import InOrderConsumerFactory
 from baseplate.frameworks.queue_consumer.kafka import KAFKA_ACTIVE_MESSAGES
@@ -31,17 +31,9 @@ def context():
 
 
 @pytest.fixture
-def span():
-    sp = mock.MagicMock(spec=ServerSpan)
-    sp.make_child().__enter__.return_value = mock.MagicMock()
-    return sp
-
-
-@pytest.fixture
-def baseplate(context, span):
+def baseplate(context):
     bp = mock.MagicMock(spec=Baseplate)
     bp._metrics_client = None
-    bp.make_server_span().__enter__.return_value = span
     bp.make_context_object.return_value = context
     # Reset the mock calls since setting up the span actually triggers a "call"
     # to bp.make_server_span
@@ -74,7 +66,7 @@ class TestKafkaMessageHandler:
 
     @mock.patch("baseplate.frameworks.queue_consumer.kafka.time")
     @pytest.mark.parametrize("prometheus_client_name", [None, "my_kafka_client_name"])
-    def test_handle(self, time, context, span, baseplate, name, message, prometheus_client_name):
+    def test_handle(self, time, context, baseplate, name, message, prometheus_client_name):
         time.time.return_value = 2.0
         time.perf_counter.side_effect = [1, 2]
 
@@ -109,21 +101,6 @@ class TestKafkaMessageHandler:
                 prometheus_client_name=prometheus_client_name,
             )
         handler.handle(message)
-
-        baseplate.make_context_object.assert_called_once()
-        baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
-        baseplate.make_server_span().__enter__.assert_called_once()
-        span.set_tag.assert_has_calls(
-            [
-                mock.call("kind", "consumer"),
-                mock.call("kafka.topic", "topic_1"),
-                mock.call("kafka.key", "key_1"),
-                mock.call("kafka.partition", 3),
-                mock.call("kafka.offset", 33),
-                mock.call("kafka.timestamp", 123456),
-            ],
-            any_order=True,
-        )
         message_unpack_fn.assert_called_once_with(b"message-payload")
         handler_fn.assert_called_once_with(
             context, {"endpoint_timestamp": 1000.0, "body": "some text"}, message
@@ -156,7 +133,7 @@ class TestKafkaMessageHandler:
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
 
-    def test_handle_no_endpoint_timestamp(self, context, span, baseplate, name, message):
+    def test_handle_no_endpoint_timestamp(self, context, baseplate, name, message):
         handler_fn = mock.Mock()
         message_unpack_fn = mock.Mock(return_value={"body": "some text"})
         on_success_fn = mock.Mock()
@@ -173,19 +150,6 @@ class TestKafkaMessageHandler:
         handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
-        baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
-        baseplate.make_server_span().__enter__.assert_called_once()
-        span.set_tag.assert_has_calls(
-            [
-                mock.call("kind", "consumer"),
-                mock.call("kafka.topic", "topic_1"),
-                mock.call("kafka.key", "key_1"),
-                mock.call("kafka.partition", 3),
-                mock.call("kafka.offset", 33),
-                mock.call("kafka.timestamp", 123456),
-            ],
-            any_order=True,
-        )
         message_unpack_fn.assert_called_once_with(b"message-payload")
         handler_fn.assert_called_once_with(context, {"body": "some text"}, message)
         on_success_fn.assert_called_once_with(context, {"body": "some text"}, message)
@@ -213,7 +177,7 @@ class TestKafkaMessageHandler:
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
 
-    def test_handle_kafka_error(self, context, span, baseplate, name, message):
+    def test_handle_kafka_error(self, context, baseplate, name, message):
         handler_fn = mock.Mock()
         message_unpack_fn = mock.Mock()
         on_success_fn = mock.Mock()
@@ -234,9 +198,6 @@ class TestKafkaMessageHandler:
             handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
-        baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
-        baseplate.make_server_span().__enter__.assert_called_once()
-        span.set_tag.assert_not_called()
         message_unpack_fn.assert_not_called()
         handler_fn.assert_not_called()
         on_success_fn.assert_not_called()
@@ -261,12 +222,10 @@ class TestKafkaMessageHandler:
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
 
-    def test_handle_unpack_error(self, context, span, baseplate, name, message):
+    def test_handle_unpack_error(self, context, baseplate, name, message):
         handler_fn = mock.Mock()
         message_unpack_fn = mock.Mock(side_effect=ValueError("something bad happened"))
         on_success_fn = mock.Mock()
-
-        context.span = span
 
         handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
 
@@ -278,20 +237,6 @@ class TestKafkaMessageHandler:
         handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
-        baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
-        baseplate.make_server_span().__enter__.assert_called_once()
-        span.set_tag.assert_has_calls(
-            [
-                mock.call("kind", "consumer"),
-                mock.call("kafka.topic", "topic_1"),
-                mock.call("kafka.key", "key_1"),
-                mock.call("kafka.partition", 3),
-                mock.call("kafka.offset", 33),
-                mock.call("kafka.timestamp", 123456),
-            ],
-            any_order=True,
-        )
-        span.incr_tag.assert_called_once_with(f"{name}.topic_1.invalid_message")
         message_unpack_fn.assert_called_once_with(b"message-payload")
         handler_fn.assert_not_called()
         on_success_fn.assert_not_called()
@@ -316,7 +261,7 @@ class TestKafkaMessageHandler:
             REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
         )
 
-    def test_handle_handler_error(self, context, span, baseplate, name, message):
+    def test_handle_handler_error(self, context, baseplate, name, message):
         handler_fn = mock.Mock(side_effect=ValueError("something went wrong"))
         message_unpack_fn = mock.Mock(
             return_value={"endpoint_timestamp": 1000.0, "body": "some text"}
@@ -334,19 +279,7 @@ class TestKafkaMessageHandler:
             handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
-        baseplate.make_server_span.assert_called_once_with(context, f"{name}.handler")
-        baseplate.make_server_span().__enter__.assert_called_once()
-        span.set_tag.assert_has_calls(
-            [
-                mock.call("kind", "consumer"),
-                mock.call("kafka.topic", "topic_1"),
-                mock.call("kafka.key", "key_1"),
-                mock.call("kafka.partition", 3),
-                mock.call("kafka.offset", 33),
-                mock.call("kafka.timestamp", 123456),
-            ],
-            any_order=True,
-        )
+
         message_unpack_fn.assert_called_once_with(b"message-payload")
         handler_fn.assert_called_once_with(
             context, {"endpoint_timestamp": 1000.0, "body": "some text"}, message
@@ -687,7 +620,7 @@ class TestKafkaConsumerWorker:
         assert consumer_worker.stopped is False
 
     @mock.patch("baseplate.frameworks.queue_consumer.kafka.time")
-    def test_run(self, time, span, baseplate, name, consumer_worker):
+    def test_run(self, time, baseplate, name, consumer_worker):
         msg1 = mock.Mock()
         msg2 = mock.Mock()
         msg3 = mock.Mock()
@@ -698,21 +631,6 @@ class TestKafkaConsumerWorker:
         ) as stopped_value:
             stopped_value.side_effect = [False, False, False, True]
             consumer_worker.run()
-
-        baseplate.make_context_object.mock_calls == [mock.call(), mock.call(), mock.call()]
-        baseplate.make_server_span.mock_calls == [
-            mock.call(context, f"{name}.pump"),
-            mock.call(context, f"{name}.pump"),
-            mock.call(context, f"{name}.pump"),
-        ]
-        span.make_child.mock_calls == [
-            mock.call("kafka.consume"),
-            mock.call("kafka.work_queue_put"),
-            mock.call("kafka.consume"),
-            mock.call("kafka.work_queue_put"),
-            mock.call("kafka.consume"),
-            mock.call("kafka.work_queue_put"),
-        ]
 
         assert consumer_worker.started is True
         assert consumer_worker.consumer.consume.mock_calls == [

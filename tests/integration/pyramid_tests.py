@@ -3,11 +3,17 @@ import unittest
 
 from unittest import mock
 
+from opentelemetry import propagate
+from opentelemetry import trace
+from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.test.test_base import TestBase
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from pyramid.response import Response
 
 from baseplate import Baseplate
 from baseplate import BaseplateObserver
-from baseplate import ServerSpanObserver
+from baseplate.lib.propagator_redditb3 import RedditB3Format
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 
 from . import FakeEdgeContextFactory
 
@@ -70,13 +76,23 @@ def render_bad_exception_view(request):
 
 
 def local_tracing_within_context(request):
-    with request.span.make_child("local-req", local=True, component_name="in-context"):
+    ctx = trace.set_span_in_context(request.span)
+    tracer = trace.get_tracer(__name__)
+    with tracer.start_span("local-req", ctx, kind=trace.SpanKind.INTERNAL):
         pass
     return {"trace": "success"}
 
 
-class ConfiguratorTests(unittest.TestCase):
+class ConfiguratorTests(TestBase):
     def setUp(self):
+        super().setUp()
+
+        propagate.set_global_textmap(
+            CompositePropagator(
+                [RedditB3ThriftFormat(), RedditB3Format(), TraceContextTextMapPropagator()]
+            )
+        )
+
         configurator = Configurator()
         configurator.add_route("example", "/example", request_method="GET")
         configurator.add_route("route", "/route/{hello}/world", request_method="GET")
@@ -96,12 +112,6 @@ class ConfiguratorTests(unittest.TestCase):
         )
 
         self.observer = mock.Mock(spec=BaseplateObserver)
-        self.server_observer = mock.Mock(spec=ServerSpanObserver)
-
-        def _register_mock(context, server_span):
-            server_span.register(self.server_observer)
-
-        self.observer.on_server_span_created.side_effect = _register_mock
 
         self.baseplate = Baseplate()
         self.baseplate.register(self.observer)
@@ -116,23 +126,14 @@ class ConfiguratorTests(unittest.TestCase):
         app = configurator.make_wsgi_app()
         self.test_app = webtest.TestApp(app)
 
-    @mock.patch("random.getrandbits")
-    def test_no_trace_headers(self, getrandbits):
-        getrandbits.return_value = 1234
+    def test_no_trace_headers(self):
         self.test_app.get("/example")
 
-        self.assertEqual(self.observer.on_server_span_created.call_count, 1)
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertIsNone(finished_spans[0].parent)
 
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, "1234")
-        self.assertEqual(server_span.parent_id, None)
-        self.assertEqual(server_span.id, "1234")
-
-        self.assertTrue(self.server_observer.on_start.called)
-        self.assertTrue(self.server_observer.on_finish.called)
-        self.assertTrue(self.context_init_event_subscriber.called)
-
-    def test_trace_headers(self):
+    def test_redditb3_trace_headers(self):
         self.test_app.get(
             "/example",
             headers={
@@ -145,18 +146,28 @@ class ConfiguratorTests(unittest.TestCase):
             },
         )
 
-        self.assertEqual(self.observer.on_server_span_created.call_count, 1)
+        finished_spans = self.get_finished_spans()
 
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, "1234")
-        self.assertEqual(server_span.parent_id, "2345")
-        self.assertEqual(server_span.id, "3456")
-        self.assertEqual(server_span.sampled, True)
-        self.assertEqual(server_span.flags, 1)
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(finished_spans[0].get_span_context().trace_id, 1234)
+        self.assertEqual(finished_spans[0].parent.span_id, 3456)
+        self.assertTrue(finished_spans[0].get_span_context().trace_flags & 1)
 
-        self.assertTrue(self.server_observer.on_start.called)
-        self.assertTrue(self.server_observer.on_finish.called)
-        self.assertTrue(self.context_init_event_subscriber.called)
+    def test_w3c_trace_headers(self):
+        self.test_app.get(
+            "/example",
+            headers={"traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"},
+        )
+
+        finished_spans = self.get_finished_spans()
+
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(
+            trace.format_trace_id(finished_spans[0].get_span_context().trace_id),
+            "4bf92f3577b34da6a3ce929d0e0e4736",
+        )
+        self.assertEqual(trace.format_span_id(finished_spans[0].parent.span_id), "00f067aa0ba902b7")
+        self.assertTrue(finished_spans[0].get_span_context().trace_flags & 1)
 
     def test_edge_request_headers(self):
         self.test_app.get(
@@ -171,6 +182,7 @@ class ConfiguratorTests(unittest.TestCase):
             },
         )
         context, _ = self.observer.on_server_span_created.call_args[0]
+        # we've been abusing the server span as a way to pass this context...
         assert context.edge_context == FakeEdgeContextFactory.DECODED_CONTEXT
 
     def test_empty_edge_request_headers(self):
@@ -186,13 +198,16 @@ class ConfiguratorTests(unittest.TestCase):
             },
         )
         context, _ = self.observer.on_server_span_created.call_args[0]
+        # we've been abusing the server span as a way to pass this context...
         self.assertEqual(context.raw_edge_context, b"")
 
     def test_not_found(self):
-        self.test_app.get("/nope", status=404)
+        resp = self.test_app.get("/nope", status=404)
 
-        self.assertFalse(self.observer.on_server_span_created.called)
-        self.assertFalse(self.context_init_event_subscriber.called)
+        finished_spans = self.get_finished_spans()
+
+        self.assertEqual(len(finished_spans), 1)
+        self.assertSpanHasAttributes(finished_spans[0], {"http.status_code": 404})
 
     def test_not_found_echo_path(self):
         # confirm that issue #800 isn't reintroduced. This is an issue where we
@@ -205,53 +220,37 @@ class ConfiguratorTests(unittest.TestCase):
     def test_exception_caught(self):
         with self.assertRaises(TestException):
             self.test_app.get("/example?error")
-
-        self.assertTrue(self.server_observer.on_start.called)
-        self.assertTrue(self.server_observer.on_finish.called)
-        self.assertTrue(self.context_init_event_subscriber.called)
-        _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
-        self.assertIsInstance(captured_exc, TestException)
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(len(finished_spans[0].events), 1)
+        self.assertEqual(finished_spans[0].events[0].name, "exception")
 
     def test_control_flow_exception_not_caught(self):
         response = self.test_app.get("/example?control_flow_exception", status=500)
 
-        self.assertTrue(self.server_observer.on_start.called)
-        self.assertTrue(self.server_observer.on_finish.called)
-        self.assertTrue(self.context_init_event_subscriber.called)
-        self.assertTrue(b"a fancy explanation", response.body)
-        args, _ = self.server_observer.on_finish.call_args
-        self.assertEqual(args[0], None)
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(len(finished_spans[0].events), 0)
 
     def test_exception_in_exception_view_caught(self):
         with self.assertRaises(ExceptionViewException):
             self.test_app.get("/example?exception_view_exception")
 
-        self.assertTrue(self.server_observer.on_start.called)
-        self.assertTrue(self.server_observer.on_finish.called)
-        self.assertTrue(self.context_init_event_subscriber.called)
-        _, captured_exc, _ = self.server_observer.on_finish.call_args[0][0]
-        self.assertIsInstance(captured_exc, ExceptionViewException)
-
-    @mock.patch("random.getrandbits")
-    def test_distrust_headers(self, getrandbits):
-        getrandbits.return_value = 9999
-        self.baseplate_configurator.header_trust_handler.trust_headers = False
-
-        self.test_app.get(
-            "/example", headers={"X-Trace": "1234", "X-Parent": "2345", "X-Span": "3456"}
-        )
-
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertEqual(server_span.trace_id, str(getrandbits.return_value))
-        self.assertEqual(server_span.parent_id, None)
-        self.assertEqual(server_span.id, str(getrandbits.return_value))
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 1)
+        self.assertEqual(len(finished_spans[0].events), 1)
+        self.assertEqual(finished_spans[0].events[0].name, "exception")
 
     def test_local_trace_in_context(self):
         self.test_app.get("/trace_context")
-        self.assertEqual(self.server_observer.on_child_span_created.call_count, 1)
-        child_span = self.server_observer.on_child_span_created.call_args[0][0]
-        context, server_span = self.observer.on_server_span_created.call_args[0]
-        self.assertNotEqual(child_span.context, context)
+
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 2)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, finished_spans[1].get_span_context().span_id
+        )
+        self.assertEqual(finished_spans[0].kind, trace.SpanKind.INTERNAL)
+        self.assertEqual(finished_spans[1].kind, trace.SpanKind.SERVER)
 
     def test_streaming_response(self):
         class StreamingTestResponse(webtest.TestResponse):
@@ -273,17 +272,16 @@ class ConfiguratorTests(unittest.TestCase):
 
         # ok, we've returned from the wsgi app but the iterator's not done
         # so... we should have started the span but not finished it yet
-        self.assertTrue(self.server_observer.on_start.called)
-        self.assertFalse(self.server_observer.on_finish.called)
+        self.assertEqual(len(self.get_finished_spans()), 0)
 
         self.assertEqual(b"foo", next(response.app_iter))
-        self.assertFalse(self.server_observer.on_finish.called)
+        self.assertEqual(len(self.get_finished_spans()), 0)
 
         self.assertEqual(b"bar", next(response.app_iter))
-        self.assertFalse(self.server_observer.on_finish.called)
+        self.assertEqual(len(self.get_finished_spans()), 0)
 
         with self.assertRaises(StopIteration):
             next(response.app_iter)
-        self.assertTrue(self.server_observer.on_finish.called)
+        self.assertEqual(len(self.get_finished_spans()), 1)
 
         response.app_iter.close()

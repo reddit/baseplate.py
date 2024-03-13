@@ -12,11 +12,12 @@ from typing import Union
 
 import sentry_sdk
 
+from opentelemetry import trace
+
 from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
 from baseplate import RequestContext
 from baseplate import ServerSpanObserver
-from baseplate import Span
 from baseplate.lib import config
 from baseplate.observers.timeout import ServerTimeout
 
@@ -101,22 +102,22 @@ class SentryBaseplateObserver(BaseplateObserver):
 
     """
 
-    def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
+    def on_server_span_created(self, context: RequestContext, server_span: trace.Span) -> None:
         sentry_hub = sentry_sdk.Hub.current
-        observer = _SentryServerSpanObserver(sentry_hub, server_span)
-        server_span.register(observer)
         context.sentry = sentry_hub
 
 
 class _SentryServerSpanObserver(ServerSpanObserver):
-    def __init__(self, sentry_hub: sentry_sdk.Hub, server_span: Span):
+    def __init__(self, sentry_hub: sentry_sdk.Hub, server_span: trace.Span):
         self.sentry_hub = sentry_hub
         self.scope_manager = self.sentry_hub.push_scope()
         self.scope = self.scope_manager.__enter__()
         self.server_span = server_span
 
     def on_start(self) -> None:
-        self.scope.set_tag("trace_id", self.server_span.trace_id)
+        self.scope.set_tag(
+            "trace_id", trace.format_trace_id(self.server_span.get_span_context().trace_id)
+        )
 
     def on_set_tag(self, key: str, value: Any) -> None:
         self.scope.set_tag(key, value)

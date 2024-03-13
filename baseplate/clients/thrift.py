@@ -9,6 +9,8 @@ from typing import Callable
 from typing import Iterator
 from typing import Optional
 
+from opentelemetry import trace
+from opentelemetry.propagate import inject
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -17,7 +19,6 @@ from thrift.Thrift import TApplicationException
 from thrift.Thrift import TException
 from thrift.transport.TTransport import TTransportException
 
-from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import metrics
@@ -151,7 +152,7 @@ class ThriftContextFactory(ContextFactory):
         # distinguish easily between available connection slots that aren't
         # instantiated and ones that have actual open connections.
 
-    def make_object_for_context(self, name: str, span: Span) -> "_PooledClientProxy":
+    def make_object_for_context(self, name: str, span: trace.Span) -> "_PooledClientProxy":
         return self.proxy_cls(self.client_cls, self.pool, span, name)
 
 
@@ -182,7 +183,7 @@ class _PooledClientProxy:
         self,
         client_cls: Any,
         pool: ThriftConnectionPool,
-        server_span: Span,
+        server_span: trace.Span,
         namespace: str,
         retry_policy: Optional[RetryPolicy] = None,
     ):
@@ -215,29 +216,29 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                 ).track_inprogress():
                     start_time = time.perf_counter()
 
-                    span = self.server_span.make_child(trace_name)
-                    span.set_tag("slug", self.namespace)
+                    ctx = trace.set_span_in_context(self.server_span)
+                    tracer = trace.get_tracer(__name__)
+                    span = tracer.start_span(trace_name, ctx, kind=trace.SpanKind.CLIENT)
 
                     client = self.client_cls(prot)
                     method = getattr(client, name)
-                    span.set_tag("method", method.__name__)
-                    span.start()
+                    if span.is_recording():
+                        span.set_attribute("method", method.__name__)
+                        span.set_attribute("slug", self.namespace)
 
                     try:
-                        baseplate = span.baseplate
-                        if baseplate:
-                            service_name = baseplate.service_name
-                            if service_name:
-                                prot.trans.set_header(b"User-Agent", service_name.encode())
+                        # TODO: @trevor can we do this another way?
+                        # baseplate = span.baseplate
+                        # if baseplate:
+                        #     service_name = baseplate.service_name
+                        #     if service_name:
+                        #         prot.trans.set_header(b"User-Agent", service_name.encode())
 
-                        prot.trans.set_header(b"Trace", str(span.trace_id).encode())
-                        prot.trans.set_header(b"Parent", str(span.parent_id).encode())
-                        prot.trans.set_header(b"Span", str(span.id).encode())
-                        if span.sampled is not None:
-                            sampled = "1" if span.sampled else "0"
-                            prot.trans.set_header(b"Sampled", sampled.encode())
-                        if span.flags:
-                            prot.trans.set_header(b"Flags", str(span.flags).encode())
+                        str_headers = {}
+                        ctx = trace.set_span_in_context(span)
+                        inject(str_headers, ctx)
+                        for k, v in str_headers.items():
+                            prot.trans.set_header(k.encode(), v.encode())
 
                         min_timeout = time_remaining
                         if self.pool.timeout:
@@ -250,18 +251,19 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                                 b"Deadline-Budget", str(int(ceil(min_timeout * 1000))).encode()
                             )
 
-                        try:
-                            edge_context = span.context.raw_edge_context
-                        except AttributeError:
-                            edge_context = None
-
-                        if edge_context:
-                            prot.trans.set_header(b"Edge-Request", edge_context)
+                        # TODO: @trevor find an alternative
+                        # try:
+                        #     edge_context = span.context.raw_edge_context
+                        # except AttributeError:
+                        #     edge_context = None
+                        #
+                        # if edge_context:
+                        #     prot.trans.set_header(b"Edge-Request", edge_context)
 
                         result = method(*args, **kwargs)
                     except TTransportException as exc:
                         # the connection failed for some reason, retry if able
-                        span.finish(exc_info=sys.exc_info())
+                        span.end()
                         last_error = str(exc)
                         if exc.inner is not None:
                             last_error += f" ({exc.inner})"
@@ -269,27 +271,27 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     except (TApplicationException, TProtocolException):
                         # these are subclasses of TException but aren't ones that
                         # should be expected in the protocol. this is an error!
-                        span.finish(exc_info=sys.exc_info())
+                        span.end()
                         raise
                     except Error as exc:
                         # a 5xx error is an unexpected exception but not 5xx are
                         # not.
                         if 500 <= exc.code < 600:
-                            span.finish(exc_info=sys.exc_info())
+                            span.end()
                         else:
-                            span.finish()
+                            span.end()
                         raise
                     except TException:
                         # this is an expected exception, as defined in the IDL
-                        span.finish()
+                        span.end()
                         raise
                     except:  # noqa: E722
                         # something unexpected happened
-                        span.finish(exc_info=sys.exc_info())
+                        span.end()
                         raise
                     else:
                         # a normal result
-                        span.finish()
+                        span.end()
                         return result
                     finally:
                         thrift_success = "true"

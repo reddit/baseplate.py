@@ -5,7 +5,6 @@ import random
 from contextlib import contextmanager
 from types import TracebackType
 from typing import Any
-from typing import Callable
 from typing import Dict
 from typing import Iterator
 from typing import List
@@ -19,6 +18,7 @@ import opentelemetry.context
 
 from opentelemetry import trace
 from opentelemetry.propagate import inject
+from opentelemetry.trace import SpanKind
 from pkg_resources import DistributionNotFound
 from pkg_resources import get_distribution
 
@@ -42,7 +42,7 @@ tracer = trace.get_tracer(__name__)
 class BaseplateObserver:
     """Interface for an observer that watches Baseplate."""
 
-    def on_server_span_created(self, context: "RequestContext", server_span: "ServerSpan") -> None:
+    def on_server_span_created(self, context: "RequestContext", server_span: trace.Span) -> None:
         """Do something when a server span is created.
 
         :py:class:`Baseplate` calls this when a new request begins.
@@ -81,7 +81,7 @@ class SpanObserver:
 
         """
 
-    def on_child_span_created(self, span: "Span") -> None:
+    def on_child_span_created(self, span: trace.Span) -> None:
         """Do something when a child span is created.
 
         :py:class:`SpanObserver` objects call this when a new child span is
@@ -211,13 +211,12 @@ class RequestContext:
         self,
         context_config: Dict[str, Any],
         prefix: Optional[str] = None,
-        span: Optional["Span"] = None,
+        span: Optional[trace.Span] = None,
         wrapped: Optional["RequestContext"] = None,
     ):
         self.__context_config = context_config
         self.__prefix = prefix
         self.__wrapped = wrapped
-        self.otelspan: Optional[trace.Span] = None
 
         # the context and span reference eachother (unfortunately) so we can't
         # construct 'em both with references from the start. however, we can
@@ -225,7 +224,7 @@ class RequestContext:
         # reference. so we fake it here and say "trust us".
         #
         # this would be much cleaner with a different API but this is where we are.
-        self.span: "Span" = span  # type: ignore
+        self.span: trace.Span = span  # type: ignore
 
     def __getattr__(self, name: str) -> Any:
         try:
@@ -353,42 +352,6 @@ class Baseplate:
         else:
             skipped.append("timeout")
 
-        if "metrics.tagging" in self._app_config:
-            if "metrics.namespace" in self._app_config:
-                raise ValueError("metrics.namespace not allowed with metrics.tagging")
-            from baseplate.lib.metrics import metrics_client_from_config
-            from baseplate.observers.metrics_tagged import TaggedMetricsBaseplateObserver
-
-            self._metrics_client = metrics_client_from_config(self._app_config)
-            self.register(
-                TaggedMetricsBaseplateObserver.from_config_and_client(
-                    self._app_config, self._metrics_client
-                )
-            )
-
-        elif "metrics.namespace" in self._app_config:
-            from baseplate.lib.metrics import metrics_client_from_config
-            from baseplate.observers.metrics import MetricsBaseplateObserver
-
-            self._metrics_client = metrics_client_from_config(self._app_config)
-            self.register(
-                MetricsBaseplateObserver.from_config_and_client(
-                    self._app_config, self._metrics_client
-                )
-            )
-
-        else:
-            skipped.append("metrics")
-
-        if "tracing.service_name" in self._app_config:
-            from baseplate.observers.tracing import tracing_client_from_config
-            from baseplate.observers.tracing import TraceBaseplateObserver
-
-            tracing_client = tracing_client_from_config(self._app_config)
-            self.register(TraceBaseplateObserver(tracing_client))
-        else:
-            skipped.append("tracing")
-
         if "sentry.dsn" in self._app_config or "SENTRY_DSN" in os.environ:
             from baseplate.observers.sentry import init_sentry_client_from_config
             from baseplate.observers.sentry import SentryBaseplateObserver
@@ -472,7 +435,7 @@ class Baseplate:
 
     def make_server_span(
         self, context: RequestContext, name: str, trace_info: Optional[TraceInfo] = None
-    ) -> "ServerSpan":
+    ) -> trace.Span:
         """Return a server span representing the request we are handling.
 
         In a server, a server span represents the time spent on a single
@@ -496,22 +459,14 @@ class Baseplate:
         if trace_info is None:
             trace_info = TraceInfo.new()
 
-        server_span = ServerSpan(
-            trace_info.trace_id,
-            trace_info.parent_id,
-            trace_info.span_id,
-            trace_info.sampled,
-            trace_info.flags,
-            name,
-            context,
-            baseplate=self,
-            trace_info=trace_info,
-        )
-        context.span = server_span
+        ctxspan = trace_info.to_otel()
+        ctx = trace.set_span_in_context(ctxspan)
+        span = tracer.start_span(name, ctx, kind=SpanKind.SERVER)
+        context.span = span
 
         for observer in self.observers:
-            observer.on_server_span_created(context, server_span)
-        return server_span
+            observer.on_server_span_created(context, span)
+        return span
 
     @contextmanager
     def server_context(self, name: str) -> Iterator[RequestContext]:
@@ -538,309 +493,6 @@ class Baseplate:
         context = self.make_context_object()
         with self.make_server_span(context, name):
             yield context
-
-    def get_runtime_metric_reporters(self) -> Dict[str, Callable[[Any], None]]:
-        specs: List[Tuple[Optional[str], Dict[str, Any]]] = [(None, self._context_config)]
-        result = {}
-        while specs:
-            prefix, spec = specs.pop(0)
-            for name, value in spec.items():
-                if prefix:
-                    full_name = f"{prefix}.{name}"
-                else:
-                    full_name = name
-
-                if isinstance(value, dict):
-                    specs.append((full_name, value))
-                elif hasattr(value, "report_runtime_metrics"):
-                    result[full_name] = value.report_runtime_metrics
-        return result
-
-
-class Span:
-    """A span represents a single RPC within a system."""
-
-    def __init__(
-        self,
-        trace_id: str,
-        parent_id: Optional[str],
-        span_id: str,
-        sampled: Optional[bool],
-        flags: Optional[int],
-        name: str,
-        context: RequestContext,
-        baseplate: Optional[Baseplate] = None,
-        otelspan: Optional[Baseplate] = None,
-    ):
-        self.trace_id = trace_id
-        self.parent_id = parent_id
-        self.id = span_id
-        self.sampled = sampled
-        self.flags = flags
-        self.name = name
-        self.context = context
-        self.baseplate = baseplate
-        self.component_name: Optional[str] = None
-        self.observers: List[SpanObserver] = []
-
-        ctx = trace.set_span_in_context(otelspan)
-        self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.CLIENT)
-
-    def register(self, observer: SpanObserver) -> None:
-        """Register an observer to receive events from this span."""
-        self.observers.append(observer)
-
-    def start(self) -> None:
-        """Record the start of the span.
-
-        This notifies any observers that the span has started, which indicates
-        that timers etc. should start ticking.
-
-        Spans also support the `context manager protocol`_, for use with
-        Python's ``with`` statement. When the context is entered, the span
-        calls :py:meth:`start` and when the context is exited it automatically
-        calls :py:meth:`finish`.
-
-        .. _context manager protocol:
-            https://docs.python.org/3/reference/datamodel.html#context-managers
-
-        """
-        for observer in self.observers:
-            observer.on_start()
-
-    def set_tag(self, key: str, value: Any) -> None:
-        """Set a tag on the span.
-
-        Tags are arbitrary key/value pairs that add context and meaning to the
-        span, such as a hostname or query string. Observers may interpret or
-        ignore tags as they desire.
-
-        :param key: The name of the tag.
-        :param value: The value of the tag.
-
-        """
-        for observer in self.observers:
-            observer.on_set_tag(key, value)
-
-        self.otelspan.set_attribute(key, value)
-
-    def incr_tag(self, key: str, delta: float = 1) -> None:
-        """Increment a tag value on the span.
-
-        This is useful to count instances of an event in your application. In
-        addition to showing up as a tag on the span, the value may also be
-        aggregated separately as an independent counter.
-
-        :param key: The name of the tag.
-        :param value: The amount to increment the value. Defaults to 1.
-
-        """
-        for observer in self.observers:
-            observer.on_incr_tag(key, delta)
-
-    def log(self, name: str, payload: Optional[Any] = None) -> None:
-        """Add a log entry to the span.
-
-        Log entries are timestamped events recording notable moments in the
-        lifetime of a span.
-
-        :param name: The name of the log entry. This should be a stable
-            identifier that can apply to multiple span instances.
-        :param payload: Optional log entry payload. This can be arbitrary data.
-
-        """
-        for observer in self.observers:
-            observer.on_log(name, payload)
-
-    def finish(self, exc_info: Optional[_ExcInfo] = None) -> None:
-        """Record the end of the span.
-
-        :param exc_info: If the span ended because of an exception, this is
-            the exception information. The default is :py:data:`None` which
-            indicates normal exit.
-
-        """
-        for observer in self.observers:
-            try:
-                observer.on_finish(exc_info)
-            except Exception:
-                logger.exception("Exception raised while finalizing observer")
-
-        # clean up reference cycles
-        self.context = None  # type: ignore
-        self.observers.clear()
-        self.otelspan.end()
-
-    def __enter__(self) -> "Span":
-        self.start()
-        return self
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        value: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> None:
-        if exc_type is not None:
-            self.finish(exc_info=(exc_type, value, traceback))
-        else:
-            self.finish()
-
-    def make_child(
-        self, name: str, local: bool = False, component_name: Optional[str] = None
-    ) -> "Span":
-        """Return a child Span whose parent is this Span."""
-        raise NotImplementedError
-
-    def with_tags(self, tags: Dict[str, Any]) -> "Span":
-        """Declare a set of tags to be added to a span before starting it in the context manager.
-
-        Can be used as follow:
-        tags = {...}
-        with self.span.make_child("...").with_tags(tags) as span:
-            ...
-
-        :param tags: Dict of tags to be set on the span at creation time.
-        `"""
-        for k, v in tags.items():
-            self.set_tag(k, v)
-        return self
-
-
-class ParentSpanAlreadyFinishedError(Exception):
-    def __init__(self) -> None:
-        super().__init__(
-            "Cannot make child span of parent that already finished. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-cannot-make-child-span-of-parent-that-already-finished"
-        )
-
-
-class LocalSpan(Span):
-    def __init__(
-        self,
-        trace_id: str,
-        parent_id: Optional[str],
-        span_id: str,
-        sampled: Optional[bool],
-        flags: Optional[int],
-        name: str,
-        context: RequestContext,
-        baseplate: Optional[Baseplate] = None,
-        otelspan: Optional[trace.Span] = None,
-    ):
-        self.trace_id = trace_id
-        self.parent_id = parent_id
-        self.id = span_id
-        self.sampled = sampled
-        self.flags = flags
-        self.name = name
-        self.context = context
-        self.baseplate = baseplate
-        self.component_name: Optional[str] = None
-        self.observers: List[SpanObserver] = []
-
-        if otelspan:
-            ctx = trace.set_span_in_context(otelspan)
-            self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.INTERNAL)
-        else:
-            self.otelspan = tracer.start_span(name, kind=trace.SpanKind.INTERNAL)
-        self.context.otelspan = self.otelspan
-
-    def make_child(
-        self, name: str, local: bool = False, component_name: Optional[str] = None
-    ) -> "Span":
-        """Return a child Span whose parent is this Span.
-
-        The child span can either be a local span representing an in-request
-        operation or a span representing an outbound service call.
-
-        In a server, a local span represents the time spent within a
-        local component performing an operation or set of operations.
-        The local component is some grouping of business logic,
-        which is then split up into operations which could each be wrapped
-        in local spans.
-
-        :param name: Name to identify the operation this span
-            is recording.
-        :param local: Make this span a LocalSpan if True, otherwise
-            make this span a base Span.
-        :param component_name: Name to identify local component
-            this span is recording in if it is a local span.
-        """
-        if not self.context:
-            raise ParentSpanAlreadyFinishedError
-
-        span_id = str(random.getrandbits(64))
-        context_copy = self.context.clone()
-        span: Span
-        if local:
-            span = LocalSpan(
-                self.trace_id,
-                self.id,
-                span_id,
-                self.sampled,
-                self.flags,
-                name,
-                context_copy,
-                self.baseplate,
-                self.otelspan
-            )
-            span.component_name = component_name
-        else:
-            span = Span(
-                self.trace_id,
-                self.id,
-                span_id,
-                self.sampled,
-                self.flags,
-                name,
-                context_copy,
-                self.baseplate,
-                self.otelspan
-            )
-        context_copy.span = span
-
-        for observer in self.observers:
-            observer.on_child_span_created(span)
-        return span
-
-
-class ServerSpan(LocalSpan):
-    """A server span represents a request this server is handling.
-
-    The server span is available on the :py:class:`~baseplate.RequestContext`
-    during requests as the ``span`` attribute.
-
-    """
-
-    def __init__(
-        self,
-        trace_id: str,
-        parent_id: Optional[str],
-        span_id: str,
-        sampled: Optional[bool],
-        flags: Optional[int],
-        name: str,
-        context: RequestContext,
-        baseplate: Optional[Baseplate] = None,
-        trace_info: Optional[TraceInfo] = None,
-    ):
-        self.trace_id = trace_id
-        self.parent_id = parent_id
-        self.id = span_id
-        self.sampled = sampled
-        self.flags = flags
-        self.name = name
-        self.context = context
-        self.baseplate = baseplate
-        self.component_name: Optional[str] = None
-        self.observers: List[SpanObserver] = []
-
-        if trace_info:
-            ctx = trace.set_span_in_context(trace_info.to_otel())
-            self.otelspan: trace.Span = tracer.start_span(name, ctx, kind=trace.SpanKind.SERVER)
-        else:
-            self.otelspan = tracer.start_span(name, kind=trace.SpanKind.SERVER)
-        self.context.otelspan = self.otelspan
 
 
 __all__ = ["Baseplate"]

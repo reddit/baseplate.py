@@ -2,6 +2,8 @@ import unittest
 
 from unittest import mock
 
+from opentelemetry import trace
+from opentelemetry.test.test_base import TestBase
 from prometheus_client import REGISTRY
 
 try:
@@ -80,8 +82,9 @@ class ClusterFromConfigTests(unittest.TestCase):
         self.assertIsNotNone(cluster.auth_provider)
 
 
-class CassandraSessionAdapterTests(unittest.TestCase):
+class CassandraSessionAdapterTests(TestBase):
     def setUp(self):
+        super().setUp()
         # cleaning up prom registry
         REQUEST_TIME.clear()
         REQUEST_ACTIVE.clear()
@@ -89,7 +92,7 @@ class CassandraSessionAdapterTests(unittest.TestCase):
 
         self.session = mock.MagicMock()
         self.prepared_statements = {}
-        self.mock_server_span = mock.MagicMock(spec=baseplate.ServerSpan)
+        self.mock_server_span = trace.get_tracer(__name__).start_span("test")
         self.adapter = CassandraSessionAdapter(
             "test", self.mock_server_span, self.session, self.prepared_statements
         )

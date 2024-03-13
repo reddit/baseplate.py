@@ -8,11 +8,11 @@ import kombu
 import pytest
 
 from gevent.server import StreamServer
+from opentelemetry import trace
 from prometheus_client import REGISTRY
 
 from baseplate import Baseplate
 from baseplate import RequestContext
-from baseplate import ServerSpan
 from baseplate.frameworks.queue_consumer.kombu import AMQP_ACTIVE_MESSAGES
 from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSED_TOTAL
 from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSING_TIME
@@ -38,15 +38,9 @@ def context():
 
 
 @pytest.fixture
-def span():
-    return mock.Mock(spec=ServerSpan)
-
-
-@pytest.fixture
-def baseplate(context, span):
+def baseplate(context):
     bp = mock.MagicMock(spec=Baseplate)
     bp._metrics_client = None
-    bp.make_server_span().__enter__.return_value = span
     bp.make_context_object.return_value = context
     # Reset the mock calls since setting up the span actually triggers a "call"
     # to bp.make_server_span
@@ -89,7 +83,7 @@ class TestKombuMessageHandler:
             (60, True),
         ],
     )
-    def test_handle(self, ttl_delta, handled, context, span, baseplate, name, message):
+    def test_handle(self, ttl_delta, handled, context, baseplate, name, message):
         handler_fn = mock.Mock()
         handler = KombuMessageHandler(baseplate, name, handler_fn)
         prom_labels = AmqpConsumerPrometheusLabels(
@@ -104,24 +98,11 @@ class TestKombuMessageHandler:
 
         if handled:
             baseplate.make_context_object.assert_called_once()
-            baseplate.make_server_span.assert_called_once_with(context, name)
-            baseplate.make_server_span().__enter__.assert_called_once()
-            span.set_tag.assert_has_calls(
-                [
-                    mock.call("kind", "consumer"),
-                    mock.call("amqp.routing_key", "routing-key"),
-                    mock.call("amqp.consumer_tag", "consumer-tag"),
-                    mock.call("amqp.delivery_tag", "delivery-tag"),
-                    mock.call("amqp.exchange", "exchange"),
-                ],
-                any_order=True,
-            )
             handler_fn.assert_called_once_with(context, message.decode(), message)
             message.ack.assert_called_once()
             message.reject.assert_not_called()
         else:
             baseplate.make_context_object.assert_not_called()
-            baseplate.make_server_span.assert_not_called()
             message.ack.assert_not_called()
             message.reject.assert_called_once()
 

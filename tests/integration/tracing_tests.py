@@ -9,11 +9,6 @@ from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapProp
 from baseplate import Baseplate
 from baseplate.lib.propagator_redditb3 import RedditB3Format
 from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
-from baseplate.observers.tracing import make_client
-from baseplate.observers.tracing import NullRecorder
-from baseplate.observers.tracing import TraceBaseplateObserver
-from baseplate.observers.tracing import TraceLocalSpanObserver
-from baseplate.observers.tracing import TraceServerSpanObserver
 
 try:
     import webtest
@@ -51,21 +46,6 @@ def local_parent_trace_within_context(request):
 
 
 class TracingTests(TestBase):
-    def _register_server_mock(self, context, server_span):
-        server_span_observer = TraceServerSpanObserver(
-            "test-service", "test-hostname", server_span, NullRecorder()
-        )
-        server_span.register(server_span_observer)
-        self.server_span_observer = server_span_observer
-
-    def _register_local_mock(self, span):
-        local_span_observer = TraceLocalSpanObserver(
-            "test-service", "test-component", "test-hostname", span, NullRecorder()
-        )
-        self.local_span_ids.append(span.id)
-        self.local_span_observers.append(local_span_observer)
-        span.register(local_span_observer)
-
     def setUp(self):
         thread_patch = mock.patch("threading.Thread", autospec=True)
         thread_patch.start()
@@ -79,11 +59,7 @@ class TracingTests(TestBase):
             local_parent_trace_within_context, route_name="local_test", renderer="json"
         )
 
-        self.client = make_client("test-service")
-        self.observer = TraceBaseplateObserver(self.client)
-
         self.baseplate = Baseplate()
-        self.baseplate.register(self.observer)
 
         self.baseplate_configurator = BaseplateConfigurator(
             self.baseplate,
@@ -91,34 +67,22 @@ class TracingTests(TestBase):
         )
         configurator.include(self.baseplate_configurator.includeme)
         app = configurator.make_wsgi_app()
-        self.local_span_ids = []
-        self.local_span_observers = []
         self.test_app = webtest.TestApp(app)
         super().setUp()
 
     def test_trace_on_inbound_request(self):
-        with mock.patch.object(
-            TraceBaseplateObserver, "on_server_span_created", side_effect=self._register_server_mock
-        ):
-            self.test_app.get("/example")
-            span = self.server_span_observer._serialize()
-            self.assertEqual(span["name"], "example")
-            self.assertEqual(len(span["annotations"]), 2)
-            self.assertEqual(span["parentId"], 0)
+        self.test_app.get("/example")
+
+        span = self.get_finished_spans()[0]
+        self.assertEqual(span["name"], "example")
+        self.assertEqual(len(span["annotations"]), 2)
+        self.assertEqual(span["parentId"], 0)
 
     def test_local_tracing_embedded(self):
-        with mock.patch.object(
-            TraceBaseplateObserver, "on_server_span_created", side_effect=self._register_server_mock
-        ), mock.patch.object(
-            TraceServerSpanObserver, "on_child_span_created", side_effect=self._register_local_mock
-        ), mock.patch.object(
-            TraceLocalSpanObserver, "on_child_span_created", side_effect=self._register_local_mock
-        ):
-
-            self.test_app.get("/local_test")
-            # Verify that child span can be created within a local span context
-            #  and parent IDs are inherited accordingly.
-            span = self.local_span_observers[-1]._serialize()
-            self.assertEqual(span["name"], "local-req")
-            self.assertEqual(len(span["annotations"]), 0)
-            self.assertEqual(span["parentId"], self.local_span_ids[-2])
+        self.test_app.get("/local_test")
+        # Verify that child span can be created within a local span context
+        #  and parent IDs are inherited accordingly.
+        span = self.get_finished_spans()[0]
+        self.assertEqual(span["name"], "local-req")
+        self.assertEqual(len(span["annotations"]), 0)
+        self.assertEqual(span["parentId"], self.local_span_ids[-2])

@@ -3,6 +3,10 @@ import unittest
 
 from unittest import mock
 
+from opentelemetry import trace
+from opentelemetry.sdk.trace import Span
+from opentelemetry.test.test_base import TestBase
+
 try:
     from cassandra import InvalidRequest, ConsistencyLevel
     from cassandra.cluster import ExecutionProfile
@@ -19,9 +23,12 @@ from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
 cassandra_endpoint = get_endpoint_or_skip_container("cassandra", 9042)
 
+tracer = trace.get_tracer(__name__)
 
-class CassandraTests(unittest.TestCase):
+
+class CassandraTests(TestBase):
     def setUp(self):
+        super().setUp()
         self.baseplate_observer = TestBaseplateObserver()
 
         profiles = {"foo": ExecutionProfile(consistency_level=ConsistencyLevel.QUORUM)}
@@ -41,41 +48,55 @@ class CassandraTests(unittest.TestCase):
         )
 
         self.context = baseplate.make_context_object()
-        self.server_span = baseplate.make_server_span(self.context, "test")
+        self.server_span = tracer.start_span("test")
+        self.context.span = self.server_span
 
     def test_simple_query(self):
         with self.server_span:
             self.context.cassandra.execute("SELECT * FROM system.local;")
 
-        server_span_observer = self.baseplate_observer.get_only_child()
-        span_observer = server_span_observer.get_only_child()
-        self.assertTrue(span_observer.on_start_called)
-        self.assertTrue(span_observer.on_finish_called)
-        self.assertIsNone(span_observer.on_finish_exc_info)
-        span_observer.assert_tag("statement", "SELECT * FROM system.local;")
+        finished_spans = self.get_finished_spans()
+        first_span: Span = finished_spans[0]
+        self.assertGreater(len(finished_spans), 0)
+        # TODO test span status
+        self.assertSpanHasAttributes(
+            finished_spans[0], {"statement": "SELECT * FROM system.local;"}
+        )
+        self.assertEqual(
+            first_span.get_span_context().trace_id, self.server_span.get_span_context().trace_id
+        )
+        self.assertEqual(first_span.parent.span_id, self.server_span.get_span_context().span_id)
+        self.assertTrue(first_span.status.is_ok)
 
     def test_error_in_query(self):
         with self.server_span:
             with self.assertRaises(InvalidRequest):
                 self.context.cassandra.execute("SELECT * FROM does_not_exist;")
 
-        server_span_observer = self.baseplate_observer.get_only_child()
-        span_observer = server_span_observer.get_only_child()
-        self.assertTrue(span_observer.on_start_called)
-        self.assertTrue(span_observer.on_finish_called)
-        self.assertIsNotNone(span_observer.on_finish_exc_info)
+        finished_spans = self.get_finished_spans()
+        first_span: Span = finished_spans[0]
+        self.assertGreater(len(finished_spans), 0)
+        self.assertSpanHasAttributes(
+            finished_spans[0], {"statement": "SELECT * FROM does_not_exist;"}
+        )
+        self.assertEqual(
+            first_span.get_span_context().trace_id, self.server_span.get_span_context().trace_id
+        )
+        self.assertEqual(first_span.parent.span_id, self.server_span.get_span_context().span_id)
+        self.assertFalse(first_span.status.is_ok)
 
     def test_async(self):
         with self.server_span:
             future = self.context.cassandra.execute_async("SELECT * FROM system.local;")
             future.result()
 
-        server_span_observer = self.baseplate_observer.get_only_child()
-        span_observer = server_span_observer.get_only_child()
-        self.assertTrue(span_observer.on_start_called)
-        self.assertTrue(span_observer.on_finish_called)
-        self.assertIsNone(span_observer.on_finish_exc_info)
-        span_observer.assert_tag("statement", "SELECT * FROM system.local;")
+        finished_spans = self.get_finished_spans()
+
+        self.assertGreater(len(finished_spans), 0)
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertSpanHasAttributes(
+            finished_spans[0], {"statement": "SELECT * FROM system.local;"}
+        )
 
     def test_properties(self):
         with self.server_span:
@@ -99,9 +120,9 @@ class CassandraTests(unittest.TestCase):
         self.addCleanup(event.stop)
 
         # mock the on_execute_complete callback to be slow
-        def on_execute_complete(result, span, event):
+        def on_execute_complete(result, args, event):
             time.sleep(0.005)
-            span.finish()
+            args.span.end()
             event.set()
 
         on_execute_complete = mock.patch(
@@ -114,9 +135,8 @@ class CassandraTests(unittest.TestCase):
             future = self.context.cassandra.execute_async("SELECT * FROM system.local;")
             future.result()
 
-        server_span_observer = self.baseplate_observer.get_only_child()
-        span_observer = server_span_observer.get_only_child()
-        self.assertFalse(span_observer.on_finish_called)
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 0)
 
     def test_async_callback_pass(self):
         # mock the on_execute_complete callback to be slow
@@ -135,15 +155,14 @@ class CassandraTests(unittest.TestCase):
             future = self.context.cassandra.execute_async("SELECT * FROM system.local;")
             future.result()
 
-        server_span_observer = self.baseplate_observer.get_only_child()
-        span_observer = server_span_observer.get_only_child()
-        self.assertTrue(span_observer.on_finish_called)
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
 
     def test_async_callback_too_slow(self):
         # mock the on_execute_complete callback to be slow
-        def on_execute_complete(result, span, event):
+        def on_execute_complete(result, args, event):
             time.sleep(0.02)
-            span.finish()
+            args.span.end()
             event.set()
 
         on_execute_complete = mock.patch(
@@ -156,9 +175,8 @@ class CassandraTests(unittest.TestCase):
             future = self.context.cassandra.execute_async("SELECT * FROM system.local;")
             future.result()
 
-        server_span_observer = self.baseplate_observer.get_only_child()
-        span_observer = server_span_observer.get_only_child()
-        self.assertFalse(span_observer.on_finish_called)
+        finished_spans = self.get_finished_spans()
+        self.assertEqual(len(finished_spans), 0)
 
     def test_cluster_name_from_metadata(self):
         with self.server_span:
@@ -166,8 +184,9 @@ class CassandraTests(unittest.TestCase):
             self.assertEqual(name, "Test Cluster")
 
 
-class CassandraConcurrentTests(unittest.TestCase):
+class CassandraConcurrentTests(TestBase):
     def setUp(self):
+        super().setUp()
         self.baseplate_observer = TestBaseplateObserver()
 
         baseplate = Baseplate({"cassandra.contact_points": cassandra_endpoint.address.host})
@@ -175,7 +194,8 @@ class CassandraConcurrentTests(unittest.TestCase):
         baseplate.configure_context({"cassandra": CassandraClient(keyspace="system")})
 
         self.context = baseplate.make_context_object()
-        self.server_span = baseplate.make_server_span(self.context, "test")
+        self.server_span = tracer.start_span("test")
+        self.context.span = self.server_span
 
     def test_execute_concurrent_with_args(self):
         with self.server_span:
@@ -183,13 +203,16 @@ class CassandraConcurrentTests(unittest.TestCase):
             params = [(_key,) for _key in ["local", "other"]]
             results = execute_concurrent_with_args(self.context.cassandra, statement, params)
 
-        server_span_observer = self.baseplate_observer.get_only_child()
-        self.assertEqual(len(server_span_observer.children), 3)
-        for span_observer in server_span_observer.children:
-            self.assertTrue(span_observer.on_start_called)
-            self.assertTrue(span_observer.on_finish_called)
-            self.assertIsNone(span_observer.on_finish_exc_info)
-            span_observer.assert_tag("statement", 'SELECT * FROM system.local WHERE "key"=?')
+        finished_spans = self.get_finished_spans()
+        first_span: Span = finished_spans[0]
+        self.assertEqual(len(finished_spans), 3)
+        self.assertSpanHasAttributes(
+            finished_spans[0], {"statement": 'SELECT * FROM system.local WHERE "key"=?'}
+        )
+        self.assertEqual(
+            first_span.get_span_context().trace_id, self.server_span.get_span_context().trace_id
+        )
+        self.assertEqual(first_span.parent.span_id, self.server_span.get_span_context().span_id)
 
         self.assertEqual(len(results), 2)
         self.assertTrue(results[0].success)

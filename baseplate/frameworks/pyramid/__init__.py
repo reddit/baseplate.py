@@ -8,7 +8,6 @@ from typing import Callable
 from typing import Dict
 from typing import Iterable
 from typing import Iterator
-from typing import Mapping
 from typing import Optional
 
 import pyramid.events
@@ -16,6 +15,8 @@ import pyramid.request
 import pyramid.tweens
 import webob.request
 
+from opentelemetry import trace
+from opentelemetry.propagate import extract
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -26,8 +27,6 @@ from pyramid.response import Response
 
 from baseplate import Baseplate
 from baseplate import RequestContext
-from baseplate import Span
-from baseplate import TraceInfo
 from baseplate.lib.edgecontext import EdgeContextFactory
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.prometheus_metrics import default_size_buckets
@@ -53,7 +52,7 @@ class SpanFinishingAppIterWrapper:
 
     """
 
-    def __init__(self, span: Span, app_iter: Iterable[bytes]) -> None:
+    def __init__(self, span: trace.Span, app_iter: Iterable[bytes]) -> None:
         self.span = span
         self.app_iter = iter(app_iter)
 
@@ -64,10 +63,11 @@ class SpanFinishingAppIterWrapper:
         try:
             return next(self.app_iter)
         except StopIteration:
-            self.span.finish()
+            self.span.end()
             raise
-        except:  # noqa: E722
-            self.span.finish(exc_info=sys.exc_info())
+        except BaseException as e:
+            self.span.record_exception(Exception(e))
+            self.span.end()
             raise
 
     def close(self) -> None:
@@ -128,22 +128,20 @@ def _make_baseplate_tween(
         try:
             response = handler(request)
             if request.span:
-                request.span.set_tag("http.response_length", response.content_length)
-        except:  # noqa: E722
+                request.span.set_attribute("http.response_length", response.content_length)
+        except BaseException as e:
             if hasattr(request, "span") and request.span:
-                request.span.finish(exc_info=sys.exc_info())
+                request.span.record_exception(e)
+                request.span.end()
             raise
         else:
             if request.span:
-                request.span.set_tag("http.status_code", response.status_code)
+                request.span.set_attribute("http.status_code", response.status_code)
                 content_length = response.content_length
                 response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
                 response.content_length = content_length
         finally:
             manually_close_request_metrics(request, response)
-
-            # avoid a reference cycle
-            request.start_server_span = None
         return response
 
     return baseplate_tween
@@ -252,15 +250,6 @@ class HeaderTrustHandler:
     See :py:class:`StaticTrustHandler` for the default implementation.
     """
 
-    def should_trust_trace_headers(self, request: Request) -> bool:
-        """Return whether baseplate should parse the trace headers from the inbound request.
-
-        :param request: The request
-
-        :returns: Whether baseplate should parse the trace headers from the inbound request.
-        """
-        raise NotImplementedError
-
     def should_trust_edge_context_payload(self, request: Request) -> bool:
         """Return whether baseplate should trust the edge context headers from the inbound request.
 
@@ -291,9 +280,6 @@ class StaticTrustHandler(HeaderTrustHandler):
 
     def __init__(self, trust_headers: bool = False):
         self.trust_headers = trust_headers
-
-    def should_trust_trace_headers(self, request: Request) -> bool:
-        return self.trust_headers
 
     def should_trust_edge_context_payload(self, request: Request) -> bool:
         return self.trust_headers
@@ -361,17 +347,6 @@ class BaseplateConfigurator:
         request.reddit_start_time = time.perf_counter()
         ACTIVE_REQUESTS.labels(http_method=request.method.lower(), http_endpoint=endpoint).inc()
 
-        # this request didn't match a route we know
-        if not request.matched_route:
-            return
-
-        trace_info = None
-        if self.header_trust_handler.should_trust_trace_headers(request):
-            try:
-                trace_info = self._get_trace_info(request.headers)
-            except (KeyError, ValueError):
-                pass
-
         if self.header_trust_handler.should_trust_edge_context_payload(request):
             edge_payload: Optional[bytes]
             try:
@@ -383,30 +358,17 @@ class BaseplateConfigurator:
             request.raw_edge_context = edge_payload
             if self.edge_context_factory:
                 request.edge_context = self.edge_context_factory.from_upstream(edge_payload)
-
-        span = self.baseplate.make_server_span(
-            request,
-            name=request.matched_route.name,
-            trace_info=trace_info,
-        )
-        span.set_tag("protocol", "http")
-        span.set_tag("http.url", request.url)
-        span.set_tag("http.method", request.method)
-        span.set_tag("peer.ipv4", request.remote_addr)
-        span.start()
+        tracer = trace.get_tracer(__name__)
+        ctx = extract(request.headers)
+        span = tracer.start_span(name=endpoint, context=ctx, kind=trace.SpanKind.SERVER)
+        if span.is_recording():
+            span.set_attribute("protocol", "http")
+            span.set_attribute("http.url", request.url)
+            span.set_attribute("http.method", request.method)
+            span.set_attribute("peer.ipv4", request.remote_addr)
+        request.span = span
 
         request.registry.notify(ServerSpanInitialized(request))
-
-    def _get_trace_info(self, headers: Mapping[str, str]) -> TraceInfo:
-        sampled = bool(headers.get("X-Sampled") == "1")
-        flags = headers.get("X-Flags", None)
-        return TraceInfo.from_upstream(
-            headers["X-Trace"],
-            headers.get("X-Parent", None),
-            headers["X-Span"],
-            sampled,
-            int(flags) if flags is not None else None,
-        )
 
     def includeme(self, config: Configurator) -> None:
         config.set_request_factory(RequestFactory(self.baseplate))

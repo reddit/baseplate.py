@@ -175,10 +175,10 @@ class KafkaMessageHandler(MessageHandler):
 
                 try:
                     data = self.message_unpack_fn(blob)
-                except Exception:
+                except Exception as e:
                     prom_success = "false"
                     logger.exception("skipping invalid message")
-                    context.span.incr_tag(f"{self.name}.{topic}.invalid_message")
+                    span.record_exception(e)
                     return
 
                 try:

@@ -11,6 +11,7 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
+from opentelemetry import trace
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -25,7 +26,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
 from baseplate import _ExcInfo
-from baseplate import Span
 from baseplate import SpanObserver
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
@@ -235,7 +235,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         batch.gauge("pool.in_use").replace(pool.checkedout())
         batch.gauge("pool.overflow").replace(max(pool.overflow(), 0))
 
-    def make_object_for_context(self, name: str, span: Span) -> Engine | Session:
+    def make_object_for_context(self, name: str, span: trace.Span) -> Engine | Session:
         engine = self.engine.execution_options(context_name=name, server_span=span)
         return engine
 
@@ -262,16 +262,21 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         server_span = conn._execution_options["server_span"]
 
         trace_name = f"{context_name}.execute"
-        span = server_span.make_child(trace_name)
-        span.set_tag("statement", statement[:1021] + "..." if len(statement) > 1024 else statement)
-        span.start()
+        ctx = trace.set_span_in_context(server_span)
+        tracer = trace.get_tracer(__name__)
+        span = tracer.start_span(trace_name, ctx, kind=trace.SpanKind.CLIENT)
+        span.set_attribute(
+            "statement", statement[:1021] + "..." if len(statement) > 1024 else statement
+        )
 
         conn.info["span"] = span
 
         # add a comment to the sql statement with the trace and span ids
         # this is useful for slow query logs and active query views
-        if SAFE_TRACE_ID.match(span.trace_id) and SAFE_TRACE_ID.match(span.id):
-            annotated_statement = f"{statement} -- trace:{span.trace_id},span:{span.id}"
+        if SAFE_TRACE_ID.match(
+            trace.format_trace_id(span.get_span_context().trace_id)
+        ) and SAFE_TRACE_ID.match(trace.format_span_id(span.get_span_context().span_id)):
+            annotated_statement = f"{statement} -- trace:{trace.format_trace_id(span.get_span_context().trace_id)},span:{trace.format_span_id(span.get_span_context().span_id)}"
         else:
             annotated_statement = f"{statement} -- invalid trace id"
 
@@ -288,7 +293,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         executemany: bool,
     ) -> None:
         """Handle the event which happens after successful cursor execution."""
-        conn.info["span"].finish()
+        conn.info["span"].end()
         conn.info["span"] = None
 
         labels = {
@@ -307,8 +312,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         """Handle the event which happens on exceptions during execution."""
         assert context.connection is not None, context.connection
         if "span" in context.connection.info and context.connection.info["span"] is not None:
-            exc_info = (type(context.original_exception), context.original_exception, None)
-            context.connection.info["span"].finish(exc_info=exc_info)
+            context.connection.info["span"].record_exeception(context.original_exception)
+            context.connection.info["span"].set_status(trace.StatusCode.ERROR)
+            context.connection.info["span"].end()
             context.connection.info["span"] = None
 
         labels = {
@@ -346,10 +352,9 @@ class SQLAlchemySessionContextFactory(SQLAlchemyEngineContextFactory):
 
     """
 
-    def make_object_for_context(self, name: str, span: Span) -> Session:
+    def make_object_for_context(self, name: str, span: trace.Span) -> Session:
         engine = typing.cast(Engine, super().make_object_for_context(name, span))
         session = Session(bind=engine)
-        span.register(SQLAlchemySessionSpanObserver(session))
         return session
 
 

@@ -17,7 +17,6 @@ from thrift.transport.TTransport import TBufferedTransportFactory
 from thrift.transport.TTransport import TTransportException
 
 from baseplate.lib import config
-from baseplate.server import runtime_monitor
 
 
 logger = logging.getLogger(__name__)
@@ -79,5 +78,4 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
     server = GeventServer(processor=app, listener=listener, spawn=pool)
     server.stop_timeout = cfg.stop_timeout.total_seconds()
 
-    runtime_monitor.start(server_config, app, pool)
     return server

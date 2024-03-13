@@ -10,10 +10,11 @@ from typing import Optional
 
 import rediscluster
 
+from opentelemetry import trace
+from opentelemetry.trace import SpanKind
 from redis import RedisError
 from rediscluster.pipeline import ClusterPipeline
 
-from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.clients.redis import ACTIVE_REQUESTS
 from baseplate.clients.redis import LATENCY_SECONDS
@@ -391,7 +392,9 @@ class ClusterRedisContextFactory(ContextFactory):
         batch.gauge("pool.size").replace(size)
         batch.gauge("pool.open_connections").replace(open_connections_num)
 
-    def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisClusterConnection":
+    def make_object_for_context(
+        self, name: str, span: trace.Span
+    ) -> "MonitoredRedisClusterConnection":
         return MonitoredRedisClusterConnection(
             name,
             span,
@@ -415,7 +418,7 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
     def __init__(
         self,
         context_name: str,
-        server_span: Span,
+        server_span: trace.Span,
         connection_pool: rediscluster.ClusterConnectionPool,
         track_key_reads_sample_rate: float = 0,
         track_key_writes_sample_rate: float = 0,
@@ -440,7 +443,9 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
         command = args[0]
         trace_name = f"{self.context_name}.{command}"
 
-        with self.server_span.make_child(trace_name):
+        ctx = trace.set_span_in_context(self.server_span)
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_span(trace_name, ctx, kind=SpanKind.CLIENT):
             start_time = perf_counter()
             success = "true"
             labels = {
@@ -499,7 +504,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
     def __init__(
         self,
         trace_name: str,
-        server_span: Span,
+        server_span: trace.Span,
         connection_pool: rediscluster.ClusterConnectionPool,
         response_callbacks: Dict,
         hot_key_tracker: Optional[HotKeyTracker],
@@ -522,7 +527,9 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
 
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
-        with self.server_span.make_child(self.trace_name):
+        ctx = trace.set_span_in_context(self.server_span)
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_span(self.trace_name, ctx, kind=trace.SpanKind.CLIENT):
             success = "true"
             start_time = perf_counter()
             labels = {

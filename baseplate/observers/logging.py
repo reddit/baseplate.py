@@ -1,8 +1,9 @@
 import threading
 
+from opentelemetry import trace
+
 from baseplate import BaseplateObserver
 from baseplate import RequestContext
-from baseplate import Span
 
 
 class LoggingBaseplateObserver(BaseplateObserver):
@@ -14,5 +15,5 @@ class LoggingBaseplateObserver(BaseplateObserver):
 
     """
 
-    def on_server_span_created(self, context: RequestContext, server_span: Span) -> None:
-        threading.current_thread().name = str(server_span.trace_id)
+    def on_server_span_created(self, context: RequestContext, server_span: trace.Span) -> None:
+        threading.current_thread().name = str(server_span.get_span_context().trace_id)

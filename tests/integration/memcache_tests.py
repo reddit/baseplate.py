@@ -2,22 +2,28 @@ import unittest
 
 from unittest import mock
 
+from opentelemetry import trace
+from opentelemetry.test.test_base import TestBase
+
 try:
     from pymemcache.exceptions import MemcacheClientError
 except ImportError:
     raise unittest.SkipTest("pymemcache is not installed")
 
 from baseplate.clients.memcache import MemcacheClient, MonitoredMemcacheConnection, make_keys_str
-from baseplate import Baseplate, LocalSpan, ServerSpan
+from baseplate import Baseplate
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
 
 memcached_endpoint = get_endpoint_or_skip_container("memcached", 11211)
 
+tracer = trace.get_tracer(__name__)
 
-class MemcacheIntegrationTests(unittest.TestCase):
+
+class MemcacheIntegrationTests(TestBase):
     def setUp(self):
+        super().setUp()
         self.baseplate_observer = TestBaseplateObserver()
 
         baseplate = Baseplate({"memcache.endpoint": str(memcached_endpoint)})
@@ -25,153 +31,259 @@ class MemcacheIntegrationTests(unittest.TestCase):
         baseplate.configure_context({"memcache": MemcacheClient()})
 
         self.context = baseplate.make_context_object()
-        self.server_span = baseplate.make_server_span(self.context, "test")
+        self.server_span = tracer.start_span("test")
+        self.context.span = self.server_span
 
     def test_simple(self):
         with self.server_span:
             self.context.memcache.get("whatever")
 
-        server_span_observer = self.baseplate_observer.get_only_child()
-        span_observer = server_span_observer.get_only_child()
-        self.assertEqual(span_observer.span.name, "memcache.get")
-        self.assertTrue(span_observer.on_start_called)
-        self.assertTrue(span_observer.on_finish_called)
-        self.assertIsNone(span_observer.on_finish_exc_info)
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.get")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
+        )
 
     def test_error(self):
         with self.server_span:
             with self.assertRaises(MemcacheClientError):
                 self.context.memcache.cas("key", b"value", b"whatever")
 
-        server_span_observer = self.baseplate_observer.get_only_child()
-        span_observer = server_span_observer.get_only_child()
-        self.assertEqual(span_observer.span.name, "memcache.cas")
-        self.assertTrue(span_observer.on_start_called)
-        self.assertTrue(span_observer.on_finish_called)
-        self.assertIsNotNone(span_observer.on_finish_exc_info)
-
-
-class MonitoredMemcacheConnectionIntegrationTests(unittest.TestCase):
-    def setUp(self):
-        self.mocked_pool = mock.Mock(server=memcached_endpoint.address)
-        self.context_name = "memcache"
-        self.server_span = mock.MagicMock(spec_set=ServerSpan)
-        self.local_span = mock.MagicMock(spec_set=LocalSpan)
-        self.local_span.__enter__.return_value = self.local_span
-        self.server_span.make_child.return_value = self.local_span
-        self.connection = MonitoredMemcacheConnection(
-            self.context_name, self.server_span, self.mocked_pool
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.cas")
+        self.assertFalse(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
         )
-
-        self.key = b"key"
-        self.value = b"value"
-        self.expire = 0
-        self.noreply = False
 
     def test_close(self):
-        self.connection.close()
-        self.mocked_pool.close.assert_called_with()
-        self.assertEqual(self.local_span.set_tag.call_count, 1)
+        with self.server_span:
+            self.context.memcache.close()
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.close")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
+        )
 
     def test_set(self):
-        self.connection.set(self.key, self.value, expire=self.expire, noreply=self.noreply)
-        self.mocked_pool.set.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply
+        with self.server_span:
+            self.context.memcache.set("key", "value", expire=0, noreply=False)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.set")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
         )
-        self.assertEqual(self.local_span.set_tag.call_count, 4)
+        self.assertSpanHasAttributes(finished_spans[0], {"key": "key"})
 
     def test_replace(self):
-        self.connection.replace(self.key, self.value, expire=self.expire, noreply=self.noreply)
-        self.mocked_pool.replace.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply
+        with self.server_span:
+            self.context.memcache.replace("key", "value", expire=0, noreply=False)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.replace")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
         )
-        self.assertEqual(self.local_span.set_tag.call_count, 4)
+        self.assertSpanHasAttributes(finished_spans[0], {"key": "key"})
 
     def test_append(self):
-        self.connection.append(self.key, self.value, expire=self.expire, noreply=self.noreply)
-        self.mocked_pool.append.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply
+        with self.server_span:
+            self.context.memcache.append("key", "value", expire=0, noreply=False)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.append")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
         )
-        self.assertEqual(self.local_span.set_tag.call_count, 4)
+        self.assertSpanHasAttributes(finished_spans[0], {"key": "key"})
 
     def test_prepend(self):
-        self.connection.prepend(self.key, self.value, expire=self.expire, noreply=self.noreply)
-        self.mocked_pool.prepend.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply
+        with self.server_span:
+            self.context.memcache.prepend("key", "value", expire=0, noreply=False)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.prepend")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
         )
-        self.assertEqual(self.local_span.set_tag.call_count, 4)
+        self.assertSpanHasAttributes(finished_spans[0], {"key": "key"})
 
     def test_cas(self):
-        cas = b"cascas"
-        self.connection.cas(self.key, self.value, cas, expire=self.expire, noreply=self.noreply)
-        self.mocked_pool.cas.assert_called_with(
-            self.key, self.value, cas, expire=self.expire, noreply=self.noreply
+        with self.server_span:
+            self.context.memcache.cas("caskey2", "value", b"0", expire=0, noreply=False)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.cas")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
         )
-        self.assertEqual(self.local_span.set_tag.call_count, 5)
+        self.assertSpanHasAttributes(finished_spans[0], {"key": "caskey2", "cas": "0"})
 
     def test_get(self):
-        self.connection.get(self.key)
-        self.mocked_pool.get.assert_called_with(self.key)
-        self.assertEqual(self.local_span.set_tag.call_count, 2)
+        self.context.memcache.set("key", "value")
+        with self.server_span:
+            self.context.memcache.get("key")
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 1)
+        self.assertEqual(finished_spans[1].name, "memcache.get")
+        self.assertTrue(finished_spans[1].status.is_ok)
+        self.assertEqual(
+            finished_spans[1].parent.span_id, self.server_span.get_span_context().span_id
+        )
+        self.assertSpanHasAttributes(finished_spans[1], {"key": "key"})
 
     def test_gets(self):
-        self.connection.gets(self.key)
-        self.mocked_pool.gets.assert_called_with(self.key, default=None, cas_default=None)
-        self.assertEqual(self.local_span.set_tag.call_count, 2)
+        self.context.memcache.set("key", "value")
+        with self.server_span:
+            self.context.memcache.gets("key")
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 1)
+        self.assertEqual(finished_spans[1].name, "memcache.gets")
+        self.assertTrue(finished_spans[1].status.is_ok)
+        self.assertEqual(
+            finished_spans[1].parent.span_id, self.server_span.get_span_context().span_id
+        )
+        self.assertSpanHasAttributes(finished_spans[1], {"key": "key"})
 
     def test_gets_many(self):
         keys = [b"key1", b"key2"]
-        self.connection.gets_many(keys)
-        self.mocked_pool.gets_many.assert_called_with(keys)
-        self.assertEqual(self.local_span.set_tag.call_count, 3)
+        self.context.memcache.set_many({"key1": "value", "key2": "value"})
+        with self.server_span:
+            self.context.memcache.gets_many(keys)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 1)
+        self.assertEqual(finished_spans[1].name, "memcache.gets_many")
+        self.assertTrue(finished_spans[1].status.is_ok)
+        self.assertEqual(
+            finished_spans[1].parent.span_id, self.server_span.get_span_context().span_id
+        )
+        self.assertSpanHasAttributes(finished_spans[1], {"keys": "key1,key2"})
 
     def test_delete(self):
-        self.connection.delete(self.key, noreply=self.noreply)
-        self.mocked_pool.delete.assert_called_with(self.key, noreply=self.noreply)
-        self.assertEqual(self.local_span.set_tag.call_count, 3)
+        self.context.memcache.set("key", "value")
+        with self.server_span:
+            self.context.memcache.delete("key")
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 1)
+        self.assertEqual(finished_spans[1].name, "memcache.delete")
+        self.assertTrue(finished_spans[1].status.is_ok)
+        self.assertEqual(
+            finished_spans[1].parent.span_id, self.server_span.get_span_context().span_id
+        )
+        self.assertSpanHasAttributes(finished_spans[1], {"key": "key"})
 
     def test_delete_many(self):
         keys = [b"key1", b"key2"]
-        self.connection.delete_many(keys, noreply=self.noreply)
-        self.mocked_pool.delete_many.assert_called_with(keys, noreply=self.noreply)
-        self.assertEqual(self.local_span.set_tag.call_count, 4)
+        self.context.memcache.set_many({"key1": "value", "key2": "value"})
+        with self.server_span:
+            self.context.memcache.delete_many(keys)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 1)
+        self.assertEqual(finished_spans[1].name, "memcache.delete_many")
+        self.assertTrue(finished_spans[1].status.is_ok)
+        self.assertEqual(
+            finished_spans[1].parent.span_id, self.server_span.get_span_context().span_id
+        )
+        self.assertSpanHasAttributes(finished_spans[1], {"keys": "key1,key2"})
 
     def test_add(self):
-        self.connection.add(self.key, self.value, expire=self.expire, noreply=self.noreply)
-        self.mocked_pool.add.assert_called_with(
-            self.key, self.value, expire=self.expire, noreply=self.noreply
+        with self.server_span:
+            self.context.memcache.add("key", 1)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.add")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
         )
-        self.assertEqual(self.local_span.set_tag.call_count, 4)
+        self.assertSpanHasAttributes(finished_spans[0], {"key": "key"})
 
     def test_incr(self):
-        value = 1
-        self.connection.incr(self.key, value, noreply=self.noreply)
-        self.mocked_pool.incr.assert_called_with(self.key, value, noreply=self.noreply)
-        self.assertEqual(self.local_span.set_tag.call_count, 3)
+        with self.server_span:
+            self.context.memcache.incr("key_val", 1)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.incr")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
+        )
+        self.assertSpanHasAttributes(finished_spans[0], {"key": "key_val"})
 
     def test_decr(self):
-        value = 1
-        self.connection.decr(self.key, value, noreply=self.noreply)
-        self.mocked_pool.decr.assert_called_with(self.key, value, noreply=self.noreply)
-        self.assertEqual(self.local_span.set_tag.call_count, 3)
+        with self.server_span:
+            self.context.memcache.decr("key_val", 1)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.decr")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
+        )
+        self.assertSpanHasAttributes(finished_spans[0], {"key": "key_val"})
 
     def test_touch(self):
-        self.connection.touch(self.key, expire=self.expire, noreply=self.noreply)
-        self.mocked_pool.touch.assert_called_with(
-            self.key, expire=self.expire, noreply=self.noreply
+        with self.server_span:
+            self.context.memcache.touch("key_val", 1)
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.touch")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
         )
-        self.assertEqual(self.local_span.set_tag.call_count, 4)
+        self.assertSpanHasAttributes(finished_spans[0], {"key": "key_val"})
 
     def test_flush_all(self):
-        delay = 0
-        self.connection.flush_all(delay=delay, noreply=self.noreply)
-        self.mocked_pool.flush_all.assert_called_with(delay=delay, noreply=self.noreply)
-        self.assertEqual(self.local_span.set_tag.call_count, 3)
+        with self.server_span:
+            self.context.memcache.flush_all()
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.flush_all")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
+        )
+        self.assertSpanHasAttributes(finished_spans[0], {"delay": 0})
 
     def test_quit(self):
-        self.connection.quit()
-        self.mocked_pool.quit.assert_called_with()
-        self.assertEqual(self.local_span.set_tag.call_count, 1)
+        with self.server_span:
+            self.context.memcache.quit()
+
+        finished_spans = self.get_finished_spans()
+        self.assertGreater(len(finished_spans), 0)
+        self.assertEqual(finished_spans[0].name, "memcache.quit")
+        self.assertTrue(finished_spans[0].status.is_ok)
+        self.assertEqual(
+            finished_spans[0].parent.span_id, self.server_span.get_span_context().span_id
+        )
+        self.assertSpanHasAttributes(finished_spans[0], {"method": "quit"})
 
 
 class MakeKeysStrTests(unittest.TestCase):

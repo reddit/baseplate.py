@@ -10,6 +10,8 @@ from typing import Union
 
 from advocate import AddrValidator
 from advocate import ValidatingHTTPAdapter
+from opentelemetry import trace
+from opentelemetry.propagate import inject
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -19,7 +21,6 @@ from requests import Response
 from requests import Session
 from requests.adapters import HTTPAdapter
 
-from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.prometheus_metrics import default_latency_buckets
@@ -146,7 +147,7 @@ class BaseplateSession:
     """
 
     def __init__(
-        self, adapter: HTTPAdapter, name: str, span: Span, client_name: Optional[str] = None
+        self, adapter: HTTPAdapter, name: str, span: trace.Span, client_name: Optional[str] = None
     ) -> None:
         self.adapter = adapter
         self.name = name
@@ -237,7 +238,7 @@ class BaseplateSession:
         prepared = self.prepare_request(request)
         return self.send(prepared, **send_kwargs)
 
-    def _add_span_context(self, span: Span, request: PreparedRequest) -> None:
+    def _add_span_context(self, span: trace.Span, request: PreparedRequest) -> None:
         pass
 
     def send(self, request: PreparedRequest, **kwargs: Any) -> Response:
@@ -249,12 +250,17 @@ class BaseplateSession:
         start_time = time.perf_counter()
 
         try:
-            with self.span.make_child(f"{self.name}.request").with_tags(
-                {
+            ctx = trace.set_span_in_context(self.span)
+            tracer = trace.get_tracer(__name__)
+            with tracer.start_span(
+                f"{self.name}.request",
+                ctx,
+                kind=trace.SpanKind.CLIENT,
+                attributes={
                     "http.url": request.url,
                     "http.method": request.method.lower() if request.method else "",
                     "http.slug": self.client_name if self.client_name is not None else self.name,
-                }
+                },
             ) as span, ACTIVE_REQUESTS.labels(**active_request_label_values).track_inprogress():
                 self._add_span_context(span, request)
 
@@ -269,7 +275,7 @@ class BaseplateSession:
                 response = session.send(request, **kwargs)
 
                 http_status_code = response.status_code
-                span.set_tag("http.status_code", http_status_code)
+                span.set_attribute("http.status_code", http_status_code)
 
             return response
         finally:
@@ -294,14 +300,9 @@ class BaseplateSession:
 
 
 class InternalBaseplateSession(BaseplateSession):
-    def _add_span_context(self, span: Span, request: PreparedRequest) -> None:
-        request.headers["X-Trace"] = str(span.trace_id)
-        request.headers["X-Parent"] = str(span.parent_id)
-        request.headers["X-Span"] = str(span.id)
-        if span.sampled:
-            request.headers["X-Sampled"] = "1"
-        if span.flags is not None:
-            request.headers["X-Flags"] = str(span.flags)
+    def _add_span_context(self, span: trace.Span, request: PreparedRequest) -> None:
+        ctx = trace.set_span_in_context(span)
+        inject(request.headers, ctx)
 
         try:
             edge_context = span.context.raw_edge_context
@@ -345,7 +346,7 @@ class RequestsContextFactory(ContextFactory):
         self.session_cls = session_cls
         self.client_name = client_name
 
-    def make_object_for_context(self, name: str, span: Span) -> BaseplateSession:
+    def make_object_for_context(self, name: str, span: trace.Span) -> BaseplateSession:
         return self.session_cls(self.adapter, name, span, client_name=self.client_name)
 
 

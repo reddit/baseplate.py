@@ -23,11 +23,11 @@ from cassandra.cluster import Session  # pylint: disable=no-name-in-module
 from cassandra.query import BoundStatement  # pylint: disable=no-name-in-module
 from cassandra.query import PreparedStatement  # pylint: disable=no-name-in-module
 from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
+from opentelemetry import trace
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
 
-from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.prometheus_metrics import default_latency_buckets
@@ -175,7 +175,7 @@ class CassandraContextFactory(ContextFactory):
         self.prometheus_client_name = prometheus_client_name
         self.prometheus_cluster_name = prometheus_cluster_name
 
-    def make_object_for_context(self, name: str, span: Span) -> "CassandraSessionAdapter":
+    def make_object_for_context(self, name: str, span: trace.Span) -> "CassandraSessionAdapter":
         return CassandraSessionAdapter(
             name,
             span,
@@ -222,7 +222,9 @@ class CQLMapperContextFactory(CassandraContextFactory):
 
     """
 
-    def make_object_for_context(self, name: str, span: Span) -> "cqlmapper.connection.Connection":
+    def make_object_for_context(
+        self, name: str, span: trace.Span
+    ) -> "cqlmapper.connection.Connection":
         # Import inline so you can still use the regular Cassandra integration
         # without installing cqlmapper
         # pylint: disable=redefined-outer-name
@@ -284,7 +286,7 @@ def wrap_future(
 
 
 class CassandraCallbackArgs(NamedTuple):
-    span: Span
+    span: trace.Span
     start_time: float
     prom_labels: CassandraPrometheusLabels
 
@@ -293,7 +295,8 @@ def _on_execute_complete(_result: Any, args: CassandraCallbackArgs, event: Event
     # TODO: tag with anything from the result set?
     # TODO: tag with any returned warnings
     try:
-        args.span.finish()
+        args.span.set_status(trace.StatusCode.OK)
+        args.span.end()
     finally:
         prom_labels = args.prom_labels._asdict()
         REQUEST_TIME.labels(**prom_labels, cassandra_success="true").observe(
@@ -304,10 +307,11 @@ def _on_execute_complete(_result: Any, args: CassandraCallbackArgs, event: Event
         event.set()
 
 
-def _on_execute_failed(exc: BaseException, args: CassandraCallbackArgs, event: Event) -> None:
+def _on_execute_failed(exc: Exception, args: CassandraCallbackArgs, event: Event) -> None:
     try:
-        exc_info = (type(exc), exc, None)
-        args.span.finish(exc_info=exc_info)
+        args.span.record_exception(exc)
+        args.span.set_status(trace.StatusCode.ERROR, "Failed to execute Cassandra query")
+        args.span.end()
     finally:
         prom_labels = args.prom_labels._asdict()
         REQUEST_TIME.labels(**prom_labels, cassandra_success="false").observe(
@@ -327,7 +331,7 @@ class CassandraSessionAdapter:
     def __init__(
         self,
         context_name: str,
-        server_span: Span,
+        server_span: trace.Span,
         session: Session,
         prepared_statements: Dict[str, PreparedStatement],
         prometheus_client_name: Optional[str] = None,
@@ -379,15 +383,16 @@ class CassandraSessionAdapter:
         REQUEST_ACTIVE.labels(**prom_labels._asdict()).inc()
         start_time = time.perf_counter()
         trace_name = f"{self.context_name}.execute"
-        span = self.server_span.make_child(trace_name)
-        span.start()
+        tracer = trace.get_tracer(__name__)
+        ctx = trace.set_span_in_context(self.server_span)
+        span = tracer.start_span(trace_name, ctx, kind=trace.SpanKind.CLIENT)
         # TODO: include custom payload
         if isinstance(query, str):
-            span.set_tag("statement", query)
+            span.set_attribute("statement", query)
         elif isinstance(query, (SimpleStatement, PreparedStatement)):
-            span.set_tag("statement", query.query_string)
+            span.set_attribute("statement", query.query_string)
         elif isinstance(query, BoundStatement):
-            span.set_tag("statement", query.prepared_statement.query_string)
+            span.set_attribute("statement", query.prepared_statement.query_string)
         future = self.session.execute_async(query, parameters=parameters, timeout=timeout, **kwargs)
         callback_args = CassandraCallbackArgs(
             span=span,
@@ -420,8 +425,10 @@ class CassandraSessionAdapter:
                 pass
 
         trace_name = f"{self.context_name}.prepare"
-        with self.server_span.make_child(trace_name) as span:
-            span.set_tag("statement", query)
+        ctx = trace.set_span_in_context(self.server_span)
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_span(trace_name, ctx, kind=trace.SpanKind.CLIENT) as span:
+            span.set_attribute("statement", query)
             prepared = self.session.prepare(query)
             if cache:
                 self.prepared_statements[query] = prepared

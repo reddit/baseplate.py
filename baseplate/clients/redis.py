@@ -6,6 +6,8 @@ from typing import Optional
 
 import redis
 
+from opentelemetry import trace
+
 # redis.client.StrictPipeline was renamed to redis.client.Pipeline in version 3.0
 try:
     from redis.client import StrictPipeline as Pipeline  # type: ignore
@@ -16,7 +18,6 @@ from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
 
-from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import message_queue
@@ -195,7 +196,7 @@ class RedisContextFactory(ContextFactory):
         batch.gauge("pool.in_use").replace(in_use)
         batch.gauge("pool.open_and_available").replace(open_connections_num - in_use)
 
-    def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisConnection":
+    def make_object_for_context(self, name: str, span: trace.Span) -> "MonitoredRedisConnection":
         return MonitoredRedisConnection(
             context_name=name,
             server_span=span,
@@ -220,7 +221,7 @@ class MonitoredRedisConnection(redis.StrictRedis):
     def __init__(
         self,
         context_name: str,
-        server_span: Span,
+        server_span: trace.Span,
         connection_pool: redis.ConnectionPool,
         redis_client_name: str = "",
     ):
@@ -240,7 +241,9 @@ class MonitoredRedisConnection(redis.StrictRedis):
             f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get("db", ""),
             f"{PROM_LABELS_PREFIX}_type": "standalone",
         }
-        with self.server_span.make_child(trace_name), ACTIVE_REQUESTS.labels(
+        ctx = trace.set_span_in_context(self.server_span)
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_span(trace_name, ctx, kind=trace.SpanKind.CLIENT), ACTIVE_REQUESTS.labels(
             **labels
         ).track_inprogress():
             start_time = perf_counter()
@@ -294,7 +297,7 @@ class MonitoredRedisPipeline(Pipeline):
     def __init__(
         self,
         trace_name: str,
-        server_span: Span,
+        server_span: trace.Span,
         connection_pool: redis.ConnectionPool,
         response_callbacks: Dict,
         redis_client_name: str = "",
@@ -307,7 +310,9 @@ class MonitoredRedisPipeline(Pipeline):
 
     # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
-        with self.server_span.make_child(self.trace_name):
+        ctx = trace.set_span_in_context(self.server_span)
+        tracer = trace.get_tracer(__name__)
+        with tracer.start_span(self.trace_name, ctx, kind=trace.SpanKind.CLIENT):
             success = "true"
             start_time = perf_counter()
             labels = {

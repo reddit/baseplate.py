@@ -50,54 +50,6 @@ def test_no_event_when_nothing_wrong(baseplate_app, sentry_transport):
     assert not sentry_transport.events
 
 
-def test_event_when_exception(baseplate_app, sentry_transport):
-    with pytest.raises(ValueError):
-        with baseplate_app.server_context("test"):
-            raise ValueError("oops")
-
-    assert len(sentry_transport.events) == 1
-    event = sentry_transport.events[0]
-    assert event["exception"]["values"][0]["type"] == "ValueError"
-
-
-def test_tags(baseplate_app, sentry_transport):
-    with pytest.raises(ValueError):
-        with baseplate_app.server_context("test") as context:
-            context.span.set_tag("foo", "bar")
-            raise ValueError("oops")
-
-    assert len(sentry_transport.events) == 1
-    event = sentry_transport.events[0]
-    assert event["exception"]["values"][0]["type"] == "ValueError"
-    assert event["tags"]["foo"] == "bar"
-
-    with pytest.raises(ValueError):
-        with baseplate_app.server_context("test") as context:
-            context.span.set_tag("different-tag", "foo")
-            raise ValueError("oops")
-
-    assert len(sentry_transport.events) == 2
-    event = sentry_transport.events[1]
-    assert event["exception"]["values"][0]["type"] == "ValueError"
-    assert event["tags"]["different-tag"] == "foo"
-    assert "foo" not in event["tags"]
-
-
-def test_logs(baseplate_app, sentry_transport):
-    with pytest.raises(ValueError):
-        with baseplate_app.server_context("test") as context:
-            context.span.log("foo-category", "bar-log-entry")
-            raise ValueError("oops")
-
-    assert len(sentry_transport.events) == 1
-    event = sentry_transport.events[0]
-    assert event["exception"]["values"][0]["type"] == "ValueError"
-
-    last_breadcrumb = event["breadcrumbs"]["values"][-1]
-    assert last_breadcrumb["category"] == "foo-category"
-    assert last_breadcrumb["message"] == "bar-log-entry"
-
-
 def test_ignored_exception_ignored(baseplate_app, sentry_transport):
     with pytest.raises(ConnectionError):
         with baseplate_app.server_context("test"):

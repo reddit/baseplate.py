@@ -12,7 +12,6 @@ from gevent.server import StreamServer
 
 from baseplate.lib import config
 from baseplate.server import _load_factory
-from baseplate.server import runtime_monitor
 
 
 logger = logging.getLogger(__name__)
@@ -54,5 +53,4 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
     )
     server.stop_timeout = cfg.stop_timeout.total_seconds()
 
-    runtime_monitor.start(server_config, app, pool)
     return server

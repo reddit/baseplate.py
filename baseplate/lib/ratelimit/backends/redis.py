@@ -1,6 +1,6 @@
+from opentelemetry import trace
 from redis import ConnectionPool
 
-from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.clients.redis import MonitoredRedisConnection
 from baseplate.clients.redis import RedisContextFactory
@@ -22,7 +22,7 @@ class RedisRateLimitBackendContextFactory(ContextFactory):
         self.redis_context_factory = RedisContextFactory(redis_pool)
         self.prefix = prefix
 
-    def make_object_for_context(self, name: str, span: Span) -> "RedisRateLimitBackend":
+    def make_object_for_context(self, name: str, span: trace.Span) -> "RedisRateLimitBackend":
         redis = self.redis_context_factory.make_object_for_context(name, span)
         return RedisRateLimitBackend(redis, prefix=self.prefix)
 
