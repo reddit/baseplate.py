@@ -1,12 +1,9 @@
 from astroid import nodes
 from pylint.checkers import BaseChecker
-from pylint.interfaces import IAstroidChecker
 from pylint.lint import PyLinter
 
 
 class NoDbQueryStringFormatChecker(BaseChecker):
-    __implements__ = IAstroidChecker
-
     name = "no-database-query-string-format"
     priority = -1
     msgs = {
@@ -17,7 +14,7 @@ class NoDbQueryStringFormatChecker(BaseChecker):
         )
     }
 
-    def __init__(self, linter: PyLinter = None):
+    def __init__(self, linter: PyLinter):
         super().__init__(linter)
         self.string_sub_queries: set = set()
         self.query_verbs = {"select", "update", "delete", "insertinto", "truncate"}

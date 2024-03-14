@@ -1,10 +1,7 @@
 from pylint.checkers import BaseChecker
-from pylint.interfaces import IAstroidChecker
 
 
 class NoRelativeImportsChecker(BaseChecker):
-    __implements__ = IAstroidChecker
-
     name = "no-relative-imports"
     priority = -1
     msgs = {

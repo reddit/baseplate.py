@@ -319,6 +319,11 @@ class TraceInfoTests(unittest.TestCase):
         new_trace_info = TraceInfo.new()
         self.assertIsNone(new_trace_info.parent_id)
 
+    def test_new_sets_trace_and_span_ids(self):
+        new_trace_info = TraceInfo.new()
+        self.assertIsNotNone(new_trace_info.trace_id)
+        self.assertIsNotNone(new_trace_info.span_id)
+
     def test_new_does_not_set_flags(self):
         new_trace_info = TraceInfo.new()
         self.assertIsNone(new_trace_info.flags)
@@ -341,3 +346,10 @@ class TraceInfoTests(unittest.TestCase):
         span = TraceInfo.from_upstream(1, 2, 3, None, None)
         self.assertIsNone(span.sampled)
         self.assertIsNone(span.flags)
+
+    def test_from_upstream_handles_no_parent(self):
+        """Verify that `parent_id` can be left out without raising an exception."""
+        span = TraceInfo.from_upstream(1, None, 3, None, None)
+        self.assertIsNone(span.parent_id)
+        self.assertIsNotNone(span.trace_id)
+        self.assertIsNotNone(span.span_id)

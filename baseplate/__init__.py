@@ -130,9 +130,9 @@ class TraceInfo(NamedTuple):
     @classmethod
     def from_upstream(
         cls,
-        trace_id: Optional[str],
+        trace_id: str,
         parent_id: Optional[str],
-        span_id: Optional[str],
+        span_id: str,
         sampled: Optional[bool],
         flags: Optional[int],
     ) -> "TraceInfo":
@@ -152,9 +152,6 @@ class TraceInfo(NamedTuple):
 
         if span_id is None:
             raise ValueError("invalid span_id")
-
-        if parent_id is None:
-            raise ValueError("invalid parent_id")
 
         if sampled is not None and not isinstance(sampled, bool):
             raise ValueError("invalid sampled value")
@@ -629,7 +626,10 @@ class Span:
 
         """
         for observer in self.observers:
-            observer.on_finish(exc_info)
+            try:
+                observer.on_finish(exc_info)
+            except Exception:
+                logger.exception("Exception raised while finalizing observer")
 
         # clean up reference cycles
         self.context = None  # type: ignore
