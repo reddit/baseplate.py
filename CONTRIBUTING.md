@@ -20,6 +20,9 @@ and compile the library. For example:
 $ docker-compose run baseplate make test
 ```
 
+This is the easiest way to run tests from macOS, as Baseplate tests require
+Linux to run due to the use of `posix_ipc.MessageQueue`.
+
 Here are some of the Make targets available for use:
 
 * `make fmt`: Automatically reformat code to match the style guide.

@@ -77,7 +77,7 @@ class SpanFinishingAppIterWrapper(Iterable):
 
     def close(self) -> None:
         if hasattr(self.app_iter, "close"):
-            self.app_iter.close()  # type: ignore
+            self.app_iter.close()
 
 
 PROM_NAMESPACE = "http_server"
@@ -413,7 +413,7 @@ class BaseplateConfigurator:
         flags = headers.get("X-Flags", None)
         return TraceInfo.from_upstream(
             headers["X-Trace"],
-            headers["X-Parent"],
+            headers.get("X-Parent", None),
             headers["X-Span"],
             sampled,
             int(flags) if flags is not None else None,

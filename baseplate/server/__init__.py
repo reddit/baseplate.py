@@ -1,8 +1,9 @@
 """The baseplate server.
 
 This command serves your application from the given configuration file.
-
 """
+from __future__ import annotations
+
 import argparse
 import code
 import configparser
@@ -339,7 +340,7 @@ def make_app(app_config: Dict[str, str]) -> Callable:
 
 
 def register_signal_handlers() -> threading.Event:
-    def _handle_debug_signal(_signo: int, frame: FrameType) -> None:
+    def _handle_debug_signal(_signo: int, frame: FrameType | None) -> None:
         if not frame:
             logger.warning("Received SIGUSR1, but no frame found.")
             return
@@ -354,7 +355,7 @@ def register_signal_handlers() -> threading.Event:
 
     shutdown_event = threading.Event()
 
-    def _handle_shutdown_signal(_signo: int, _frame: FrameType) -> None:
+    def _handle_shutdown_signal(_signo: int, _frame: FrameType | None) -> None:
         shutdown_event.set()
 
     # shutdown is signalled differently in different contexts:

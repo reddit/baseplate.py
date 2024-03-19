@@ -5,20 +5,20 @@ from setuptools import setup
 
 
 extras_require = {
-    "amqp": ["kombu>=4.0.0,<5.0"],
-    "cassandra": ["cassandra-driver>=3.13.0,<4.0"],
+    "amqp": ["kombu>=5.3.3"],
+    "cassandra": ["cassandra-driver>=3.29.0,<4.0"],
     "cqlmapper": ["reddit-cqlmapper>=0.3.0,<1.0"],
-    "kafka": ["confluent-kafka>=1.3,<2.0"],
+    "kafka": ["confluent-kafka>=2.3.0"],
     "memcache": ["pymemcache>=1.3.0,<1.4.4"],
     "prometheus": ["prometheus-client>=0.12.0,<1.0"],
-    "pyramid": ["pyramid>=1.9.0,<2.0"],
+    "pyramid": ["pyramid>=1.10.8,<2.0"],
     "redis": ["redis>=2.10.0,<4.0.0"],
     "redis-py-cluster": ["redis-py-cluster>=2.1.2,<3.0.0"],
-    "refcycle": ["objgraph>=3.0,<4.0"],
+    "refcycle": ["objgraph>=3.6.0"],
     "requests": ["advocate>=1.0.0,<2.0"],
-    "s3fetcher": ["boto3>=1.18"],  # Kept for backwards compatibility, these are now main requirements
-    "sentry": ["sentry-sdk>=0.19,<2.0"],
-    "sql": ["sqlalchemy>=1.1.0,<2.0"],
+    "s3fetcher": [],  # Kept for backwards compatibility, these are now main requirements
+    "sentry": ["sentry-sdk>=1.35.0,<2.0"],
+    "sql": ["sqlalchemy>=1.4.49,<2"],
     "zookeeper": ["kazoo>=2.5.0,<3.0"],
 }
 extras_require["all"] = list(itertools.chain.from_iterable(extras_require.values()))
@@ -40,12 +40,12 @@ setup(
     python_requires=">=3.8",
     setup_requires=["setuptools_scm"],
     install_requires=[
-        "boto3>=1.18",
+        "boto3>=1.28.27",
         "posix_ipc>=1.0.0,<2.0",
-        "python-json-logger>=2.0,<3.0",
+        "python-json-logger>=2.0.5,<3.0",
         "requests>=2.21.0,<3.0",
         "thrift-unofficial>=0.19.0,<1.0",
-        "gevent>=20.5.0",
+        "gevent>=23.9.1",
         "prometheus-client>=0.12.0",
         "opentelemetry-api>=1.20.0",
         "opentelemetry-sdk>=1.20.0",
@@ -77,6 +77,9 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Software Development :: Libraries",
         "Topic :: Software Development :: Libraries :: Application Frameworks",
     ],

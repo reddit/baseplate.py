@@ -63,7 +63,7 @@ fmt:
 lint:
 	$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
 	black --diff --check baseplate/ tests/
-	flake8
+	flake8 baseplate tests
 	PYTHONPATH=. pylint baseplate/
 	mypy baseplate/
 

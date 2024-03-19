@@ -95,7 +95,7 @@ class EngineContextFactoryTest(unittest.TestCase):
 
         self.factory.report_runtime_metrics(batch)
 
-        prom_labels = {"sql_pool": "factory_name"}
+        prom_labels = {"sql_client_name": "factory_name"}
         # this serves to prove that we never set these metrics / go down the code path after the isinstance check
         self.assertEqual(REGISTRY.get_sample_value("sql_client_pool_max_size", prom_labels), None)
         self.assertEqual(
@@ -124,7 +124,7 @@ class EngineContextFactoryTest(unittest.TestCase):
 
         self.factory.report_runtime_metrics(batch)
 
-        prom_labels = {"sql_pool": "factory_name"}
+        prom_labels = {"sql_client_name": "factory_name"}
         self.assertEqual(REGISTRY.get_sample_value("sql_client_pool_max_size", prom_labels), 4)
         self.assertEqual(
             REGISTRY.get_sample_value("sql_client_pool_active_connections", prom_labels), 12
@@ -155,7 +155,7 @@ class EngineContextFactoryTest(unittest.TestCase):
         )
 
         prom_labels = {
-            "sql_pool": "factory_name",
+            "sql_client_name": "factory_name",
             "sql_address": "test_hostname",
             "sql_database": "test_database",
         }
@@ -176,7 +176,7 @@ class EngineContextFactoryTest(unittest.TestCase):
         )
 
         prom_labels = {
-            "sql_pool": "factory_name",
+            "sql_client_name": "factory_name",
             "sql_address": "test_hostname",
             "sql_database": "test_database",
         }
@@ -204,7 +204,7 @@ class EngineContextFactoryTest(unittest.TestCase):
         self.factory.on_error(exception_context)
 
         prom_labels = {
-            "sql_pool": "factory_name",
+            "sql_client_name": "factory_name",
             "sql_address": "test_hostname",
             "sql_database": "test_database",
         }

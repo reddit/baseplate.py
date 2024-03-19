@@ -54,7 +54,7 @@ def _make_transport(endpoint: config.EndpointConfiguration) -> TSocket:
     elif endpoint.family == socket.AF_UNIX:
         trans = TSocket(unix_socket=endpoint.address)
     else:
-        raise Exception(f"unsupported endpoint family {endpoint.family!r}")
+        raise ValueError(f"unsupported endpoint family {endpoint.family!r}")
 
     return trans
 
@@ -116,7 +116,7 @@ def thrift_pool_from_config(
     if options.max_connection_attempts is not None:
         kwargs.setdefault("max_connection_attempts", options.max_connection_attempts)
     if options.max_retries is not None:
-        raise Exception("max_retries was renamed to max_connection_attempts")
+        raise ValueError("max_retries was renamed to max_connection_attempts")
 
     return ThriftConnectionPool(endpoint=options.endpoint, **kwargs)
 

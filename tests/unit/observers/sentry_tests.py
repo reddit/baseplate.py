@@ -27,7 +27,10 @@ def sentry_transport():
 @pytest.fixture(autouse=True)
 def init_sentry_client(sentry_transport):
     try:
-        init_sentry_client_from_config({"sentry.dsn": "foo"}, transport=sentry_transport)
+        # https://docs.sentry.io/product/sentry-basics/concepts/dsn-explainer/#the-parts-of-the-dsn
+        init_sentry_client_from_config(
+            {"sentry.dsn": "https://fakekey@fakehost/1"}, transport=sentry_transport
+        )
         yield
     finally:
         sentry_sdk.init()  # shut everything down
