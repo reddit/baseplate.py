@@ -68,7 +68,7 @@ class SpanFinishingAppIterWrapper(Iterable):
             if self.span:
                 self.span.finish()
             raise
-        except BaseException as e:
+        except Exception as e:
             trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
             trace.get_current_span().record_exception(e)
             if self.span:
@@ -134,7 +134,7 @@ def _make_baseplate_tween(
             response = handler(request)
             if request.span:
                 request.span.set_tag("http.response_length", response.content_length)
-        except BaseException as e:
+        except Exception as e:
             trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
             trace.get_current_span().record_exception(e)
             if hasattr(request, "span") and request.span:
