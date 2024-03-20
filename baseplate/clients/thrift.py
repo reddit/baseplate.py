@@ -208,7 +208,7 @@ class _PooledClientProxy:
         try:
             self.otel_peer_name = socket.getfqdn()
             self.otel_peer_ip = socket.gethostbyname(self.otel_peer_name)
-        except Exception:
+        except socket.gaierror:
             logger.exception("Failed to retrieve local fqdn/pod name/pod IP for otel traces.")
 
     @contextlib.contextmanager
@@ -341,7 +341,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                             otelspan.set_status(status.Status(status.StatusCode.OK))
                             span.finish()
                             raise
-                        except:  # noqa: E722
+                        except BaseException:
                             # something unexpected happened
                             span.finish(exc_info=sys.exc_info())
                             otelspan.set_status(status.Status(status.StatusCode.ERROR))
