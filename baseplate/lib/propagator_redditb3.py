@@ -28,9 +28,8 @@ class RedditB3Format(TextMapPropagator):
     SAMPLED_KEY = "X-Sampled"
     FLAGS_KEY = "X-Flags"
     _SAMPLE_PROPAGATE_VALUES = frozenset({"1", "True", "true", "d"})
-    # Although Reddit B3 uses 64bit TraceId's (16 char) we will accept 32 and truncate only when writing client headers.
-    _trace_id_regex = re_compile(r"[\da-fA-F]{16}|[\da-fA-F]{32}")
-    _span_id_regex = re_compile(r"[\da-fA-F]{16}")
+    # Reddit B3 trace and span id's are 64bit integers encoded as decimal
+    _id_regex = re_compile(r"[\d]+")
 
     def extract(
         self,
@@ -73,9 +72,9 @@ class RedditB3Format(TextMapPropagator):
         # If we receive an invalid `trace_id` according to the w3 spec we return an empty context.
         if (
             extracted_trace_id is None
-            or self._trace_id_regex.fullmatch(extracted_trace_id) is None
+            or self._id_regex.fullmatch(extracted_trace_id) is None
             or extracted_span_id is None
-            or self._span_id_regex.fullmatch(extracted_span_id) is None
+            or self._id_regex.fullmatch(extracted_span_id) is None
         ):
             logger.debug(
                 "No valid b3 traces headers in request. Aborting. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",
@@ -86,9 +85,9 @@ class RedditB3Format(TextMapPropagator):
             )
             return context
 
-        # trace and span ids are encoded in hex, so must be converted
-        trace_id = int(extracted_trace_id, 16)
-        span_id = int(extracted_span_id, 16)
+        # trace and span ids are encoded as decimal strings, so must be converted
+        trace_id = int(extracted_trace_id)
+        span_id = int(extracted_span_id)
         logger.debug(
             "Converted IDs to integers. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",
             carrier,
@@ -134,8 +133,9 @@ class RedditB3Format(TextMapPropagator):
         setter.set(
             carrier,
             self.TRACE_ID_KEY,
-            # The Reddit B3 format expects a 64bit TraceId not a 128bit ID. This is truncated for compatibility.
-            format_trace_id(span_context.trace_id)[-16:],
+            # Encode as string, most services should be able to support 128 bit trace id's.
+            # Those that cannot will need to upgrade
+            str(span_context.trace_id),
         )
         setter.set(carrier, self.SPAN_ID_KEY, format_span_id(span_context.span_id))
         setter.set(carrier, self.SAMPLED_KEY, "1" if sampled else "0")

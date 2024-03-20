@@ -284,9 +284,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
                 transport.set_header(
-                    "X-Trace".encode("utf-8"), "4BF92F3577B34DA6A3CE929D0E0E4736".encode("utf-8")
+                    "X-Trace".encode("utf-8"), "100985939111033328018442752961257817910".encode("utf-8")
                 )
-                transport.set_header("X-Span".encode("utf-8"), "00F067AA0BA902B8".encode("utf-8"))
+                transport.set_header("X-Span".encode("utf-8"), "67667974448284344".encode("utf-8"))
                 transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
                 client.example()
 
@@ -312,8 +312,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         with serve_thrift(handler, TestService) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
-                transport.set_header("X-Trace".encode("utf-8"), "20d294c28becf34d".encode("utf-8"))
-                transport.set_header("X-Span".encode("utf-8"), "a1bf4d567fc497a4".encode("utf-8"))
+                transport.set_header("X-Trace".encode("utf-8"), "2365116317615059789".encode("utf-8"))
+                transport.set_header("X-Span".encode("utf-8"), "11655119394564249508".encode("utf-8"))
                 transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
                 client.example()
 
