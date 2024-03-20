@@ -27,7 +27,7 @@ class RedditB3Format(TextMapPropagator):
     SPAN_ID_KEY = "X-Span"
     SAMPLED_KEY = "X-Sampled"
     FLAGS_KEY = "X-Flags"
-    _SAMPLE_PROPAGATE_VALUES = {"1", "True", "true", "d"}
+    _SAMPLE_PROPAGATE_VALUES = frozenset({"1", "True", "true", "d"})
     # Although Reddit B3 uses 64bit TraceId's (16 char) we will accept 32 and truncate only when writing client headers.
     _trace_id_regex = re_compile(r"[\da-fA-F]{16}|[\da-fA-F]{32}")
     _span_id_regex = re_compile(r"[\da-fA-F]{16}")
