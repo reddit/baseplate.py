@@ -200,11 +200,12 @@ class _ContextAwareHandler:
                         # Set as OK as this is an expected exception
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         raise
-                    except BaseException as exc:
+                    except Exception as exc:
                         logger.debug("Processing every other type of exception. [exc=%s]" % exc)
                         # the handler crashed (or timed out)!
                         span.finish(exc_info=sys.exc_info())
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
+                        otelspan.record_exception(exc)
 
                         if self.convert_to_baseplate_error:
                             logger.debug("Converting exception to baseplate Error. [exc=%s]" % exc)
