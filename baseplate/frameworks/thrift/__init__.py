@@ -16,7 +16,8 @@ from form_observability import ctx
 from opentelemetry import trace
 from opentelemetry.context import attach
 from opentelemetry.context import detach
-from opentelemetry.propagate import extract
+from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.semconv.trace import MessageTypeValues
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
@@ -36,11 +37,14 @@ from baseplate import RequestContext
 from baseplate import TraceInfo
 from baseplate.lib.edgecontext import EdgeContextFactory
 from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
 
 
 logger = logging.getLogger(__name__)
+
+propagator = CompositePropagator([RedditB3ThriftFormat(), TraceContextTextMapPropagator()])
 
 PROM_NAMESPACE = "thrift_server"
 
@@ -98,7 +102,7 @@ class _ContextAwareHandler:
                 except UnicodeDecodeError:
                     self.logger.info("Unable to decode header %s, ignoring." % k.decode())
 
-            ctx = extract(header_dict)
+            ctx = propagator.extract(header_dict)
             logger.debug("Extracted trace headers. [ctx=%s, header_dict=%s]" % (ctx, header_dict))
 
             if ctx:

@@ -12,10 +12,11 @@ from typing import Callable
 from typing import Iterator
 from typing import Optional
 
-from opentelemetry import propagate
 from opentelemetry import trace
 from opentelemetry.semconv.trace import MessageTypeValues
 from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.trace import status
 from prometheus_client import Counter
 from prometheus_client import Gauge
@@ -30,6 +31,7 @@ from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib import metrics
 from baseplate.lib.prometheus_metrics import default_latency_buckets
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.lib.retry import RetryPolicy
 from baseplate.lib.thrift_pool import thrift_pool_from_config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
@@ -37,6 +39,8 @@ from baseplate.thrift.ttypes import Error
 from baseplate.thrift.ttypes import ErrorCode
 
 logger = logging.getLogger(__name__)
+
+propagator = CompositePropagator([RedditB3ThriftFormat(), TraceContextTextMapPropagator()])
 
 PROM_NAMESPACE = "thrift_client"
 
@@ -289,7 +293,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                                     prot.trans.set_header(b"User-Agent", service_name.encode())
 
                             # Inject all tracing headers into mutable_metadata and add as headers
-                            propagate.inject(mutable_metadata)
+                            propagator.inject(mutable_metadata)
                             for k, v in mutable_metadata.items():
                                 prot.set_header(k.encode(), v.encode())
 

@@ -19,13 +19,13 @@ from opentelemetry.trace import format_span_id
 logger = logging.getLogger(__name__)
 
 
-class RedditB3Format(TextMapPropagator):
-    """Propagator for the Reddit B3 HTTP header format."""
+class RedditB3ThriftFormat(TextMapPropagator):
+    """Propagator for the Reddit B3 Thrift header format."""
 
-    TRACE_ID_KEY = "X-Trace"
-    SPAN_ID_KEY = "X-Span"
-    SAMPLED_KEY = "X-Sampled"
-    FLAGS_KEY = "X-Flags"
+    TRACE_ID_KEY = "Trace"
+    SPAN_ID_KEY = "Span"
+    SAMPLED_KEY = "Sampled"
+    FLAGS_KEY = "Flags"
     _SAMPLE_PROPAGATE_VALUES = frozenset({"1", "True", "true", "d"})
     # Reddit B3 trace and span id's are 64bit integers encoded as decimal
     _id_regex = re_compile(r"[\d]+")
