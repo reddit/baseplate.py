@@ -67,7 +67,8 @@ from baseplate.lib.config import parse_config
 from baseplate.lib.config import Timespan
 from baseplate.lib.log_formatter import CustomJsonFormatter
 from baseplate.lib.prometheus_metrics import is_metrics_enabled
-from baseplate.lib.propagator_redditb3 import RedditB3Format
+from baseplate.lib.propagator_redditb3_http import RedditB3HTTPFormat
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.server import einhorn
 from baseplate.server import reloader
 from baseplate.server.net import bind_socket
@@ -278,7 +279,7 @@ def configure_tracing(config: Configuration) -> None:
 
             otlp_exporter = OTLPSpanExporter(endpoint=config.tracing["endpoint"], insecure=insecure)
             propagate.set_global_textmap(
-                CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()])
+                CompositePropagator([RedditB3HTTPFormat(), TraceContextTextMapPropagator()])
             )
             provider = TracerProvider(sampler=sampler, resource=resource)
             provider.add_span_processor(

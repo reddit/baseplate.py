@@ -25,7 +25,8 @@ from baseplate import TraceInfo
 from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
-from baseplate.lib.propagator_redditb3 import RedditB3Format
+from baseplate.lib.propagator_redditb3_http import RedditB3HTTPFormat
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.observers.timeout import ServerTimeout
 from baseplate.observers.timeout import TimeoutBaseplateObserver
@@ -47,7 +48,7 @@ logger = logging.getLogger(__name__)
 THRIFT_CLIENT_NAME = "example_service"
 
 propagate.set_global_textmap(
-    CompositePropagator([RedditB3Format(), TraceContextTextMapPropagator()])
+    CompositePropagator([RedditB3HTTPFormat(), RedditB3ThriftFormat(), TraceContextTextMapPropagator()])
 )
 
 
@@ -284,11 +285,11 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
                 transport.set_header(
-                    "X-Trace".encode("utf-8"),
+                    "Trace".encode("utf-8"),
                     "100985939111033328018442752961257817910".encode("utf-8"),
                 )
-                transport.set_header("X-Span".encode("utf-8"), "67667974448284344".encode("utf-8"))
-                transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
+                transport.set_header("Span".encode("utf-8"), "67667974448284344".encode("utf-8"))
+                transport.set_header("Sampled".encode("utf-8"), "1".encode("utf-8"))
                 client.example()
 
         finished_spans = self.get_finished_spans()
@@ -314,12 +315,12 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
                 transport.set_header(
-                    "X-Trace".encode("utf-8"), "2365116317615059789".encode("utf-8")
+                    "Trace".encode("utf-8"), "2365116317615059789".encode("utf-8")
                 )
                 transport.set_header(
-                    "X-Span".encode("utf-8"), "11655119394564249508".encode("utf-8")
+                    "Span".encode("utf-8"), "11655119394564249508".encode("utf-8")
                 )
-                transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
+                transport.set_header("Sampled".encode("utf-8"), "1".encode("utf-8"))
                 client.example()
 
         finished_spans = self.get_finished_spans()
@@ -352,10 +353,10 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
                 transport = client._oprot.trans
                 transport.set_header(b"traceparent", traceparent.encode())
                 # should get discarded
-                transport.set_header("X-Trace".encode("utf-8"), "20d294c28becf34d".encode("utf-8"))
+                transport.set_header("Trace".encode("utf-8"), "20d294c28becf34d".encode("utf-8"))
                 # should get discarded
-                transport.set_header("X-Span".encode("utf-8"), "a1bf4d567fc497a4".encode("utf-8"))
-                transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
+                transport.set_header("Span".encode("utf-8"), "a1bf4d567fc497a4".encode("utf-8"))
+                transport.set_header("Sampled".encode("utf-8"), "1".encode("utf-8"))
                 client_result = client.example()
 
         finished_spans = self.get_finished_spans()
