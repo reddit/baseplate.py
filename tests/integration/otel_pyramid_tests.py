@@ -119,9 +119,7 @@ class ConfiguratorTests(TestBase):
         app = configurator.make_wsgi_app()
         self.test_app = webtest.TestApp(app)
 
-    @mock.patch("random.getrandbits")
-    def test_no_trace_headers(self, getrandbits):
-        getrandbits.return_value = 1234
+    def test_no_trace_headers(self):
         self.test_app.get("/example")
 
         finished_spans = self.get_finished_spans()
@@ -145,9 +143,9 @@ class ConfiguratorTests(TestBase):
         self.test_app.get(
             "/example",
             headers={
-                "X-Trace": "4BF92F3577B34DA6A3CE929D0E0E4736",
-                "X-Parent": "00F067AA0BA902B7",
-                "X-Span": "00F067AA0BA902B8",
+                "X-Trace": "100985939111033328018442752961257817910",
+                "X-Parent": "4229248403017772",
+                "X-Span": "67667974448284344",
                 "X-Sampled": "1",
             },
         )
@@ -160,9 +158,9 @@ class ConfiguratorTests(TestBase):
         self.test_app.get(
             "/example",
             headers={
-                "X-Trace": "20d294c28becf34d",
-                "X-Parent": "a1bf4d567fc497a4",
-                "X-Span": "a1bf4d567fc497a5",
+                "X-Trace": "2365116317615059789",
+                "X-Parent": "11655119394564249508",
+                "X-Span": "11655119394564249509",
                 "X-Sampled": "1",
             },
         )
@@ -176,9 +174,9 @@ class ConfiguratorTests(TestBase):
             "/example",
             headers={
                 "traceparent": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-                "X-Trace": "20d294c28becf34d",  # should get discarded
-                "X-Parent": "a1bf4d567fc497a4",  # should get discarded
-                "X-Span": "a1bf4d567fc497a5",
+                "X-Trace": "2365116317615059789",  # should get discarded
+                "X-Parent": "11655119394564249508",  # should get discarded
+                "X-Span": "11655119394564249509",
                 "X-Sampled": "1",
             },
         )
