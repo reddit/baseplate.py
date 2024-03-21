@@ -314,12 +314,10 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
                 transport.set_header(
-                    "X-Trace".encode("utf-8"),
-                    "2365116317615059789".encode("utf-8")
+                    "X-Trace".encode("utf-8"), "2365116317615059789".encode("utf-8")
                 )
                 transport.set_header(
-                    "X-Span".encode("utf-8"),
-                    "11655119394564249508".encode("utf-8")
+                    "X-Span".encode("utf-8"), "11655119394564249508".encode("utf-8")
                 )
                 transport.set_header("X-Sampled".encode("utf-8"), "1".encode("utf-8"))
                 client.example()
