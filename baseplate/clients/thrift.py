@@ -13,11 +13,11 @@ from typing import Iterator
 from typing import Optional
 
 from opentelemetry import trace
+from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.semconv.trace import MessageTypeValues
 from opentelemetry.semconv.trace import SpanAttributes
-from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.trace import status
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram

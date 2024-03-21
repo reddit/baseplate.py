@@ -48,7 +48,9 @@ logger = logging.getLogger(__name__)
 THRIFT_CLIENT_NAME = "example_service"
 
 propagate.set_global_textmap(
-    CompositePropagator([RedditB3HTTPFormat(), RedditB3ThriftFormat(), TraceContextTextMapPropagator()])
+    CompositePropagator(
+        [RedditB3HTTPFormat(), RedditB3ThriftFormat(), TraceContextTextMapPropagator()]
+    )
 )
 
 
@@ -314,12 +316,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         with serve_thrift(handler, TestService) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
-                transport.set_header(
-                    "Trace".encode("utf-8"), "2365116317615059789".encode("utf-8")
-                )
-                transport.set_header(
-                    "Span".encode("utf-8"), "11655119394564249508".encode("utf-8")
-                )
+                transport.set_header("Trace".encode("utf-8"), "2365116317615059789".encode("utf-8"))
+                transport.set_header("Span".encode("utf-8"), "11655119394564249508".encode("utf-8"))
                 transport.set_header("Sampled".encode("utf-8"), "1".encode("utf-8"))
                 client.example()
 

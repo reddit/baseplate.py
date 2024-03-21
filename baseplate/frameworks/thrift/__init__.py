@@ -17,10 +17,10 @@ from opentelemetry import trace
 from opentelemetry.context import attach
 from opentelemetry.context import detach
 from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from opentelemetry.semconv.trace import MessageTypeValues
 from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import Tracer
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
