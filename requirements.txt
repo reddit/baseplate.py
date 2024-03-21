@@ -5,6 +5,7 @@
 # supported.
 -r requirements-transitive.txt
 black==21.10b0
+formenergy-observability==0.3.2
 boto3==1.34.19
 fakeredis==1.5.0
 flake8==7.0.0
@@ -25,3 +26,12 @@ types-redis==3.5.3
 types-requests==2.25.6
 types-setuptools==57.0.2
 webtest==2.0.35
+wheel==0.38.1
+fakeredis==1.5.0
+opentelemetry-api==1.20.0
+opentelemetry-sdk==1.20.0
+opentelemetry-test-utils==0.41b0
+opentelemetry-instrumentation-pyramid==0.41b0
+opentelemetry-instrumentation-requests==0.41b0
+opentelemetry-exporter-otlp==1.20.0
+parameterized==0.9.0

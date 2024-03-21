@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 
+from opentelemetry import trace
 from prometheus_client import REGISTRY
 from thrift.protocol.TProtocol import TProtocolException
 from thrift.Thrift import TApplicationException
@@ -108,6 +109,7 @@ class Test_ThriftServerPrometheusMetrics:
             context=mock.MagicMock(),
             logger=mock.MagicMock(),
             convert_to_baseplate_error=convert,
+            tracer=trace.get_tracer("in-context"),
         )
 
         with expectation:
