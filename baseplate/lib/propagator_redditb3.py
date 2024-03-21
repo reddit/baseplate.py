@@ -15,7 +15,6 @@ from opentelemetry.propagators.textmap import Getter
 from opentelemetry.propagators.textmap import Setter
 from opentelemetry.propagators.textmap import TextMapPropagator
 from opentelemetry.trace import format_span_id
-from opentelemetry.trace import format_trace_id
 
 logger = logging.getLogger(__name__)
 
