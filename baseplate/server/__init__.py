@@ -269,9 +269,8 @@ def configure_tracing(config: Configuration) -> None:
                 )
             # Load insecure option from tracing config.
             insecure: bool
-            if "insecure" in config.tracing:
-                if config.tracing["insecure"] == "false":
-                    insecure = False
+            if config.tracing.get("insecure") == "false":
+                insecure = False
             else:
                 # Default to true. At the time of implementation our current tracing pipeline is not setup for TLS.
                 insecure = True
