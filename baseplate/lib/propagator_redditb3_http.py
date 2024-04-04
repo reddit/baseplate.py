@@ -28,7 +28,7 @@ class RedditB3HTTPFormat(TextMapPropagator):
     FLAGS_KEY = "X-Flags"
     _SAMPLE_PROPAGATE_VALUES = frozenset({"1", "True", "true", "d"})
     # Reddit B3 trace and span id's are 64bit integers encoded as decimal
-    _id_regex = re_compile(r"[\d]+")
+    _id_regex = re_compile(r"\d+")
 
     def extract(
         self,
