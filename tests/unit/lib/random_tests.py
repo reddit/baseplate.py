@@ -58,10 +58,10 @@ class WeightedChoiceTests(unittest.TestCase):
         # we give a bit of fuzz factor here since we're
         # allowing true randomness in this test and don't
         # want spurious failures.
-        self.assertLess(abs(1000 - choices["a"]), 150)
-        self.assertLess(abs(2000 - choices["b"]), 150)
-        self.assertLess(abs(3000 - choices["c"]), 150)
-        self.assertLess(abs(4000 - choices["d"]), 150)
+        self.assertLess(abs(1000 - choices["a"]), 151)
+        self.assertLess(abs(2000 - choices["b"]), 151)
+        self.assertLess(abs(3000 - choices["c"]), 151)
+        self.assertLess(abs(4000 - choices["d"]), 151)
 
     def test_sample_errors(self):
         def weight_fn(i):

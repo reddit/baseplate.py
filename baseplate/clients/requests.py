@@ -308,7 +308,8 @@ class InternalBaseplateSession(BaseplateSession):
         except AttributeError:
             pass
         else:
-            request.headers["X-Edge-Request"] = base64.b64encode(edge_context).decode()
+            if edge_context:
+                request.headers["X-Edge-Request"] = base64.b64encode(edge_context).decode()
 
 
 class RequestsContextFactory(ContextFactory):
