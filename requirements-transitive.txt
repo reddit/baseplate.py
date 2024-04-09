@@ -106,7 +106,7 @@ vine==5.1.0
 virtualenv==20.25.0
 waitress==2.1.2
 WebOb==1.8.6
-Werkzeug==2.1.2
+Werkzeug==2.3.8
 wrapt==1.16.0
 xmltodict==0.13.0
 zipp==3.17.0
