@@ -109,7 +109,7 @@ WebOb==1.8.6
 Werkzeug==3.0.2
 wrapt==1.16.0
 xmltodict==0.13.0
-zipp==3.17.0
+zipp==3.18.1
 zope.deprecation==4.4.0
 zope.event==4.5.0
 zope.interface==5.2.0
