@@ -91,7 +91,7 @@ sphinxcontrib-devhelp==1.0.2
 sphinxcontrib-htmlhelp==2.0.1
 sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
-sphinxcontrib-serializinghtml==1.1.5
+sphinxcontrib-serializinghtml==1.1.10
 SQLAlchemy==1.4.51
 thrift-unofficial==0.19.0
 toml==0.10.2
