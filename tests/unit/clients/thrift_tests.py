@@ -228,7 +228,11 @@ class TestThriftContextFactory:
     def test_thrift_server_pool_prometheus_metrics(self, context_factory):
         context_factory.report_runtime_metrics(batch=mock.MagicMock())
         prom_labels = {
-            "thrift_pool": "Iface",
+            "thrift_pool": "TestThriftContextFactory.context_factory.<locals>.Iface",
         }
+        assert (
+            context_factory.client_cls.__qualname__
+            == "TestThriftContextFactory.context_factory.<locals>.Iface"
+        )
         assert REGISTRY.get_sample_value("thrift_client_pool_max_size", prom_labels) == 4
         assert REGISTRY.get_sample_value("thrift_client_pool_active_connections", prom_labels) == 8

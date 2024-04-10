@@ -142,7 +142,7 @@ class ThriftContextFactory(ContextFactory):
         )
 
     def report_runtime_metrics(self, batch: metrics.Client) -> None:
-        pool_name = self.client_cls.__name__
+        pool_name = self.client_cls.__qualname__
         self.max_connections_gauge.labels(pool_name).set(self.pool.size)
         self.active_connections_gauge.labels(pool_name).set(self.pool.checkedout)
         batch.gauge("pool.size").replace(self.pool.size)
