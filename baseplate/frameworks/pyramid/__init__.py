@@ -17,6 +17,8 @@ import pyramid.tweens
 import webob.request
 
 from opentelemetry import trace
+from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
+
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -36,6 +38,8 @@ from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.thrift.ttypes import IsHealthyProbe
 
 logger = logging.getLogger(__name__)
+
+PyramidInstrumentor().instrument()
 
 
 class SpanFinishingAppIterWrapper(Iterable):
