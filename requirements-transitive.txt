@@ -19,13 +19,14 @@ certifi==2023.7.22
 cffi==1.16.0
 cfgv==3.4.0
 chardet==4.0.0
+charset-normalizer==3.3.2
 click==7.1.2
 confluent-kafka==2.3.0
 coverage==5.4
 cryptography==42.0.4
 dill==0.3.7
 distlib==0.3.8
-docutils==0.16
+docutils==0.20.1
 exceptiongroup==1.2.0
 filelock==3.13.1
 geomet==0.2.1.post1
@@ -35,7 +36,7 @@ greenlet==3.0.3
 hupper==1.10.2
 identify==2.5.33
 idna==2.10
-imagesize==1.2.0
+imagesize==1.4.1
 importlib-metadata==4.13.0
 iniconfig==1.1.1
 isort==5.7.0
@@ -52,7 +53,7 @@ ndg-httpsclient==0.5.1
 netifaces==0.11.0
 nodeenv==1.8.0
 objgraph==3.6.0
-packaging==20.9
+packaging==24.0
 PasteDeploy==3.0
 pathspec==0.9.0
 plaster==1.0
