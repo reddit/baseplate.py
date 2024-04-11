@@ -4,7 +4,7 @@
 # See install_requires and extras_require in setup.py for the range of versions
 # supported.
 advocate==1.0.0
-alabaster==0.7.12
+alabaster==0.7.13
 amqp==5.2.0
 appdirs==1.4.4
 aspy.refactor-imports==2.1.1
