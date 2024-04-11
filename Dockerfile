@@ -6,9 +6,11 @@ COPY --from=thrift /usr/local/bin/thrift /usr/local/bin/thrift
 
 WORKDIR /src
 
-COPY requirements*.txt ./
-RUN pip install -r requirements.txt
+RUN python -m venv /tmp/poetry && \
+    /tmp/poetry/bin/pip install poetry==1.8.2 && \
+    ln -s /tmp/poetry/bin/poetry /usr/local/bin/poetry
 
-RUN touch /baseplate-py-dev-docker-image
+COPY pyproject.toml poetry.lock ./
+RUN poetry install --all-extras
 
 CMD ["/bin/bash"]

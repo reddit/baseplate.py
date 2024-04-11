@@ -31,41 +31,37 @@ $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/t
 
 .PHONY: docs
 docs:
-	sphinx-build -M html docs/ build/
+	poetry run sphinx-build -M html docs/ build/
 
 .PHONY: doctest
 doctest:
-	sphinx-build -M doctest docs/ build/
+	poetry run sphinx-build -M doctest docs/ build/
 
 .PHONY: linkcheck
 linkcheck:
-	sphinx-build -M linkcheck docs/ build/
+	poetry run sphinx-build -M linkcheck docs/ build/
 
 .PHONY: test
 test: doctest
 	# Some files use gevent to monkey patch stdlib functions. This causes problems
 	# if it happens after importing the sequential versions of some of these. Thus
 	# we need to do it as early as possible.
-	python -m gevent.monkey --module pytest -v tests/
+	poetry run python -m gevent.monkey --module pytest -v tests/
 
 .PHONY: fmt
 fmt:
-	@if [ ! -f /baseplate-py-dev-docker-image ]; then \
-		echo "Please use the docker-compose environment for consistency. See https://github.com/reddit/baseplate.py/blob/develop/CONTRIBUTING.md."; \
-		exit 1; \
-	fi
-	$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
-	black baseplate/ tests/
-	$(REORDER_PYTHON_IMPORTS) --application-directories /tmp --exit-zero-even-if-changed $(PYTHON_EXAMPLES)
-	black docs/  # separate so it uses its own pyproject.toml
+	poetry run $(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
+	poetry run black baseplate/ tests/
+	poetry run $(REORDER_PYTHON_IMPORTS) --application-directories /tmp --exit-zero-even-if-changed $(PYTHON_EXAMPLES)
+	poetry run black docs/  # separate so it uses its own pyproject.toml
 
 .PHONY: lint
 lint:
-	$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
-	black --diff --check baseplate/ tests/
-	flake8 baseplate tests
-	PYTHONPATH=. pylint baseplate/
-	mypy baseplate/
+	poetry run $(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
+	poetry run black --diff --check baseplate/ tests/
+	poetry run flake8 baseplate tests
+	PYTHONPATH=. poetry run pylint baseplate/
+	poetry run mypy baseplate/
 
 .PHONY: checks
 checks: test lint linkcheck
