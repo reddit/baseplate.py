@@ -25,6 +25,10 @@ from baseplate.lib import config
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+
+RequestsInstrumentor.instrument()
+
 
 def http_adapter_from_config(
     app_config: config.RawConfig, prefix: str, **kwargs: Any
