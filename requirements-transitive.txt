@@ -104,7 +104,7 @@ urllib3==1.26.18
 venusian==3.1.0
 vine==5.1.0
 virtualenv==20.25.0
-waitress==2.1.2
+waitress==3.0.0
 WebOb==1.8.7
 Werkzeug==3.0.2
 wrapt==1.16.0
