@@ -10,7 +10,7 @@ appdirs==1.4.4
 aspy.refactor-imports==2.1.1
 astroid==3.0.2
 attrs==20.3.0
-Babel==2.9.1
+Babel==2.14.0
 beautifulsoup4==4.9.3
 botocore==1.34.19
 cached-property==1.5.2
