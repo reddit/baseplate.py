@@ -9,7 +9,7 @@ import pytest
 
 from botocore.response import StreamingBody
 from botocore.stub import Stubber
-from moto import mock_s3
+from moto import mock_aws
 
 from baseplate.sidecars.live_data_watcher import _load_from_s3
 from baseplate.sidecars.live_data_watcher import _parse_loader_type
@@ -19,13 +19,13 @@ from baseplate.sidecars.live_data_watcher import NodeWatcher
 
 
 @pytest.fixture()
-def start_mock_s3():
-    with mock_s3():
+def start_mock_aws():
+    with mock_aws():
         yield
 
 
 @pytest.fixture()
-def s3_stub(start_mock_s3):
+def s3_stub(start_mock_aws):
     s3 = botocore.session.get_session().create_client("s3")
     with Stubber(s3) as stubber:
         with mock.patch("baseplate.sidecars.live_data_watcher.boto3.client") as client:
@@ -64,7 +64,7 @@ def test_parse_loader_type(data, return_value):
         "sse_key",
     ),
 )
-def test_load_from_s3_missing_config(start_mock_s3, missing_config):
+def test_load_from_s3_missing_config(start_mock_aws, missing_config):
     data = {
         "region_name": "some_region",
         "bucket_name": "some_bucket",

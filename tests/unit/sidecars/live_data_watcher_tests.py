@@ -10,7 +10,7 @@ from pathlib import Path
 
 import boto3
 
-from moto import mock_s3
+from moto import mock_aws
 
 from baseplate.sidecars.live_data_watcher import _generate_sharded_file_key
 from baseplate.sidecars.live_data_watcher import NodeWatcher
@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 
 
 class NodeWatcherTests(unittest.TestCase):
-    mock_s3 = mock_s3()
+    mock_aws = mock_aws()
 
     def setUp(self):
-        self.mock_s3.start()
+        self.mock_aws.start()
         bucket_name = "test_bucket"
         s3_data = {"foo_encrypted": "bar_encrypted"}
         s3_client = boto3.client(
@@ -50,7 +50,7 @@ class NodeWatcherTests(unittest.TestCase):
             )
 
     def tearDown(self):
-        self.mock_s3.stop()
+        self.mock_aws.stop()
 
     def run(self, result: unittest.TestResult = None) -> unittest.TestResult:
         with tempfile.TemporaryDirectory(prefix=self.id()) as loc:
