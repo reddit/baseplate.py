@@ -46,7 +46,7 @@ kombu==5.3.5
 lazy-object-proxy==1.4.3
 MarkupSafe==2.1.5
 mccabe==0.7.0
-moto==4.2.13
+moto==5.0.5
 mypy-extensions==1.0.0
 ndg-httpsclient==0.5.1
 netifaces==0.11.0
