@@ -35,7 +35,7 @@ graphviz==0.16
 greenlet==3.0.3
 hupper==1.10.2
 identify==2.5.33
-idna==2.10
+idna==3.7
 imagesize==1.4.1
 importlib-metadata==4.13.0
 iniconfig==1.1.1
