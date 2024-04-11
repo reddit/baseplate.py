@@ -70,7 +70,7 @@ class NonBaseplateExceptionWithCode(Exception):
 
 
 class TestPrometheusMetrics:
-    def setup(self):
+    def setup_method(self):
         REQUEST_LATENCY.clear()
         REQUESTS_TOTAL.clear()
         ACTIVE_REQUESTS.clear()

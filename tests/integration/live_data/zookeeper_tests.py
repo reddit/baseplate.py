@@ -57,7 +57,10 @@ class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
         secrets.get_simple.assert_called_with("secret/zk-user")
         self.assertEqual(list(client.auth_data), [("digest", "myzkuser:hunter2")])
 
-    def test_create_client_uses_threading_handler_when_not_gevent_patched(self):
+    @mock.patch("baseplate.lib.live_data.zookeeper.gevent_is_patched", return_value=False)
+    def test_create_client_uses_threading_handler_when_not_gevent_patched(
+        self, mock_gevent_is_patched
+    ):
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(
             secrets,
