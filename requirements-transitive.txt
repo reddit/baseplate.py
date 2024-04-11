@@ -56,7 +56,7 @@ packaging==20.9
 PasteDeploy==3.0
 pathspec==0.9.0
 plaster==1.0
-plaster-pastedeploy==0.7
+plaster-pastedeploy==1.0.1
 platformdirs==4.1.0
 pluggy==0.13.1
 posix-ipc==1.0.5
