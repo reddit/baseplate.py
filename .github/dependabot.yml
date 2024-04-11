@@ -1,6 +1,8 @@
 ---
 version: 2
 updates:
+  # Note, the file `runtime.txt` is used to hint to dependabot
+  # the minimum version requirement for updates.
   - package-ecosystem: pip
     directory: "/"
     schedule:
@@ -8,3 +10,8 @@ updates:
     target-branch: develop
     labels:
       - "dependencies"
+    open-pull-requests-limit: 20
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
