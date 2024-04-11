@@ -18,7 +18,7 @@ cassandra-driver==3.29.0
 certifi==2024.2.2
 cffi==1.16.0
 cfgv==3.4.0
-chardet==4.0.0
+chardet==5.2.0
 charset-normalizer==3.3.2
 click==7.1.2
 confluent-kafka==2.3.0
