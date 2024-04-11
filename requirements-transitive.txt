@@ -60,7 +60,7 @@ plaster==1.0
 plaster-pastedeploy==1.0.1
 platformdirs==4.1.0
 pluggy==0.13.1
-posix-ipc==1.0.5
+posix-ipc==1.1.1
 py==1.11.0
 pyasn1==0.6.0
 pycodestyle==2.11.1
