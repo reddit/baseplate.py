@@ -24,7 +24,7 @@ click==7.1.2
 confluent-kafka==2.3.0
 coverage==5.4
 cryptography==42.0.4
-dill==0.3.7
+dill==0.3.8
 distlib==0.3.8
 docutils==0.20.1
 exceptiongroup==1.2.0
