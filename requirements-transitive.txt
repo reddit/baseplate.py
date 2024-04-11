@@ -34,7 +34,7 @@ gevent==24.2.1
 graphviz==0.16
 greenlet==3.0.3
 hupper==1.10.2
-identify==2.5.33
+identify==2.5.35
 idna==3.7
 imagesize==1.4.1
 importlib-metadata==4.13.0
