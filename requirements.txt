@@ -20,7 +20,7 @@ pytz==2024.1
 reorder-python-imports==2.4.0
 sphinx==7.1.2
 sphinx-autodoc-typehints==2.0.1
-sphinxcontrib-spelling==7.7.0
+sphinxcontrib-spelling==8.0.0
 types-redis==3.5.3
 types-requests==2.25.6
 types-setuptools==69.2.0.20240317
