@@ -47,7 +47,7 @@ jobs:
         run: |
           pip install pipx
           pipx install poetry==1.8.2
-          poetry install --all-extras
+          make venv
 
       - name: Lint
         run: |

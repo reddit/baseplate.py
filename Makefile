@@ -29,6 +29,10 @@ $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/t
 	rm -f tests/integration/test_thrift/TestService-remote
 	touch $@
 
+.PHONY: venv
+venv:
+	poetry install --all-extras
+
 .PHONY: docs
 docs:
 	poetry run sphinx-build -M html docs/ build/
