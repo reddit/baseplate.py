@@ -438,6 +438,11 @@ def load_and_run_shell() -> None:
             # IPython 4 and below
             from IPython import Config
 
+        # test for UTC availability from the datetime package
+        import datetime as dt
+
+        datetime_exec = "now(datetime.UTC)" if getattr(dt, "UTC", False) else "utcnow()"
+
         ipython_config = Config()
         ipython_config.InteractiveShellApp.exec_lines = [
             # monkeypatch IPython's log-write() to enable formatted input logging, copying original code:
@@ -451,7 +456,7 @@ def load_and_run_shell() -> None:
                     write = self.logfile.write
                     if kind=='input':
                         # Generate an RFC 5424 compliant syslog format
-                        write(f'<13>1 {{datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")}} {{os.uname().nodename}} baseplate-shell {{os.getpid()}} {{message_id}} - {{data}}')
+                        write(f'<13>1 {{datetime.datetime.{datetime_exec}.strftime("%Y-%m-%dT%H:%M:%S.%fZ")}} {{os.uname().nodename}} baseplate-shell {{os.getpid()}} {{message_id}} - {{data}}')
                     elif kind=='output' and self.log_output:
                         odata = u'\\n'.join([u'#[Out]# %s' % s
                                         for s in data.splitlines()])
