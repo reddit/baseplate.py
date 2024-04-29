@@ -66,6 +66,11 @@ class EnumerateServiceMethodsTests(unittest.TestCase):
             list(thrift._enumerate_service_methods(ExampleClient))
 
 
+class NonBaseplateExceptionWithCode(Exception):
+    def __init__(self):
+        self.code = lambda: "fake method"
+
+
 class TestPrometheusMetrics:
     def setup(self):
         REQUEST_LATENCY.clear()
@@ -126,6 +131,14 @@ class TestPrometheusMetrics:
                 "",
                 "",
                 pytest.raises(Exception),
+            ),
+            # Ensure that we don't poison prom metrics with non-baseplate status codes
+            (
+                NonBaseplateExceptionWithCode(),
+                "NonBaseplateExceptionWithCode",
+                "",
+                "",
+                pytest.raises(NonBaseplateExceptionWithCode),
             ),
         ],
     )
