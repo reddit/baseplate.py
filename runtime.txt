@@ -1,2 +1,0 @@
-python-3.8
-# Specifies the python version that dependabot should use.

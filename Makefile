@@ -29,43 +29,42 @@ $(THRIFT_BUILDDIR)/tests/integration/test.thrift_buildstamp: tests/integration/t
 	rm -f tests/integration/test_thrift/TestService-remote
 	touch $@
 
+.venv: pyproject.toml poetry.lock
+	poetry install --all-extras
+
 .PHONY: docs
-docs:
-	sphinx-build -M html docs/ build/
+docs: .venv
+	.venv/bin/sphinx-build -M html docs/ build/
 
 .PHONY: doctest
-doctest:
-	sphinx-build -M doctest docs/ build/
+doctest: .venv
+	.venv/bin/sphinx-build -M doctest docs/ build/
 
 .PHONY: linkcheck
-linkcheck:
-	sphinx-build -M linkcheck docs/ build/
+linkcheck: .venv
+	.venv/bin/sphinx-build -M linkcheck docs/ build/
 
 .PHONY: test
-test: doctest
+test: doctest .venv
 	# Some files use gevent to monkey patch stdlib functions. This causes problems
 	# if it happens after importing the sequential versions of some of these. Thus
 	# we need to do it as early as possible.
-	python -m gevent.monkey --module pytest -v tests/
+	.venv/bin/python -m gevent.monkey --module pytest -v tests/
 
 .PHONY: fmt
-fmt:
-	@if [ ! -f /baseplate-py-dev-docker-image ]; then \
-		echo "Please use the docker-compose environment for consistency. See https://github.com/reddit/baseplate.py/blob/develop/CONTRIBUTING.md."; \
-		exit 1; \
-	fi
-	$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
-	black baseplate/ tests/
-	$(REORDER_PYTHON_IMPORTS) --application-directories /tmp --exit-zero-even-if-changed $(PYTHON_EXAMPLES)
-	black docs/  # separate so it uses its own pyproject.toml
+fmt: .venv
+	.venv/bin/$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
+	.venv/bin/black baseplate/ tests/
+	.venv/bin/$(REORDER_PYTHON_IMPORTS) --application-directories /tmp --exit-zero-even-if-changed $(PYTHON_EXAMPLES)
+	.venv/bin/black docs/  # separate so it uses its own pyproject.toml
 
 .PHONY: lint
-lint:
-	$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
-	black --diff --check baseplate/ tests/
-	flake8 baseplate tests
-	PYTHONPATH=. pylint baseplate/
-	mypy baseplate/
+lint: .venv
+	.venv/bin/$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
+	.venv/bin/black --diff --check baseplate/ tests/
+	.venv/bin/flake8 baseplate tests
+	PYTHONPATH=. .venv/bin/pylint baseplate/
+	.venv/bin/mypy baseplate/
 
 .PHONY: checks
 checks: test lint linkcheck
