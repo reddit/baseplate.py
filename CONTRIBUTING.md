@@ -15,7 +15,7 @@ You'll need the following available to work on Baseplate:
   You can [follow the official instructions][poetry-install] or use `brew
   install poetry` on macOS.
 
-Once you have these tools installed, run `make venv` to have Poetry create a
+Once you have these tools installed, run `make .venv` to have Poetry create a
 virtualenv inside a `.venv` directory. You should run this command any time you
 pull in dependency changes so that Poetry can update your virtualenv.
 
