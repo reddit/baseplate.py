@@ -19,6 +19,7 @@ from gevent.server import StreamServer
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
+from typing_extensions import Self
 
 from baseplate import Baseplate
 from baseplate import RequestContext
@@ -268,7 +269,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         health_check_fn: Optional[HealthcheckCallback] = None,
         kafka_config: Optional[Dict[str, Any]] = None,
         prometheus_client_name: str = "",
-    ) -> "_BaseKafkaQueueConsumerFactory":
+    ) -> Self:
         """Return a new `_BaseKafkaQueueConsumerFactory`.
 
         This method will create the :py:class:`~confluent_kafka.Consumer` for you and is
