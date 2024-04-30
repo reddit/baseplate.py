@@ -222,8 +222,13 @@ class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlocking
         If the command is a read command we'll try to return a random node.
         If there are no replicas or this isn't a read command we'll return the primary.
         """
-        if read_command:
-            return random.choice(self.nodes.slots[slot])
+        try:
+            if read_command:
+                return random.choice(self.nodes.slots[slot])
+        except KeyError:
+            raise rediscluster.exceptions.SlotNotCoveredError(
+                f"Slot {slot} not covered by the cluster"
+            )
 
         # This isn't a read command, so return the primary (first node)
         return self.nodes.slots[slot][0]
