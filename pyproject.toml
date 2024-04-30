@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "baseplate"
-version = "2.7.0a1"
+version = "2.7.0b1"
 description = "reddit's python service framework"
 authors = ["reddit"]
 license = "BSD"
