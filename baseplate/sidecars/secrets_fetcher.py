@@ -60,6 +60,7 @@ with the JSON file as its first and only argument. This allows you to read in th
 write to a new file in whatever format needed, and restart other services if necessary.
 
 """
+
 import argparse
 import configparser
 import datetime
@@ -155,9 +156,9 @@ class VaultClientFactory:
         self.auth_type = auth_type
         self.mount_point = mount_point
         self.session = requests.Session()
-        self.session.headers[
-            "User-Agent"
-        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        self.session.headers["User-Agent"] = (
+            f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        )
         self.client: Optional["VaultClient"] = None
 
     def _make_client(self) -> "VaultClient":

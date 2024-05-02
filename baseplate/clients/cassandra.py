@@ -364,14 +364,16 @@ class CassandraSessionAdapter:
         **kwargs: Any,
     ) -> ResponseFuture:
         prom_labels = CassandraPrometheusLabels(
-            cassandra_client_name=self.prometheus_client_name
-            if self.prometheus_client_name is not None
-            else self.context_name,
+            cassandra_client_name=(
+                self.prometheus_client_name
+                if self.prometheus_client_name is not None
+                else self.context_name
+            ),
             cassandra_keyspace=self.session.keyspace,
             cassandra_query_name=query_name if query_name is not None else "",
-            cassandra_cluster_name=self.prometheus_cluster_name
-            if self.prometheus_cluster_name is not None
-            else "",
+            cassandra_cluster_name=(
+                self.prometheus_cluster_name if self.prometheus_cluster_name is not None else ""
+            ),
         )
 
         REQUEST_ACTIVE.labels(**prom_labels._asdict()).inc()
