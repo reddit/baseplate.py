@@ -42,7 +42,9 @@ class RedditB3HTTPFormat(TextMapPropagator):
         extracted_trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY))
         if extracted_trace_id is None:
             # try lowercase
-            extracted_trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY.lower()))
+            extracted_trace_id = _extract_first_element(
+                getter.get(carrier, self.TRACE_ID_KEY.lower())
+            )
 
         logger.debug(
             "Extracted trace_id from carrier. [carrier=%s, context=%s, trace_id=%s]",
@@ -53,7 +55,9 @@ class RedditB3HTTPFormat(TextMapPropagator):
         extracted_span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY))
         if extracted_span_id is None:
             # try lowercase
-            extracted_span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY.lower()))
+            extracted_span_id = _extract_first_element(
+                getter.get(carrier, self.SPAN_ID_KEY.lower())
+            )
         logger.debug(
             "Extracted span_id from carrier. [carrier=%s, context=%s, span_id=%s]",
             carrier,

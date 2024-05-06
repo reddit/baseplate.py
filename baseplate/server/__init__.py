@@ -276,7 +276,9 @@ def configure_tracing(config: Configuration) -> None:
 
             otlp_exporter = OTLPSpanExporter(endpoint=config.tracing["endpoint"], insecure=insecure)
             propagate.set_global_textmap(
-                CompositePropagator([RedditB3ThriftFormat(), RedditB3HTTPFormat(), TraceContextTextMapPropagator()])
+                CompositePropagator(
+                    [RedditB3ThriftFormat(), RedditB3HTTPFormat(), TraceContextTextMapPropagator()]
+                )
             )
             provider = TracerProvider(sampler=sampler, resource=resource)
             provider.add_span_processor(

@@ -319,6 +319,7 @@ def baseplateify_processor(
                     span_id=str(random.getrandbits(64)),
                     sampled=sampled,
                     flags=int(flags) if flags is not None else None,
+                )
             except (KeyError, ValueError):
                 trace_info = None
 
