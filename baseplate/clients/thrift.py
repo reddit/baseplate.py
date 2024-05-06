@@ -389,8 +389,17 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                                     # we will emit the status code in both cases
                                     # but the status will be blank in the first case, and the baseplate name
                                     # in the second
-                                    baseplate_status_code = current_exc.code  # type: ignore
-                                    baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
+
+                                    # Since this exception could be of any type, we may receive exceptions
+                                    # that have a `code` property that is actually not from Baseplate's
+                                    # `Error` class. In order to reduce (but not eliminate) the possibility
+                                    # of metric explosion, we validate it against the expected type for a
+                                    # proper Error code.
+                                    if isinstance(current_exc.code, int):
+                                        baseplate_status_code = str(current_exc.code)
+                                        baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(
+                                            current_exc.code, ""
+                                        )
                                 except AttributeError:
                                     pass
 
