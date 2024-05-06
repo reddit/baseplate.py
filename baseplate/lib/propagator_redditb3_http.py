@@ -40,6 +40,10 @@ class RedditB3HTTPFormat(TextMapPropagator):
             context = Context()
 
         extracted_trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY))
+        if extracted_trace_id is None:
+            # try lowercase
+            extracted_trace_id = _extract_first_element(getter.get(carrier, self.TRACE_ID_KEY.lower()))
+
         logger.debug(
             "Extracted trace_id from carrier. [carrier=%s, context=%s, trace_id=%s]",
             carrier,
@@ -47,6 +51,9 @@ class RedditB3HTTPFormat(TextMapPropagator):
             extracted_trace_id,
         )
         extracted_span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY))
+        if extracted_span_id is None:
+            # try lowercase
+            extracted_span_id = _extract_first_element(getter.get(carrier, self.SPAN_ID_KEY.lower()))
         logger.debug(
             "Extracted span_id from carrier. [carrier=%s, context=%s, span_id=%s]",
             carrier,
@@ -54,6 +61,9 @@ class RedditB3HTTPFormat(TextMapPropagator):
             extracted_span_id,
         )
         sampled = _extract_first_element(getter.get(carrier, self.SAMPLED_KEY), default="0")
+        if sampled is None:
+            # try lowercase
+            sampled = _extract_first_element(getter.get(carrier, self.SAMPLED_KEY.lower()))
         logger.debug(
             "Extracted sampled from carrier. [carrier=%s, context=%s, sampled=%s]",
             carrier,
@@ -61,6 +71,9 @@ class RedditB3HTTPFormat(TextMapPropagator):
             sampled,
         )
         flags = _extract_first_element(getter.get(carrier, self.FLAGS_KEY))
+        if flags is None:
+            # try lowercase
+            flags = _extract_first_element(getter.get(carrier, self.FLAGS_KEY.lower()))
         logger.debug(
             "Extracted flags from carrier. [carrier=%s, context=%s, flags=%s]",
             carrier,
