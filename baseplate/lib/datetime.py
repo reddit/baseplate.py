@@ -1,4 +1,5 @@
 """Extensions to the standard library `datetime` module."""
+
 from datetime import datetime
 from datetime import timezone
 

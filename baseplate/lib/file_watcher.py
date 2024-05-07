@@ -34,6 +34,7 @@ The return value of :py:meth:`~baseplate.lib.file_watcher.FileWatcher.get_data`
 would change whenever the underlying file changes.
 
 """
+
 import logging
 import os
 import typing

@@ -1,4 +1,5 @@
 """Application integration with the secret fetcher daemon."""
+
 import base64
 import binascii
 import json
@@ -121,8 +122,7 @@ def _decode_secret(path: str, encoding: str, value: str) -> bytes:
 
 
 class SecretParser(Protocol):
-    def __call__(self, data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
-        ...
+    def __call__(self, data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]: ...
 
 
 def parse_secrets_fetcher(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:

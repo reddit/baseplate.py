@@ -14,6 +14,7 @@ A basic example of usage::
         client.do_example_thing()
 
 """
+
 import contextlib
 import logging
 import queue

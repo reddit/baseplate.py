@@ -62,9 +62,9 @@ class ZipkinPublisher:
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         parsed_url = urllib.parse.urlparse(zipkin_api_url)
         self.session = requests.Session()
-        self.session.headers[
-            "User-Agent"
-        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        self.session.headers["User-Agent"] = (
+            f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        )
         self.session.mount(f"{parsed_url.scheme}://", adapter)
         self.endpoint = f"{zipkin_api_url}/spans"
         self.metrics = metrics_client
