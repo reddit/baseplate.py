@@ -358,14 +358,16 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
 
         # pylint: disable=unused-argument
         def log_assign(
-            consumer: confluent_kafka.Consumer, partitions: List[confluent_kafka.TopicPartition]
+            consumer: confluent_kafka.Consumer,
+            partitions: List[confluent_kafka.TopicPartition],
         ) -> None:
             for topic_partition in partitions:
                 logger.info("assigned %s/%s", topic_partition.topic, topic_partition.partition)
 
         # pylint: disable=unused-argument
         def log_revoke(
-            consumer: confluent_kafka.Consumer, partitions: List[confluent_kafka.TopicPartition]
+            consumer: confluent_kafka.Consumer,
+            partitions: List[confluent_kafka.TopicPartition],
         ) -> None:
             for topic_partition in partitions:
                 logger.info("revoked %s/%s", topic_partition.topic, topic_partition.partition)
@@ -419,6 +421,17 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
     If you need more control, you can create the :py:class:`~confluent_kafka.Consumer`
     yourself and use the constructor directly.
 
+    UPDATE: The InOrderConsumerFactory can NEVER achieve in-order, exactly once message processing.
+
+    Message processing in Kafka to enable exactly once starts at the Producer enabling transactions,
+    and downstream consumers enabling reading exclusively from the committed offsets within a transactions.
+
+    Secondly, without defined keys in the messages from the producer, messages will be sent in a round robin fashion to all partitions in the topic. This means that newer messages could be consumed before older ones if the consumer of those partitions with newer messages are faster.
+
+    Some improvements are made instead that retain the current behaviour, but don't put as much pressure on Kafka by committing every single offset.
+
+
+    Instead of committing every single message's offset back to Kafka, the consumer now commits each offset to it's local offset store, and commits the highest seen value for each partition at a defined interval (auto.commit.interval.ms). "enable.auto.offset.store" is set to false to give our application explicit control of when to store offsets.
     """
 
     # we need to ensure that only a single message handler worker exists (max_concurrency = 1)
@@ -444,8 +457,9 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
             # after message processing, to make sure offsets are not auto-committed
             # prior to processing has finished.
             "max.poll.interval.ms": 300000,
-            # disable offset autocommit, we'll manually commit.
-            "enable.auto.commit": "false",
+            # Enable offset autocommit, but disable offset store.
+            "enable.auto.commit": "true",
+            "enable.auto.offset.store": "false",
         }
 
     def build_message_handler(self) -> KafkaMessageHandler:
@@ -464,7 +478,7 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
                 message.offset(),
             )
             with context.span.make_child("kafka.commit"):
-                self.consumer.commit(message=message, asynchronous=False)
+                self.consumer.store_offsets(message=message)
 
         return KafkaMessageHandler(
             self.baseplate,
@@ -527,7 +541,8 @@ class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
     # pylint: disable=unused-argument
     @staticmethod
     def _commit_callback(
-        err: confluent_kafka.KafkaError, topic_partition_list: List[confluent_kafka.TopicPartition]
+        err: confluent_kafka.KafkaError,
+        topic_partition_list: List[confluent_kafka.TopicPartition],
     ) -> None:
         # called after automatic commits
         for topic_partition in topic_partition_list:
@@ -537,7 +552,10 @@ class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
 
             if topic_partition.error:
                 logger.error(
-                    "commit error topic %s partition %s offset %s", topic, partition, offset
+                    "commit error topic %s partition %s offset %s",
+                    topic,
+                    partition,
+                    offset,
                 )
             elif offset == confluent_kafka.OFFSET_INVALID:
                 # we receive offsets for all partitions. an offset value of
@@ -545,7 +563,10 @@ class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
                 pass
             else:
                 logger.debug(
-                    "commit success topic %s partition %s offset %s", topic, partition, offset
+                    "commit success topic %s partition %s offset %s",
+                    topic,
+                    partition,
+                    offset,
                 )
 
     @classmethod

@@ -74,12 +74,16 @@ class TestKafkaMessageHandler:
 
     @mock.patch("baseplate.frameworks.queue_consumer.kafka.time")
     @pytest.mark.parametrize("prometheus_client_name", [None, "my_kafka_client_name"])
-    def test_handle(self, time, context, span, baseplate, name, message, prometheus_client_name):
+    def test_handle(
+        self, time, context, span, baseplate, name, message, prometheus_client_name
+    ):
         time.time.return_value = 2.0
         time.perf_counter.side_effect = [1, 2]
 
         prom_labels = KafkaConsumerPrometheusLabels(
-            kafka_client_name=prometheus_client_name if prometheus_client_name is not None else "",
+            kafka_client_name=prometheus_client_name
+            if prometheus_client_name is not None
+            else "",
             kafka_topic="topic_1",
         )
 
@@ -153,10 +157,15 @@ class TestKafkaMessageHandler:
             == 1
         )
         assert (
-            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+            REGISTRY.get_sample_value(
+                f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()
+            )
+            == 0
         )
 
-    def test_handle_no_endpoint_timestamp(self, context, span, baseplate, name, message):
+    def test_handle_no_endpoint_timestamp(
+        self, context, span, baseplate, name, message
+    ):
         handler_fn = mock.Mock()
         message_unpack_fn = mock.Mock(return_value={"body": "some text"})
         on_success_fn = mock.Mock()
@@ -169,7 +178,9 @@ class TestKafkaMessageHandler:
             kafka_topic="topic_1",
         )
 
-        handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+        handler = KafkaMessageHandler(
+            baseplate, name, handler_fn, message_unpack_fn, on_success_fn
+        )
         handler.handle(message)
 
         baseplate.make_context_object.assert_called_once()
@@ -210,7 +221,10 @@ class TestKafkaMessageHandler:
             == 1
         )
         assert (
-            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+            REGISTRY.get_sample_value(
+                f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()
+            )
+            == 0
         )
 
     def test_handle_kafka_error(self, context, span, baseplate, name, message):
@@ -223,7 +237,9 @@ class TestKafkaMessageHandler:
         error_mock.str.return_value = "kafka error"
         message.error.return_value = error_mock
 
-        handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+        handler = KafkaMessageHandler(
+            baseplate, name, handler_fn, message_unpack_fn, on_success_fn
+        )
 
         prom_labels = KafkaConsumerPrometheusLabels(
             kafka_client_name="",
@@ -258,7 +274,10 @@ class TestKafkaMessageHandler:
             == 1
         )
         assert (
-            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+            REGISTRY.get_sample_value(
+                f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()
+            )
+            == 0
         )
 
     def test_handle_unpack_error(self, context, span, baseplate, name, message):
@@ -268,7 +287,9 @@ class TestKafkaMessageHandler:
 
         context.span = span
 
-        handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+        handler = KafkaMessageHandler(
+            baseplate, name, handler_fn, message_unpack_fn, on_success_fn
+        )
 
         prom_labels = KafkaConsumerPrometheusLabels(
             kafka_client_name="",
@@ -313,7 +334,10 @@ class TestKafkaMessageHandler:
             == 1
         )
         assert (
-            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+            REGISTRY.get_sample_value(
+                f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()
+            )
+            == 0
         )
 
     def test_handle_handler_error(self, context, span, baseplate, name, message):
@@ -323,7 +347,9 @@ class TestKafkaMessageHandler:
         )
         on_success_fn = mock.Mock()
 
-        handler = KafkaMessageHandler(baseplate, name, handler_fn, message_unpack_fn, on_success_fn)
+        handler = KafkaMessageHandler(
+            baseplate, name, handler_fn, message_unpack_fn, on_success_fn
+        )
 
         prom_labels = KafkaConsumerPrometheusLabels(
             kafka_client_name="",
@@ -370,7 +396,10 @@ class TestKafkaMessageHandler:
             == 1
         )
         assert (
-            REGISTRY.get_sample_value(f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()) == 0
+            REGISTRY.get_sample_value(
+                f"{KAFKA_ACTIVE_MESSAGES._name}", prom_labels._asdict()
+            )
+            == 0
         )
 
 
@@ -396,7 +425,11 @@ class TestInOrderConsumerFactory:
     ):
         mock_consumer = mock.Mock()
         mock_consumer.list_topics.return_value = mock.Mock(
-            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+            topics={
+                "topic_1": mock.Mock(),
+                "topic_2": mock.Mock(),
+                "topic_3": mock.Mock(),
+            }
         )
         kafka_consumer.return_value = mock_consumer
         extra_config = {"queued.max.messages.kbytes": 10000}
@@ -429,7 +462,11 @@ class TestInOrderConsumerFactory:
     ):
         mock_consumer = mock.Mock()
         mock_consumer.list_topics.return_value = mock.Mock(
-            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+            topics={
+                "topic_1": mock.Mock(),
+                "topic_2": mock.Mock(),
+                "topic_3": mock.Mock(),
+            }
         )
         kafka_consumer.return_value = mock_consumer
         extra_config = {"queued.max.messages.kbytes": 100}
@@ -455,10 +492,16 @@ class TestInOrderConsumerFactory:
         mock_consumer.subscribe.assert_not_called()
 
     @mock.patch("confluent_kafka.Consumer")
-    def test_init(self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics):
+    def test_init(
+        self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics
+    ):
         mock_consumer = mock.Mock()
         mock_consumer.list_topics.return_value = mock.Mock(
-            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+            topics={
+                "topic_1": mock.Mock(),
+                "topic_2": mock.Mock(),
+                "topic_3": mock.Mock(),
+            }
         )
         kafka_consumer.return_value = mock_consumer
 
@@ -483,12 +526,18 @@ class TestInOrderConsumerFactory:
         assert factory.consumer == mock_consumer
 
     @pytest.fixture
-    def make_queue_consumer_factory(self, name, baseplate, bootstrap_servers, group_id, topics):
+    def make_queue_consumer_factory(
+        self, name, baseplate, bootstrap_servers, group_id, topics
+    ):
         @mock.patch("confluent_kafka.Consumer")
         def _make_queue_consumer_factory(kafka_consumer, health_check_fn=None):
             mock_consumer = mock.Mock()
             mock_consumer.list_topics.return_value = mock.Mock(
-                topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+                topics={
+                    "topic_1": mock.Mock(),
+                    "topic_2": mock.Mock(),
+                    "topic_3": mock.Mock(),
+                }
             )
             kafka_consumer.return_value = mock_consumer
 
@@ -546,11 +595,17 @@ class TestFastConsumerFactory:
     ):
         mock_consumer = mock.Mock()
         mock_consumer.list_topics.return_value = mock.Mock(
-            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+            topics={
+                "topic_1": mock.Mock(),
+                "topic_2": mock.Mock(),
+                "topic_3": mock.Mock(),
+            }
         )
         kafka_consumer.return_value = mock_consumer
 
-        _consumer = FastConsumerFactory.make_kafka_consumer(bootstrap_servers, group_id, topics)
+        _consumer = FastConsumerFactory.make_kafka_consumer(
+            bootstrap_servers, group_id, topics
+        )
 
         assert _consumer == mock_consumer
 
@@ -578,12 +633,18 @@ class TestFastConsumerFactory:
     ):
         mock_consumer = mock.Mock()
         mock_consumer.list_topics.return_value = mock.Mock(
-            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+            topics={
+                "topic_1": mock.Mock(),
+                "topic_2": mock.Mock(),
+                "topic_3": mock.Mock(),
+            }
         )
         kafka_consumer.return_value = mock_consumer
 
         with pytest.raises(AssertionError):
-            FastConsumerFactory.make_kafka_consumer(bootstrap_servers, group_id, ["topic_4"])
+            FastConsumerFactory.make_kafka_consumer(
+                bootstrap_servers, group_id, ["topic_4"]
+            )
 
         kafka_consumer.assert_called_once_with(
             {
@@ -603,10 +664,16 @@ class TestFastConsumerFactory:
         mock_consumer.subscribe.assert_not_called()
 
     @mock.patch("confluent_kafka.Consumer")
-    def test_init(self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics):
+    def test_init(
+        self, kafka_consumer, name, baseplate, bootstrap_servers, group_id, topics
+    ):
         mock_consumer = mock.Mock()
         mock_consumer.list_topics.return_value = mock.Mock(
-            topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+            topics={
+                "topic_1": mock.Mock(),
+                "topic_2": mock.Mock(),
+                "topic_3": mock.Mock(),
+            }
         )
         kafka_consumer.return_value = mock_consumer
 
@@ -631,12 +698,18 @@ class TestFastConsumerFactory:
         assert factory.consumer == mock_consumer
 
     @pytest.fixture
-    def make_queue_consumer_factory(self, name, baseplate, bootstrap_servers, group_id, topics):
+    def make_queue_consumer_factory(
+        self, name, baseplate, bootstrap_servers, group_id, topics
+    ):
         @mock.patch("confluent_kafka.Consumer")
         def _make_queue_consumer_factory(kafka_consumer, health_check_fn=None):
             mock_consumer = mock.Mock()
             mock_consumer.list_topics.return_value = mock.Mock(
-                topics={"topic_1": mock.Mock(), "topic_2": mock.Mock(), "topic_3": mock.Mock()}
+                topics={
+                    "topic_1": mock.Mock(),
+                    "topic_2": mock.Mock(),
+                    "topic_3": mock.Mock(),
+                }
             )
             kafka_consumer.return_value = mock_consumer
 
@@ -703,7 +776,11 @@ class TestKafkaConsumerWorker:
             stopped_value.side_effect = [False, False, False, True]
             consumer_worker.run()
 
-        baseplate.make_context_object.mock_calls == [mock.call(), mock.call(), mock.call()]
+        baseplate.make_context_object.mock_calls == [
+            mock.call(),
+            mock.call(),
+            mock.call(),
+        ]
         baseplate.make_server_span.mock_calls == [
             mock.call(context, f"{name}.pump"),
             mock.call(context, f"{name}.pump"),
@@ -726,7 +803,10 @@ class TestKafkaConsumerWorker:
         ]
 
         time.sleep.assert_called_once_with(1)
-        assert consumer_worker.work_queue.put.mock_calls == [mock.call(msg1), mock.call(msg2)]
+        assert consumer_worker.work_queue.put.mock_calls == [
+            mock.call(msg1),
+            mock.call(msg2),
+        ]
 
     def test_stop(self, consumer_worker):
         consumer_worker.stop()
