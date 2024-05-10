@@ -488,6 +488,7 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
             prometheus_client_name=self.prometheus_client_name,
         )
 
+
 class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
     """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kafka.
 
