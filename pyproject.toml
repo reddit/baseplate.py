@@ -39,6 +39,8 @@ sentry-sdk = { version = ">=1.35.0,<2.0", optional = true }
 sqlalchemy = { version = ">=1.4.49,<2", optional = true }
 thrift-unofficial = ">=0.19.0,<1.0"
 typing-extensions = "^4.11.0"
+psycopg2 = "^2.0.0"
+psycogreen = "^1.0.0"
 
 [tool.poetry.extras]
 amqp = ["kombu"]
@@ -55,6 +57,7 @@ requests = ["advocate"]
 s3fetcher = []  # Kept for backwards compatibility, these are now main requirements
 sentry = ["sentry-sdk"]
 sql = ["sqlalchemy"]
+psycopg2 = ["psycopg2", "psycogreen"]
 zookeeper = ["kazoo"]
 
 [tool.poetry.group.dev.dependencies]
