@@ -937,17 +937,6 @@ class ThriftErrorReplacementTests(GeventPatchedTestCase):
 
 
 class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
-    def reset_metrics(self, metrics):
-        if not metrics:
-            return
-
-        try:
-            metrics.get_active_requests_metric().clear()
-            metrics.get_latency_seconds_metric().clear()
-            metrics.get_requests_total_metric().clear()
-        except Exception:
-            pass
-
     def assert_correct_metric(
         self, metric, want_count, want_sample, want_name, want_labels, want_value
     ):
