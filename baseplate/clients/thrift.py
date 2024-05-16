@@ -372,7 +372,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                             if exc_info[0] is not None:
                                 thrift_success = "false"
                                 exception_type = exc_info[0].__name__
-                            current_exc = exc_info[1]
+                            current_exc: Any = exc_info[1]
                             try:
                                 # We want the following code to execute whenever the
                                 # service raises an instance of Baseplate's `Error` class.
