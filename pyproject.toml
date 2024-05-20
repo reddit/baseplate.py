@@ -64,7 +64,7 @@ zookeeper = ["kazoo"]
 black = "21.10b0"
 # TODO: This can be removed once we upgrade to a newer Black version.
 # https://github.com/psf/black/issues/2964
-click = "<8.1.0"
+click = "<8.2.0"
 fakeredis = "*"
 flake8 = ">=7.0.0"
 lxml = "*"
