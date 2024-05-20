@@ -12,6 +12,15 @@ from baseplate.server.monkey import patch_stdlib_queues
 patch_all()
 patch_stdlib_queues()
 
+try:
+    import psycopg2
+    from psycogreen.gevent import patch_psycopg
+
+    patch_psycopg()
+except ImportError:
+    pass
+
+
 from baseplate.server import load_and_run_shell
 
 print("baseplate-tshell has been renamed to baseplate-shell. Please use that in the future!")
