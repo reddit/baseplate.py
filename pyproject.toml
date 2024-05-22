@@ -17,7 +17,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8.1"
+python = ">=3.8.1,<4.0"
 advocate = { version = ">=1.0.0,<2.0", optional = true }
 boto3 = ">=1.28.27"
 cassandra-driver = { version = ">=3.29.0,<4.0", optional = true }
@@ -45,6 +45,7 @@ opentelemetry-instrumentation-pyramid = "^0.45b0"
 opentelemetry-instrumentation-requests = "^0.45b0"
 opentelemetry-exporter-otlp = "^1.24.0"
 formenergy-observability = "^0.3.2"
+pyrate-limiter = "^3.6.1"
 
 [tool.poetry.extras]
 amqp = ["kombu"]
