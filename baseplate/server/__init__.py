@@ -45,18 +45,17 @@ from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.resources import SERVICE_NAME
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import DEFAULT_ON
 from opentelemetry.sdk.trace.sampling import ParentBased
-from opentelemetry.semconv.resource import ResourceAttributes
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from baseplate import Baseplate
+from baseplate.lib import config
 from baseplate.lib import warn_deprecated
+from baseplate.lib.config import DefaultFromEnv
 from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
 from baseplate.lib.config import Optional as OptionalConfig
@@ -232,9 +231,11 @@ class BaseplateBatchSpanProcessor(BatchSpanProcessor):
 def configure_tracing() -> None:
     logger.info("Entering configure tracing function")
     try:
-        sample_rps = int(os.getenv("TRACE_SAMPLER_RPS", 10))
+        sample_rps = DefaultFromEnv(config.Integer, "BASEPLATE_TRACE_SAMPLER_RPS", 10)
     except ValueError:
-        logger.warning("Invalid TRACE_SAMPLER_RPS, falling back to the default of 10 RPS.")
+        logger.warning(
+            "Invalid BASEPLATE_TRACE_SAMPLER_RPS, falling back to the default of 10 RPS."
+        )
         sample_rps = 10
     sampler = RateLimited(ParentBased(DEFAULT_ON), sample_rps)
     otlp_exporter = OTLPSpanExporter()
