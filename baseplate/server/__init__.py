@@ -45,19 +45,17 @@ from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.resources import SERVICE_NAME
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.trace.sampling import DEFAULT_OFF
 from opentelemetry.sdk.trace.sampling import DEFAULT_ON
-from opentelemetry.sdk.trace.sampling import ParentBasedTraceIdRatio
-from opentelemetry.semconv.resource import ResourceAttributes
+from opentelemetry.sdk.trace.sampling import ParentBased
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from baseplate import Baseplate
+from baseplate.lib import config
 from baseplate.lib import warn_deprecated
+from baseplate.lib.config import DefaultFromEnv
 from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
 from baseplate.lib.config import Optional as OptionalConfig
@@ -67,6 +65,7 @@ from baseplate.lib.log_formatter import CustomJsonFormatter
 from baseplate.lib.prometheus_metrics import is_metrics_enabled
 from baseplate.lib.propagator_redditb3_http import RedditB3HTTPFormat
 from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
+from baseplate.lib.tracing import RateLimited
 from baseplate.server import einhorn
 from baseplate.server import reloader
 from baseplate.server.net import bind_socket
@@ -151,7 +150,6 @@ class Configuration(NamedTuple):
     server: Optional[Dict[str, str]]
     app: Dict[str, str]
     has_logging_options: bool
-    tracing: Optional[Dict[str, str]]
     shell: Optional[Dict[str, str]]
 
 
@@ -165,18 +163,13 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
     server_config = dict(parser.items("server:" + server_name)) if server_name else None
     app_config = dict(parser.items("app:" + app_name))
     has_logging_config = parser.has_section("loggers")
-    tracing_config = None
-    if parser.has_section("tracing"):
-        tracing_config = dict(parser.items("tracing"))
     shell_config = None
     if parser.has_section("shell"):
         shell_config = dict(parser.items("shell"))
     elif parser.has_section("tshell"):
         shell_config = dict(parser.items("tshell"))
 
-    return Configuration(
-        filename, server_config, app_config, has_logging_config, tracing_config, shell_config
-    )
+    return Configuration(filename, server_config, app_config, has_logging_config, shell_config)
 
 
 def configure_logging(config: Configuration, debug: bool) -> None:
@@ -235,66 +228,30 @@ class BaseplateBatchSpanProcessor(BatchSpanProcessor):
         super().on_start(span, parent_context)
 
 
-def configure_tracing(config: Configuration) -> None:
+def configure_tracing() -> None:
     logger.info("Entering configure tracing function")
-    if config.tracing:
-        logger.info("Tracing config has been provided")
-        if "service_name" in config.tracing and "endpoint" in config.tracing:
-            resource = Resource.create({SERVICE_NAME: config.tracing["service_name"]})
-            # Don't sample unless parent sampled by default
-            sampler = DEFAULT_OFF
-            if "sample_rate" in config.tracing:
-                try:
-                    sample_rate = float(config.tracing["sample_rate"])
-                except ValueError:
-                    logger.error("unable to parse tracing sample_rate")
-                    return
-                if sample_rate is not None and 0.0 <= sample_rate <= 1.0:
-                    if sample_rate == 1.0:
-                        # if sample rate is 1.0 sample by default
-                        sampler = DEFAULT_ON
-                    elif sample_rate == 0.0:
-                        sampler = DEFAULT_OFF
-                    else:
-                        sampler = ParentBasedTraceIdRatio(sample_rate)
-                else:
-                    # if you don't set a sample rate we wont sample by default.
-                    logger.warning(
-                        "sample_rate invalid in tracing config, it must be a float between 0 and 1. Defaulting to no sampling."
-                    )
-            else:
-                logger.warning(
-                    "sample_rate not specified in tracing config, default to no sampling."
-                )
-            # Load insecure option from tracing config.
-            insecure: bool
-            if config.tracing.get("insecure") == "false":
-                insecure = False
-            else:
-                # Default to true. At the time of implementation our current tracing pipeline is not setup for TLS.
-                insecure = True
-
-            otlp_exporter = OTLPSpanExporter(endpoint=config.tracing["endpoint"], insecure=insecure)
-            propagate.set_global_textmap(
-                CompositePropagator(
-                    [RedditB3ThriftFormat(), RedditB3HTTPFormat(), TraceContextTextMapPropagator()]
-                )
-            )
-            provider = TracerProvider(sampler=sampler, resource=resource)
-            provider.add_span_processor(
-                BaseplateBatchSpanProcessor(
-                    otlp_exporter,
-                    attributes={
-                        ResourceAttributes.SERVICE_NAME: config.tracing["service_name"],
-                    },
-                )
-            )
-            trace.set_tracer_provider(provider)
-            logger.info("Tracing Configured")
-        else:
-            logger.warning(
-                "Tracing disabled: service_name and endpoint are required fields in the tracing config."
-            )
+    try:
+        sample_rps = DefaultFromEnv(config.Integer, "BASEPLATE_TRACE_SAMPLER_RPS", 10)
+    except ValueError:
+        logger.warning(
+            "Invalid BASEPLATE_TRACE_SAMPLER_RPS, falling back to the default of 10 RPS."
+        )
+        sample_rps = 10
+    sampler = RateLimited(ParentBased(DEFAULT_ON), sample_rps)
+    otlp_exporter = OTLPSpanExporter()
+    propagate.set_global_textmap(
+        CompositePropagator(
+            [RedditB3ThriftFormat(), RedditB3HTTPFormat(), TraceContextTextMapPropagator()]
+        )
+    )
+    provider = TracerProvider(sampler=sampler)
+    provider.add_span_processor(
+        BaseplateBatchSpanProcessor(
+            otlp_exporter,
+        )
+    )
+    trace.set_tracer_provider(provider)
+    logger.info("Tracing Configured")
 
 
 def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
@@ -383,7 +340,7 @@ def load_app_and_run_server() -> None:
         logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     configure_logging(config, args.debug)
-    configure_tracing(config)
+    configure_tracing()
 
     app = make_app(config.app)
     listener = make_listener(args.bind)
