@@ -416,7 +416,8 @@ class TestInOrderConsumerFactory:
                 "heartbeat.interval.ms": 3000,
                 "session.timeout.ms": 10000,
                 "max.poll.interval.ms": 300000,
-                "enable.auto.commit": "false",
+                "enable.auto.commit": "true",
+                "enable.auto.offset.store": "false",
                 "queued.max.messages.kbytes": 10000,
             }
         )
@@ -448,8 +449,9 @@ class TestInOrderConsumerFactory:
                 "heartbeat.interval.ms": 3000,
                 "session.timeout.ms": 10000,
                 "max.poll.interval.ms": 300000,
-                "enable.auto.commit": "false",
+                "enable.auto.commit": "true",
                 "queued.max.messages.kbytes": 100,
+                "enable.auto.offset.store": "false",
             }
         )
         mock_consumer.subscribe.assert_not_called()

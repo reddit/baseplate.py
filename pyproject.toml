@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "baseplate"
-version = "2.7.0b1"
+version = "2.7.0b2"
 description = "reddit's python service framework"
 authors = ["reddit"]
 license = "BSD"
@@ -46,6 +46,8 @@ opentelemetry-instrumentation-requests = "^0.45b0"
 opentelemetry-exporter-otlp = "^1.24.0"
 formenergy-observability = "^0.3.2"
 pyrate-limiter = "^3.6.1"
+psycopg2 = "^2.0.0"
+psycogreen = "^1.0.0"
 
 [tool.poetry.extras]
 amqp = ["kombu"]
@@ -62,6 +64,7 @@ requests = ["advocate"]
 s3fetcher = []  # Kept for backwards compatibility, these are now main requirements
 sentry = ["sentry-sdk"]
 sql = ["sqlalchemy"]
+psycopg2 = ["psycopg2", "psycogreen"]
 zookeeper = ["kazoo"]
 
 [tool.poetry.group.dev.dependencies]

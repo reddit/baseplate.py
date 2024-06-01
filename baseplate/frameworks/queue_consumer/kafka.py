@@ -404,7 +404,9 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
     This will run a single `KafkaConsumerWorker` that reads messages from Kafka and
     puts them into an internal work queue. Then it will run a single `KafkaMessageHandler`
     that reads messages from the internal work queue, processes them with the
-    `handler_fn`, and then commits each message's offset to Kafka.
+    `handler_fn`, and then commits each message's offset to the kafka consumer's internal state.
+
+    The Kafka Consumer will commit the offsets back to Kafka based on the auto.commit.interval.ms default which is 5 seconds
 
     This one-at-a-time, in-order processing ensures that when a failure happens
     during processing we don't commit its offset (or the offset of any later
@@ -419,6 +421,19 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
     If you need more control, you can create the :py:class:`~confluent_kafka.Consumer`
     yourself and use the constructor directly.
 
+    UPDATE: The InOrderConsumerFactory can NEVER achieve in-order, exactly once message processing.
+
+    Message processing in Kafka to enable exactly once starts at the Producer enabling transactions,
+    and downstream consumers enabling reading exclusively from the committed offsets within a transactions.
+
+    Secondly, without defined keys in the messages from the producer, messages will be sent in a round robin fashion to all partitions in the topic.
+    This means that newer messages could be consumed before older ones if the consumer of those partitions with newer messages are faster.
+
+    Some improvements are made instead that retain the current behaviour, but don't put as much pressure on Kafka by committing every single offset.
+
+    Instead of committing every single message's offset back to Kafka,
+    the consumer now commits each offset to it's local offset store, and commits the highest seen value for each partition at a defined interval (auto.commit.interval.ms).
+    "enable.auto.offset.store" is set to false to give our application explicit control of when to store offsets.
     """
 
     # we need to ensure that only a single message handler worker exists (max_concurrency = 1)
@@ -444,8 +459,9 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
             # after message processing, to make sure offsets are not auto-committed
             # prior to processing has finished.
             "max.poll.interval.ms": 300000,
-            # disable offset autocommit, we'll manually commit.
-            "enable.auto.commit": "false",
+            # Enable offset autocommit, but disable offset store.
+            "enable.auto.commit": "true",
+            "enable.auto.offset.store": "false",
         }
 
     def build_message_handler(self) -> KafkaMessageHandler:
@@ -464,7 +480,7 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
                 message.offset(),
             )
             with context.span.make_child("kafka.commit"):
-                self.consumer.commit(message=message, asynchronous=False)
+                self.consumer.store_offsets(message=message)
 
         return KafkaMessageHandler(
             self.baseplate,
