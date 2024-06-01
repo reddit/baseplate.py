@@ -1,13 +1,13 @@
-import random
-
 from typing import Optional
 from typing import Sequence
 
+from opentelemetry.context import Context
 from opentelemetry.sdk.trace.sampling import Decision
 from opentelemetry.sdk.trace.sampling import Sampler
 from opentelemetry.sdk.trace.sampling import SamplingResult
-from opentelemetry.trace import SpanKind, Link, TraceState
-from opentelemetry.context import Context
+from opentelemetry.trace import Link
+from opentelemetry.trace import SpanKind
+from opentelemetry.trace import TraceState
 from opentelemetry.util.types import Attributes
 from pyrate_limiter import Duration
 from pyrate_limiter import Limiter
@@ -43,7 +43,7 @@ class RateLimited(Sampler):
         res = self.sampler.should_sample(
             parent_context, trace_id, name, kind, attributes, links, trace_state
         )
-        if res != Decision.DROP and self.limiter.try_acquire("ratelimit"):
+        if res != SamplingResult(Decision.DROP) and self.limiter.try_acquire("ratelimit"):
             return res
         return SamplingResult(Decision.DROP)
 
