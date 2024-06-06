@@ -103,7 +103,7 @@ class _ContextAwareHandler:
                     self.logger.info("Unable to decode header %s, ignoring." % k.decode())
 
             ctx = propagator.extract(header_dict)
-            logger.debug("Extracted trace headers. [ctx=%s, header_dict=%s]" % (ctx, header_dict))
+            logger.debug("Extracted trace headers. [ctx=%s, header_dict=%s]", ctx, header_dict)
 
             if ctx:
                 token = attach(ctx)
