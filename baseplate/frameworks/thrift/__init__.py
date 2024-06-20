@@ -45,6 +45,7 @@ PROM_REQUESTS = Counter(
         "thrift_method",
         "thrift_success",
         "thrift_exception_type",
+        "thrift_requester_service_name",
         "thrift_baseplate_status",
         "thrift_baseplate_status_code",
     ],
@@ -151,10 +152,13 @@ class _ContextAwareHandler:
                         baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
                     except AttributeError:
                         pass
+
+                service_name = self.context.headers.get(b"User-Agent", "").decode()
                 PROM_REQUESTS.labels(
                     thrift_method=fn_name,
                     thrift_success=thrift_success,
                     thrift_exception_type=exception_type,
+                    thrift_requester_service_name=service_name,
                     thrift_baseplate_status=baseplate_status,
                     thrift_baseplate_status_code=baseplate_status_code,
                 ).inc()
