@@ -124,8 +124,9 @@ class TraceInfo(NamedTuple):
         with any upstream requests.
 
         """
-        trace_id = str(random.getrandbits(64))
-        return cls(trace_id=trace_id, parent_id=None, span_id=trace_id, sampled=None, flags=None)
+        trace_id = "{0:0{1}x}".format(random.getrandbits(128), 32)
+        span_id = "{0:0{1}x}".format(random.getrandbits(64), 16)
+        return cls(trace_id=trace_id, parent_id=None, span_id=span_id, sampled=None, flags=None)
 
     @classmethod
     def from_upstream(

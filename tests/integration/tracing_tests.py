@@ -91,7 +91,7 @@ class TracingTests(unittest.TestCase):
             span = self.server_span_observer._serialize()
             self.assertEqual(span["name"], "example")
             self.assertEqual(len(span["annotations"]), 2)
-            self.assertEqual(span["parentId"], 0)
+            self.assertFalse("parentId" in span)
 
     def test_local_tracing_embedded(self):
         with mock.patch.object(
