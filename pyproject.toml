@@ -61,7 +61,7 @@ psycopg2 = ["psycopg2", "psycogreen"]
 zookeeper = ["kazoo"]
 
 [tool.poetry.group.dev.dependencies]
-black = "21.10b0"
+black = "24.3.0"
 # TODO: This can be removed once we upgrade to a newer Black version.
 # https://github.com/psf/black/issues/2964
 click = "<8.1.0"
