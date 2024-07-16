@@ -1783,17 +1783,14 @@ testutils = ["gitpython (>3)"]
 
 [[package]]
 name = "pymemcache"
-version = "1.4.3"
+version = "4.0.0"
 description = "A comprehensive, fast, pure Python memcached client"
 optional = true
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
-    {file = "pymemcache-1.4.3-py2.py3-none-any.whl", hash = "sha256:6cdc1a149b604ba4612c1429d1442c2a72155608908da2a242d364af243a14fd"},
-    {file = "pymemcache-1.4.3.tar.gz", hash = "sha256:be858c46b05620ce10e60a1fda7d9d2aeaaa4673f5ef9bd856f410849f48368c"},
+    {file = "pymemcache-4.0.0-py2.py3-none-any.whl", hash = "sha256:f507bc20e0dc8d562f8df9d872107a278df049fa496805c1431b926f3ddd0eab"},
+    {file = "pymemcache-4.0.0.tar.gz", hash = "sha256:27bf9bd1bbc1e20f83633208620d56de50f14185055e49504f4f5e94e94aff94"},
 ]
-
-[package.dependencies]
-six = "*"
 
 [[package]]
 name = "pyopenssl"
@@ -2929,4 +2926,4 @@ zookeeper = ["kazoo"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1"
-content-hash = "a7af9712ced574f626e0dd27e7595cfd06f7a4f1998d504b329fcefaf144c9cf"
+content-hash = "6f6d2420838f48cac86ee8e304cba9a3022250f551bd2249a642f6226919f3af"
