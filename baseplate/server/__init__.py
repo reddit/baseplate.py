@@ -54,10 +54,8 @@ from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapProp
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
-from baseplate.lib.config import DefaultFromEnv
 from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
-from baseplate.lib.config import Integer
 from baseplate.lib.config import Optional as OptionalConfig
 from baseplate.lib.config import parse_config
 from baseplate.lib.config import Timespan
