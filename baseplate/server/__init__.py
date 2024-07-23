@@ -215,14 +215,8 @@ class BaseplateBatchSpanProcessor(BatchSpanProcessor):
         self.baseplate_global_attributes = attributes
 
     def on_start(self, span: Span, parent_context: Optional[Context] = None) -> None:
-        logger.warning("Starting new span. [span=%s, parent_context=%s]", span, parent_context)
         if self.baseplate_global_attributes:
             span.set_attributes(self.baseplate_global_attributes)
-            logger.warning(
-                "Added global attributes to new span. [span=%s, baseplate_global_attributes=%s]",
-                span,
-                self.baseplate_global_attributes,
-            )
         super().on_start(span, parent_context)
 
 
