@@ -231,12 +231,6 @@ class BaseplateBatchSpanProcessor(BatchSpanProcessor):
 def configure_tracing() -> None:
     logger.info("Entering configure tracing function")
     sample_rps = 10
-    try:
-        sample_rps = DefaultFromEnv(Integer, "BASEPLATE_TRACE_SAMPLER_RPS", 10)
-    except ValueError:
-        logger.warning(
-            "Invalid BASEPLATE_TRACE_SAMPLER_RPS, falling back to the default of 10 RPS."
-        )
     sampler = RateLimited(ParentBased(DEFAULT_ON), sample_rps)
     otlp_exporter = OTLPSpanExporter()
     propagate.set_global_textmap(
