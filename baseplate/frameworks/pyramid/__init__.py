@@ -16,6 +16,8 @@ import pyramid.request
 import pyramid.tweens
 import webob.request
 
+from opentelemetry import trace
+from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
 from prometheus_client import Counter
 from prometheus_client import Gauge
 from prometheus_client import Histogram
@@ -34,11 +36,12 @@ from baseplate.lib.prometheus_metrics import default_size_buckets
 from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 from baseplate.thrift.ttypes import IsHealthyProbe
 
-
 logger = logging.getLogger(__name__)
 
+PyramidInstrumentor().instrument()
 
-class SpanFinishingAppIterWrapper:
+
+class SpanFinishingAppIterWrapper(Iterable):
     """Wrapper for Response.app_iter that finishes the span when the iterator is done.
 
     The WSGI spec expects applications to return an iterable object. In the
@@ -53,7 +56,7 @@ class SpanFinishingAppIterWrapper:
 
     """
 
-    def __init__(self, span: Span, app_iter: Iterable[bytes]) -> None:
+    def __init__(self, app_iter: Iterator[bytes], span: Optional[Span] = None) -> None:
         self.span = span
         self.app_iter = iter(app_iter)
 
@@ -64,10 +67,15 @@ class SpanFinishingAppIterWrapper:
         try:
             return next(self.app_iter)
         except StopIteration:
-            self.span.finish()
+            trace.get_current_span().set_status(trace.status.StatusCode.OK)
+            if self.span:
+                self.span.finish()
             raise
-        except:  # noqa: E722
-            self.span.finish(exc_info=sys.exc_info())
+        except Exception as e:
+            trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
+            trace.get_current_span().record_exception(e)
+            if self.span:
+                self.span.finish(exc_info=sys.exc_info())
             raise
 
     def close(self) -> None:
@@ -129,15 +137,21 @@ def _make_baseplate_tween(
             response = handler(request)
             if request.span:
                 request.span.set_tag("http.response_length", response.content_length)
-        except:  # noqa: E722
+        except Exception as e:
+            trace.get_current_span().set_status(trace.status.StatusCode.ERROR)
+            trace.get_current_span().record_exception(e)
             if hasattr(request, "span") and request.span:
                 request.span.finish(exc_info=sys.exc_info())
             raise
         else:
+            trace.get_current_span().set_status(trace.status.StatusCode.OK)
+            content_length = response.content_length
             if request.span:
                 request.span.set_tag("http.status_code", response.status_code)
-                content_length = response.content_length
-                response.app_iter = SpanFinishingAppIterWrapper(request.span, response.app_iter)
+                response.app_iter = SpanFinishingAppIterWrapper(response.app_iter, request.span)
+                response.content_length = content_length
+            else:
+                response.app_iter = SpanFinishingAppIterWrapper(response.app_iter)
                 response.content_length = content_length
         finally:
             manually_close_request_metrics(request, response)

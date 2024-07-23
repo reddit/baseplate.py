@@ -1,5 +1,4 @@
 """Internal library helpers."""
-import functools
 import inspect
 import warnings
 
@@ -39,7 +38,8 @@ class cached_property(Generic[R]):
 
     def __init__(self, wrapped: Callable[[Any], R]):
         self.wrapped = wrapped
-        functools.update_wrapper(self, wrapped)
+        self.__doc__ = wrapped.__doc__
+        self.__name__ = wrapped.__name__
 
     def __get__(self, instance: T, owner: Type[Any]) -> R:
         if instance is None:

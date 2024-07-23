@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import random
 import unittest
 
 from importlib import reload
@@ -30,6 +31,8 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
+
+logger = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
@@ -172,7 +175,8 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         self.assertGreaterEqual(len(handler.server_span.id), 0)
         self.assertTrue(client_result)
 
-    def test_header_propagation(self):
+    @mock.patch.object(random, "getrandbits", return_value="randomly_generated")
+    def test_header_propagation(self, getrandbits):
         """If the client sends headers, we should set the trace up accordingly."""
         trace_id = "1234"
         parent_id = "2345"
@@ -203,12 +207,13 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         self.assertIsNotNone(handler.server_span)
         self.assertEqual(handler.server_span.trace_id, trace_id)
         self.assertEqual(handler.server_span.parent_id, parent_id)
-        self.assertEqual(handler.server_span.id, span_id)
+        self.assertEqual(handler.server_span.id, "randomly_generated")
         self.assertEqual(handler.server_span.flags, flags)
         self.assertEqual(handler.server_span.sampled, sampled)
         self.assertTrue(client_result)
 
-    def test_optional_headers_optional(self):
+    @mock.patch.object(random, "getrandbits", return_value="randomly_generated")
+    def test_optional_headers_optional(self, getrandbits):
         """Test that we accept traces from clients that don't include all headers."""
         trace_id = "1234"
         parent_id = "2345"
@@ -235,7 +240,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase):
         self.assertIsNotNone(handler.server_span)
         self.assertEqual(handler.server_span.trace_id, trace_id)
         self.assertEqual(handler.server_span.parent_id, parent_id)
-        self.assertEqual(handler.server_span.id, span_id)
+        self.assertEqual(handler.server_span.id, "randomly_generated")
         self.assertEqual(handler.server_span.flags, None)
         self.assertEqual(handler.server_span.sampled, False)
         self.assertTrue(client_result)
@@ -606,17 +611,6 @@ class ThriftErrorReplacementTests(GeventPatchedTestCase):
 
 
 class ThriftPrometheusMetricsTests(GeventPatchedTestCase):
-    def reset_metrics(self, metrics):
-        if not metrics:
-            return
-
-        try:
-            metrics.get_active_requests_metric().clear()
-            metrics.get_latency_seconds_metric().clear()
-            metrics.get_requests_total_metric().clear()
-        except Exception:
-            pass
-
     def assert_correct_metric(
         self, metric, want_count, want_sample, want_name, want_labels, want_value
     ):

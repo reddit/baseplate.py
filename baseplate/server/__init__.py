@@ -40,6 +40,17 @@ from typing import TextIO
 from typing import Tuple
 
 from gevent.server import StreamServer
+from opentelemetry import propagate
+from opentelemetry import trace
+from opentelemetry.context import Context
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.sdk.trace import Span
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.sampling import DEFAULT_ON
+from opentelemetry.sdk.trace.sampling import ParentBased
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
@@ -50,6 +61,9 @@ from baseplate.lib.config import parse_config
 from baseplate.lib.config import Timespan
 from baseplate.lib.log_formatter import CustomJsonFormatter
 from baseplate.lib.prometheus_metrics import is_metrics_enabled
+from baseplate.lib.propagator_redditb3_http import RedditB3HTTPFormat
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
+from baseplate.lib.tracing import RateLimited
 from baseplate.server import einhorn
 from baseplate.server import reloader
 from baseplate.server.net import bind_socket
@@ -190,6 +204,48 @@ def configure_logging(config: Configuration, debug: bool) -> None:
         logging.config.fileConfig(config.filename)
 
 
+class BaseplateBatchSpanProcessor(BatchSpanProcessor):
+    def __init__(
+        self, otlp_exporter: OTLPSpanExporter, attributes: Optional[Dict[str, Any]] = None
+    ) -> None:
+        logger.info(
+            "Initializing %s with global attributes=%s.", self.__class__.__name__, attributes
+        )
+        super().__init__(otlp_exporter)
+        self.baseplate_global_attributes = attributes
+
+    def on_start(self, span: Span, parent_context: Optional[Context] = None) -> None:
+        logger.warning("Starting new span. [span=%s, parent_context=%s]", span, parent_context)
+        if self.baseplate_global_attributes:
+            span.set_attributes(self.baseplate_global_attributes)
+            logger.warning(
+                "Added global attributes to new span. [span=%s, baseplate_global_attributes=%s]",
+                span,
+                self.baseplate_global_attributes,
+            )
+        super().on_start(span, parent_context)
+
+
+def configure_tracing() -> None:
+    logger.info("Entering configure tracing function")
+    sample_rps = 10
+    sampler = RateLimited(ParentBased(DEFAULT_ON), sample_rps)
+    otlp_exporter = OTLPSpanExporter()
+    propagate.set_global_textmap(
+        CompositePropagator(
+            [RedditB3ThriftFormat(), RedditB3HTTPFormat(), TraceContextTextMapPropagator()]
+        )
+    )
+    provider = TracerProvider(sampler=sampler)
+    provider.add_span_processor(
+        BaseplateBatchSpanProcessor(
+            otlp_exporter,
+        )
+    )
+    trace.set_tracer_provider(provider)
+    logger.info("Tracing Configured")
+
+
 def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
     try:
         return einhorn.get_socket()
@@ -276,6 +332,7 @@ def load_app_and_run_server() -> None:
         logger.info("Metrics are not configured, Prometheus metrics will not be exported.")
 
     configure_logging(config, args.debug)
+    configure_tracing()
 
     app = make_app(config.app)
     listener = make_listener(args.bind)

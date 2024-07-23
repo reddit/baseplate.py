@@ -1,6 +1,7 @@
 from baseplate import Baseplate
 from baseplate.clients.sqlalchemy import SQLAlchemySession
 from baseplate.frameworks.pyramid import BaseplateConfigurator
+
 from pyramid.config import Configurator
 from pyramid.view import view_config
 
