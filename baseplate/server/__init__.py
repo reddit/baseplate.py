@@ -52,6 +52,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import DEFAULT_ON
 from opentelemetry.sdk.trace.sampling import ParentBased
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.instrumentation.threading import ThreadingInstrumentor
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
