@@ -51,6 +51,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.trace.sampling import DEFAULT_ON
 from opentelemetry.sdk.trace.sampling import ParentBased
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from opentelemetry.instrumentation.threading import ThreadingInstrumentor
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
@@ -314,6 +315,8 @@ def register_signal_handlers() -> threading.Event:
 def load_app_and_run_server() -> None:
     """Parse arguments, read configuration, and start the server."""
     sys.path.append(os.getcwd())
+
+    ThreadingInstrumentor().instrument()
 
     shutdown_event = register_signal_handlers()
 
