@@ -186,10 +186,13 @@ class RequestContext:
         prefix: Optional[str] = None,
         span: Optional["Span"] = None,
         wrapped: Optional["RequestContext"] = None,
+        kv: Optional[Dict[str, Any]] = None,
     ):
         self.__context_config = context_config
         self.__prefix = prefix
         self.__wrapped = wrapped
+        if kv is None:
+            self.kv = dict()
 
         # the context and span reference eachother (unfortunately) so we can't
         # construct 'em both with references from the start. however, we can
