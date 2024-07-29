@@ -193,6 +193,8 @@ class RequestContext:
         self.__wrapped = wrapped
         if kv is None:
             self.kv = dict()
+        else:
+            self.kv = kv
 
         # the context and span reference eachother (unfortunately) so we can't
         # construct 'em both with references from the start. however, we can
