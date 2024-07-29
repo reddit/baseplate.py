@@ -241,6 +241,7 @@ class RequestContext:
             prefix=self.__prefix,
             span=self.span,
             wrapped=self,
+            kv=self.kv.copy()
         )
 
 
