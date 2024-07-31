@@ -583,7 +583,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         self.assertFalse(finished_spans[0].status.is_ok)
         self.assertEqual(len(finished_spans[0].events), 2)
         self.assertEqual(
-            finished_spans[0].events[-1].attributes["exception.type"], "UnexpectedException"
+            finished_spans[0].events[-1].attributes["exception.type"].split(".")[-1], "UnexpectedException"
         )
 
     def test_unexpected_exception_is_marked_as_error_convert(self):
@@ -607,7 +607,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         self.assertEqual(len(finished_spans), 1)
         self.assertFalse(finished_spans[0].status.is_ok)
         self.assertEqual(len(finished_spans[0].events), 2)
-        self.assertEqual(finished_spans[0].events[-1].attributes["exception.type"], "Error")
+        self.assertEqual(finished_spans[0].events[-1].attributes["exception.type"], "baseplate.thrift.ttypes.Error")
 
     @parameterized.expand(
         [
@@ -615,42 +615,42 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
                 TApplicationException(TApplicationException.UNKNOWN_METHOD, "unknown method"),
                 True,
                 pytest.raises(TApplicationException),
-                "TApplicationException",
+                "thrift.Thrift.TApplicationException",
                 trace.status.StatusCode.ERROR,
             ),
             (
                 TProtocolException(message="Required field is unset!"),
                 True,
                 pytest.raises(TApplicationException),  # because of TestService
-                "TProtocolException",
+                "thrift.protocol.TProtocol.TProtocolException",
                 trace.status.StatusCode.ERROR,
             ),
             (
                 TTransportException(message="Something is wrong with the transport"),
                 True,
                 pytest.raises(TTransportException),
-                "TTransportException",
+                "thrift.transport.TTransport.TTransportException",
                 trace.status.StatusCode.ERROR,
             ),
             (
                 Error(ErrorCode.NOT_FOUND, "404 not found"),
                 True,
                 pytest.raises(Error),
-                "Error",
+                "baseplate.thrift.ttypes.Error",
                 trace.status.StatusCode.OK,
             ),
             (
                 Error(ErrorCode.SERVICE_UNAVAILABLE, "503 unavailable"),
                 True,
                 pytest.raises(Error),
-                "Error",
+                "baseplate.thrift.ttypes.Error",
                 trace.status.StatusCode.ERROR,
             ),
             (
                 TException(message="Some other generic thrift exception"),
                 True,
                 pytest.raises(TException),
-                "TException",
+                "thrift.Thrift.TException",
                 trace.status.StatusCode.OK,
             ),
             (
@@ -664,7 +664,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
                 Exception("Some very generic exception"),
                 True,
                 pytest.raises(Exception),
-                "Error",
+                "baseplate.thrift.ttypes.Error",
                 trace.status.StatusCode.ERROR,
             ),
         ],
