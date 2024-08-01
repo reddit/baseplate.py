@@ -583,7 +583,8 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         self.assertFalse(finished_spans[0].status.is_ok)
         self.assertEqual(len(finished_spans[0].events), 2)
         self.assertEqual(
-            finished_spans[0].events[-1].attributes["exception.type"].split(".")[-1], "UnexpectedException"
+            finished_spans[0].events[-1].attributes["exception.type"].split(".")[-1],
+            "UnexpectedException",
         )
 
     def test_unexpected_exception_is_marked_as_error_convert(self):
@@ -607,7 +608,10 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         self.assertEqual(len(finished_spans), 1)
         self.assertFalse(finished_spans[0].status.is_ok)
         self.assertEqual(len(finished_spans[0].events), 2)
-        self.assertEqual(finished_spans[0].events[-1].attributes["exception.type"], "baseplate.thrift.ttypes.Error")
+        self.assertEqual(
+            finished_spans[0].events[-1].attributes["exception.type"],
+            "baseplate.thrift.ttypes.Error",
+        )
 
     @parameterized.expand(
         [
