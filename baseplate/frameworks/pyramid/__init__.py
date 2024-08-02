@@ -38,8 +38,6 @@ from baseplate.thrift.ttypes import IsHealthyProbe
 
 logger = logging.getLogger(__name__)
 
-PyramidInstrumentor().instrument()
-
 
 class SpanFinishingAppIterWrapper(Iterable):
     """Wrapper for Response.app_iter that finishes the span when the iterator is done.
@@ -353,6 +351,8 @@ class BaseplateConfigurator:
         self.baseplate = baseplate
         self.edge_context_factory = edge_context_factory
         self.header_trust_handler = header_trust_handler or StaticTrustHandler(trust_headers=False)
+
+        PyramidInstrumentor().instrument()
 
     def _on_application_created(self, event: pyramid.events.ApplicationCreated) -> None:
         # attach the baseplate object to the application the server gets
