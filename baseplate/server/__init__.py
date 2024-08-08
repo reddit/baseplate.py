@@ -44,6 +44,7 @@ from opentelemetry import propagate
 from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.instrumentation.threading import ThreadingInstrumentor
 from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.sdk.trace import Span
@@ -172,6 +173,7 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
 
 
 def configure_logging(config: Configuration, debug: bool) -> None:
+    LoggingInstrumentor().instrument()
     logging.captureWarnings(capture=True)
 
     if debug:
