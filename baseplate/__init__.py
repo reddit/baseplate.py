@@ -192,7 +192,7 @@ class RequestContext:
         self.__prefix = prefix
         self.__wrapped = wrapped
         if kv is None:
-            self.kv = dict()
+            self.kv = {}
         else:
             self.kv = kv
 
