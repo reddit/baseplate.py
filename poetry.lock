@@ -1407,30 +1407,30 @@ typing = ["mypy (>=0.991)"]
 
 [[package]]
 name = "kombu"
-version = "5.3.7"
+version = "5.4.0"
 description = "Messaging library for Python."
 optional = true
 python-versions = ">=3.8"
 files = [
-    {file = "kombu-5.3.7-py3-none-any.whl", hash = "sha256:5634c511926309c7f9789f1433e9ed402616b56836ef9878f01bd59267b4c7a9"},
-    {file = "kombu-5.3.7.tar.gz", hash = "sha256:011c4cd9a355c14a1de8d35d257314a1d2456d52b7140388561acac3cf1a97bf"},
+    {file = "kombu-5.4.0-py3-none-any.whl", hash = "sha256:c8dd99820467610b4febbc7a9e8a0d3d7da2d35116b67184418b51cc520ea6b6"},
+    {file = "kombu-5.4.0.tar.gz", hash = "sha256:ad200a8dbdaaa2bbc5f26d2ee7d707d9a1fded353a0f4bd751ce8c7d9f449c60"},
 ]
 
 [package.dependencies]
 amqp = ">=5.1.1,<6.0.0"
 "backports.zoneinfo" = {version = ">=0.2.1", extras = ["tzdata"], markers = "python_version < \"3.9\""}
-typing-extensions = {version = "*", markers = "python_version < \"3.10\""}
-vine = "*"
+typing-extensions = {version = "4.12.2", markers = "python_version < \"3.10\""}
+vine = "5.1.0"
 
 [package.extras]
 azureservicebus = ["azure-servicebus (>=7.10.0)"]
 azurestoragequeues = ["azure-identity (>=1.12.0)", "azure-storage-queue (>=12.6.0)"]
 confluentkafka = ["confluent-kafka (>=2.2.0)"]
-consul = ["python-consul2"]
+consul = ["python-consul2 (==0.1.5)"]
 librabbitmq = ["librabbitmq (>=2.0.0)"]
 mongodb = ["pymongo (>=4.1.1)"]
-msgpack = ["msgpack"]
-pyro = ["pyro4"]
+msgpack = ["msgpack (==1.0.8)"]
+pyro = ["pyro4 (==4.82)"]
 qpid = ["qpid-python (>=0.26)", "qpid-tools (>=0.26)"]
 redis = ["redis (>=4.5.2,!=4.5.5,!=5.0.2)"]
 slmq = ["softlayer-messaging (>=1.0.3)"]
