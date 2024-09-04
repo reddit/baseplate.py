@@ -40,13 +40,16 @@ from typing import TextIO
 from typing import Tuple
 
 from gevent.server import StreamServer
+from opentelemetry import metrics
 from opentelemetry import propagate
 from opentelemetry import trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.prometheus import PrometheusMetricReader
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.instrumentation.threading import ThreadingInstrumentor
 from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.trace import Span
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
@@ -243,6 +246,13 @@ def configure_tracing() -> None:
     logger.info("Tracing Configured")
 
 
+def configure_otel_metrics() -> None:
+    # We configure otel metrics so we can capture metrics emitted from the trace exporter.
+    reader = PrometheusMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    metrics.set_meter_provider(provider)
+
+
 def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
     try:
         return einhorn.get_socket()
@@ -332,6 +342,8 @@ def load_app_and_run_server() -> None:
 
     configure_logging(config, args.debug)
     configure_tracing()
+    # Setup otel metrics so we can have metrics about our tracing client
+    configure_otel_metrics()
 
     app = make_app(config.app)
     listener = make_listener(args.bind)
