@@ -2864,13 +2864,13 @@ testing = ["coverage", "nose", "virtualenv", "webtest (>=1.3.1)", "zope.componen
 
 [[package]]
 name = "pyrate-limiter"
-version = "3.6.1"
+version = "3.7.0"
 description = "Python Rate-Limiter using Leaky-Bucket Algorithm"
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "pyrate_limiter-3.6.1-py3-none-any.whl", hash = "sha256:0902650ba9ef15a4bdd8241f738181e88171209cedd778e8080ae76b9d82723e"},
-    {file = "pyrate_limiter-3.6.1.tar.gz", hash = "sha256:78bdaaf31d76ffb3f6e9b9d26d676a52824492b9f4578d48530d1fa657ac6d8f"},
+    {file = "pyrate_limiter-3.7.0-py3-none-any.whl", hash = "sha256:cdbfc8f537d07e2bda76f5191b38aee972b26e1af020d880e3c1ef9d528227ac"},
+    {file = "pyrate_limiter-3.7.0.tar.gz", hash = "sha256:dc1e6d2c80b559f3333cb44bd822bd558f5a47946dc50cce4263a9c1c5fd8067"},
 ]
 
 [package.extras]
