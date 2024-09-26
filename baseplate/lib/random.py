@@ -1,16 +1,9 @@
 """Extensions to the standard library `random` module."""
+
 import bisect
 import random
 import typing
-
-from typing import Callable
-from typing import Generic
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import TypeVar
-
+from typing import Callable, Generic, Iterable, List, Optional, Set, TypeVar
 
 T = TypeVar("T")
 

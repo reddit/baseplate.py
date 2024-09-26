@@ -2,7 +2,6 @@ from typing import Dict
 
 from baseplate.lib import config
 
-
 # default_latency_buckets creates the default bucket values for time based histogram metrics.
 # we want this to match the baseplate.go default_buckets
 # bp.go v0 ref: https://github.com/reddit/baseplate.go/blob/master/prometheusbp/metrics.go.
@@ -32,7 +31,7 @@ default_size_start = 8
 default_size_factor = 2
 default_size_count = 20
 default_size_buckets = [
-    default_size_start * default_size_factor ** i for i in range(default_size_count)
+    default_size_start * default_size_factor**i for i in range(default_size_count)
 ]
 
 

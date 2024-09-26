@@ -5,8 +5,7 @@ import unittest
 import gevent.monkey
 import gevent.queue
 
-from baseplate.server.monkey import gevent_is_patched
-from baseplate.server.monkey import patch_stdlib_queues
+from baseplate.server.monkey import gevent_is_patched, patch_stdlib_queues
 
 
 class MonkeyPatchTests(unittest.TestCase):

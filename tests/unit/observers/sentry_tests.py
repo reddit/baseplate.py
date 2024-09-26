@@ -1,14 +1,15 @@
-from typing import Any
-from typing import Dict
+from typing import Any, Dict
 
 import gevent
 import pytest
 import sentry_sdk
 
 from baseplate import Baseplate
-from baseplate.observers.sentry import _SentryUnhandledErrorReporter
-from baseplate.observers.sentry import init_sentry_client_from_config
-from baseplate.observers.sentry import SentryBaseplateObserver
+from baseplate.observers.sentry import (
+    SentryBaseplateObserver,
+    _SentryUnhandledErrorReporter,
+    init_sentry_client_from_config,
+)
 
 
 class FakeTransport:

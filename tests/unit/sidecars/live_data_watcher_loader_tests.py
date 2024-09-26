@@ -1,21 +1,21 @@
 import io
 import json
 import os
-
 from unittest import mock
 
 import botocore.session
 import pytest
-
 from botocore.response import StreamingBody
 from botocore.stub import Stubber
 from moto import mock_aws
 
-from baseplate.sidecars.live_data_watcher import _load_from_s3
-from baseplate.sidecars.live_data_watcher import _parse_loader_type
-from baseplate.sidecars.live_data_watcher import LoaderException
-from baseplate.sidecars.live_data_watcher import LoaderType
-from baseplate.sidecars.live_data_watcher import NodeWatcher
+from baseplate.sidecars.live_data_watcher import (
+    LoaderException,
+    LoaderType,
+    NodeWatcher,
+    _load_from_s3,
+    _parse_loader_type,
+)
 
 
 @pytest.fixture()

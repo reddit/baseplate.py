@@ -1,20 +1,20 @@
 import types
-
 from contextlib import nullcontext as does_not_raise
 from unittest import mock
 
 import pytest
-
 from prometheus_client import REGISTRY
 from pyramid.response import Response
 
-from baseplate.frameworks.pyramid import _make_baseplate_tween
-from baseplate.frameworks.pyramid import ACTIVE_REQUESTS
-from baseplate.frameworks.pyramid import BaseplateConfigurator
-from baseplate.frameworks.pyramid import REQUEST_LATENCY
-from baseplate.frameworks.pyramid import REQUEST_SIZE
-from baseplate.frameworks.pyramid import REQUESTS_TOTAL
-from baseplate.frameworks.pyramid import RESPONSE_SIZE
+from baseplate.frameworks.pyramid import (
+    ACTIVE_REQUESTS,
+    REQUEST_LATENCY,
+    REQUEST_SIZE,
+    REQUESTS_TOTAL,
+    RESPONSE_SIZE,
+    BaseplateConfigurator,
+    _make_baseplate_tween,
+)
 
 
 class TestPyramidHttpServerIntegrationPrometheus:

@@ -5,19 +5,19 @@ import string
 import tempfile
 import typing
 import unittest
-
 from pathlib import Path
-from unittest.mock import mock_open
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 import gevent
 import pytest
 import typing_extensions
 
-from baseplate.lib.secrets import SecretNotFoundError
-from baseplate.lib.secrets import secrets_store_from_config
-from baseplate.lib.secrets import SecretsStore
-from baseplate.lib.secrets import VaultCSISecretsStore
+from baseplate.lib.secrets import (
+    SecretNotFoundError,
+    SecretsStore,
+    VaultCSISecretsStore,
+    secrets_store_from_config,
+)
 
 SecretType: typing_extensions.TypeAlias = typing.Dict[str, any]
 
@@ -226,12 +226,12 @@ class StoreTests(unittest.TestCase):
             expected_username = "".join(chars[:3])
             expected_password = "".join(chars[3:])
             new_secrets = EXAMPLE_UPDATED_SECRETS.copy()
-            new_secrets["secret/example-service/example-secret"]["data"][
-                "username"
-            ] = expected_username
-            new_secrets["secret/example-service/example-secret"]["data"][
-                "password"
-            ] = expected_password
+            new_secrets["secret/example-service/example-secret"]["data"]["username"] = (
+                expected_username
+            )
+            new_secrets["secret/example-service/example-secret"]["data"]["password"] = (
+                expected_password
+            )
             simulate_secret_update(
                 self.csi_dir,
                 updated_data=EXAMPLE_UPDATED_SECRETS,

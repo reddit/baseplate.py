@@ -1,17 +1,8 @@
 from random import random
-from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Set
+from typing import Any, Dict, Optional, Set
 
-from baseplate import _ExcInfo
-from baseplate import BaseplateObserver
-from baseplate import LocalSpan
-from baseplate import RequestContext
-from baseplate import Span
-from baseplate import SpanObserver
-from baseplate.lib import config
-from baseplate.lib import metrics
+from baseplate import BaseplateObserver, LocalSpan, RequestContext, Span, SpanObserver, _ExcInfo
+from baseplate.lib import config, metrics
 
 
 class TaggedMetricsBaseplateObserver(BaseplateObserver):

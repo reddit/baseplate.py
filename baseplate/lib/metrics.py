@@ -42,22 +42,16 @@ ends.
 .. _StatsD: https://github.com/statsd/statsd
 
 """
+
 import collections
 import errno
 import logging
 import socket
 import time
-
 from types import TracebackType
-from typing import Any
-from typing import DefaultDict
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Type
+from typing import Any, DefaultDict, Dict, List, Optional, Type
 
 from baseplate.lib import config
-
 
 logger = logging.getLogger(__name__)
 

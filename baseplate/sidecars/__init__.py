@@ -1,8 +1,5 @@
 import time
-
-from typing import List
-from typing import NamedTuple
-from typing import Optional
+from typing import List, NamedTuple, Optional
 
 
 class SerializedBatch(NamedTuple):

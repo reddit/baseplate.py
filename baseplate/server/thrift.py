@@ -1,11 +1,7 @@
 import datetime
 import logging
 import socket
-
-from typing import Any
-from typing import Dict
-from typing import Tuple
-from typing import Union
+from typing import Any, Dict, Tuple, Union
 
 from form_observability import ctx
 from gevent.pool import Pool
@@ -16,12 +12,10 @@ from thrift.protocol.THeaderProtocol import THeaderProtocolFactory
 from thrift.Thrift import TProcessor
 from thrift.transport.THeaderTransport import THeaderClientType
 from thrift.transport.TSocket import TSocket
-from thrift.transport.TTransport import TBufferedTransportFactory
-from thrift.transport.TTransport import TTransportException
+from thrift.transport.TTransport import TBufferedTransportFactory, TTransportException
 
 from baseplate.lib import config
 from baseplate.server import runtime_monitor
-
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)

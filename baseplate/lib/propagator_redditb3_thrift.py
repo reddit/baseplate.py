@@ -1,19 +1,17 @@
 import logging
-
 from re import compile as re_compile
-from typing import Any
-from typing import Iterable
-from typing import Optional
-from typing import Set
+from typing import Any, Iterable, Optional, Set
 
 from opentelemetry import trace
 from opentelemetry.context import Context
-from opentelemetry.propagators.textmap import CarrierT
-from opentelemetry.propagators.textmap import default_getter
-from opentelemetry.propagators.textmap import default_setter
-from opentelemetry.propagators.textmap import Getter
-from opentelemetry.propagators.textmap import Setter
-from opentelemetry.propagators.textmap import TextMapPropagator
+from opentelemetry.propagators.textmap import (
+    CarrierT,
+    Getter,
+    Setter,
+    TextMapPropagator,
+    default_getter,
+    default_setter,
+)
 from opentelemetry.trace import format_span_id
 
 logger = logging.getLogger(__name__)

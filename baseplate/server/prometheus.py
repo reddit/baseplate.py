@@ -10,31 +10,31 @@ their metrics. Each application worker will be serving the exporter as well and
 can aggregate and serve metrics for all workers.
 
 """
+
 import atexit
 import logging
 import os
 import sys
+from typing import TYPE_CHECKING, Iterable
 
-from typing import Iterable
-from typing import TYPE_CHECKING
-
-from gevent.pywsgi import LoggingLogAdapter
-from gevent.pywsgi import WSGIServer
-from prometheus_client import CollectorRegistry
-from prometheus_client import CONTENT_TYPE_LATEST
-from prometheus_client import generate_latest
-from prometheus_client import multiprocess
-from prometheus_client import values
+from gevent.pywsgi import LoggingLogAdapter, WSGIServer
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    generate_latest,
+    multiprocess,
+    values,
+)
 from prometheus_client.values import MultiProcessValue
 
-from baseplate.lib.config import Endpoint
-from baseplate.lib.config import EndpointConfiguration
+from baseplate.lib.config import Endpoint, EndpointConfiguration
 from baseplate.server.net import bind_socket
 
-
 if TYPE_CHECKING:
-    from _typeshed.wsgi import StartResponse  # pylint: disable=import-error,no-name-in-module
-    from _typeshed.wsgi import WSGIEnvironment  # pylint: disable=import-error,no-name-in-module
+    from _typeshed.wsgi import (
+        StartResponse,  # pylint: disable=import-error,no-name-in-module
+        WSGIEnvironment,  # pylint: disable=import-error,no-name-in-module
+    )
 
 
 logger = logging.getLogger(__name__)

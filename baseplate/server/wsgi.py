@@ -1,19 +1,14 @@
 import datetime
 import logging
 import socket
-
-from typing import Any
-from typing import Dict
+from typing import Any, Dict
 
 from gevent.pool import Pool
-from gevent.pywsgi import LoggingLogAdapter
-from gevent.pywsgi import WSGIServer
+from gevent.pywsgi import LoggingLogAdapter, WSGIServer
 from gevent.server import StreamServer
 
 from baseplate.lib import config
-from baseplate.server import _load_factory
-from baseplate.server import runtime_monitor
-
+from baseplate.server import _load_factory, runtime_monitor
 
 logger = logging.getLogger(__name__)
 

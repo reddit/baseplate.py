@@ -5,28 +5,18 @@ import gzip
 import hashlib
 import hmac
 import logging
-
-from typing import Any
-from typing import List
-from typing import Optional
+from typing import Any, List, Optional
 
 import requests
 
 from baseplate import __version__ as baseplate_version
-from baseplate.lib import config
-from baseplate.lib import metrics
-from baseplate.lib.events import MAX_EVENT_SIZE
-from baseplate.lib.events import MAX_QUEUE_SIZE
-from baseplate.lib.message_queue import MessageQueue
-from baseplate.lib.message_queue import TimedOutError
+from baseplate.lib import config, metrics
+from baseplate.lib.events import MAX_EVENT_SIZE, MAX_QUEUE_SIZE
+from baseplate.lib.message_queue import MessageQueue, TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
 from baseplate.server import EnvironmentInterpolation
-from baseplate.sidecars import Batch
-from baseplate.sidecars import BatchFull
-from baseplate.sidecars import SerializedBatch
-from baseplate.sidecars import TimeLimitedBatch
-
+from baseplate.sidecars import Batch, BatchFull, SerializedBatch, TimeLimitedBatch
 
 logger = logging.getLogger(__name__)
 
@@ -105,9 +95,9 @@ class BatchPublisher:
         self.key_name = cfg.key.name
         self.key_secret = cfg.key.secret
         self.session = requests.Session()
-        self.session.headers[
-            "User-Agent"
-        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        self.session.headers["User-Agent"] = (
+            f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        )
 
     def _sign_payload(self, payload: bytes) -> str:
         digest = hmac.new(self.key_secret, payload, hashlib.sha256).hexdigest()

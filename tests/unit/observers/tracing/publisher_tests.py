@@ -1,12 +1,10 @@
 import unittest
-
 from unittest import mock
 
 import requests
 
 from baseplate.lib import metrics
-from baseplate.sidecars import SerializedBatch
-from baseplate.sidecars import trace_publisher
+from baseplate.sidecars import SerializedBatch, trace_publisher
 
 
 class ZipkinPublisherTest(unittest.TestCase):

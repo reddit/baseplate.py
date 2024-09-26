@@ -1,5 +1,4 @@
 import unittest
-
 from unittest import mock
 
 from prometheus_client import REGISTRY
@@ -11,20 +10,21 @@ try:
 except ImportError:
     raise unittest.SkipTest("cassandra-driver is not installed")
 
-import baseplate
 import logging
-from baseplate.lib.config import ConfigurationError
+
+import baseplate
 from baseplate.clients.cassandra import (
-    cluster_from_config,
+    REQUEST_ACTIVE,
+    REQUEST_TIME,
+    REQUEST_TOTAL,
     CassandraCallbackArgs,
     CassandraPrometheusLabels,
     CassandraSessionAdapter,
-    REQUEST_TIME,
-    REQUEST_ACTIVE,
-    REQUEST_TOTAL,
     _on_execute_complete,
     _on_execute_failed,
+    cluster_from_config,
 )
+from baseplate.lib.config import ConfigurationError
 from baseplate.lib.secrets import SecretsStore
 
 logger = logging.getLogger(__name__)

@@ -1,6 +1,6 @@
 """A Gevent-friendly POSIX message queue."""
-import select
 
+import select
 from typing import Optional
 
 import posix_ipc

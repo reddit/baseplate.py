@@ -84,6 +84,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     tempfile.close()
 
 """
+
 import base64
 import datetime
 import functools
@@ -92,19 +93,20 @@ import os
 import pwd
 import re
 import socket
-
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Generic
-from typing import IO
-from typing import NamedTuple
-from typing import NewType
+from typing import (
+    IO,
+    Any,
+    Callable,
+    Dict,
+    Generic,
+    NamedTuple,
+    NewType,
+    Sequence,
+    Set,
+    TypeVar,
+    Union,
+)
 from typing import Optional as OptionalType
-from typing import Sequence
-from typing import Set
-from typing import TypeVar
-from typing import Union
 
 
 class ConfigurationError(Exception):
@@ -128,9 +130,7 @@ def Float(text: str) -> float:  # noqa: D401
     return float(text)
 
 
-def Integer(
-    text: OptionalType[str] = None, base: int = 10
-) -> Union[int, Callable[[str], int]]:  # noqa: D401
+def Integer(text: OptionalType[str] = None, base: int = 10) -> Union[int, Callable[[str], int]]:  # noqa: D401
     """An integer.
 
     To prevent mistakes, this will raise an error if the user attempts
@@ -453,8 +453,7 @@ class ConfigNamespace(dict):
         super().__init__()
         self.__dict__ = self
 
-    def __getattr__(self, name: str) -> Any:
-        ...
+    def __getattr__(self, name: str) -> Any: ...
 
 
 ConfigSpecItem = Union["Parser", Dict[str, Any], Callable[[str], T]]

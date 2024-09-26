@@ -1,4 +1,5 @@
 """Components for processing Baseplate spans for service request tracing."""
+
 import collections
 import json
 import logging
@@ -8,31 +9,16 @@ import socket
 import threading
 import time
 import typing
-
 from datetime import datetime
-from typing import Any
-from typing import DefaultDict
-from typing import Dict
-from typing import List
-from typing import NamedTuple
-from typing import Optional
+from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional
 
 import requests
-
 from requests.exceptions import RequestException
 
-from baseplate import _ExcInfo
-from baseplate import BaseplateObserver
-from baseplate import LocalSpan
-from baseplate import RequestContext
-from baseplate import Span
-from baseplate import SpanObserver
-from baseplate.lib import config
-from baseplate.lib import warn_deprecated
-from baseplate.lib.message_queue import MessageQueue
-from baseplate.lib.message_queue import TimedOutError
+from baseplate import BaseplateObserver, LocalSpan, RequestContext, Span, SpanObserver, _ExcInfo
+from baseplate.lib import config, warn_deprecated
+from baseplate.lib.message_queue import MessageQueue, TimedOutError
 from baseplate.observers.timeout import ServerTimeout
-
 
 if typing.TYPE_CHECKING:
     SpanQueue = queue.Queue["TraceSpanObserver"]  # pylint: disable=unsubscriptable-object
@@ -510,7 +496,6 @@ class RemoteRecorder(BaseBatchRecorder):
         max_span_batch: int = 100,
         batch_wait_interval: float = 0.5,
     ):
-
         super().__init__(max_queue_size, num_workers, max_span_batch, batch_wait_interval)
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         self.session = requests.Session()

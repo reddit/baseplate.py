@@ -1,25 +1,13 @@
 from time import perf_counter
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from prometheus_client import Counter, Gauge, Histogram
 from pymemcache.client.base import PooledClient
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.lib import config
-from baseplate.lib import metrics
+from baseplate.lib import config, metrics
 from baseplate.lib.prometheus_metrics import default_latency_buckets
-
 
 Serializer = Callable[[str, Any], Tuple[bytes, int]]
 Deserializer = Callable[[str, bytes, int], Any]

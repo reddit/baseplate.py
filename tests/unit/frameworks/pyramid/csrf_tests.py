@@ -1,15 +1,13 @@
 import base64
 import unittest
-
 from unittest import mock
 
 from baseplate.lib.crypto import validate_signature
 from baseplate.testing.lib.secrets import FakeSecretsStore
 
-
 has_csrf_policy = True
 try:
-    from baseplate.frameworks.pyramid.csrf import _make_csrf_token_payload, TokenCSRFStoragePolicy
+    from baseplate.frameworks.pyramid.csrf import TokenCSRFStoragePolicy, _make_csrf_token_payload
 except ImportError:
     has_csrf_policy = False
 

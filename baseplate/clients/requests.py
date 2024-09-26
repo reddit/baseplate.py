@@ -2,29 +2,18 @@ import base64
 import ipaddress
 import sys
 import time
+from typing import Any, Optional, Type, Union
 
-from typing import Any
-from typing import Optional
-from typing import Type
-from typing import Union
-
-from advocate import AddrValidator
-from advocate import ValidatingHTTPAdapter
+from advocate import AddrValidator, ValidatingHTTPAdapter
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
-from requests import PreparedRequest
-from requests import Request
-from requests import Response
-from requests import Session
+from prometheus_client import Counter, Gauge, Histogram
+from requests import PreparedRequest, Request, Response, Session
 from requests.adapters import HTTPAdapter
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
+from baseplate.lib.prometheus_metrics import default_latency_buckets, getHTTPSuccessLabel
 
 RequestsInstrumentor().instrument()
 

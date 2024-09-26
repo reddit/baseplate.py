@@ -60,6 +60,7 @@ with the JSON file as its first and only argument. This allows you to read in th
 write to a new file in whatever format needed, and restart other services if necessary.
 
 """
+
 import argparse
 import configparser
 import datetime
@@ -71,19 +72,13 @@ import subprocess
 import time
 import urllib.parse
 import uuid
-
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Optional
-from typing import Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import requests
 
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.server import EnvironmentInterpolation
-
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +91,7 @@ Authenication failed! If this instance previously authenticated with a
 different nonce, a vault operator may need to remove the instance ID from the
 identity whitelist. See
 https://www.vaultproject.io/docs/auth/aws.html#client-nonce
-""".replace(
-    "\n", " "
-)
+""".replace("\n", " ")
 
 
 def fetch_instance_identity() -> str:
@@ -155,10 +148,10 @@ class VaultClientFactory:
         self.auth_type = auth_type
         self.mount_point = mount_point
         self.session = requests.Session()
-        self.session.headers[
-            "User-Agent"
-        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
-        self.client: Optional["VaultClient"] = None
+        self.session.headers["User-Agent"] = (
+            f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        )
+        self.client: Optional[VaultClient] = None
 
     def _make_client(self) -> "VaultClient":
         """Obtain a client token from an auth backend and return a Vault client with it."""

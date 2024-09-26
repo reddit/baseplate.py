@@ -1,43 +1,32 @@
 import contextlib
 import logging
 import unittest
-
 from importlib import reload
 
 import gevent.monkey
 import pytest
-
-from opentelemetry import propagate
-from opentelemetry import trace
+from opentelemetry import propagate, trace
 from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.semconv.trace import MessageTypeValues
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import MessageTypeValues, SpanAttributes
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 from parameterized import parameterized
 from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException
-from thrift.Thrift import TException
+from thrift.Thrift import TApplicationException, TException
 from thrift.transport.TTransport import TTransportException
 
-from baseplate import Baseplate
-from baseplate import TraceInfo
+from baseplate import Baseplate, TraceInfo
 from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.propagator_redditb3_http import RedditB3HTTPFormat
 from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.lib.thrift_pool import ThriftConnectionPool
-from baseplate.observers.timeout import ServerTimeout
-from baseplate.observers.timeout import TimeoutBaseplateObserver
+from baseplate.observers.timeout import ServerTimeout, TimeoutBaseplateObserver
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
-from baseplate.thrift import BaseplateService
-from baseplate.thrift import BaseplateServiceV2
-from baseplate.thrift.ttypes import Error
-from baseplate.thrift.ttypes import ErrorCode
-from baseplate.thrift.ttypes import IsHealthyProbe
-from baseplate.thrift.ttypes import IsHealthyRequest
+from baseplate.thrift import BaseplateService, BaseplateServiceV2
+from baseplate.thrift.ttypes import Error, ErrorCode, IsHealthyProbe, IsHealthyRequest
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService
@@ -287,11 +276,11 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
                 transport.set_header(
-                    "Trace".encode("utf-8"),
-                    "100985939111033328018442752961257817910".encode("utf-8"),
+                    b"Trace",
+                    b"100985939111033328018442752961257817910",
                 )
-                transport.set_header("Span".encode("utf-8"), "67667974448284344".encode("utf-8"))
-                transport.set_header("Sampled".encode("utf-8"), "1".encode("utf-8"))
+                transport.set_header(b"Span", b"67667974448284344")
+                transport.set_header(b"Sampled", b"1")
                 client.example()
 
         finished_spans = self.get_finished_spans()
@@ -316,9 +305,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         with serve_thrift(handler, TestService) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
                 transport = client._oprot.trans
-                transport.set_header("Trace".encode("utf-8"), "2365116317615059789".encode("utf-8"))
-                transport.set_header("Span".encode("utf-8"), "11655119394564249508".encode("utf-8"))
-                transport.set_header("Sampled".encode("utf-8"), "1".encode("utf-8"))
+                transport.set_header(b"Trace", b"2365116317615059789")
+                transport.set_header(b"Span", b"11655119394564249508")
+                transport.set_header(b"Sampled", b"1")
                 client.example()
 
         finished_spans = self.get_finished_spans()
@@ -351,10 +340,10 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
                 transport = client._oprot.trans
                 transport.set_header(b"traceparent", traceparent.encode())
                 # should get discarded
-                transport.set_header("Trace".encode("utf-8"), "20d294c28becf34d".encode("utf-8"))
+                transport.set_header(b"Trace", b"20d294c28becf34d")
                 # should get discarded
-                transport.set_header("Span".encode("utf-8"), "a1bf4d567fc497a4".encode("utf-8"))
-                transport.set_header("Sampled".encode("utf-8"), "1".encode("utf-8"))
+                transport.set_header(b"Span", b"a1bf4d567fc497a4")
+                transport.set_header(b"Sampled", b"1")
                 client_result = client.example()
 
         finished_spans = self.get_finished_spans()
@@ -682,8 +671,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         some exceptions, or when the status on baseplate Error is a 5xx).
         """
         logger.debug(
-            "exc=%s, convert=%s, expectation=%s, otel_exception=%s, otel_status=%s"
-            % (exc, convert, expectation, otel_exception, otel_status)
+            f"exc={exc}, convert={convert}, expectation={expectation}, otel_exception={otel_exception}, otel_status={otel_status}"
         )
 
         class Handler(TestService.Iface):
