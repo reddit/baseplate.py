@@ -1,8 +1,0 @@
-[tool.black]
-# code blocks look funky with scroll bars and they're quite narrow in the
-# alabaster theme. so we limit it to keep things sane.
-line-length = 74
-
-# Always use our latest supported version here since we want code snippets in
-# docs to use the most up-to-date syntax.
-target-version = ['py38']
