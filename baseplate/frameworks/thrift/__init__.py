@@ -241,8 +241,9 @@ class _ContextAwareHandler:
                                 # in the second
                                 baseplate_status_code = current_exc.code  # type: ignore
                                 baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(
-                                    current_exc.code, ""
-                                )  # type: ignore
+                                    current_exc.code,  # type: ignore
+                                    "",
+                                )
                             except AttributeError:
                                 pass
                         PROM_REQUESTS.labels(

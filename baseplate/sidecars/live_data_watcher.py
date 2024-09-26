@@ -14,8 +14,8 @@ from typing import Any, NoReturn, Optional
 
 import boto3  # type: ignore
 from botocore import UNSIGNED  # type: ignore
-from botocore.client import (
-    ClientError,  # type: ignore
+from botocore.client import (  # type: ignore
+    ClientError,
     Config,
 )
 from botocore.exceptions import EndpointConnectionError  # type: ignore

@@ -30,15 +30,11 @@ from types import FrameType
 from typing import (
     Any,
     Callable,
-    Dict,
-    List,
     Mapping,
     MutableMapping,
     NamedTuple,
-    Optional,
     Sequence,
     TextIO,
-    Tuple,
 )
 
 from gevent.server import StreamServer
