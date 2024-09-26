@@ -110,7 +110,8 @@ extend-exclude = ["baseplate/thrift", "tests/integration/test_thrift"]
 extend-select = [
   "I",  # isort
   "UP",  # pyupgrade
-  "E501", # line length
+  # Disabled due to too many issues to fix.
+  # "E501", # line length
 ]
 
 [build-system]
