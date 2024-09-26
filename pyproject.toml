@@ -50,6 +50,13 @@ formenergy-observability = "^0.3.2"
 pyrate-limiter = "^3.6.1"
 psycopg2 = "^2.0.0"
 psycogreen = "^1.0.0"
+# greenlet 3.1.1 adds Python 3.13 support.
+greenlet = {version = ">=3.1.1", python = ">=3.13"}
+# pydantic-core>=2.20.0 has Python 3.13 wheels on PyPI.
+pydantic-core = {version = ">=2.20.0", python = ">=3.13"}
+# grpc merged Python 3.13 support but has not released a new version yet.
+# https://github.com/grpc/grpc/pull/37643
+grpcio = {git = "https://github.com/grpc/grpc", rev = "f2ffbb89a2f7456b897e5556782e8639d161a6f6"}
 
 [tool.poetry.extras]
 amqp = ["kombu"]

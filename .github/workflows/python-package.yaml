@@ -37,6 +37,25 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-poetry-
 
+      # TODO(ckuehl|2024-09-26): Remove this once Python 3.13 wheels are
+      # available for our dependencies.
+      - name: Install temporary Python 3.13 build dependencies
+        if: ${{ matrix.python-version == '3.13.0rc2' }}
+        run: |
+          install -D confluent-archive.key /usr/local/share/keyrings/confluent-archive.key
+          echo 'deb [signed-by=/usr/local/share/keyrings/confluent-archive.key] https://packages.confluent.io/clients/deb bookworm main' > /etc/apt/sources.list.d/confluent.list
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get -y install \
+            build-essential \
+            curl \
+            krb5-user \
+            libffi-dev \
+            libpq-dev \
+            librdkafka-dev \
+            libsasl2-modules-gssapi-mit
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
       - name: Update PATH
         run: 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"'
 
