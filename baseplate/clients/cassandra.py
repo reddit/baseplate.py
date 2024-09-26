@@ -16,17 +16,17 @@ from typing import (
 )
 
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.cluster import (
-    _NOT_SET,  # pylint: disable=no-name-in-module
-    Cluster,  # pylint: disable=no-name-in-module
-    ExecutionProfile,  # pylint: disable=no-name-in-module
-    ResponseFuture,  # pylint: disable=no-name-in-module
-    Session,  # pylint: disable=no-name-in-module
+from cassandra.cluster import (  # pylint: disable=no-name-in-module
+    _NOT_SET,
+    Cluster,
+    ExecutionProfile,
+    ResponseFuture,
+    Session,
 )
-from cassandra.query import (
-    BoundStatement,  # pylint: disable=no-name-in-module
-    PreparedStatement,  # pylint: disable=no-name-in-module
-    SimpleStatement,  # pylint: disable=no-name-in-module
+from cassandra.query import (  # pylint: disable=no-name-in-module
+    BoundStatement,
+    PreparedStatement,
+    SimpleStatement,
 )
 from prometheus_client import Counter, Gauge, Histogram
 
