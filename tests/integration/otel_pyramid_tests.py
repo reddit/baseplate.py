@@ -1,9 +1,7 @@
 import unittest
-
 from unittest import mock
 
-from opentelemetry import propagate
-from opentelemetry import trace
+from opentelemetry import propagate, trace
 from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.test.test_base import TestBase
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
@@ -14,19 +12,20 @@ from baseplate.lib.propagator_redditb3_http import RedditB3HTTPFormat
 
 from . import FakeEdgeContextFactory
 
-
 propagate.set_global_textmap(
     CompositePropagator([RedditB3HTTPFormat(), TraceContextTextMapPropagator()])
 )
 
 try:
     import webtest
-
-    from baseplate.frameworks.pyramid import BaseplateConfigurator
-    from baseplate.frameworks.pyramid import ServerSpanInitialized
-    from baseplate.frameworks.pyramid import StaticTrustHandler
     from pyramid.config import Configurator
     from pyramid.httpexceptions import HTTPInternalServerError
+
+    from baseplate.frameworks.pyramid import (
+        BaseplateConfigurator,
+        ServerSpanInitialized,
+        StaticTrustHandler,
+    )
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 

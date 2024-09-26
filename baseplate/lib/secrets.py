@@ -1,27 +1,17 @@
 """Application integration with the secret fetcher daemon."""
+
 import base64
 import binascii
 import json
 import logging
 import os
-
 from pathlib import Path
-from typing import Any
-from typing import Dict
-from typing import Iterator
-from typing import NamedTuple
-from typing import Optional
-from typing import Protocol
-from typing import Tuple
+from typing import Any, Dict, Iterator, NamedTuple, Optional, Protocol, Tuple
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.lib import cached_property
-from baseplate.lib import config
-from baseplate.lib import warn_deprecated
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.file_watcher import WatchedFileNotAvailableError
-
+from baseplate.lib import cached_property, config, warn_deprecated
+from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -121,8 +111,7 @@ def _decode_secret(path: str, encoding: str, value: str) -> bytes:
 
 
 class SecretParser(Protocol):
-    def __call__(self, data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
-        ...
+    def __call__(self, data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]: ...
 
 
 def parse_secrets_fetcher(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
@@ -371,9 +360,7 @@ class SecretsStore(ContextFactory):
 class _CachingSecretsStore(SecretsStore):
     """Lazily load and cache the parsed data until the server span ends."""
 
-    def __init__(
-        self, filewatcher: FileWatcher, parser: SecretParser
-    ):  # pylint: disable=super-init-not-called
+    def __init__(self, filewatcher: FileWatcher, parser: SecretParser):  # pylint: disable=super-init-not-called
         self._filewatcher = filewatcher
         self.parser = parser
 
@@ -435,7 +422,7 @@ class VaultCSISecretsStore(SecretsStore):
 
     def _raw_secret(self, name: str) -> Any:
         try:
-            with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
+            with open(self.data_symlink.joinpath(name), encoding="UTF-8") as fp:
                 return self.parser(json.load(fp))
         except FileNotFoundError as exc:
             raise SecretNotFoundError(name) from exc

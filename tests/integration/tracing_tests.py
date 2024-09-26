@@ -1,21 +1,20 @@
 import unittest
-
 from unittest import mock
 
 from baseplate import Baseplate
-from baseplate.observers.tracing import make_client
-from baseplate.observers.tracing import NullRecorder
-from baseplate.observers.tracing import TraceBaseplateObserver
-from baseplate.observers.tracing import TraceLocalSpanObserver
-from baseplate.observers.tracing import TraceServerSpanObserver
+from baseplate.observers.tracing import (
+    NullRecorder,
+    TraceBaseplateObserver,
+    TraceLocalSpanObserver,
+    TraceServerSpanObserver,
+    make_client,
+)
 
 try:
     import webtest
-
     from pyramid.config import Configurator
 
-    from baseplate.frameworks.pyramid import BaseplateConfigurator
-    from baseplate.frameworks.pyramid import StaticTrustHandler
+    from baseplate.frameworks.pyramid import BaseplateConfigurator, StaticTrustHandler
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
@@ -101,7 +100,6 @@ class TracingTests(unittest.TestCase):
         ), mock.patch.object(
             TraceLocalSpanObserver, "on_child_span_created", side_effect=self._register_local_mock
         ):
-
             self.test_app.get("/local_test")
             # Verify that child span can be created within a local span context
             #  and parent IDs are inherited accordingly.

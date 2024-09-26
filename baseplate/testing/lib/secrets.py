@@ -1,8 +1,7 @@
 from typing import Dict
 
 from baseplate import Span
-from baseplate.lib.secrets import parse_secrets_fetcher
-from baseplate.lib.secrets import SecretsStore
+from baseplate.lib.secrets import SecretsStore, parse_secrets_fetcher
 from baseplate.testing.lib.file_watcher import FakeFileWatcher
 
 

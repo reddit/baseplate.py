@@ -1,13 +1,7 @@
 import typing
+from typing import Tuple, Type, Union
 
-from typing import Tuple
-from typing import Type
-from typing import Union
-
-from baseplate.lib.file_watcher import _NOT_LOADED
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.file_watcher import T
-from baseplate.lib.file_watcher import WatchedFileNotAvailableError
+from baseplate.lib.file_watcher import _NOT_LOADED, FileWatcher, T, WatchedFileNotAvailableError
 
 
 class FakeFileWatcher(FileWatcher):

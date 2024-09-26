@@ -1,6 +1,6 @@
 """Extensions to the standard library `datetime` module."""
-from datetime import datetime
-from datetime import timezone
+
+from datetime import datetime, timezone
 
 
 def datetime_to_epoch_milliseconds(dt: datetime) -> int:

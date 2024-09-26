@@ -4,15 +4,12 @@ import logging
 import gevent
 import pytest
 import requests
-
 from pyramid.config import Configurator
 from pyramid.httpexceptions import HTTPNoContent
 
 from baseplate import Baseplate
-from baseplate.clients.requests import ExternalRequestsClient
-from baseplate.clients.requests import InternalRequestsClient
-from baseplate.frameworks.pyramid import BaseplateConfigurator
-from baseplate.frameworks.pyramid import StaticTrustHandler
+from baseplate.clients.requests import ExternalRequestsClient, InternalRequestsClient
+from baseplate.frameworks.pyramid import BaseplateConfigurator, StaticTrustHandler
 from baseplate.lib import config
 from baseplate.server import make_listener
 from baseplate.server.wsgi import make_server

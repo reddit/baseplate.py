@@ -1,29 +1,14 @@
 import logging
 import os
 import random
-
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Iterator
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Tuple
-from typing import Type
+from typing import Any, Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple, Type
 
 import gevent.monkey
+from pkg_resources import DistributionNotFound, get_distribution
 
-from pkg_resources import DistributionNotFound
-from pkg_resources import get_distribution
-
-from baseplate.lib import config
-from baseplate.lib import get_calling_module_name
-from baseplate.lib import metrics
-from baseplate.lib import UnknownCallerError
-
+from baseplate.lib import UnknownCallerError, config, get_calling_module_name, metrics
 
 try:
     __version__ = get_distribution(__name__).version
@@ -157,7 +142,7 @@ class TraceInfo(NamedTuple):
             raise ValueError("invalid sampled value")
 
         if flags is not None:
-            if not 0 <= flags < 2 ** 64:
+            if not 0 <= flags < 2**64:
                 raise ValueError("invalid flags value")
 
         return cls(trace_id, parent_id, span_id, sampled, flags)
@@ -197,7 +182,7 @@ class RequestContext:
         # reference. so we fake it here and say "trust us".
         #
         # this would be much cleaner with a different API but this is where we are.
-        self.span: "Span" = span  # type: ignore
+        self.span: Span = span  # type: ignore
 
     def __getattr__(self, name: str) -> Any:
         try:
@@ -353,8 +338,10 @@ class Baseplate:
             skipped.append("metrics")
 
         if "tracing.service_name" in self._app_config:
-            from baseplate.observers.tracing import tracing_client_from_config
-            from baseplate.observers.tracing import TraceBaseplateObserver
+            from baseplate.observers.tracing import (
+                TraceBaseplateObserver,
+                tracing_client_from_config,
+            )
 
             tracing_client = tracing_client_from_config(self._app_config)
             self.register(TraceBaseplateObserver(tracing_client))
@@ -362,9 +349,11 @@ class Baseplate:
             skipped.append("tracing")
 
         if "sentry.dsn" in self._app_config or "SENTRY_DSN" in os.environ:
-            from baseplate.observers.sentry import init_sentry_client_from_config
-            from baseplate.observers.sentry import SentryBaseplateObserver
-            from baseplate.observers.sentry import _SentryUnhandledErrorReporter
+            from baseplate.observers.sentry import (
+                SentryBaseplateObserver,
+                _SentryUnhandledErrorReporter,
+                init_sentry_client_from_config,
+            )
 
             init_sentry_client_from_config(self._app_config)
             _SentryUnhandledErrorReporter.install()

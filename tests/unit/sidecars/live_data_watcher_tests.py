@@ -5,15 +5,12 @@ import os
 import pwd
 import tempfile
 import unittest
-
 from pathlib import Path
 
 import boto3
-
 from moto import mock_aws
 
-from baseplate.sidecars.live_data_watcher import _generate_sharded_file_key
-from baseplate.sidecars.live_data_watcher import NodeWatcher
+from baseplate.sidecars.live_data_watcher import NodeWatcher, _generate_sharded_file_key
 
 NUM_FILE_SHARDS = 6
 

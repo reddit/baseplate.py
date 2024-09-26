@@ -6,17 +6,19 @@ try:
 except ImportError:
     raise unittest.SkipTest("redis-py is not installed")
 
-from baseplate.clients.redis import ACTIVE_REQUESTS
-from baseplate.clients.redis import REQUESTS_TOTAL
-from baseplate.clients.redis import LATENCY_SECONDS
-from baseplate.clients.redis import RedisClient
+from prometheus_client import REGISTRY
+
+from baseplate.clients.redis import (
+    ACTIVE_REQUESTS,
+    LATENCY_SECONDS,
+    REQUESTS_TOTAL,
+    MessageQueue,
+    RedisClient,
+)
+from baseplate.lib.message_queue import TimedOutError
 
 from . import get_endpoint_or_skip_container
 from .redis_testcase import RedisIntegrationTestCase, redis_url
-
-from baseplate.clients.redis import MessageQueue
-from baseplate.lib.message_queue import TimedOutError
-from prometheus_client import REGISTRY
 
 redis_endpoint = get_endpoint_or_skip_container("redis", 6379)
 

@@ -1,26 +1,24 @@
 import base64
 import unittest
-
 from unittest import mock
 
 from opentelemetry.test.test_base import TestBase
 from pyramid.response import Response
 
-from baseplate import Baseplate
-from baseplate import BaseplateObserver
-from baseplate import ServerSpanObserver
+from baseplate import Baseplate, BaseplateObserver, ServerSpanObserver
 
 from . import FakeEdgeContextFactory
 
-
 try:
     import webtest
-
-    from baseplate.frameworks.pyramid import BaseplateConfigurator
-    from baseplate.frameworks.pyramid import ServerSpanInitialized
-    from baseplate.frameworks.pyramid import StaticTrustHandler
     from pyramid.config import Configurator
     from pyramid.httpexceptions import HTTPInternalServerError
+
+    from baseplate.frameworks.pyramid import (
+        BaseplateConfigurator,
+        ServerSpanInitialized,
+        StaticTrustHandler,
+    )
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 

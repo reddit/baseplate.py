@@ -1,33 +1,30 @@
 import socket
 import time
-
 from queue import Queue
 from unittest import mock
 
 import kombu
 import pytest
-
 from gevent.server import StreamServer
 from prometheus_client import REGISTRY
 
-from baseplate import Baseplate
-from baseplate import RequestContext
-from baseplate import ServerSpan
-from baseplate.frameworks.queue_consumer.kombu import AMQP_ACTIVE_MESSAGES
-from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSED_TOTAL
-from baseplate.frameworks.queue_consumer.kombu import AMQP_PROCESSING_TIME
-from baseplate.frameworks.queue_consumer.kombu import AMQP_REJECTED_REASON_RETRIES
-from baseplate.frameworks.queue_consumer.kombu import AMQP_REJECTED_REASON_TTL
-from baseplate.frameworks.queue_consumer.kombu import AMQP_REJECTED_TOTAL
-from baseplate.frameworks.queue_consumer.kombu import AMQP_REPUBLISHED_TOTAL
-from baseplate.frameworks.queue_consumer.kombu import AmqpConsumerPrometheusLabels
-from baseplate.frameworks.queue_consumer.kombu import FatalMessageHandlerError
-from baseplate.frameworks.queue_consumer.kombu import KombuConsumerWorker
-from baseplate.frameworks.queue_consumer.kombu import KombuMessageHandler
-from baseplate.frameworks.queue_consumer.kombu import KombuQueueConsumerFactory
-from baseplate.frameworks.queue_consumer.kombu import RetryMode
-from baseplate.lib.errors import RecoverableException
-from baseplate.lib.errors import UnrecoverableException
+from baseplate import Baseplate, RequestContext, ServerSpan
+from baseplate.frameworks.queue_consumer.kombu import (
+    AMQP_ACTIVE_MESSAGES,
+    AMQP_PROCESSED_TOTAL,
+    AMQP_PROCESSING_TIME,
+    AMQP_REJECTED_REASON_RETRIES,
+    AMQP_REJECTED_REASON_TTL,
+    AMQP_REJECTED_TOTAL,
+    AMQP_REPUBLISHED_TOTAL,
+    AmqpConsumerPrometheusLabels,
+    FatalMessageHandlerError,
+    KombuConsumerWorker,
+    KombuMessageHandler,
+    KombuQueueConsumerFactory,
+    RetryMode,
+)
+from baseplate.lib.errors import RecoverableException, UnrecoverableException
 
 from .... import does_not_raise
 
@@ -125,20 +122,14 @@ class TestKombuMessageHandler:
             message.ack.assert_not_called()
             message.reject.assert_called_once()
 
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_PROCESSING_TIME._name}_bucket",
-                {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
-            )
-            == (1 if handled else None)
-        )
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_PROCESSED_TOTAL._name}_total",
-                {**prom_labels._asdict(), **{"amqp_success": "true"}},
-            )
-            == (1 if handled else None)
-        )
+        assert REGISTRY.get_sample_value(
+            f"{AMQP_PROCESSING_TIME._name}_bucket",
+            {**prom_labels._asdict(), **{"amqp_success": "true", "le": "+Inf"}},
+        ) == (1 if handled else None)
+        assert REGISTRY.get_sample_value(
+            f"{AMQP_PROCESSED_TOTAL._name}_total",
+            {**prom_labels._asdict(), **{"amqp_success": "true"}},
+        ) == (1 if handled else None)
         assert (
             REGISTRY.get_sample_value(
                 f"{AMQP_REPUBLISHED_TOTAL._name}_total",
@@ -153,13 +144,10 @@ class TestKombuMessageHandler:
             )
             is None
         )
-        assert (
-            REGISTRY.get_sample_value(
-                f"{AMQP_REJECTED_TOTAL._name}_total",
-                {**prom_labels._asdict(), **{"reason_code": AMQP_REJECTED_REASON_TTL}},
-            )
-            == (None if handled else 1)
-        )
+        assert REGISTRY.get_sample_value(
+            f"{AMQP_REJECTED_TOTAL._name}_total",
+            {**prom_labels._asdict(), **{"reason_code": AMQP_REJECTED_REASON_TTL}},
+        ) == (None if handled else 1)
         assert REGISTRY.get_sample_value(
             f"{AMQP_ACTIVE_MESSAGES._name}", prom_labels._asdict()
         ) == (0 if handled else None)
@@ -417,13 +405,10 @@ class TestKombuMessageHandler:
                     )
                     == 0
                 )
-                assert (
-                    REGISTRY.get_sample_value(
-                        f"{AMQP_REPUBLISHED_TOTAL._name}_total",
-                        {**prom_labels._asdict()},
-                    )
-                    == (1 if republished else None)
-                )
+                assert REGISTRY.get_sample_value(
+                    f"{AMQP_REPUBLISHED_TOTAL._name}_total",
+                    {**prom_labels._asdict()},
+                ) == (1 if republished else None)
                 retry_reached_expectation = None
                 if attempt:
                     if attempt >= 5 or (limit and attempt >= limit):

@@ -2,26 +2,18 @@ import argparse
 import configparser
 import logging
 import urllib.parse
-
 from typing import Optional
 
 import requests
 
 from baseplate import __version__ as baseplate_version
-from baseplate.lib import config
-from baseplate.lib import metrics
-from baseplate.lib.message_queue import MessageQueue
-from baseplate.lib.message_queue import TimedOutError
+from baseplate.lib import config, metrics
+from baseplate.lib.message_queue import MessageQueue, TimedOutError
 from baseplate.lib.metrics import metrics_client_from_config
 from baseplate.lib.retry import RetryPolicy
-from baseplate.observers.tracing import MAX_QUEUE_SIZE
-from baseplate.observers.tracing import MAX_SPAN_SIZE
+from baseplate.observers.tracing import MAX_QUEUE_SIZE, MAX_SPAN_SIZE
 from baseplate.server import EnvironmentInterpolation
-from baseplate.sidecars import BatchFull
-from baseplate.sidecars import RawJSONBatch
-from baseplate.sidecars import SerializedBatch
-from baseplate.sidecars import TimeLimitedBatch
-
+from baseplate.sidecars import BatchFull, RawJSONBatch, SerializedBatch, TimeLimitedBatch
 
 logger = logging.getLogger(__name__)
 
@@ -58,13 +50,12 @@ class ZipkinPublisher:
         retry_limit: int = RETRY_LIMIT_DEFAULT,
         num_conns: int = 5,
     ):
-
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         parsed_url = urllib.parse.urlparse(zipkin_api_url)
         self.session = requests.Session()
-        self.session.headers[
-            "User-Agent"
-        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        self.session.headers["User-Agent"] = (
+            f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        )
         self.session.mount(f"{parsed_url.scheme}://", adapter)
         self.endpoint = f"{zipkin_api_url}/spans"
         self.metrics = metrics_client

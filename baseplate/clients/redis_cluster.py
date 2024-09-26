@@ -1,28 +1,24 @@
 import logging
 import random
-
 from datetime import timedelta
 from time import perf_counter
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import rediscluster
-
 from redis import RedisError
 from rediscluster.pipeline import ClusterPipeline
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.clients.redis import ACTIVE_REQUESTS
-from baseplate.clients.redis import LATENCY_SECONDS
-from baseplate.clients.redis import MAX_CONNECTIONS
-from baseplate.clients.redis import OPEN_CONNECTIONS
-from baseplate.clients.redis import PROM_LABELS_PREFIX
-from baseplate.clients.redis import REQUESTS_TOTAL
-from baseplate.lib import config
-from baseplate.lib import metrics
+from baseplate.clients.redis import (
+    ACTIVE_REQUESTS,
+    LATENCY_SECONDS,
+    MAX_CONNECTIONS,
+    OPEN_CONNECTIONS,
+    PROM_LABELS_PREFIX,
+    REQUESTS_TOTAL,
+)
+from baseplate.lib import config, metrics
 
 logger = logging.getLogger(__name__)
 randomizer = random.SystemRandom()

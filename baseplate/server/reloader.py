@@ -5,18 +5,14 @@ restart the app if anything changes. This should not be used in production
 settings.
 
 """
+
 import logging
 import os
 import re
 import sys
 import threading
 import time
-
-from typing import Dict
-from typing import Iterator
-from typing import NoReturn
-from typing import Sequence
-
+from typing import Dict, Iterator, NoReturn, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +39,7 @@ def _reload_when_files_change(extra_files: Sequence[str]) -> NoReturn:
         for filename in _get_watched_files(extra_files):
             try:
                 current_mtime = os.path.getmtime(filename)
-            except os.error:
+            except OSError:
                 continue
 
             initial_mtimes.setdefault(filename, current_mtime)

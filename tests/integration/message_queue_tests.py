@@ -4,8 +4,7 @@ import unittest
 
 import posix_ipc
 
-from baseplate.lib.message_queue import MessageQueue
-from baseplate.lib.message_queue import TimedOutError
+from baseplate.lib.message_queue import MessageQueue, TimedOutError
 
 
 class TestMessageQueueCreation(unittest.TestCase):

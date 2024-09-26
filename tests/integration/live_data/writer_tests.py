@@ -1,6 +1,5 @@
 import unittest
 import uuid
-
 from io import BytesIO
 from unittest import mock
 
@@ -17,7 +16,6 @@ from baseplate.lib.live_data.writer import (
 )
 
 from .. import get_endpoint_or_skip_container
-
 
 zookeeper_endpoint = get_endpoint_or_skip_container("zookeeper", 2181)
 

@@ -1,25 +1,23 @@
 import unittest
-
 from contextlib import nullcontext as does_not_raise
 from unittest import mock
 
 import pytest
-
 from prometheus_client import REGISTRY
 from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException
-from thrift.Thrift import TException
+from thrift.Thrift import TApplicationException, TException
 from thrift.transport.TTransport import TTransportException
 
 from baseplate.clients import thrift
-from baseplate.clients.thrift import _build_thrift_proxy_method
-from baseplate.clients.thrift import ACTIVE_REQUESTS
-from baseplate.clients.thrift import REQUEST_LATENCY
-from baseplate.clients.thrift import REQUESTS_TOTAL
-from baseplate.clients.thrift import ThriftContextFactory
+from baseplate.clients.thrift import (
+    ACTIVE_REQUESTS,
+    REQUEST_LATENCY,
+    REQUESTS_TOTAL,
+    ThriftContextFactory,
+    _build_thrift_proxy_method,
+)
 from baseplate.thrift import BaseplateServiceV2
-from baseplate.thrift.ttypes import Error
-from baseplate.thrift.ttypes import ErrorCode
+from baseplate.thrift.ttypes import Error, ErrorCode
 
 
 class EnumerateServiceMethodsTests(unittest.TestCase):
@@ -162,7 +160,7 @@ class TestPrometheusMetrics:
         )
         handler.client_cls.return_value = client_cls
 
-        thrift_success = str((exc is None)).lower()
+        thrift_success = str(exc is None).lower()
         prom_labels = {
             "thrift_method": "handle",
             "thrift_client_name": "test_namespace",

@@ -1,23 +1,17 @@
 from __future__ import annotations
 
 import time
-
 from typing import Any
-from typing import Dict
-from typing import Optional
 
 import pytest
 
-from baseplate import RequestContext
-from baseplate import ServerSpan
-from baseplate import Span
-from baseplate.lib.metrics import Counter
-from baseplate.lib.metrics import Gauge
-from baseplate.lib.metrics import Histogram
-from baseplate.lib.metrics import Timer
-from baseplate.observers.metrics_tagged import TaggedMetricsClientSpanObserver
-from baseplate.observers.metrics_tagged import TaggedMetricsLocalSpanObserver
-from baseplate.observers.metrics_tagged import TaggedMetricsServerSpanObserver
+from baseplate import RequestContext, ServerSpan, Span
+from baseplate.lib.metrics import Counter, Gauge, Histogram, Timer
+from baseplate.observers.metrics_tagged import (
+    TaggedMetricsClientSpanObserver,
+    TaggedMetricsLocalSpanObserver,
+    TaggedMetricsServerSpanObserver,
+)
 
 
 class TestException(Exception):
@@ -25,12 +19,12 @@ class TestException(Exception):
 
 
 class FakeTimer:
-    def __init__(self, batch: FakeBatch, name: str, tags: Dict[str, Any]):
+    def __init__(self, batch: FakeBatch, name: str, tags: dict[str, Any]):
         self.batch = batch
         self.name = name
         self.tags = tags
 
-        self.start_time: Optional[float] = None
+        self.start_time: float | None = None
         self.sample_rate: float = 1.0
 
     def start(self, sample_rate: float = 1.0) -> None:
@@ -52,12 +46,12 @@ class FakeTimer:
             {"name": self.name, "elapsed": elapsed, "sample_rate": sample_rate, "tags": self.tags}
         )
 
-    def update_tags(self, tags: Dict[str, Any]) -> None:
+    def update_tags(self, tags: dict[str, Any]) -> None:
         self.tags.update(tags)
 
 
 class FakeCounter:
-    def __init__(self, batch: FakeBatch, name: str, tags: Dict[str, Any]):
+    def __init__(self, batch: FakeBatch, name: str, tags: dict[str, Any]):
         self.batch = batch
         self.name = name
         self.tags = tags
@@ -80,16 +74,16 @@ class FakeBatch:
         self.counters = []
         self.flushed = False
 
-    def timer(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Timer:
+    def timer(self, name: str, tags: dict[str, Any] | None = None) -> Timer:
         return FakeTimer(self, name, tags or {})
 
-    def counter(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Counter:
+    def counter(self, name: str, tags: dict[str, Any] | None = None) -> Counter:
         return FakeCounter(self, name, tags or {})
 
-    def gauge(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Gauge:
+    def gauge(self, name: str, tags: dict[str, Any] | None = None) -> Gauge:
         raise NotImplementedError
 
-    def histogram(self, name: str, tags: Optional[Dict[str, Any]] = None) -> Histogram:
+    def histogram(self, name: str, tags: dict[str, Any] | None = None) -> Histogram:
         raise NotImplementedError
 
     def flush(self):

@@ -2,45 +2,28 @@ import logging
 import random
 import sys
 import time
-
 from contextlib import contextmanager
 from logging import Logger
-from typing import Any
-from typing import Callable
-from typing import Iterator
-from typing import Mapping
-from typing import Optional
+from typing import Any, Callable, Iterator, Mapping, Optional
 
-from form_observability import ContextAwareTracer
-from form_observability import ctx
+from form_observability import ContextAwareTracer, ctx
 from opentelemetry import trace
-from opentelemetry.context import attach
-from opentelemetry.context import detach
+from opentelemetry.context import attach, detach
 from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.semconv.trace import MessageTypeValues
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import MessageTypeValues, SpanAttributes
 from opentelemetry.trace import Tracer
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from prometheus_client import Counter, Gauge, Histogram
 from requests.structures import CaseInsensitiveDict
-from thrift.protocol.TProtocol import TProtocolBase
-from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException
-from thrift.Thrift import TException
-from thrift.Thrift import TProcessor
+from thrift.protocol.TProtocol import TProtocolBase, TProtocolException
+from thrift.Thrift import TApplicationException, TException, TProcessor
 from thrift.transport.TTransport import TTransportException
 
-from baseplate import Baseplate
-from baseplate import RequestContext
-from baseplate import TraceInfo
+from baseplate import Baseplate, RequestContext, TraceInfo
 from baseplate.lib.edgecontext import EdgeContextFactory
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
-from baseplate.thrift.ttypes import Error
-from baseplate.thrift.ttypes import ErrorCode
-
+from baseplate.thrift.ttypes import Error, ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -100,19 +83,19 @@ class _ContextAwareHandler:
                 try:
                     header_dict[k.decode()] = v.decode()
                 except UnicodeDecodeError:
-                    self.logger.info("Unable to decode header %s, ignoring." % k.decode())
+                    self.logger.info(f"Unable to decode header {k.decode()}, ignoring.")
 
             ctx = propagator.extract(header_dict)
             logger.debug("Extracted trace headers. [ctx=%s, header_dict=%s]", ctx, header_dict)
 
             if ctx:
                 token = attach(ctx)
-                logger.debug("Attached context. [ctx=%s, token=%s]" % (ctx, token))
+                logger.debug(f"Attached context. [ctx={ctx}, token={token}]")
                 try:
                     yield
                 finally:
                     detach(token)
-                    logger.debug("Detached context. [ctx=%s, token=%s]" % (ctx, token))
+                    logger.debug(f"Detached context. [ctx={ctx}, token={token}]")
             else:
                 yield
         else:
@@ -162,8 +145,7 @@ class _ContextAwareHandler:
                             result = handler_fn(self.context, *args, **kwargs)
                     except (TApplicationException, TProtocolException, TTransportException) as exc:
                         logger.debug(
-                            "Processing one of: TApplicationException, TProtocolException, TTransportException. [exc=%s]"
-                            % exc
+                            f"Processing one of: TApplicationException, TProtocolException, TTransportException. [exc={exc}]"
                         )
                         # these are subclasses of TException but aren't ones that
                         # should be expected in the protocol
@@ -171,7 +153,7 @@ class _ContextAwareHandler:
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
                         raise
                     except Error as exc:
-                        logger.debug("Processing Error. [exc=%s]" % exc)
+                        logger.debug(f"Processing Error. [exc={exc}]")
                         c = ErrorCode()
                         status = c._VALUES_TO_NAMES.get(exc.code, "")
 
@@ -185,17 +167,17 @@ class _ContextAwareHandler:
                         span.set_tag("success", "false")
                         # mark 5xx errors as failures since those are still "unexpected"
                         if 500 <= exc.code < 600:
-                            logger.debug("Processing 5xx baseplate Error. [exc=%s]" % exc)
+                            logger.debug(f"Processing 5xx baseplate Error. [exc={exc}]")
                             span.finish(exc_info=sys.exc_info())
                             otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
                         else:
-                            logger.debug("Processing non 5xx baseplate Error. [exc=%s]" % exc)
+                            logger.debug(f"Processing non 5xx baseplate Error. [exc={exc}]")
                             # Set as OK as this is an expected exception
                             span.finish()
                             otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         raise
                     except TException as exc:
-                        logger.debug("Processing TException. [exc=%s]" % exc)
+                        logger.debug(f"Processing TException. [exc={exc}]")
                         span.set_tag("exception_type", type(exc).__name__)
                         span.set_tag("success", "false")
 
@@ -205,18 +187,18 @@ class _ContextAwareHandler:
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.OK))
                         raise
                     except BaseException as exc:
-                        logger.debug("Processing every other type of exception. [exc=%s]" % exc)
+                        logger.debug(f"Processing every other type of exception. [exc={exc}]")
                         # the handler crashed (or timed out)!
                         span.finish(exc_info=sys.exc_info())
                         otelspan.set_status(trace.status.Status(trace.status.StatusCode.ERROR))
 
                         if self.convert_to_baseplate_error:
-                            logger.debug("Converting exception to baseplate Error. [exc=%s]" % exc)
+                            logger.debug(f"Converting exception to baseplate Error. [exc={exc}]")
                             raise Error(
                                 code=ErrorCode.INTERNAL_SERVER_ERROR,
                                 message="Internal server error",
                             )
-                        logger.debug("Re-raising unexpected exception. [exc=%s]" % exc)
+                        logger.debug(f"Re-raising unexpected exception. [exc={exc}]")
                         raise
                     else:
                         # a normal result
@@ -258,7 +240,9 @@ class _ContextAwareHandler:
                                 # but the status will be blank in the first case, and the baseplate name
                                 # in the second
                                 baseplate_status_code = current_exc.code  # type: ignore
-                                baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(current_exc.code, "")  # type: ignore
+                                baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(
+                                    current_exc.code, ""
+                                )  # type: ignore
                             except AttributeError:
                                 pass
                         PROM_REQUESTS.labels(

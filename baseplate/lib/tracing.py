@@ -1,17 +1,10 @@
-from typing import Optional
-from typing import Sequence
+from typing import Optional, Sequence
 
 from opentelemetry.context import Context
-from opentelemetry.sdk.trace.sampling import Decision
-from opentelemetry.sdk.trace.sampling import Sampler
-from opentelemetry.sdk.trace.sampling import SamplingResult
-from opentelemetry.trace import Link
-from opentelemetry.trace import SpanKind
-from opentelemetry.trace import TraceState
+from opentelemetry.sdk.trace.sampling import Decision, Sampler, SamplingResult
+from opentelemetry.trace import Link, SpanKind, TraceState
 from opentelemetry.util.types import Attributes
-from pyrate_limiter import Duration
-from pyrate_limiter import Limiter
-from pyrate_limiter import Rate
+from pyrate_limiter import Duration, Limiter, Rate
 
 
 class RateLimited(Sampler):
@@ -39,7 +32,6 @@ class RateLimited(Sampler):
         links: Optional[Sequence[Link]] = None,
         trace_state: Optional[TraceState] = None,
     ) -> SamplingResult:
-
         res = self.sampler.should_sample(
             parent_context, trace_id, name, kind, attributes, links, trace_state
         )
