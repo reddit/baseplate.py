@@ -1,31 +1,34 @@
 import logging
 import time
-
 from threading import Event
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Mapping
-from typing import NamedTuple
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import TYPE_CHECKING
-from typing import Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.cluster import _NOT_SET  # pylint: disable=no-name-in-module
-from cassandra.cluster import Cluster  # pylint: disable=no-name-in-module
-from cassandra.cluster import ExecutionProfile  # pylint: disable=no-name-in-module
-from cassandra.cluster import ResponseFuture  # pylint: disable=no-name-in-module
-from cassandra.cluster import Session  # pylint: disable=no-name-in-module
-from cassandra.query import BoundStatement  # pylint: disable=no-name-in-module
-from cassandra.query import PreparedStatement  # pylint: disable=no-name-in-module
-from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from cassandra.cluster import (  # pylint: disable=no-name-in-module
+    _NOT_SET,
+    Cluster,
+    ExecutionProfile,
+    ResponseFuture,
+    Session,
+)
+from cassandra.query import (  # pylint: disable=no-name-in-module
+    BoundStatement,
+    PreparedStatement,
+    SimpleStatement,
+)
+from prometheus_client import Counter, Gauge, Histogram
 
 from baseplate import Span
 from baseplate.clients import ContextFactory

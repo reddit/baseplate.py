@@ -2,16 +2,15 @@ from contextlib import nullcontext as does_not_raise
 from unittest import mock
 
 import pytest
-
 from prometheus_client import REGISTRY
-from requests import Request
-from requests import Response
-from requests import Session
+from requests import Request, Response, Session
 
-from baseplate.clients.requests import ACTIVE_REQUESTS
-from baseplate.clients.requests import BaseplateSession
-from baseplate.clients.requests import LATENCY_SECONDS
-from baseplate.clients.requests import REQUESTS_TOTAL
+from baseplate.clients.requests import (
+    ACTIVE_REQUESTS,
+    LATENCY_SECONDS,
+    REQUESTS_TOTAL,
+    BaseplateSession,
+)
 from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
 
 

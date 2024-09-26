@@ -2,8 +2,7 @@ import os
 import socket
 import unittest
 
-from baseplate import BaseplateObserver
-from baseplate import SpanObserver
+from baseplate import BaseplateObserver, SpanObserver
 from baseplate.lib.config import Endpoint
 from baseplate.lib.edgecontext import EdgeContextFactory
 
@@ -26,7 +25,7 @@ def get_endpoint_or_skip_container(name, default_port):
         sock.settimeout(0.1)
         sock.connect(endpoint.address)
     except OSError:
-        raise unittest.SkipTest("could not find %s server for integration tests" % name)
+        raise unittest.SkipTest(f"could not find {name} server for integration tests")
     else:
         sock.close()
 
@@ -52,9 +51,9 @@ class TestSpanObserver(SpanObserver):
 
     def assert_tag(self, key, value):
         assert key in self.tags, f"{key!r} not found in tags ({list(self.tags.keys())!r})"
-        assert self.tags[key] == value, "tag {!r}: expected value {!r} but found {!r}".format(
-            key, value, self.tags[key]
-        )
+        assert (
+            self.tags[key] == value
+        ), f"tag {key!r}: expected value {value!r} but found {self.tags[key]!r}"
 
     def on_log(self, name, payload):
         self.logs.append((name, payload))

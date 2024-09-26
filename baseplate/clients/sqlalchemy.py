@@ -2,41 +2,27 @@ from __future__ import annotations
 
 import re
 import typing
-
 from time import perf_counter
-from typing import Any
-from typing import Dict
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import Union
+from typing import Any, Dict, Optional, Sequence, Union
 
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
-from sqlalchemy import create_engine
-from sqlalchemy import event
-from sqlalchemy.engine import Connection
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine import ExceptionContext
+from prometheus_client import Counter, Gauge, Histogram
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Connection, Engine, ExceptionContext
 from sqlalchemy.engine.interfaces import ExecutionContext
 from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
-from baseplate import _ExcInfo
-from baseplate import Span
-from baseplate import SpanObserver
+from baseplate import Span, SpanObserver, _ExcInfo
 from baseplate.clients import ContextFactory
-from baseplate.lib import config
-from baseplate.lib import metrics
+from baseplate.lib import config, metrics
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.secrets import SecretsStore
 
 
 def engine_from_config(
     app_config: config.RawConfig,
-    secrets: Optional[SecretsStore] = None,
+    secrets: SecretsStore | None = None,
     prefix: str = "database.",
     **kwargs: Any,
 ) -> Engine:
@@ -123,13 +109,11 @@ class SQLAlchemySession(config.Parser):
 
     """
 
-    def __init__(self, secrets: Optional[SecretsStore] = None, **kwargs: Any):
+    def __init__(self, secrets: SecretsStore | None = None, **kwargs: Any):
         self.secrets = secrets
         self.kwargs = kwargs
 
-    def parse(
-        self, key_path: str, raw_config: config.RawConfig
-    ) -> "SQLAlchemySessionContextFactory":
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> SQLAlchemySessionContextFactory:
         engine = engine_from_config(
             raw_config, secrets=self.secrets, prefix=f"{key_path}.", **self.kwargs
         )
@@ -246,9 +230,9 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         cursor: Any,
         statement: str,
         parameters: Parameters,
-        context: Optional[ExecutionContext],
+        context: ExecutionContext | None,
         executemany: bool,
-    ) -> Tuple[str, Parameters]:
+    ) -> tuple[str, Parameters]:
         """Handle the engine's before_cursor_execute event."""
         labels = {
             "sql_client_name": self.name,
@@ -284,7 +268,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         cursor: Any,
         statement: str,
         parameters: Parameters,
-        context: Optional[ExecutionContext],
+        context: ExecutionContext | None,
         executemany: bool,
     ) -> None:
         """Handle the event which happens after successful cursor execution."""
@@ -359,5 +343,5 @@ class SQLAlchemySessionSpanObserver(SpanObserver):
     def __init__(self, session: Session):
         self.session = session
 
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None) -> None:
         self.session.close()

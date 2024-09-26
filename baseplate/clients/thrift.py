@@ -4,39 +4,28 @@ import logging
 import socket
 import sys
 import time
-
 from collections import OrderedDict
 from math import ceil
-from typing import Any
-from typing import Callable
-from typing import Iterator
-from typing import Optional
+from typing import Any, Callable, Iterator, Optional
 
 from opentelemetry import trace
 from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.semconv.trace import MessageTypeValues
-from opentelemetry.semconv.trace import SpanAttributes
+from opentelemetry.semconv.trace import MessageTypeValues, SpanAttributes
 from opentelemetry.trace import status
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from prometheus_client import Counter, Gauge, Histogram
 from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException
-from thrift.Thrift import TException
+from thrift.Thrift import TApplicationException, TException
 from thrift.transport.TTransport import TTransportException
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.lib import config
-from baseplate.lib import metrics
+from baseplate.lib import config, metrics
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.lib.retry import RetryPolicy
-from baseplate.lib.thrift_pool import thrift_pool_from_config
-from baseplate.lib.thrift_pool import ThriftConnectionPool
-from baseplate.thrift.ttypes import Error
-from baseplate.thrift.ttypes import ErrorCode
+from baseplate.lib.thrift_pool import ThriftConnectionPool, thrift_pool_from_config
+from baseplate.thrift.ttypes import Error, ErrorCode
 
 logger = logging.getLogger(__name__)
 

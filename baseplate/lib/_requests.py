@@ -3,11 +3,10 @@
 This stuff is not stable yet, so it's only for baseplate-internal use.
 
 """
+
 import socket
 import urllib.parse
-
-from typing import Mapping
-from typing import Optional
+from typing import Mapping, Optional
 
 import requests.adapters
 import urllib3.connectionpool

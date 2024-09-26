@@ -1,22 +1,12 @@
 from __future__ import annotations
 
 import logging
-
 from types import TracebackType
-from typing import Any
-from typing import List
-from typing import Optional
-from typing import Type
-from typing import TYPE_CHECKING
-from typing import Union
+from typing import TYPE_CHECKING, Any
 
 import sentry_sdk
 
-from baseplate import _ExcInfo
-from baseplate import BaseplateObserver
-from baseplate import RequestContext
-from baseplate import ServerSpanObserver
-from baseplate import Span
+from baseplate import BaseplateObserver, RequestContext, ServerSpanObserver, Span, _ExcInfo
 from baseplate.lib import config
 from baseplate.observers.timeout import ServerTimeout
 
@@ -83,7 +73,7 @@ def init_sentry_client_from_config(raw_config: config.RawConfig, **kwargs: Any) 
 
     kwargs.setdefault("sample_rate", cfg.sentry.sample_rate)
 
-    ignore_errors: List[Union[type, str]] = []
+    ignore_errors: list[type | str] = []
     ignore_errors.extend(ALWAYS_IGNORE_ERRORS)
     ignore_errors.extend(cfg.sentry.ignore_errors)
     kwargs.setdefault("ignore_errors", ignore_errors)
@@ -124,7 +114,7 @@ class _SentryServerSpanObserver(ServerSpanObserver):
     def on_log(self, name: str, payload: Any) -> None:
         self.sentry_hub.add_breadcrumb({"category": name, "message": str(payload)})
 
-    def on_finish(self, exc_info: Optional[_ExcInfo] = None) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None = None) -> None:
         if exc_info is not None:
             self.sentry_hub.capture_exception(error=exc_info)
         self.scope_manager.__exit__(None, None, None)
@@ -155,9 +145,9 @@ class _SentryUnhandledErrorReporter:
     def __call__(
         self,
         context: Any,
-        exc_type: Optional[Type[BaseException]],
-        value: Optional[BaseException],
-        tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        value: BaseException | None,
+        tb: TracebackType | None,
     ) -> None:
         sentry_sdk.capture_exception((exc_type, value, tb))
 

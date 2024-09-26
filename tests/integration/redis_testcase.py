@@ -3,11 +3,9 @@ import unittest
 import redis
 
 import baseplate.clients.redis as baseplate_redis
-
 from baseplate import Baseplate
 
-from . import get_endpoint_or_skip_container
-from . import TestBaseplateObserver
+from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
 redis_url = f'redis://{get_endpoint_or_skip_container("redis", 6379)}'
 redis_cluster_url = f'redis://{get_endpoint_or_skip_container("redis-cluster-node", 7000)}'

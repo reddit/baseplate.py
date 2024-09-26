@@ -1,15 +1,16 @@
 from unittest import mock
 
 import pytest
-
 from prometheus_client import REGISTRY
 
-from baseplate.clients.kombu import _KombuProducer
-from baseplate.clients.kombu import AMQP_PROCESSED_TOTAL
-from baseplate.clients.kombu import AMQP_PROCESSING_TIME
-from baseplate.clients.kombu import connection_from_config
-from baseplate.clients.kombu import exchange_from_config
-from baseplate.clients.kombu import KombuThriftSerializer
+from baseplate.clients.kombu import (
+    AMQP_PROCESSED_TOTAL,
+    AMQP_PROCESSING_TIME,
+    KombuThriftSerializer,
+    _KombuProducer,
+    connection_from_config,
+    exchange_from_config,
+)
 from baseplate.lib.config import ConfigurationError
 from baseplate.testing.lib.secrets import FakeSecretsStore
 

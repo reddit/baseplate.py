@@ -2,6 +2,7 @@
 
 This command serves your application from the given configuration file.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -21,55 +22,44 @@ import threading
 import time
 import traceback
 import warnings
-
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from rlcompleter import Completer
 from types import FrameType
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Mapping
-from typing import MutableMapping
-from typing import NamedTuple
-from typing import Optional
-from typing import Sequence
-from typing import TextIO
-from typing import Tuple
+from typing import (
+    Any,
+    Callable,
+    Mapping,
+    MutableMapping,
+    NamedTuple,
+    Sequence,
+    TextIO,
+)
 
 from gevent.server import StreamServer
-from opentelemetry import propagate
-from opentelemetry import trace
+from opentelemetry import propagate, trace
 from opentelemetry.context import Context
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry.instrumentation.threading import ThreadingInstrumentor
 from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.sdk.trace import Span
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import Span, TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.sdk.trace.sampling import DEFAULT_ON
-from opentelemetry.sdk.trace.sampling import ParentBased
+from opentelemetry.sdk.trace.sampling import DEFAULT_ON, ParentBased
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from baseplate import Baseplate
 from baseplate.lib import warn_deprecated
-from baseplate.lib.config import Endpoint
-from baseplate.lib.config import EndpointConfiguration
+from baseplate.lib.config import Endpoint, EndpointConfiguration, Timespan, parse_config
 from baseplate.lib.config import Optional as OptionalConfig
-from baseplate.lib.config import parse_config
-from baseplate.lib.config import Timespan
 from baseplate.lib.log_formatter import CustomJsonFormatter
 from baseplate.lib.prometheus_metrics import is_metrics_enabled
 from baseplate.lib.propagator_redditb3_http import RedditB3HTTPFormat
 from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.lib.tracing import RateLimited
-from baseplate.server import einhorn
-from baseplate.server import reloader
+from baseplate.server import einhorn, reloader
 from baseplate.server.net import bind_socket
-
 
 logger = logging.getLogger(__name__)
 
@@ -147,13 +137,13 @@ class EnvironmentInterpolation(configparser.Interpolation):
 
 class Configuration(NamedTuple):
     filename: str
-    server: Optional[Dict[str, str]]
-    app: Dict[str, str]
+    server: dict[str, str] | None
+    app: dict[str, str]
     has_logging_options: bool
-    shell: Optional[Dict[str, str]]
+    shell: dict[str, str] | None
 
 
-def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) -> Configuration:
+def read_config(config_file: TextIO, server_name: str | None, app_name: str) -> Configuration:
     # we use RawConfigParser to reduce surprise caused by interpolation and so
     # that config.Percent works more naturally (no escaping %).
     parser = configparser.RawConfigParser(interpolation=EnvironmentInterpolation())
@@ -209,7 +199,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
 class BaseplateBatchSpanProcessor(BatchSpanProcessor):
     def __init__(
-        self, otlp_exporter: OTLPSpanExporter, attributes: Optional[Dict[str, Any]] = None
+        self, otlp_exporter: OTLPSpanExporter, attributes: dict[str, Any] | None = None
     ) -> None:
         logger.info(
             "Initializing %s with global attributes=%s.", self.__class__.__name__, attributes
@@ -217,7 +207,7 @@ class BaseplateBatchSpanProcessor(BatchSpanProcessor):
         super().__init__(otlp_exporter)
         self.baseplate_global_attributes = attributes
 
-    def on_start(self, span: Span, parent_context: Optional[Context] = None) -> None:
+    def on_start(self, span: Span, parent_context: Context | None = None) -> None:
         if self.baseplate_global_attributes:
             span.set_attributes(self.baseplate_global_attributes)
         super().on_start(span, parent_context)
@@ -253,7 +243,7 @@ def make_listener(endpoint: EndpointConfiguration) -> socket.socket:
     return bind_socket(endpoint)
 
 
-def _load_factory(url: str, default_name: Optional[str] = None) -> Callable:
+def _load_factory(url: str, default_name: str | None = None) -> Callable:
     """Load a factory function from a config file."""
     module_name, sep, func_name = url.partition(":")
     if not sep:
@@ -266,14 +256,14 @@ def _load_factory(url: str, default_name: Optional[str] = None) -> Callable:
 
 
 def make_server(
-    server_config: Dict[str, str], listener: socket.socket, app: Callable
+    server_config: dict[str, str], listener: socket.socket, app: Callable
 ) -> StreamServer:
     server_url = server_config["factory"]
     factory = _load_factory(server_url, default_name="make_server")
     return factory(server_config, listener, app)
 
 
-def make_app(app_config: Dict[str, str]) -> Callable:
+def make_app(app_config: dict[str, str]) -> Callable:
     app_url = app_config["factory"]
     factory = _load_factory(app_url, default_name="make_app")
     return factory(app_config)
@@ -384,7 +374,7 @@ def load_and_run_script() -> None:
         entrypoint(config.app)
 
 
-def _parse_baseplate_script_args() -> Tuple[argparse.Namespace, List[str]]:
+def _parse_baseplate_script_args() -> tuple[argparse.Namespace, list[str]]:
     parser = argparse.ArgumentParser(
         description="Run a function with app configuration loaded.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -460,7 +450,7 @@ def load_and_run_shell() -> None:
         config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     logging.basicConfig(level=logging.INFO)
 
-    env: Dict[str, Any] = {}
+    env: dict[str, Any] = {}
     env_banner = {
         "app": "This project's app instance",
         "context": "The context for this shell instance's span",
@@ -591,7 +581,7 @@ def _has_PID1_parent() -> bool:
 
 
 class LoggedInteractiveConsole(code.InteractiveConsole):
-    def __init__(self, _locals: Dict[str, Any], logpath: str) -> None:
+    def __init__(self, _locals: dict[str, Any], logpath: str) -> None:
         code.InteractiveConsole.__init__(self, _locals)
         self.output_file = logpath
         self.pid = os.getpid()
@@ -599,13 +589,13 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
         self.hostname = os.uname().nodename
         self.log_event(message="Start InteractiveConsole logging", message_id="CSTR")
 
-    def raw_input(self, prompt: Optional[str] = "") -> str:
+    def raw_input(self, prompt: str | None = "") -> str:
         data = input(prompt)
         self.log_event(message=data, message_id="CEXC")
         return data
 
     def log_event(
-        self, message: str, message_id: Optional[str] = "-", structured: Optional[str] = "-"
+        self, message: str, message_id: str | None = "-", structured: str | None = "-"
     ) -> None:
         """Generate an RFC 5424 compliant syslog format."""
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")

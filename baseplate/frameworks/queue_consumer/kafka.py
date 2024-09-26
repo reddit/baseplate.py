@@ -3,33 +3,22 @@ import logging
 import queue
 import socket
 import time
-
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, NamedTuple, Optional, Sequence
 
 import confluent_kafka
-
 from gevent.server import StreamServer
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from prometheus_client import Counter, Gauge, Histogram
 from typing_extensions import Self
 
-from baseplate import Baseplate
-from baseplate import RequestContext
+from baseplate import Baseplate, RequestContext
 from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.server.queue_consumer import HealthcheckCallback
-from baseplate.server.queue_consumer import make_simple_healthchecker
-from baseplate.server.queue_consumer import MessageHandler
-from baseplate.server.queue_consumer import PumpWorker
-from baseplate.server.queue_consumer import QueueConsumerFactory
-
+from baseplate.server.queue_consumer import (
+    HealthcheckCallback,
+    MessageHandler,
+    PumpWorker,
+    QueueConsumerFactory,
+    make_simple_healthchecker,
+)
 
 if TYPE_CHECKING:
     WorkQueue = queue.Queue[confluent_kafka.Message]  # pylint: disable=unsubscriptable-object
