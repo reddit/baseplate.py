@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13.0rc2']
 
     container:
       image: python:${{ matrix.python-version }}
@@ -45,7 +45,7 @@ jobs:
           CASS_DRIVER_NO_EXTENSIONS: theytaketoolongtobuild
         run: |
           pip install pipx
-          pipx install poetry==1.8.2
+          pipx install poetry==1.8.3
           make .venv
 
       - name: Lint
