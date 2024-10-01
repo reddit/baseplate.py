@@ -31,6 +31,8 @@ from baseplate.lib.config import Endpoint
 from baseplate.lib.config import EndpointConfiguration
 from baseplate.server.net import bind_socket
 
+from pypprof.net_http import start_pprof_server
+
 
 if TYPE_CHECKING:
     from _typeshed.wsgi import StartResponse  # pylint: disable=import-error,no-name-in-module
@@ -96,3 +98,4 @@ def start_prometheus_exporter_for_sidecar() -> None:
     else:
         endpoint = Endpoint("0.0.0.0:" + port)
         start_prometheus_exporter(endpoint)
+        start_pprof_server(port=port)
