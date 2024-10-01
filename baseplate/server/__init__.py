@@ -173,7 +173,7 @@ def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) 
 
 
 def configure_logging(config: Configuration, debug: bool) -> None:
-    LoggingInstrumentor().instrument()
+    #LoggingInstrumentor().instrument()
     logging.captureWarnings(capture=True)
 
     if debug:
