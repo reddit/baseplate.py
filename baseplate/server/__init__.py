@@ -312,7 +312,7 @@ def load_app_and_run_server() -> None:
     """Parse arguments, read configuration, and start the server."""
     sys.path.append(os.getcwd())
 
-    ThreadingInstrumentor().instrument()
+    #ThreadingInstrumentor().instrument()
 
     shutdown_event = register_signal_handlers()
 
