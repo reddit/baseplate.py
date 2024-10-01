@@ -5,6 +5,11 @@
 # at all, as would happen if we were to have this code be in the baseplate
 # package.
 
+
+from baseplate.server import configure_tracing
+
+configure_tracing()
+
 from gevent.monkey import patch_all
 
 from baseplate.server.monkey import patch_stdlib_queues
@@ -21,7 +26,6 @@ except ImportError:
     pass
 
 
-from baseplate.server import configure_tracing, load_app_and_run_server
+from baseplate.server import load_app_and_run_server
 
-configure_tracing()
 load_app_and_run_server()
