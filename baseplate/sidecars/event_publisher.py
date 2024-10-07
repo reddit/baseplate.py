@@ -154,6 +154,8 @@ class BatchPublisher:
             except OSError:
                 self.metrics.counter("error.io").increment()
                 logger.exception("HTTP Request failed")
+            except Exception as e:
+                logger.exception("Unexpected exception: %s", e)
             else:
                 self.metrics.counter("sent").increment(payload.item_count)
                 return
