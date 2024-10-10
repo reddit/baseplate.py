@@ -17,23 +17,34 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8.1,<4.0"
 advocate = { version = ">=1.0.0,<2.0", optional = true }
 boto3 = ">=1.28.27"
 cassandra-driver = { version = ">=3.29.0,<4.0", optional = true }
 confluent-kafka = { version = ">=2.3.0", optional = true }
-gevent = [
-    {version = ">=23.9.1", python = "<3.13"},
-    {version = ">=24.10.1", python = ">=3.13"},
-]
+formenergy-observability = "^0.3.2"
+gevent = [{version = ">=23.9.1", python = "<3.13"}, {version = ">=24.10.1", python = ">=3.13"}]
+greenlet = { version = ">=3.1.1", python = ">=3.13" }
+grpcio = { version = '>=1.66.2', python = '>=3.13' }
 kazoo = { version = ">=2.5.0,<3.0", optional = true }
 kombu = { version = ">=5.3.3", optional = true }
 legacy-cgi = { version = "*", python = ">=3.13" }
 objgraph = { version = ">=3.6.0", optional = true }
+opentelemetry-api = "^1.26.0"
+opentelemetry-exporter-otlp = "^1.26.0"
+opentelemetry-instrumentation-logging = "^0.47b0"
+opentelemetry-instrumentation-pyramid = "^0.47b0"
+opentelemetry-instrumentation-requests = "^0.47b0"
+opentelemetry-instrumentation-threading = "^0.47b0"
+opentelemetry-sdk = "^1.26.0"
 posix-ipc = ">=1.0.0,<2.0"
 prometheus-client = ">=0.12.0"
+psycogreen = "^1.0.0"
+psycopg2 = "^2.0.0"
+pydantic-core = { version = ">=2.20.0", python = ">=3.13" }
 pymemcache = { version = ">=1.3.0,<1.4.4", optional = true }
 pyramid = { version = ">=1.10.8,<2.0", optional = true }
+pyrate-limiter = "^3.6.1"
+python = ">=3.8.1,<4.0"
 python-json-logger = ">=2.0.5,<3.0"
 reddit-cqlmapper = { version = ">=0.3.0,<1.0", optional = true }
 redis = { version = ">=2.10.0,<4.0.0", optional = true }
@@ -43,24 +54,6 @@ sentry-sdk = { version = ">=1.35.0,<2.0", optional = true }
 sqlalchemy = { version = ">=1.4.49,<2", optional = true }
 thrift-unofficial = ">=0.19.0,<1.0"
 typing-extensions = "^4.11.0"
-opentelemetry-sdk = "^1.26.0"
-opentelemetry-api = "^1.26.0"
-opentelemetry-instrumentation-pyramid = "^0.47b0"
-opentelemetry-instrumentation-requests = "^0.47b0"
-opentelemetry-instrumentation-threading = "^0.47b0"
-opentelemetry-instrumentation-logging = "^0.47b0"
-opentelemetry-exporter-otlp = "^1.26.0"
-formenergy-observability = "^0.3.2"
-pyrate-limiter = "^3.6.1"
-psycopg2 = "^2.0.0"
-psycogreen = "^1.0.0"
-# greenlet 3.1.1 adds Python 3.13 support.
-greenlet = {version = ">=3.1.1", python = ">=3.13"}
-# pydantic-core>=2.20.0 has Python 3.13 wheels on PyPI.
-pydantic-core = {version = ">=2.20.0", python = ">=3.13"}
-# grpc merged Python 3.13 support but has not released a new version yet.
-# https://github.com/grpc/grpc/pull/37643
-grpcio = {git = "https://github.com/grpc/grpc", rev = "f2ffbb89a2f7456b897e5556782e8639d161a6f6"}
 
 [tool.poetry.extras]
 amqp = ["kombu"]
