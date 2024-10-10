@@ -1,6 +1,6 @@
 FROM ghcr.io/reddit/thrift-compiler:0.19.0 AS thrift
 
-FROM public.ecr.aws/docker/library/python:3.13.0rc2-bookworm
+FROM public.ecr.aws/docker/library/python:3.13
 
 # TODO(ckuehl|2024-09-26): Remove this once Python 3.13 wheels are available for our dependencies.
 # https://github.com/confluentinc/confluent-kafka-python/blob/master/INSTALL.md#install-from-source-on-debian-or-ubuntu
