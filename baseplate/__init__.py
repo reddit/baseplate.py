@@ -406,7 +406,6 @@ class Baseplate:
             context.cache.get("example")
             context.cassandra.foo.execute()
 
-        :param app_config: The raw stringy configuration dictionary.
         :param context_spec: A specification of what the configuration should
             look like.
 
