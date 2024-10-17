@@ -22,7 +22,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pipx install poetry==1.8.2
+        pipx install poetry==1.8.3
 
     - name: Build and publish
       env:
