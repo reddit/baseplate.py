@@ -6,7 +6,6 @@ import time
 from enum import Enum
 from typing import Any
 from typing import Callable
-from typing import Dict
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
@@ -336,7 +335,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
-        worker_kwargs: Optional[Dict[str, Any]] = None,
+        worker_kwargs: Optional[dict[str, Any]] = None,
         retry_mode: RetryMode = RetryMode.REQUEUE,
         retry_limit: Optional[int] = None,
     ):
@@ -390,7 +389,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
-        worker_kwargs: Optional[Dict[str, Any]] = None,
+        worker_kwargs: Optional[dict[str, Any]] = None,
         retry_mode: RetryMode = RetryMode.REQUEUE,
         retry_limit: Optional[int] = None,
     ) -> "KombuQueueConsumerFactory":

@@ -29,15 +29,12 @@ from rlcompleter import Completer
 from types import FrameType
 from typing import Any
 from typing import Callable
-from typing import Dict
-from typing import List
 from typing import Mapping
 from typing import MutableMapping
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
 from typing import TextIO
-from typing import Tuple
 
 from gevent.server import StreamServer
 from opentelemetry import propagate
@@ -147,10 +144,10 @@ class EnvironmentInterpolation(configparser.Interpolation):
 
 class Configuration(NamedTuple):
     filename: str
-    server: Optional[Dict[str, str]]
-    app: Dict[str, str]
+    server: Optional[dict[str, str]]
+    app: dict[str, str]
     has_logging_options: bool
-    shell: Optional[Dict[str, str]]
+    shell: Optional[dict[str, str]]
 
 
 def read_config(config_file: TextIO, server_name: Optional[str], app_name: str) -> Configuration:
@@ -209,7 +206,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
 
 class BaseplateBatchSpanProcessor(BatchSpanProcessor):
     def __init__(
-        self, otlp_exporter: OTLPSpanExporter, attributes: Optional[Dict[str, Any]] = None
+        self, otlp_exporter: OTLPSpanExporter, attributes: Optional[dict[str, Any]] = None
     ) -> None:
         logger.info(
             "Initializing %s with global attributes=%s.", self.__class__.__name__, attributes
@@ -266,14 +263,14 @@ def _load_factory(url: str, default_name: Optional[str] = None) -> Callable:
 
 
 def make_server(
-    server_config: Dict[str, str], listener: socket.socket, app: Callable
+    server_config: dict[str, str], listener: socket.socket, app: Callable
 ) -> StreamServer:
     server_url = server_config["factory"]
     factory = _load_factory(server_url, default_name="make_server")
     return factory(server_config, listener, app)
 
 
-def make_app(app_config: Dict[str, str]) -> Callable:
+def make_app(app_config: dict[str, str]) -> Callable:
     app_url = app_config["factory"]
     factory = _load_factory(app_url, default_name="make_app")
     return factory(app_config)
@@ -384,7 +381,7 @@ def load_and_run_script() -> None:
         entrypoint(config.app)
 
 
-def _parse_baseplate_script_args() -> Tuple[argparse.Namespace, List[str]]:
+def _parse_baseplate_script_args() -> tuple[argparse.Namespace, list[str]]:
     parser = argparse.ArgumentParser(
         description="Run a function with app configuration loaded.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -460,7 +457,7 @@ def load_and_run_shell() -> None:
         config = read_config(args.config_file, server_name=None, app_name=args.app_name)
     logging.basicConfig(level=logging.INFO)
 
-    env: Dict[str, Any] = {}
+    env: dict[str, Any] = {}
     env_banner = {
         "app": "This project's app instance",
         "context": "The context for this shell instance's span",
@@ -591,7 +588,7 @@ def _has_PID1_parent() -> bool:
 
 
 class LoggedInteractiveConsole(code.InteractiveConsole):
-    def __init__(self, _locals: Dict[str, Any], logpath: str) -> None:
+    def __init__(self, _locals: dict[str, Any], logpath: str) -> None:
         code.InteractiveConsole.__init__(self, _locals)
         self.output_file = logpath
         self.pid = os.getpid()

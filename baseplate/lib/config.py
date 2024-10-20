@@ -95,14 +95,12 @@ import socket
 
 from typing import Any
 from typing import Callable
-from typing import Dict
 from typing import Generic
 from typing import IO
 from typing import NamedTuple
 from typing import NewType
 from typing import Optional as OptionalType
 from typing import Sequence
-from typing import Set
 from typing import TypeVar
 from typing import Union
 
@@ -457,9 +455,9 @@ class ConfigNamespace(dict):
         ...
 
 
-ConfigSpecItem = Union["Parser", Dict[str, Any], Callable[[str], T]]
-ConfigSpec = Dict[str, ConfigSpecItem]
-RawConfig = Dict[str, str]
+ConfigSpecItem = Union["Parser", dict[str, Any], Callable[[str], T]]
+ConfigSpec = dict[str, ConfigSpecItem]
+RawConfig = dict[str, str]
 
 
 class Parser(Generic[T]):
@@ -606,7 +604,7 @@ class DictOf(Parser[ConfigNamespace]):
         matcher = re.compile("^" + root.replace(".", r"\.") + r"([^.]+)")
 
         values = ConfigNamespace()
-        seen_subkeys: Set[str] = set()
+        seen_subkeys: set[str] = set()
         for key in raw_config:
             m = matcher.search(key)
             if not m:
