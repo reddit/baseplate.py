@@ -22,7 +22,7 @@ boto3 = ">=1.28.27"
 cassandra-driver = { version = ">=3.29.0,<4.0", optional = true }
 confluent-kafka = { version = ">=2.3.0", optional = true }
 formenergy-observability = "^0.3.2"
-gevent = [{version = ">=23.9.1", python = "<3.13"}, {version = ">=24.10.1", python = ">=3.13"}]
+gevent = [{version = ">=23.9.1", python = "<3.13"}, {version = ">=24.10.3", python = ">=3.13"}]
 greenlet = { version = ">=3.1.1", python = ">=3.13" }
 grpcio = { version = '>=1.66.2', python = '>=3.13' }
 kazoo = { version = ">=2.5.0,<3.0", optional = true }
