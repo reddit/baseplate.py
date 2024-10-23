@@ -5,4 +5,4 @@ line-length = 74
 
 # Always use our latest supported version here since we want code snippets in
 # docs to use the most up-to-date syntax.
-target-version = ['py38']
+target-version = ['py39']
