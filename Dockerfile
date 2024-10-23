@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM ghcr.io/reddit/thrift-compiler:0.19.0 AS thrift
 
 FROM python:3.12
