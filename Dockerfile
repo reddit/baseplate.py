@@ -6,7 +6,8 @@ COPY --from=thrift /usr/local/bin/thrift /usr/local/bin/thrift
 
 WORKDIR /src
 
-RUN python -m venv /tmp/poetry && \
+RUN --mount=type=cache,target=/root/.cache \
+    python -m venv /tmp/poetry && \
     /tmp/poetry/bin/pip install poetry==1.8.2 && \
     ln -s /tmp/poetry/bin/poetry /usr/local/bin/poetry
 
