@@ -13,6 +13,7 @@ RUN --mount=type=cache,target=/root/.cache \
     ln -s /tmp/poetry/bin/poetry /usr/local/bin/poetry
 
 COPY pyproject.toml poetry.lock ./
-RUN poetry install --all-extras
+RUN --mount=type=cache,target=/root/.cache \
+    poetry install --all-extras
 
 CMD ["/bin/bash"]
