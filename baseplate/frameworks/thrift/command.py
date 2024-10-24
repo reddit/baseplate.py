@@ -19,7 +19,7 @@ class BuildThriftCommand(Command):
         self.set_undefined_options("build", ("build_base", "build_base"))
 
     def run(self) -> None:
-        if self.dry_run:  # type: ignore
+        if self.dry_run:
             return
 
         temp_dir = os.path.join(self.build_base, "thrift")  # type: ignore

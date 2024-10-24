@@ -226,7 +226,7 @@ class BaseplateBatchSpanProcessor(BatchSpanProcessor):
 def configure_tracing() -> None:
     logger.info("Entering configure tracing function")
     sample_rps = 10
-    sampler = RateLimited(ParentBased(DEFAULT_ON), sample_rps)
+    sampler = ParentBased(RateLimited(DEFAULT_ON, sample_rps))
     otlp_exporter = OTLPSpanExporter()
     propagate.set_global_textmap(
         CompositePropagator(
