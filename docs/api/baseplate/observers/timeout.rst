@@ -14,6 +14,14 @@ upstream services are yet taken into account.
    taking a long time because it is doing compute-heavy actions and not
    yielding to the event loop it might go on longer than the allotted timeout.
 
+.. warning::
+
+   The timeout mechanism may throw a `ServerTimeout` exception whenever a gevent
+   context switch occurs. If this exception is not handled gracefully your
+   application could get stuck in a bad state. For example, if a `ServerTimeout`
+   exception is thrown while releasing a connection then the connection might
+   never be fully released.
+
 .. versionadded:: 1.2
 
 .. versionchanged:: 1.3.3
