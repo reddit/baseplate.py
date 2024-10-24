@@ -346,6 +346,7 @@ def load_app_and_run_server() -> None:
     server.start()
     try:
         shutdown_event.wait()
+        logger.info("Shutdown triggered.")
 
         SERVER_STATE.state = ServerLifecycle.SHUTTING_DOWN
 
@@ -353,13 +354,20 @@ def load_app_and_run_server() -> None:
         # Default drain time across all baseplate language implementations
         # which allows enough time for systems such as k8s to remove the
         # server from the endpoints list.
+        #
+        # During drain time, the server still accepts connections as normal. This is
+        # to allow clients time to notice the server is going away and stop sending
+        # requests to it.
         drain_time_seconds = 5
         if cfg.drain_time:
             drain_time_seconds = cfg.drain_time.total_seconds()
-        logger.debug("Draining inbound requests...")
+        logger.info("Draining inbound requests...")
         time.sleep(drain_time_seconds)
     finally:
-        logger.debug("Gracefully shutting down...")
+        logger.info("Gracefully shutting down...")
+
+        # Stop accepting new connections immediately, and wait for existing ones to finish.
+        # This hangs until all connections are closed or until stop_timeout is reached.
         server.stop()
         logger.info("Exiting")
 
