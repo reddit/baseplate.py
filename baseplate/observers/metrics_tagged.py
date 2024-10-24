@@ -1,8 +1,6 @@
 from random import random
 from typing import Any
-from typing import Dict
 from typing import Optional
-from typing import Set
 
 from baseplate import _ExcInfo
 from baseplate import BaseplateObserver
@@ -32,7 +30,7 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
 
     """
 
-    def __init__(self, client: metrics.Client, allowlist: Set[str], sample_rate: float = 1.0):
+    def __init__(self, client: metrics.Client, allowlist: set[str], sample_rate: float = 1.0):
         self.client = client
         self.allowlist = allowlist
         self.sample_rate = sample_rate
@@ -88,15 +86,15 @@ class TaggedMetricsServerSpanDummyObserver(SpanObserver):
 
 class TaggedMetricsServerSpanObserver(SpanObserver):
     def __init__(
-        self, batch: metrics.Batch, server_span: Span, allowlist: Set[str], sample_rate: float = 1.0
+        self, batch: metrics.Batch, server_span: Span, allowlist: set[str], sample_rate: float = 1.0
     ):
         self.batch = batch
         self.span = server_span
         self.base_name = "baseplate.server"
         self.allowlist = allowlist
-        self.tags: Dict[str, Any] = {}
+        self.tags: dict[str, Any] = {}
         self.timer = batch.timer(f"{self.base_name}.latency")
-        self.counters: Dict[str, float] = {}
+        self.counters: dict[str, float] = {}
         self.sample_rate = sample_rate
 
     def on_start(self) -> None:
@@ -139,15 +137,15 @@ class TaggedMetricsServerSpanObserver(SpanObserver):
 
 class TaggedMetricsLocalSpanObserver(SpanObserver):
     def __init__(
-        self, batch: metrics.Batch, span: Span, allowlist: Set[str], sample_rate: float = 1.0
+        self, batch: metrics.Batch, span: Span, allowlist: set[str], sample_rate: float = 1.0
     ):
         self.batch = batch
         self.span = span
-        self.tags: Dict[str, Any] = {}
+        self.tags: dict[str, Any] = {}
         self.base_name = "baseplate.local"
         self.timer = batch.timer(f"{self.base_name}.latency")
         self.allowlist = allowlist
-        self.counters: Dict[str, float] = {}
+        self.counters: dict[str, float] = {}
         self.sample_rate = sample_rate
 
     def on_start(self) -> None:
@@ -191,15 +189,15 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
 
 class TaggedMetricsClientSpanObserver(SpanObserver):
     def __init__(
-        self, batch: metrics.Batch, span: Span, allowlist: Set[str], sample_rate: float = 1.0
+        self, batch: metrics.Batch, span: Span, allowlist: set[str], sample_rate: float = 1.0
     ):
         self.batch = batch
         self.span = span
         self.base_name = "baseplate.client"
-        self.tags: Dict[str, Any] = {}
+        self.tags: dict[str, Any] = {}
         self.timer = batch.timer(f"{self.base_name}.latency")
         self.allowlist = allowlist
-        self.counters: Dict[str, float] = {}
+        self.counters: dict[str, float] = {}
         self.sample_rate = sample_rate
 
     def on_start(self) -> None:

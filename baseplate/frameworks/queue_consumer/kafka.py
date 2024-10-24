@@ -6,8 +6,6 @@ import time
 
 from typing import Any
 from typing import Callable
-from typing import Dict
-from typing import List
 from typing import NamedTuple
 from typing import Optional
 from typing import Sequence
@@ -267,7 +265,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         kafka_consume_batch_size: int = 1,
         message_unpack_fn: KafkaMessageDeserializer = json.loads,
         health_check_fn: Optional[HealthcheckCallback] = None,
-        kafka_config: Optional[Dict[str, Any]] = None,
+        kafka_config: Optional[dict[str, Any]] = None,
         prometheus_client_name: str = "",
     ) -> Self:
         """Return a new `_BaseKafkaQueueConsumerFactory`.
@@ -314,7 +312,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         )
 
     @classmethod
-    def _consumer_config(cls) -> Dict[str, Any]:
+    def _consumer_config(cls) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
@@ -323,7 +321,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         bootstrap_servers: str,
         group_id: str,
         topics: Sequence[str],
-        kafka_config: Optional[Dict[str, Any]] = None,
+        kafka_config: Optional[dict[str, Any]] = None,
     ) -> confluent_kafka.Consumer:
         consumer_config = {
             "bootstrap.servers": bootstrap_servers,
@@ -358,14 +356,14 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
 
         # pylint: disable=unused-argument
         def log_assign(
-            consumer: confluent_kafka.Consumer, partitions: List[confluent_kafka.TopicPartition]
+            consumer: confluent_kafka.Consumer, partitions: list[confluent_kafka.TopicPartition]
         ) -> None:
             for topic_partition in partitions:
                 logger.info("assigned %s/%s", topic_partition.topic, topic_partition.partition)
 
         # pylint: disable=unused-argument
         def log_revoke(
-            consumer: confluent_kafka.Consumer, partitions: List[confluent_kafka.TopicPartition]
+            consumer: confluent_kafka.Consumer, partitions: list[confluent_kafka.TopicPartition]
         ) -> None:
             for topic_partition in partitions:
                 logger.info("revoked %s/%s", topic_partition.topic, topic_partition.partition)
@@ -441,7 +439,7 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
     message_handler_count = 0
 
     @classmethod
-    def _consumer_config(cls) -> Dict[str, Any]:
+    def _consumer_config(cls) -> dict[str, Any]:
         return {
             # The consumer sends periodic heartbeats on a separate thread to
             # indicate its liveness to the broker. If no heartbeats are received by
@@ -543,7 +541,7 @@ class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
     # pylint: disable=unused-argument
     @staticmethod
     def _commit_callback(
-        err: confluent_kafka.KafkaError, topic_partition_list: List[confluent_kafka.TopicPartition]
+        err: confluent_kafka.KafkaError, topic_partition_list: list[confluent_kafka.TopicPartition]
     ) -> None:
         # called after automatic commits
         for topic_partition in topic_partition_list:
@@ -565,7 +563,7 @@ class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
                 )
 
     @classmethod
-    def _consumer_config(cls) -> Dict[str, Any]:
+    def _consumer_config(cls) -> dict[str, Any]:
         return {
             # The consumer sends periodic heartbeats on a separate thread to
             # indicate its liveness to the broker. If no heartbeats are received by

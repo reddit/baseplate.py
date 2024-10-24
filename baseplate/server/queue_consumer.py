@@ -12,8 +12,6 @@ import uuid
 from threading import Thread
 from typing import Any
 from typing import Callable
-from typing import Dict
-from typing import List
 from typing import Optional
 from typing import Sequence
 from typing import TYPE_CHECKING
@@ -36,7 +34,7 @@ if TYPE_CHECKING:
     # TODO: Replace with wsgiref.types once on 3.11+
     from _typeshed.wsgi import StartResponse
 
-WSGIEnvironment = Dict[str, Any]
+WSGIEnvironment = dict[str, Any]
 HealthcheckCallback = Callable[[WSGIEnvironment], bool]
 
 
@@ -44,7 +42,7 @@ class HealthcheckApp:
     def __init__(self, callback: Optional[HealthcheckCallback] = None) -> None:
         self.callback = callback
 
-    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse) -> List[bytes]:
+    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse) -> list[bytes]:
         ok = True
         if self.callback:
             ok = self.callback(environ)
@@ -314,7 +312,7 @@ class QueueConsumerServer:
 
 
 def make_server(
-    server_config: Dict[str, str], listener: socket.socket, app: QueueConsumerFactory
+    server_config: dict[str, str], listener: socket.socket, app: QueueConsumerFactory
 ) -> QueueConsumerServer:
     """Make a queue consumer server for long running queue consumer apps.
 

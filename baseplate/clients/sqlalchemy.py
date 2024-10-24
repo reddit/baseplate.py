@@ -5,10 +5,8 @@ import typing
 
 from time import perf_counter
 from typing import Any
-from typing import Dict
 from typing import Optional
 from typing import Sequence
-from typing import Tuple
 from typing import Union
 
 from prometheus_client import Counter
@@ -136,7 +134,7 @@ class SQLAlchemySession(config.Parser):
         return SQLAlchemySessionContextFactory(engine, key_path)
 
 
-Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
+Parameters = Optional[Union[dict[str, Any], Sequence[Any]]]
 
 
 SAFE_TRACE_ID = re.compile("^[A-Za-z0-9_-]+$")
@@ -248,7 +246,7 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         parameters: Parameters,
         context: Optional[ExecutionContext],
         executemany: bool,
-    ) -> Tuple[str, Parameters]:
+    ) -> tuple[str, Parameters]:
         """Handle the engine's before_cursor_execute event."""
         labels = {
             "sql_client_name": self.name,

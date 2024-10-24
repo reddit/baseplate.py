@@ -1,7 +1,6 @@
 from math import ceil
 from time import perf_counter
 from typing import Any
-from typing import Dict
 from typing import Optional
 
 import redis
@@ -296,7 +295,7 @@ class MonitoredRedisPipeline(Pipeline):
         trace_name: str,
         server_span: Span,
         connection_pool: redis.ConnectionPool,
-        response_callbacks: Dict,
+        response_callbacks: dict,
         redis_client_name: str = "",
         **kwargs: Any,
     ):

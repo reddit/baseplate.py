@@ -3,8 +3,6 @@ import logging
 import socket
 
 from typing import Any
-from typing import Dict
-from typing import Tuple
 from typing import Union
 
 from form_observability import ctx
@@ -27,7 +25,7 @@ logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
-Address = Union[Tuple[str, int], str]
+Address = Union[tuple[str, int], str]
 
 
 # pylint: disable=too-many-public-methods
@@ -89,7 +87,7 @@ class GeventServer(StreamServer):
             trans.close()
 
 
-def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
+def make_server(server_config: dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
     # pylint: disable=maybe-no-member
     cfg = config.parse_config(
         server_config,

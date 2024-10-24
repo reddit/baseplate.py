@@ -1,5 +1,3 @@
-from typing import Dict
-
 from baseplate.lib import config
 
 
@@ -43,7 +41,7 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     return str(200 <= httpStatusCode < 400).lower()
 
 
-def is_metrics_enabled(raw_config: Dict[str, str]) -> bool:
+def is_metrics_enabled(raw_config: dict[str, str]) -> bool:
     cfg = config.parse_config(
         raw_config,
         {

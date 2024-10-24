@@ -5,7 +5,6 @@ import time
 
 from typing import Any
 from typing import Callable
-from typing import Dict
 from typing import Iterable
 from typing import Iterator
 from typing import Mapping
@@ -323,7 +322,7 @@ class RequestFactory:
     def __init__(self, baseplate: Baseplate):
         self.baseplate = baseplate
 
-    def __call__(self, environ: Dict[str, str]) -> BaseplateRequest:
+    def __call__(self, environ: dict[str, str]) -> BaseplateRequest:
         return BaseplateRequest(environ, context_config=self.baseplate._context_config)
 
     def blank(self, path: str) -> BaseplateRequest:
