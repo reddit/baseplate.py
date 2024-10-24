@@ -1,6 +1,4 @@
 ---
-
-version: "3"
 services:
   baseplate:
     # Needed as the Thrift image isn't available on ARM.
