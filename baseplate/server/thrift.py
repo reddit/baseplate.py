@@ -1,5 +1,4 @@
 import datetime
-import logging
 import socket
 
 from typing import Any
@@ -18,10 +17,6 @@ from thrift.transport.TTransport import TTransportException
 
 from baseplate.lib import config
 from baseplate.server import runtime_monitor
-
-
-logger = logging.getLogger(__name__)
-tracer = trace.get_tracer(__name__)
 
 
 Address = Union[Tuple[str, int], str]
