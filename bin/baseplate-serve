@@ -23,5 +23,5 @@ except ImportError:
 
 from baseplate.server import configure_tracing, load_app_and_run_server
 
-configure_tracing()
+#configure_tracing()
 load_app_and_run_server()
