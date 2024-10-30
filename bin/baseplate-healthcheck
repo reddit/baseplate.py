@@ -4,4 +4,11 @@
 
 from baseplate.server.healthcheck import run_healthchecks
 
+from gevent.monkey import patch_all
+
+from baseplate.server.monkey import patch_stdlib_queues
+
+patch_all()
+patch_stdlib_queues()
+
 run_healthchecks()
