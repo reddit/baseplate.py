@@ -20,7 +20,7 @@ from baseplate.server import configure_tracing
 from opentelemetry import trace
 from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from lib.propagator_redditb3_thrift import RedditB3ThriftFormat
+from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 
 from collections import OrderedDict
 
