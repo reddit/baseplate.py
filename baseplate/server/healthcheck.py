@@ -18,14 +18,25 @@ from baseplate.thrift.ttypes import IsHealthyRequest
 
 from baseplate.server import configure_tracing
 from opentelemetry import trace
+from opentelemetry.propagators.composite import CompositePropagator
+from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
+from lib.propagator_redditb3_thrift import RedditB3ThriftFormat
+
+from collections import OrderedDict
 
 
 TIMEOUT = 30  # seconds
 
+propagator = CompositePropagator([RedditB3ThriftFormat(), TraceContextTextMapPropagator()])
 
 def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
     pool = ThriftConnectionPool(endpoint, size=1, timeout=TIMEOUT)
     with pool.connection() as protocol:
+        # Inject all tracing headers into mutable_metadata and add as headers
+        mutable_metadata: OrderedDict = OrderedDict()
+        propagator.inject(mutable_metadata)
+        for k, v in mutable_metadata.items():
+            protocol.trans.set_header(k.encode(), v.encode())
         client = BaseplateServiceV2.Client(protocol)
         assert client.is_healthy(
             request=IsHealthyRequest(probe=probe),
