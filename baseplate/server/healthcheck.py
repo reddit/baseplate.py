@@ -35,8 +35,10 @@ def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
         # Inject all tracing headers into mutable_metadata and add as headers
         mutable_metadata: OrderedDict = OrderedDict()
         propagator.inject(mutable_metadata)
+        span = trace.get_current_span()
         for k, v in mutable_metadata.items():
             protocol.trans.set_header(k.encode(), v.encode())
+            span.set_attribute(k, v)
         client = BaseplateServiceV2.Client(protocol)
         assert client.is_healthy(
             request=IsHealthyRequest(probe=probe),
