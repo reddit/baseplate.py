@@ -11,8 +11,6 @@ from typing import Iterator
 from typing import Mapping
 from typing import Optional
 
-from form_observability import ContextAwareTracer
-from form_observability import ctx
 from opentelemetry import trace
 from opentelemetry.context import attach
 from opentelemetry.context import detach
@@ -134,17 +132,17 @@ class _ContextAwareHandler:
             }
 
             with self._set_remote_context(self.context):
-                otelspan_name = f"{ctx.get(SpanAttributes.RPC_SERVICE)}/{fn_name}"
+                otelspan_name = f"thrift/{fn_name}"
 
                 # Note: we cannot define this at the top of the file, it _will_ break tests
                 # (missing spans in self.finished_spans() call)
                 # We currently don't know why... but since this is still correct, if maybe a bit
                 # inefficient, we'll just leave it as is for now.
-                context_aware_tracer = ContextAwareTracer(__name__)
+                tracer = trace.get_tracer(__name__)
 
                 # we automatically record all exceptions, however...
                 # we manually set status on exception because not all exceptions are "bad"
-                with context_aware_tracer.start_as_current_span(
+                with tracer.start_as_current_span(
                     name=otelspan_name,
                     kind=trace.SpanKind.SERVER,
                     attributes=otel_attributes,
