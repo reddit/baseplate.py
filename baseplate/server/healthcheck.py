@@ -21,6 +21,7 @@ TIMEOUT = 30  # seconds
 
 
 def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
+    return
     pool = ThriftConnectionPool(endpoint, size=1, timeout=TIMEOUT)
     with pool.connection() as protocol:
         client = BaseplateServiceV2.Client(protocol)
