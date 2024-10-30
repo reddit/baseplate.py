@@ -16,6 +16,9 @@ from baseplate.thrift import BaseplateServiceV2
 from baseplate.thrift.ttypes import IsHealthyProbe
 from baseplate.thrift.ttypes import IsHealthyRequest
 
+from baseplate.server import configure_tracing
+from opentelemetry import trace
+
 
 TIMEOUT = 30  # seconds
 
@@ -76,10 +79,14 @@ def parse_args() -> argparse.Namespace:
 
 def run_healthchecks() -> None:
     args = parse_args()
+    configure_tracing()
 
-    checker = CHECKERS[args.type]
-    checker(args.endpoint, IsHealthyProbe._NAMES_TO_VALUES[args.probe.upper()])
-    print("OK!")
+    tracer = trace.get_tracer(__name__)
+
+    with tracer.start_as_current_span("probe", kind=trace.SpanKind.CLIENT):
+        checker = CHECKERS[args.type]
+        checker(args.endpoint, IsHealthyProbe._NAMES_TO_VALUES[args.probe.upper()])
+        print("OK!")
 
 
 if __name__ == "__main__":
