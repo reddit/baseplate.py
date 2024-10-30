@@ -27,7 +27,7 @@ from collections import OrderedDict
 
 TIMEOUT = 30  # seconds
 
-propagator = CompositePropagator([RedditB3ThriftFormat(), TraceContextTextMapPropagator()])
+propagator = TraceContextTextMapPropagator()
 
 def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
     pool = ThriftConnectionPool(endpoint, size=1, timeout=TIMEOUT)
@@ -39,10 +39,9 @@ def check_thrift_service(endpoint: EndpointConfiguration, probe: int) -> None:
         for k, v in mutable_metadata.items():
             protocol.trans.set_header(k.encode(), v.encode())
             span.set_attribute(k, v)
+        span.set_attribute("probe", probe)
         client = BaseplateServiceV2.Client(protocol)
-        assert client.is_healthy(
-            request=IsHealthyRequest(probe=probe),
-        ), f"service indicated unhealthiness in probe {probe}"
+        assert client.is_healthy(request=IsHealthyRequest(probe=probe))
 
 
 def check_http_service(endpoint: EndpointConfiguration, probe: int) -> None:
