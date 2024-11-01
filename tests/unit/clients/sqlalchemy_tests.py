@@ -94,7 +94,8 @@ class EngineContextFactoryTest(unittest.TestCase):
         self.factory.report_runtime_metrics(batch)
 
         prom_labels = {"sql_client_name": "factory_name"}
-        # this serves to prove that we never set these metrics / go down the code path after the isinstance check
+        # this serves to prove that we never set these metrics / go down the
+        # code path after the isinstance check
         self.assertEqual(REGISTRY.get_sample_value("sql_client_pool_max_size", prom_labels), None)
         self.assertEqual(
             REGISTRY.get_sample_value("sql_client_pool_client_connections", prom_labels),

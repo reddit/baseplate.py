@@ -91,7 +91,7 @@ class RedditB3HTTPFormat(TextMapPropagator):
             or self._id_regex.fullmatch(extracted_span_id) is None
         ):
             logger.debug(
-                "No valid b3 traces headers in request. Aborting. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",
+                "No valid b3 traces headers in request. Aborting. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",  # noqa: E501
                 carrier,
                 context,
                 extracted_trace_id,

@@ -405,7 +405,7 @@ class VaultCSISecretsStore(SecretsStore):
             raise ValueError(f"Expected {self.path} to be a directory.")
         if not self.data_symlink.is_dir():
             raise ValueError(
-                f"Expected {self.data_symlink} to be a directory. Verify {self.path} is the root of the Vault CSI mount."
+                f"Expected {self.data_symlink} to be a directory. Verify {self.path} is the root of the Vault CSI mount."  # noqa: E501
             )
 
     def get_vault_url(self) -> str:
@@ -463,7 +463,8 @@ def secrets_store_from_config(
         to "secrets."
     :param backoff: retry backoff time for secrets file watcher. Defaults to
         None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
-    :param provider: The secrets provider, acceptable values are 'vault' and 'vault_csi'. Defaults to 'vault'
+    :param provider: The secrets provider, acceptable values are 'vault' and
+        'vault_csi'. Defaults to 'vault'
 
     """
     assert prefix.endswith(".")

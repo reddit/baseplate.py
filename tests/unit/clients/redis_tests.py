@@ -162,7 +162,7 @@ class TestMonitoredRedisConnection:
                         mock.call.inc(),
                         mock.call.dec(),
                     ]
-                ), "Instrumentation should increment and then decrement active requests exactly once"
+                ), "Instrumentation should increment and then decrement active requests exactly once"  # noqa: E501
                 assert (
                     REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, active_labels) == 0.0
                 ), "Should have 0 (and not None) active requests"
@@ -212,7 +212,7 @@ class TestMonitoredRedisConnection:
                         mock.call.inc(),
                         mock.call.dec(),
                     ]
-                ), "Instrumentation should increment and then decrement active requests exactly once"
+                ), "Instrumentation should increment and then decrement active requests exactly once"  # noqa: E501
                 assert (
                     REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, active_labels) == 0.0
                 ), "Should have 0 (and not None) active requests"

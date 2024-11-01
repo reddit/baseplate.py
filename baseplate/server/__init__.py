@@ -175,7 +175,7 @@ def configure_logging(config: Configuration, debug: bool) -> None:
     formatter: logging.Formatter
     if not sys.stdin.isatty():
         formatter = CustomJsonFormatter(
-            "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d %(threadName)s"
+            "%(levelname)s %(message)s %(funcName)s %(lineno)d %(module)s %(name)s %(pathname)s %(process)d %(processName)s %(thread)d %(threadName)s"  # noqa: E501
         )
     else:
         formatter = logging.Formatter("%(levelname)-8s %(message)s")
@@ -503,7 +503,8 @@ def load_and_run_shell() -> None:
 
         ipython_config = Config()
         ipython_config.InteractiveShellApp.exec_lines = [
-            # monkeypatch IPython's log-write() to enable formatted input logging, copying original code:
+            # monkeypatch IPython's log-write() to enable formatted input
+            # logging, copying original code:
             # https://github.com/ipython/ipython/blob/a54bf00feb5182fa821bd5457897b3b30a313436/IPython/core/logger.py#L187-L201
             f"""
             ip = get_ipython()
@@ -524,7 +525,7 @@ def load_and_run_shell() -> None:
             ip.logger.log_write = partial(log_write, ip.logger)
             ip.magic('logstart {console_logpath} append')
             ip.logger.log_write(data="Start IPython logging\\n", message_id="ISTR")
-            """
+            """  # noqa: E501
         ]
         ipython_config.TerminalInteractiveShell.banner2 = banner
         ipython_config.LoggingMagics.quiet = True
@@ -559,7 +560,8 @@ def _get_shell_log_path() -> str:
 
 
 def _is_containerized() -> bool:
-    """Determine if we're running in a container based on cgroup awareness for various container runtimes."""
+    """Determine if we're running in a container based on cgroup awareness for
+    various container runtimes."""
     if os.path.exists("/.dockerenv"):
         return True
 
@@ -607,7 +609,7 @@ class LoggedInteractiveConsole(code.InteractiveConsole):
     ) -> None:
         """Generate an RFC 5424 compliant syslog format."""
         timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-        prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"
+        prompt = f"<{self.pri}>1 {timestamp} {self.hostname} baseplate-shell {self.pid} {message_id} {structured} {message}"  # noqa: E501
         with open(self.output_file, "w", encoding="UTF-8") as f:
             print(prompt, file=f)
             f.flush()

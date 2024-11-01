@@ -226,7 +226,7 @@ def manually_close_request_metrics(request: Request, response: Optional[Response
         request.reddit_tracked_endpoint = None
     else:
         logger.debug(
-            "Request metrics attempted to be closed but were never opened, no metrics will be tracked"
+            "Request metrics attempted to be closed but were never opened, no metrics will be tracked"  # noqa: E501
         )
 
 

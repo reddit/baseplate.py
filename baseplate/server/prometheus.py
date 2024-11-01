@@ -65,7 +65,7 @@ def export_metrics(environ: "WSGIEnvironment", start_response: "StartResponse") 
 def start_prometheus_exporter(address: EndpointConfiguration = PROMETHEUS_EXPORTER_ADDRESS) -> None:
     if "PROMETHEUS_MULTIPROC_DIR" not in os.environ:
         logger.error(
-            "prometheus-client is installed but PROMETHEUS_MULTIPROC_DIR is not set to a writeable directory."
+            "prometheus-client is installed but PROMETHEUS_MULTIPROC_DIR is not set to a writeable directory."  # noqa: E501
         )
         sys.exit(1)
 

@@ -343,7 +343,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         for topic in topics:
             assert (
                 topic in all_topics
-            ), f"topic '{topic}' does not exist. maybe it's misspelled or on a different kafka cluster?"
+            ), f"topic '{topic}' does not exist. maybe it's misspelled or on a different kafka cluster?"  # noqa: E501
 
         # pylint: disable=unused-argument
         def log_assign(
@@ -385,7 +385,9 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
 
 
 class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
-    """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kafka.
+    """Factory for running a
+    :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using
+    Kafka.
 
     The `InOrderConsumerFactory` attempts to achieve in order, exactly once
     message processing.
@@ -395,7 +397,8 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
     that reads messages from the internal work queue, processes them with the
     `handler_fn`, and then commits each message's offset to the kafka consumer's internal state.
 
-    The Kafka Consumer will commit the offsets back to Kafka based on the auto.commit.interval.ms default which is 5 seconds
+    The Kafka Consumer will commit the offsets back to Kafka based on the
+    auto.commit.interval.ms default which is 5 seconds
 
     This one-at-a-time, in-order processing ensures that when a failure happens
     during processing we don't commit its offset (or the offset of any later
@@ -412,17 +415,23 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
 
     UPDATE: The InOrderConsumerFactory can NEVER achieve in-order, exactly once message processing.
 
-    Message processing in Kafka to enable exactly once starts at the Producer enabling transactions,
-    and downstream consumers enabling reading exclusively from the committed offsets within a transactions.
+    Message processing in Kafka to enable exactly once starts at the Producer
+    enabling transactions, and downstream consumers enabling reading
+    exclusively from the committed offsets within a transactions.
 
-    Secondly, without defined keys in the messages from the producer, messages will be sent in a round robin fashion to all partitions in the topic.
-    This means that newer messages could be consumed before older ones if the consumer of those partitions with newer messages are faster.
+    Secondly, without defined keys in the messages from the producer, messages
+    will be sent in a round robin fashion to all partitions in the topic. This
+    means that newer messages could be consumed before older ones if the
+    consumer of those partitions with newer messages are faster.
 
-    Some improvements are made instead that retain the current behaviour, but don't put as much pressure on Kafka by committing every single offset.
+    Some improvements are made instead that retain the current behaviour, but
+    don't put as much pressure on Kafka by committing every single offset.
 
     Instead of committing every single message's offset back to Kafka,
-    the consumer now commits each offset to it's local offset store, and commits the highest seen value for each partition at a defined interval (auto.commit.interval.ms).
-    "enable.auto.offset.store" is set to false to give our application explicit control of when to store offsets.
+    the consumer now commits each offset to it's local offset store, and
+    commits the highest seen value for each partition at a defined interval
+    (auto.commit.interval.ms). "enable.auto.offset.store" is set to false to
+    give our application explicit control of when to store offsets.
     """
 
     # we need to ensure that only a single message handler worker exists (max_concurrency = 1)
@@ -483,7 +492,9 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
 
 
 class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
-    """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kafka.
+    """Factory for running a
+    :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using
+    Kafka.
 
     The `FastConsumerFactory` prioritizes high throughput over exactly once
     message processing.

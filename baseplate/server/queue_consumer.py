@@ -57,7 +57,8 @@ def make_simple_healthchecker(
 
 
 class PumpWorker(abc.ABC):
-    """Reads messages off of a message queue and puts them into a queue.Queue for handling by a MessageHandler.
+    """Reads messages off of a message queue and puts them into a queue.Queue
+    for handling by a MessageHandler.
 
     The QueueConsumerServer will run a single PumpWorker in its own thread.
     """
@@ -73,7 +74,8 @@ class PumpWorker(abc.ABC):
 
     @abc.abstractmethod
     def stop(self) -> None:
-        """Signal the PumpWorker that it should stop receiving new messages from its message queue."""
+        """Signal the PumpWorker that it should stop receiving new messages
+        from its message queue."""
 
 
 class MessageHandler(abc.ABC):
@@ -130,7 +132,8 @@ class QueueConsumerFactory(abc.ABC):
 
 
 class QueueConsumer:
-    """Wrapper around a MessageHandler object that interfaces with the work_queue and starts/stops the handle loop.
+    """Wrapper around a MessageHandler object that interfaces with the
+    work_queue and starts/stops the handle loop.
 
     This object is used by the QueueConsumerServer to wrap a MessageHandler object
     before creating a worker Thread.  This allows the MessageHandler to focus soley

@@ -182,7 +182,7 @@ class KombuMessageHandler(MessageHandler):
         if not self._is_error_recoverable(exc):
             message.reject()
             logger.exception(
-                "Unrecoverable error while trying to process a message.  The message has been discarded."
+                "Unrecoverable error while trying to process a message.  The message has been discarded."  # noqa: E501
             )
             return
 
@@ -308,7 +308,9 @@ class KombuMessageHandler(MessageHandler):
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):
-    """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kombu.
+    """Factory for running a
+    :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using
+    Kombu.
 
     For simple cases where you just need a basic queue with all the default
     parameters for your message broker, you can use `KombuQueueConsumerFactory.new`.

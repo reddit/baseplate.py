@@ -152,7 +152,7 @@ def _load_from_s3(data: bytes) -> bytes:
     except KeyError as e:
         # We require all of these keys to properly read from S3.
         logger.exception(
-            "Failed to update live config: unable to fetch content from s3: source config has invalid or missing keys: %s.",
+            "Failed to update live config: unable to fetch content from s3: source config has invalid or missing keys: %s.",  # noqa: E501
             e.args[0],
         )
         raise LoaderException from e
@@ -194,7 +194,7 @@ def _load_from_s3(data: bytes) -> bytes:
         raise LoaderException from error
     except ValueError as error:
         logger.exception(
-            "Failed to update live config: params for loading from S3 are incorrect. Received error: %s",
+            "Failed to update live config: params for loading from S3 are incorrect. Received error: %s",  # noqa: E501
             error,
         )
 

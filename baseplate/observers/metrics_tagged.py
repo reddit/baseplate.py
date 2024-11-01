@@ -8,7 +8,8 @@ from baseplate.lib import config, metrics
 class TaggedMetricsBaseplateObserver(BaseplateObserver):
     """Metrics collecting observer.
 
-    This observer reports metrics to statsd in the Influx StatsD format. It does three important things:
+    This observer reports metrics to statsd in the Influx StatsD format. It
+    does three important things:
 
     * it tracks the time taken in serving each request.
     * it batches all metrics generated during a request into as few packets

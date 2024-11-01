@@ -562,8 +562,9 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
 
         with serve_thrift(handler, TestService, convert_to_baseplate_error=False) as server:
             with raw_thrift_client(server.endpoint, TestService) as client:
-                # although we set `convert_to_baseplate_error` to `False`, this still gets "converted"
-                # in the ``TestService`` interface. But the point is it's not just ``Error``
+                # although we set `convert_to_baseplate_error` to `False`, this
+                # still gets "converted" in the ``TestService`` interface. But
+                # the point is it's not just ``Error``
                 with self.assertRaises(TApplicationException):
                     client.example()
 
@@ -671,7 +672,7 @@ class ThriftServerSpanTests(GeventPatchedTestCase, TestBase):
         some exceptions, or when the status on baseplate Error is a 5xx).
         """
         logger.debug(
-            f"exc={exc}, convert={convert}, expectation={expectation}, otel_exception={otel_exception}, otel_status={otel_status}"
+            f"exc={exc}, convert={convert}, expectation={expectation}, otel_exception={otel_exception}, otel_status={otel_status}",  # noqa: E501
         )
 
         class Handler(TestService.Iface):

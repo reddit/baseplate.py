@@ -234,7 +234,8 @@ class TestKombuMessageHandler:
                     is None
                 )
 
-                # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
+                # we need to assert that not only the end result is 0, but that
+                # we increased and then decreased to that value
                 assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
     @pytest.mark.parametrize(
@@ -299,7 +300,8 @@ class TestKombuMessageHandler:
                     )
                     == 0
                 )
-                # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
+                # we need to assert that not only the end result is 0, but that
+                # we increased and then decreased to that value
                 assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
                 assert (
@@ -427,7 +429,8 @@ class TestKombuMessageHandler:
                     )
                     is None
                 )
-                # we need to assert that not only the end result is 0, but that we increased and then decreased to that value
+                # we need to assert that not only the end result is 0, but that
+                # we increased and then decreased to that value
                 assert mock_manager.mock_calls == [mock.call.inc(), mock.call.dec()]
 
 

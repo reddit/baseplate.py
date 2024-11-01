@@ -402,7 +402,8 @@ def DefaultFromEnv(
 
     The default is sourced from an environment variable with the name specified in ``default_src``.
     If the environment variable is not set, then the fallback will be used.
-    One of the following values must be provided: fallback, default_src, or the provided configuration
+    One of the following values must be provided: fallback, default_src, or the
+    provided configuration
     """
     env = os.getenv(default_src) or ""
     default = Optional(item_parser, fallback)(env)

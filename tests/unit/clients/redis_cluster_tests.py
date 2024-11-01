@@ -142,7 +142,8 @@ class TestMonitoredRedisConnection:
             ) as active_dec_spy_method:
                 mock_manager.attach_mock(active_dec_spy_method, "dec")
 
-                # This KeyError is the same problem as the RedisClusterException in `test_execute_command_exc_redis_err` above
+                # This KeyError is the same problem as the
+                # RedisClusterException in `test_execute_command_exc_redis_err` above
                 with pytest.raises(KeyError):
                     monitored_redis_connection.pipeline("test").set("hello", 42).set(
                         "goodbye", 23
@@ -163,7 +164,7 @@ class TestMonitoredRedisConnection:
                         mock.call.inc(),
                         mock.call.dec(),
                     ]
-                ), "Instrumentation should increment and then decrement active requests exactly once"
+                ), "Instrumentation should increment and then decrement active requests exactly once"  # noqa: E501
                 print(list(REGISTRY.collect()))
                 assert (
                     REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, active_labels) == 0.0

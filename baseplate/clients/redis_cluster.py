@@ -256,8 +256,9 @@ def cluster_pool_from_config(
     * ``timeout``: . e.g. ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`).
         How long to wait for a connection to become available.  Additionally, will set
         ``socket_connect_timeout`` and ``socket_timeout`` if they're not set explicitly.
-    * ``socket_connect_timeout``: e.g. ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
-        How long to wait for sockets to connect.
+    * ``socket_connect_timeout``: e.g. ``200 milliseconds``
+        (:py:func:`~baseplate.lib.config.Timespan`) How long to wait for sockets to
+        connect.
     * ``socket_timeout``: e.g. ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
         How long to wait for socket operations.
     * ``track_key_reads_sample_rate``: If greater than zero, which percentage of requests will

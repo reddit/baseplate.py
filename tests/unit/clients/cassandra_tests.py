@@ -115,7 +115,8 @@ class CassandraSessionAdapterTests(unittest.TestCase):
             REGISTRY.get_sample_value(
                 "cassandra_client_active_requests",
                 {
-                    "cassandra_client_name": "test",  # client name defaults to name when not provided
+                    # client name defaults to name when not provided
+                    "cassandra_client_name": "test",
                     "cassandra_keyspace": "keyspace",
                     "cassandra_query_name": "",
                     "cassandra_cluster_name": "",

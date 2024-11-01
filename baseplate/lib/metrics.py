@@ -250,7 +250,7 @@ class Batch(BaseClient):
             )
             logger.warning(
                 "Metrics batch of %d bytes is too large to send, flush more often or reduce "
-                "amount done in this request. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-metrics-batch-of-n-bytes-is-too-large-to-send. Top counters: %s",
+                "amount done in this request. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-metrics-batch-of-n-bytes-is-too-large-to-send. Top counters: %s",  # noqa: E501
                 exc.message_size,
                 ", ".join(f"{c.name.decode()}={c.total:.0f}" for c in counters_by_total[:10]),
             )

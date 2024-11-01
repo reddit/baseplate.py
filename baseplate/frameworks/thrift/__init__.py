@@ -145,7 +145,7 @@ class _ContextAwareHandler:
                             result = handler_fn(self.context, *args, **kwargs)
                     except (TApplicationException, TProtocolException, TTransportException) as exc:
                         logger.debug(
-                            f"Processing one of: TApplicationException, TProtocolException, TTransportException. [exc={exc}]"
+                            f"Processing one of: TApplicationException, TProtocolException, TTransportException. [exc={exc}]"  # noqa: E501
                         )
                         # these are subclasses of TException but aren't ones that
                         # should be expected in the protocol
@@ -234,11 +234,13 @@ class _ContextAwareHandler:
                                 # To fix this, we optimistically try to access `code` on
                                 # `current_exc` and just catch the `AttributeError` if the
                                 # `code` attribute is not present.
-                                # Note: if the error code was not originally defined in baseplate, or the
-                                # name associated with the error was overriden, this cannot reflect that
-                                # we will emit the status code in both cases
-                                # but the status will be blank in the first case, and the baseplate name
-                                # in the second
+                                # Note: if the error code was not originally
+                                # defined in baseplate, or the name associated
+                                # with the error was overriden, this cannot
+                                # reflect that we will emit the status code in
+                                # both cases but the status will be blank in
+                                # the first case, and the baseplate name in the
+                                # second
                                 baseplate_status_code = current_exc.code  # type: ignore
                                 baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(
                                     current_exc.code,  # type: ignore
