@@ -93,17 +93,6 @@ typing-extensions = {version = ">=4", markers = "python_version < \"3.11\""}
 tests = ["mypy (>=0.800)", "pytest", "pytest-asyncio"]
 
 [[package]]
-name = "aspy-refactor-imports"
-version = "3.0.2"
-description = "Utilities for refactoring imports in python-like syntax."
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "aspy.refactor_imports-3.0.2-py2.py3-none-any.whl", hash = "sha256:f306037682479945df61b2e6d01bf97256d68f3e704742768deef549e0d61fbb"},
-    {file = "aspy.refactor_imports-3.0.2.tar.gz", hash = "sha256:3c7329cdb2613c46fcd757c8e45120efbc3d4b9db805092911eb605c19c5795c"},
-]
-
-[[package]]
 name = "astroid"
 version = "3.3.5"
 description = "An abstract syntax tree for Python with inference support."
@@ -483,6 +472,17 @@ files = [
     {file = "charset_normalizer-3.4.0-cp39-cp39-win_amd64.whl", hash = "sha256:95c3c157765b031331dd4db3c775e58deaee050a3042fcad72cbc4189d7c8dca"},
     {file = "charset_normalizer-3.4.0-py3-none-any.whl", hash = "sha256:fe9f97feb71aa9896b81973a7bbada8c49501dc73e58a10fcef6663af95e5079"},
     {file = "charset_normalizer-3.4.0.tar.gz", hash = "sha256:223217c3d4f82c3ac5e29032b3f1c2eb0fb591b72161f86d93f5719079dae93e"},
+]
+
+[[package]]
+name = "classify-imports"
+version = "4.2.0"
+description = "Utilities for refactoring imports in python-like syntax."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "classify_imports-4.2.0-py2.py3-none-any.whl", hash = "sha256:dbbc264b70a470ed8c6c95976a11dfb8b7f63df44ed1af87328bbed2663f5161"},
+    {file = "classify_imports-4.2.0.tar.gz", hash = "sha256:7abfb7ea92149b29d046bd34573d247ba6e68cc28100c801eba4af17964fc40e"},
 ]
 
 [[package]]
@@ -3208,17 +3208,17 @@ files = [
 
 [[package]]
 name = "reorder-python-imports"
-version = "2.4.0"
+version = "3.14.0"
 description = "Tool for reordering python imports"
 optional = false
-python-versions = ">=3.6.1"
+python-versions = ">=3.8"
 files = [
-    {file = "reorder_python_imports-2.4.0-py2.py3-none-any.whl", hash = "sha256:995a2a93684af31837f30cf2bcddce2e7eb17f0d2d69c9905da103baf8cec42b"},
-    {file = "reorder_python_imports-2.4.0.tar.gz", hash = "sha256:9a9e7774d66e9b410b619f934e8206a63dce5be26bd894f5006eb764bba6a26d"},
+    {file = "reorder_python_imports-3.14.0-py2.py3-none-any.whl", hash = "sha256:5b0c4cdf1dbead8c415f96bebb93944fc7758b968132b5c56b610aeba0abf960"},
+    {file = "reorder_python_imports-3.14.0.tar.gz", hash = "sha256:5fc3aea31cdd9dcf9de381c79bf14a03c1e3f792450e35b48325c56599b9e039"},
 ]
 
 [package.dependencies]
-"aspy.refactor-imports" = ">=2.1.0"
+classify-imports = ">=4.1"
 
 [[package]]
 name = "requests"
@@ -4259,4 +4259,4 @@ zookeeper = ["kazoo"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "c46e7c1f81b12dc4f9c188833f8c7860f99bc4e6631a866685df2fd75bfe1e80"
+content-hash = "ea1085858680c61129ff676241cdccf3b3ff2f65a0f6641c151f6ed83b46235a"
