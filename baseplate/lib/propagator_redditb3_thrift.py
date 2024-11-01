@@ -1,6 +1,7 @@
 import logging
+from collections.abc import Iterable
 from re import compile as re_compile
-from typing import Any, Iterable, Optional, Set
+from typing import Any, Optional
 
 from opentelemetry import trace
 from opentelemetry.context import Context
@@ -138,7 +139,7 @@ class RedditB3ThriftFormat(TextMapPropagator):
         setter.set(carrier, self.SAMPLED_KEY, "1" if sampled else "0")
 
     @property
-    def fields(self) -> Set[str]:
+    def fields(self) -> set[str]:
         return {
             self.TRACE_ID_KEY,
             self.SPAN_ID_KEY,

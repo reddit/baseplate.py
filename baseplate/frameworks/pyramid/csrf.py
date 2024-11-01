@@ -1,6 +1,6 @@
 import logging
 from datetime import timedelta
-from typing import Any, Tuple
+from typing import Any
 
 from zope.interface import implementer
 
@@ -19,7 +19,7 @@ except ImportError:
     raise
 
 
-def _make_csrf_token_payload(version: int, account_id: str) -> Tuple[str, str]:
+def _make_csrf_token_payload(version: int, account_id: str) -> tuple[str, str]:
     version_str = str(version)
     payload = ".".join([version_str, account_id])
     return version_str, payload

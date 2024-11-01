@@ -12,7 +12,8 @@ import re
 import sys
 import threading
 import time
-from typing import Dict, Iterator, NoReturn, Sequence
+from collections.abc import Iterator, Sequence
+from typing import NoReturn
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ def _get_watched_files(extra_files: Sequence[str]) -> Iterator[str]:
 
 def _reload_when_files_change(extra_files: Sequence[str]) -> NoReturn:
     """Scan all watched files periodically and re-exec if anything changed."""
-    initial_mtimes: Dict[str, float] = {}
+    initial_mtimes: dict[str, float] = {}
     while True:
         for filename in _get_watched_files(extra_files):
             try:

@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import gevent
 import pytest
@@ -16,7 +16,7 @@ class FakeTransport:
     def __init__(self):
         self.events = []
 
-    def __call__(self, event: Dict[str, Any]) -> None:
+    def __call__(self, event: dict[str, Any]) -> None:
         self.events.append(event)
 
 

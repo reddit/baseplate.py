@@ -10,7 +10,7 @@ import threading
 import time
 import typing
 from datetime import datetime
-from typing import Any, DefaultDict, Dict, List, NamedTuple, Optional
+from typing import Any, NamedTuple, Optional
 
 import requests
 from requests.exceptions import RequestException
@@ -186,8 +186,8 @@ class TraceSpanObserver(SpanObserver):
         self.start: Optional[int] = None
         self.end: Optional[int] = None
         self.elapsed: Optional[int] = None
-        self.binary_annotations: List[Dict[str, Any]] = []
-        self.counters: DefaultDict[str, float] = collections.defaultdict(float)
+        self.binary_annotations: list[dict[str, Any]] = []
+        self.counters: collections.defaultdict[str, float] = collections.defaultdict(float)
         self.on_set_tag(ANNOTATIONS["COMPONENT"], "baseplate")
         super().__init__()
 
@@ -222,10 +222,10 @@ class TraceSpanObserver(SpanObserver):
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.counters[key] += delta
 
-    def _endpoint_info(self) -> Dict[str, str]:
+    def _endpoint_info(self) -> dict[str, str]:
         return {"serviceName": self.service_name, "ipv4": self.hostname}
 
-    def _create_time_annotation(self, annotation_type: str, timestamp: int) -> Dict[str, Any]:
+    def _create_time_annotation(self, annotation_type: str, timestamp: int) -> dict[str, Any]:
         """Create Zipkin-compatible Annotation for a span.
 
         This should be used for generating span annotations with a time component,
@@ -235,7 +235,7 @@ class TraceSpanObserver(SpanObserver):
 
     def _create_binary_annotation(
         self, annotation_type: str, annotation_value: Any
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create Zipkin-compatible BinaryAnnotation for a span.
 
         This should be used for generating span annotations that
@@ -253,8 +253,8 @@ class TraceSpanObserver(SpanObserver):
         return {"key": annotation_type, "value": annotation_value, "endpoint": endpoint_info}
 
     def _to_span_obj(
-        self, annotations: List[Dict[str, Any]], binary_annotations: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, annotations: list[dict[str, Any]], binary_annotations: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         span = {
             "traceId": self.span.trace_id,
             "name": self.span.name,
@@ -268,7 +268,7 @@ class TraceSpanObserver(SpanObserver):
         span["parentId"] = self.span.parent_id or 0
         return span
 
-    def _serialize(self) -> Dict[str, Any]:
+    def _serialize(self) -> dict[str, Any]:
         """Serialize span information into Zipkin-accepted format."""
         annotations = []
 
@@ -334,7 +334,7 @@ class TraceLocalSpanObserver(TraceSpanObserver):
             )
         span.register(trace_observer)
 
-    def _serialize(self) -> Dict[str, Any]:
+    def _serialize(self) -> dict[str, Any]:
         return self._to_span_obj([], self.binary_annotations)
 
 
@@ -382,9 +382,9 @@ class TraceServerSpanObserver(TraceSpanObserver):
             )
         span.register(trace_observer)
 
-    def _serialize(self) -> Dict[str, Any]:
+    def _serialize(self) -> dict[str, Any]:
         """Serialize span information into Zipkin-accepted format."""
-        annotations: List[Dict[str, Any]] = []
+        annotations: list[dict[str, Any]] = []
 
         annotations.append(
             self._create_time_annotation(
@@ -417,7 +417,7 @@ class BaseBatchRecorder(Recorder):
             self.flush_worker.daemon = True
             self.flush_worker.start()
 
-    def flush_func(self, spans: List[Dict[str, Any]]) -> None:
+    def flush_func(self, spans: list[dict[str, Any]]) -> None:
         raise NotImplementedError
 
     def _flush_spans(self) -> None:
@@ -426,7 +426,7 @@ class BaseBatchRecorder(Recorder):
         # empties while being processed before reaching 10 spans, we flush
         # immediately.
         while True:
-            spans: List[Dict[str, Any]] = []
+            spans: list[dict[str, Any]] = []
             try:
                 while len(spans) < self.max_span_batch:
                     spans.append(self.span_queue.get_nowait()._serialize())
@@ -457,7 +457,7 @@ class LoggingRecorder(BaseBatchRecorder):
     ):
         super().__init__(max_queue_size, num_workers, max_span_batch, batch_wait_interval)
 
-    def flush_func(self, spans: List[Dict[str, Any]]) -> None:
+    def flush_func(self, spans: list[dict[str, Any]]) -> None:
         """Write a set of spans to debug log."""
         for span in spans:
             self.logger.debug("Span recording: %s", span)
@@ -475,7 +475,7 @@ class NullRecorder(BaseBatchRecorder):
     ):
         super().__init__(max_queue_size, num_workers, max_span_batch, batch_wait_interval)
 
-    def flush_func(self, spans: List[Dict[str, Any]]) -> None:
+    def flush_func(self, spans: list[dict[str, Any]]) -> None:
         return
 
 
@@ -502,7 +502,7 @@ class RemoteRecorder(BaseBatchRecorder):
         self.session.mount("http://", adapter)
         self.endpoint = f"http://{endpoint}/api/v1/spans"
 
-    def flush_func(self, spans: List[Dict[str, Any]]) -> None:
+    def flush_func(self, spans: list[dict[str, Any]]) -> None:
         """Send a set of spans to remote collector."""
         try:
             self.session.post(

@@ -2,7 +2,7 @@ import base64
 import ipaddress
 import sys
 import time
-from typing import Any, Optional, Type, Union
+from typing import Any, Optional, Union
 
 from advocate import AddrValidator, ValidatingHTTPAdapter
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -241,13 +241,18 @@ class BaseplateSession:
         start_time = time.perf_counter()
 
         try:
-            with self.span.make_child(f"{self.name}.request").with_tags(
-                {
-                    "http.url": request.url,
-                    "http.method": request.method.lower() if request.method else "",
-                    "http.slug": self.client_name if self.client_name is not None else self.name,
-                }
-            ) as span, ACTIVE_REQUESTS.labels(**active_request_label_values).track_inprogress():
+            with (
+                self.span.make_child(f"{self.name}.request").with_tags(
+                    {
+                        "http.url": request.url,
+                        "http.method": request.method.lower() if request.method else "",
+                        "http.slug": self.client_name
+                        if self.client_name is not None
+                        else self.name,
+                    }
+                ) as span,
+                ACTIVE_REQUESTS.labels(**active_request_label_values).track_inprogress(),
+            ):
                 self._add_span_context(span, request)
 
                 # we cannot re-use the same session every time because sessions re-use the same
@@ -331,7 +336,7 @@ class RequestsContextFactory(ContextFactory):
     def __init__(
         self,
         adapter: HTTPAdapter,
-        session_cls: Type[BaseplateSession],
+        session_cls: type[BaseplateSession],
         client_name: Optional[str] = None,
     ) -> None:
         self.adapter = adapter

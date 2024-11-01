@@ -20,7 +20,8 @@ import logging
 import queue
 import socket
 import time
-from typing import TYPE_CHECKING, Any, Generator, Optional, Type
+from collections.abc import Generator
+from typing import TYPE_CHECKING, Any, Optional
 
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase, TProtocolException, TProtocolFactory
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    ProtocolPool = Type[queue.Queue[TProtocolBase]]  # pylint: disable=unsubscriptable-object
+    ProtocolPool = type[queue.Queue[TProtocolBase]]  # pylint: disable=unsubscriptable-object
 else:
     ProtocolPool = queue.Queue
 

@@ -1,7 +1,7 @@
 import datetime
 import logging
 import socket
-from typing import Any, Dict
+from typing import Any
 
 from gevent.pool import Pool
 from gevent.pywsgi import LoggingLogAdapter, WSGIServer
@@ -13,7 +13,7 @@ from baseplate.server import _load_factory, runtime_monitor
 logger = logging.getLogger(__name__)
 
 
-def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
+def make_server(server_config: dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
     """Make a gevent server for WSGI apps."""
     # pylint: disable=maybe-no-member
     cfg = config.parse_config(
@@ -35,7 +35,7 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
     pool = Pool()
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
 
-    kwargs: Dict[str, Any] = {}
+    kwargs: dict[str, Any] = {}
     if cfg.handler:
         kwargs["handler_class"] = _load_factory(cfg.handler, default_name=None)
 

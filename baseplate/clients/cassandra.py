@@ -1,17 +1,13 @@
 import logging
 import time
+from collections.abc import Mapping, Sequence
 from threading import Event
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
-    List,
-    Mapping,
     NamedTuple,
     Optional,
-    Sequence,
-    Tuple,
     Union,
 )
 
@@ -73,7 +69,7 @@ def cluster_from_config(
     app_config: config.RawConfig,
     secrets: Optional[SecretsStore] = None,
     prefix: str = "cassandra.",
-    execution_profiles: Optional[Dict[str, ExecutionProfile]] = None,
+    execution_profiles: Optional[dict[str, ExecutionProfile]] = None,
     **kwargs: Any,
 ) -> Cluster:
     """Make a Cluster from a configuration dictionary.
@@ -174,7 +170,7 @@ class CassandraContextFactory(ContextFactory):
         prometheus_cluster_name: Optional[str] = None,
     ):
         self.session = session
-        self.prepared_statements: Dict[str, PreparedStatement] = {}
+        self.prepared_statements: dict[str, PreparedStatement] = {}
         self.prometheus_client_name = prometheus_client_name
         self.prometheus_cluster_name = prometheus_cluster_name
 
@@ -321,7 +317,7 @@ def _on_execute_failed(exc: BaseException, args: CassandraCallbackArgs, event: E
         event.set()
 
 
-RowFactory = Callable[[List[str], List[Tuple]], Any]
+RowFactory = Callable[[list[str], list[tuple]], Any]
 Query = Union[str, SimpleStatement, PreparedStatement, BoundStatement]
 Parameters = Union[Sequence[Any], Mapping[str, Any]]
 
@@ -332,7 +328,7 @@ class CassandraSessionAdapter:
         context_name: str,
         server_span: Span,
         session: Session,
-        prepared_statements: Dict[str, PreparedStatement],
+        prepared_statements: dict[str, PreparedStatement],
         prometheus_client_name: Optional[str] = None,
         prometheus_cluster_name: Optional[str] = None,
     ):

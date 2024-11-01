@@ -93,16 +93,14 @@ import os
 import pwd
 import re
 import socket
+from collections.abc import Sequence
 from typing import (
     IO,
     Any,
     Callable,
-    Dict,
     Generic,
     NamedTuple,
     NewType,
-    Sequence,
-    Set,
     TypeVar,
     Union,
 )
@@ -457,9 +455,9 @@ class ConfigNamespace(dict):
     def __getattr__(self, name: str) -> Any: ...
 
 
-ConfigSpecItem = Union["Parser", Dict[str, Any], Callable[[str], T]]
-ConfigSpec = Dict[str, ConfigSpecItem]
-RawConfig = Dict[str, str]
+ConfigSpecItem = Union["Parser", dict[str, Any], Callable[[str], T]]
+ConfigSpec = dict[str, ConfigSpecItem]
+RawConfig = dict[str, str]
 
 
 class Parser(Generic[T]):
@@ -606,7 +604,7 @@ class DictOf(Parser[ConfigNamespace]):
         matcher = re.compile("^" + root.replace(".", r"\.") + r"([^.]+)")
 
         values = ConfigNamespace()
-        seen_subkeys: Set[str] = set()
+        seen_subkeys: set[str] = set()
         for key in raw_config:
             m = matcher.search(key)
             if not m:

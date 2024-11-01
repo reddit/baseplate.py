@@ -2,9 +2,10 @@ import logging
 import random
 import sys
 import time
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from logging import Logger
-from typing import Any, Callable, Iterator, Mapping, Optional
+from typing import Any, Callable, Optional
 
 from form_observability import ContextAwareTracer, ctx
 from opentelemetry import trace

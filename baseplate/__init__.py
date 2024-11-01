@@ -1,9 +1,10 @@
 import logging
 import os
 import random
+from collections.abc import Iterator
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Any, Callable, Dict, Iterator, List, NamedTuple, Optional, Tuple, Type
+from typing import Any, Callable, NamedTuple, Optional
 
 import gevent.monkey
 from pkg_resources import DistributionNotFound, get_distribution
@@ -36,7 +37,7 @@ class BaseplateObserver:
         raise NotImplementedError
 
 
-_ExcInfo = Tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]
+_ExcInfo = tuple[Optional[type[BaseException]], Optional[BaseException], Optional[TracebackType]]
 
 
 class SpanObserver:
@@ -167,7 +168,7 @@ class RequestContext:
 
     def __init__(
         self,
-        context_config: Dict[str, Any],
+        context_config: dict[str, Any],
         prefix: Optional[str] = None,
         span: Optional["Span"] = None,
         wrapped: Optional["RequestContext"] = None,
@@ -264,9 +265,9 @@ class Baseplate:
             ...
 
         """
-        self.observers: List[BaseplateObserver] = []
+        self.observers: list[BaseplateObserver] = []
         self._metrics_client: Optional[metrics.Client] = None
-        self._context_config: Dict[str, Any] = {}
+        self._context_config: dict[str, Any] = {}
         self._app_config = app_config or {}
 
         self.service_name = self._app_config.get("baseplate.service_name")
@@ -366,7 +367,7 @@ class Baseplate:
                 "The following observers are unconfigured and won't run: %s", ", ".join(skipped)
             )
 
-    def configure_context(self, context_spec: Dict[str, Any]) -> None:
+    def configure_context(self, context_spec: dict[str, Any]) -> None:
         """Add a number of objects to each request's context object.
 
         Configure and attach multiple clients to the
@@ -498,8 +499,8 @@ class Baseplate:
         with self.make_server_span(context, name):
             yield context
 
-    def get_runtime_metric_reporters(self) -> Dict[str, Callable[[Any], None]]:
-        specs: List[Tuple[Optional[str], Dict[str, Any]]] = [(None, self._context_config)]
+    def get_runtime_metric_reporters(self) -> dict[str, Callable[[Any], None]]:
+        specs: list[tuple[Optional[str], dict[str, Any]]] = [(None, self._context_config)]
         result = {}
         while specs:
             prefix, spec = specs.pop(0)
@@ -539,7 +540,7 @@ class Span:
         self.context = context
         self.baseplate = baseplate
         self.component_name: Optional[str] = None
-        self.observers: List[SpanObserver] = []
+        self.observers: list[SpanObserver] = []
 
     def register(self, observer: SpanObserver) -> None:
         """Register an observer to receive events from this span."""
@@ -629,7 +630,7 @@ class Span:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:
@@ -644,7 +645,7 @@ class Span:
         """Return a child Span whose parent is this Span."""
         raise NotImplementedError
 
-    def with_tags(self, tags: Dict[str, Any]) -> "Span":
+    def with_tags(self, tags: dict[str, Any]) -> "Span":
         """Declare a set of tags to be added to a span before starting it in the context manager.
 
         Can be used as follow:

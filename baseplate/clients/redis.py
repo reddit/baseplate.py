@@ -1,6 +1,6 @@
 from math import ceil
 from time import perf_counter
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 import redis
 
@@ -233,9 +233,10 @@ class MonitoredRedisConnection(redis.StrictRedis):
             f"{PROM_LABELS_PREFIX}_database": self.connection_pool.connection_kwargs.get("db", ""),
             f"{PROM_LABELS_PREFIX}_type": "standalone",
         }
-        with self.server_span.make_child(trace_name), ACTIVE_REQUESTS.labels(
-            **labels
-        ).track_inprogress():
+        with (
+            self.server_span.make_child(trace_name),
+            ACTIVE_REQUESTS.labels(**labels).track_inprogress(),
+        ):
             start_time = perf_counter()
             success = "true"
 
@@ -289,7 +290,7 @@ class MonitoredRedisPipeline(Pipeline):
         trace_name: str,
         server_span: Span,
         connection_pool: redis.ConnectionPool,
-        response_callbacks: Dict,
+        response_callbacks: dict,
         redis_client_name: str = "",
         **kwargs: Any,
     ):

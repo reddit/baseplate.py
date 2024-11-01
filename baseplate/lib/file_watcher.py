@@ -38,7 +38,7 @@ would change whenever the underlying file changes.
 import logging
 import os
 import typing
-from typing import IO, Callable, Generic, NamedTuple, Optional, Tuple, Type, TypeVar, Union
+from typing import IO, Callable, Generic, NamedTuple, Optional, TypeVar, Union
 
 from baseplate.lib.retry import RetryPolicy
 
@@ -112,7 +112,7 @@ class FileWatcher(Generic[T]):
         self._path = path
         self._parser = parser
         self._mtime = 0.0
-        self._data: Union[T, Type[_NOT_LOADED]] = _NOT_LOADED
+        self._data: Union[T, type[_NOT_LOADED]] = _NOT_LOADED
         self._open_options = _OpenOptions(
             mode="rb" if binary else "r",
             encoding=encoding or ("UTF-8" if not binary else None),
@@ -156,7 +156,7 @@ class FileWatcher(Generic[T]):
         """
         return self.get_data_and_mtime()[0]
 
-    def get_data_and_mtime(self) -> Tuple[T, float]:
+    def get_data_and_mtime(self) -> tuple[T, float]:
         """Return tuple of the current contents of the file and file mtime.
 
         The watcher ensures that the file is re-loaded and parsed whenever its

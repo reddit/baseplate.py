@@ -5,8 +5,9 @@ import binascii
 import json
 import logging
 import os
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Dict, Iterator, NamedTuple, Optional, Protocol, Tuple
+from typing import Any, NamedTuple, Optional, Protocol
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -111,10 +112,10 @@ def _decode_secret(path: str, encoding: str, value: str) -> bytes:
 
 
 class SecretParser(Protocol):
-    def __call__(self, data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]: ...
+    def __call__(self, data: dict[str, Any], secret_path: str = "") -> dict[str, str]: ...
 
 
-def parse_secrets_fetcher(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
+def parse_secrets_fetcher(data: dict[str, Any], secret_path: str = "") -> dict[str, str]:
     try:
         return data["secrets"][secret_path]
     except KeyError:
@@ -122,7 +123,7 @@ def parse_secrets_fetcher(data: Dict[str, Any], secret_path: str = "") -> Dict[s
 
 
 # pylint: disable=unused-argument
-def parse_vault_csi(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
+def parse_vault_csi(data: dict[str, Any], secret_path: str = "") -> dict[str, str]:
     return data["data"]
 
 
@@ -148,13 +149,13 @@ class SecretsStore(ContextFactory):
         self.parser = parser or parse_secrets_fetcher
         self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
 
-    def _get_data(self) -> Tuple[Any, float]:
+    def _get_data(self) -> tuple[Any, float]:
         try:
             return self._filewatcher.get_data_and_mtime()
         except WatchedFileNotAvailableError as exc:
             raise SecretsNotAvailableError(exc)
 
-    def get_raw(self, path: str) -> Dict[str, str]:
+    def get_raw(self, path: str) -> dict[str, str]:
         """Return a dictionary of key/value pairs for the given secret path.
 
         This is the raw representation of the secret in the underlying store.
@@ -237,7 +238,7 @@ class SecretsStore(ContextFactory):
         data, _ = self._get_data()
         return data["vault"]["token"]
 
-    def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
+    def get_raw_and_mtime(self, secret_path: str) -> tuple[dict[str, str], float]:
         """Return raw secret and modification time.
 
         This returns the same data as :py:meth:`get_raw` as well as a UNIX
@@ -251,7 +252,7 @@ class SecretsStore(ContextFactory):
         data, mtime = self._get_data()
         return self.parser(data, secret_path), mtime
 
-    def get_credentials_and_mtime(self, path: str) -> Tuple[CredentialSecret, float]:
+    def get_credentials_and_mtime(self, path: str) -> tuple[CredentialSecret, float]:
         """Return credentials secret and modification time.
 
         This returns the same data as :py:meth:`get_credentials` as well as a
@@ -286,7 +287,7 @@ class SecretsStore(ContextFactory):
 
         return CredentialSecret(**values), mtime
 
-    def get_simple_and_mtime(self, path: str) -> Tuple[bytes, float]:
+    def get_simple_and_mtime(self, path: str) -> tuple[bytes, float]:
         """Return simple secret and modification time.
 
         This returns the same data as :py:meth:`get_simple` as well as a UNIX
@@ -310,7 +311,7 @@ class SecretsStore(ContextFactory):
         encoding = secret_attributes.get("encoding", "identity")
         return _decode_secret(path, encoding, value), mtime
 
-    def get_versioned_and_mtime(self, path: str) -> Tuple[VersionedSecret, float]:
+    def get_versioned_and_mtime(self, path: str) -> tuple[VersionedSecret, float]:
         """Return versioned secret and modification time.
 
         This returns the same data as :py:meth:`get_versioned` as well as a
@@ -365,10 +366,10 @@ class _CachingSecretsStore(SecretsStore):
         self.parser = parser
 
     @cached_property
-    def _data(self) -> Tuple[Any, float]:
+    def _data(self) -> tuple[Any, float]:
         return super()._get_data()
 
-    def _get_data(self) -> Tuple[Dict, float]:
+    def _get_data(self) -> tuple[dict, float]:
         return self._data
 
 
@@ -390,7 +391,7 @@ class VaultCSISecretsStore(SecretsStore):
 
     path: Path
     data_symlink: Path
-    cache: Dict[str, VaultCSIEntry]
+    cache: dict[str, VaultCSIEntry]
 
     def __init__(
         self,
@@ -427,7 +428,7 @@ class VaultCSISecretsStore(SecretsStore):
         except FileNotFoundError as exc:
             raise SecretNotFoundError(name) from exc
 
-    def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
+    def get_raw_and_mtime(self, secret_path: str) -> tuple[dict[str, str], float]:
         mtime = self._get_mtime()
         if cache_entry := self.cache.get(secret_path):
             if cache_entry.mtime == mtime:

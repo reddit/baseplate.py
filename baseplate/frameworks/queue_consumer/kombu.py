@@ -2,8 +2,9 @@ import logging
 import queue
 import socket
 import time
+from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Dict, NamedTuple, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
 
 import kombu
 from gevent.server import StreamServer
@@ -267,11 +268,10 @@ class KombuMessageHandler(MessageHandler):
             # We place the call to ``baseplate.make_server_span`` inside the
             # try/except block because we still want Baseplate to see and
             # handle the error (publish it to error reporting)
-            with self.baseplate.make_server_span(
-                context, self.name
-            ) as span, AMQP_ACTIVE_MESSAGES.labels(
-                **prometheus_labels._asdict()
-            ).track_inprogress():
+            with (
+                self.baseplate.make_server_span(context, self.name) as span,
+                AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).track_inprogress(),
+            ):
                 delivery_info = message.delivery_info
                 message_body = None
                 message_body = message.decode()
@@ -329,7 +329,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
-        worker_kwargs: Optional[Dict[str, Any]] = None,
+        worker_kwargs: Optional[dict[str, Any]] = None,
         retry_mode: RetryMode = RetryMode.REQUEUE,
         retry_limit: Optional[int] = None,
     ):
@@ -383,7 +383,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
-        worker_kwargs: Optional[Dict[str, Any]] = None,
+        worker_kwargs: Optional[dict[str, Any]] = None,
         retry_mode: RetryMode = RetryMode.REQUEUE,
         retry_limit: Optional[int] = None,
     ) -> "KombuQueueConsumerFactory":

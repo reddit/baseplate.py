@@ -2,7 +2,8 @@ import base64
 import logging
 import sys
 import time
-from typing import Any, Callable, Dict, Iterable, Iterator, Mapping, Optional
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Any, Callable, Optional
 
 import pyramid.events
 import pyramid.request
@@ -312,7 +313,7 @@ class RequestFactory:
     def __init__(self, baseplate: Baseplate):
         self.baseplate = baseplate
 
-    def __call__(self, environ: Dict[str, str]) -> BaseplateRequest:
+    def __call__(self, environ: dict[str, str]) -> BaseplateRequest:
         return BaseplateRequest(environ, context_config=self.baseplate._context_config)
 
     def blank(self, path: str) -> BaseplateRequest:

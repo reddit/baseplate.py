@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import re
 import typing
+from collections.abc import Sequence
 from time import perf_counter
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Optional, Union
 
 from prometheus_client import Counter, Gauge, Histogram
 from sqlalchemy import create_engine, event
@@ -120,7 +121,7 @@ class SQLAlchemySession(config.Parser):
         return SQLAlchemySessionContextFactory(engine, key_path)
 
 
-Parameters = Optional[Union[Dict[str, Any], Sequence[Any]]]
+Parameters = Optional[Union[dict[str, Any], Sequence[Any]]]
 
 
 SAFE_TRACE_ID = re.compile("^[A-Za-z0-9_-]+$")

@@ -1,6 +1,6 @@
 import abc
 import time
-from typing import Any, Generic, Optional, Type, TypeVar
+from typing import Any, Generic, Optional, TypeVar
 
 import kombu.serialization
 from kombu import Connection, Exchange
@@ -131,7 +131,7 @@ class KombuThriftSerializer(KombuSerializer[T]):  # pylint: disable=unsubscripta
 
     def __init__(
         self,
-        thrift_class: Type[T],
+        thrift_class: type[T],
         protocol_factory: TProtocolFactory = TBinaryProtocolAcceleratedFactory(),
     ):
         self.thrift_class = thrift_class

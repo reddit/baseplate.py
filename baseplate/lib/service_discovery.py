@@ -19,7 +19,8 @@ A basic example of usage::
 """
 
 import json
-from typing import IO, List, NamedTuple, Optional, Sequence
+from collections.abc import Sequence
+from typing import IO, NamedTuple, Optional
 
 from baseplate.lib.config import Endpoint, EndpointConfiguration
 from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
@@ -54,7 +55,7 @@ class Backend(NamedTuple):
 
 
 class _Inventory(NamedTuple):
-    backends: List[Backend]
+    backends: list[Backend]
     lottery: Optional[WeightedLottery[Backend]]
 
 

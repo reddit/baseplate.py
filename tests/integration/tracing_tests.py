@@ -93,12 +93,22 @@ class TracingTests(unittest.TestCase):
             self.assertEqual(span["parentId"], 0)
 
     def test_local_tracing_embedded(self):
-        with mock.patch.object(
-            TraceBaseplateObserver, "on_server_span_created", side_effect=self._register_server_mock
-        ), mock.patch.object(
-            TraceServerSpanObserver, "on_child_span_created", side_effect=self._register_local_mock
-        ), mock.patch.object(
-            TraceLocalSpanObserver, "on_child_span_created", side_effect=self._register_local_mock
+        with (
+            mock.patch.object(
+                TraceBaseplateObserver,
+                "on_server_span_created",
+                side_effect=self._register_server_mock,
+            ),
+            mock.patch.object(
+                TraceServerSpanObserver,
+                "on_child_span_created",
+                side_effect=self._register_local_mock,
+            ),
+            mock.patch.object(
+                TraceLocalSpanObserver,
+                "on_child_span_created",
+                side_effect=self._register_local_mock,
+            ),
         ):
             self.test_app.get("/local_test")
             # Verify that child span can be created within a local span context

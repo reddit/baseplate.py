@@ -8,8 +8,9 @@ import queue
 import signal
 import socket
 import uuid
+from collections.abc import Sequence
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Callable, Dict, Sequence
+from typing import TYPE_CHECKING, Any, Callable
 
 from gevent.pywsgi import LoggingLogAdapter, WSGIServer
 from gevent.server import StreamServer
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
     # TODO: Replace with wsgiref.types once on 3.11+
     from _typeshed.wsgi import StartResponse
 
-WSGIEnvironment = Dict[str, Any]
+WSGIEnvironment = dict[str, Any]
 HealthcheckCallback = Callable[[WSGIEnvironment], bool]
 
 

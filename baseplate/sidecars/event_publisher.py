@@ -5,7 +5,7 @@ import gzip
 import hashlib
 import hmac
 import logging
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 import requests
 
@@ -73,7 +73,7 @@ class V2Batch(Batch):
         )
 
     def reset(self) -> None:
-        self._items: List[bytes] = []
+        self._items: list[bytes] = []
         self._size = len(self._header) + len(self._end)
 
 

@@ -5,8 +5,9 @@ import socket
 import sys
 import time
 from collections import OrderedDict
+from collections.abc import Iterator
 from math import ceil
-from typing import Any, Callable, Iterator, Optional
+from typing import Any, Callable, Optional
 
 from opentelemetry import trace
 from opentelemetry.propagators.composite import CompositePropagator
@@ -240,9 +241,12 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
         for time_remaining in self.retry_policy:
             try:
-                with self.pool.connection() as prot, ACTIVE_REQUESTS.labels(
-                    thrift_method=name, thrift_client_name=self.namespace
-                ).track_inprogress():
+                with (
+                    self.pool.connection() as prot,
+                    ACTIVE_REQUESTS.labels(
+                        thrift_method=name, thrift_client_name=self.namespace
+                    ).track_inprogress(),
+                ):
                     start_time = time.perf_counter()
 
                     span = self.server_span.make_child(trace_name)

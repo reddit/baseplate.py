@@ -22,6 +22,7 @@ import threading
 import time
 import traceback
 import warnings
+from collections.abc import Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -30,10 +31,7 @@ from types import FrameType
 from typing import (
     Any,
     Callable,
-    Mapping,
-    MutableMapping,
     NamedTuple,
-    Sequence,
     TextIO,
 )
 
