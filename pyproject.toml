@@ -89,6 +89,7 @@ webtest = "*"
 parameterized = "^0.9.0"
 opentelemetry-test-utils = "^0.47b0"
 ruff = "*"
+pyfakefs = "^5.7.1"
 
 
 [tool.poetry.scripts]
