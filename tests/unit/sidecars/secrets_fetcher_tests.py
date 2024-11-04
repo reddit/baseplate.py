@@ -5,6 +5,7 @@ import getpass
 import io
 import json
 import pathlib
+import sys
 import typing
 import unittest
 import unittest.mock
@@ -13,6 +14,15 @@ from pyfakefs.fake_filesystem_unittest import TestCase
 
 from baseplate.lib import config
 from baseplate.sidecars import secrets_fetcher
+
+UTC: datetime.timezone
+if sys.version_info > (3, 11):
+    UTC = datetime.UTC
+else:
+    from datetime import timezone
+
+    UTC = timezone.utc
+
 
 configini = f"""
 [secret-fetcher]
@@ -98,7 +108,7 @@ class Tests(TestCase):
             self.assertEqual(text, "initial contents")
 
         cfg = self.cfg
-        now = datetime.datetime.now(datetime.UTC)
+        now = datetime.datetime.now(UTC)
         with unittest.mock.patch("baseplate.sidecars.secrets_fetcher.VaultClientFactory") as mock:
             instance = mock.return_value
             instance.get_client.return_value = FakeVaultClient(token_expiration=now)
@@ -192,7 +202,7 @@ class BadJSONTests(TestCase):
 
     def test_does_not_write_bad_file_when_json_dump_fails(self):
         cfg = self.cfg
-        now = datetime.datetime.now(datetime.UTC)
+        now = datetime.datetime.now(UTC)
 
         with unittest.mock.patch("baseplate.sidecars.secrets_fetcher.VaultClientFactory") as mock:
             instance = mock.return_value
