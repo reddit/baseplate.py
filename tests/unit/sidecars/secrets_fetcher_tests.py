@@ -63,7 +63,7 @@ class FakeBadVaultClient(secrets_fetcher.VaultClient):
 
     # @typing.override  # TODO: Added in version 3.12.
     def get_secret(self, secret_name: str) -> tuple[typing.Any, datetime.datetime]:
-        s = secret_name.upper() if "three" not in secret_name else self.token_expiration
+        """Return a secret value that is not JSON serializable."""
         s = self.token_expiration
         return s, self.token_expiration + datetime.timedelta(seconds=30)
 
@@ -103,10 +103,6 @@ class Tests(TestCase):
     def setUp(self):
         self.setUpPyfakefs()
         self.fake_fs().create_file("/var/local/secrets.json", contents="initial contents")
-
-        with open("/var/local/secrets.json") as f:
-            text = f.read()
-            self.assertEqual(text, "initial contents")
 
         cfg = self.cfg
         now = datetime.datetime.now(UTC)
@@ -197,11 +193,6 @@ class BadJSONTests(TestCase):
             contents="initial contents should remain unchanged",
         )
 
-        with open("/var/local/secrets.json") as f:
-            text = f.read()
-            self.assertEqual(text, "initial contents should remain unchanged")
-
-    def test_does_not_write_bad_file_when_json_dump_fails(self):
         cfg = self.cfg
         now = datetime.datetime.now(UTC)
 
@@ -214,14 +205,20 @@ class BadJSONTests(TestCase):
             with self.assertRaises(TypeError):
                 secrets_fetcher.fetch_secrets(cfg, f)
 
+    def test_temporary_file_is_not_deleted(self):
         p = pathlib.Path("/var/local/secrets.json.tmp")
         self.assertTrue(p.exists())
 
+    def test_temporary_file_is_partially_written(self):
+        p = pathlib.Path("/var/local/secrets.json.tmp")
         text = p.read_text()
         self.assertEqual(text, """{\n  "secrets": {\n    "secret/one": """)
 
+    def test_secrets_file_exists(self):
         p = pathlib.Path("/var/local/secrets.json")
         self.assertTrue(p.exists())
 
+    def test_secrets_file_is_unchanged(self):
+        p = pathlib.Path("/var/local/secrets.json")
         text = p.read_text()
         self.assertEqual(text, """initial contents should remain unchanged""")
