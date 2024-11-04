@@ -23,6 +23,7 @@ else:
 
     UTC = timezone.utc
 
+whoami = getpass.getuser()
 
 configini = f"""
 [secret-fetcher]
@@ -123,11 +124,11 @@ class Tests(TestCase):
 
     def test_sets_owner(self):
         p = pathlib.Path("/var/local/secrets.json")
-        self.assertEqual(p.owner(), "vscode")
+        self.assertEqual(p.owner(), whoami)
 
     def test_sets_group(self):
         p = pathlib.Path("/var/local/secrets.json")
-        self.assertEqual(p.group(), "vscode")
+        self.assertEqual(p.group(), whoami)
 
     def sets_mode(self):
         ...
