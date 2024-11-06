@@ -126,10 +126,6 @@ class Tests(TestCase):
         p = pathlib.Path("/var/local/secrets.json")
         self.assertEqual(p.group(), whoami)
 
-    def sets_mode(self):
-        ...
-        # self.assertEqual(p.stat().st_mode, "vscode")
-
     def test_deletes_temporary_file(self):
         p = pathlib.Path("/var/local/secrets.json" + ".tmp")
         self.assertFalse(p.exists())
