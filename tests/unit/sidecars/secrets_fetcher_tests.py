@@ -33,8 +33,8 @@ vault.auth_type = aws
 vault.mount_point = aws-ec2
 
 output.path = /var/local/secrets.json
-output.owner = {getpass.getuser()}
-output.group = {getpass.getuser()}
+output.owner = {whoami}
+output.group = {whoami}
 output.mode = 0400
 
 secrets =
