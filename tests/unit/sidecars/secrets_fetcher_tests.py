@@ -106,7 +106,10 @@ class Tests(TestCase):
 
         cfg = self.cfg
         now = datetime.datetime.now(UTC)
-        with unittest.mock.patch("baseplate.sidecars.secrets_fetcher.VaultClientFactory") as mock:
+        with unittest.mock.patch(
+            "baseplate.sidecars.secrets_fetcher.VaultClientFactory",
+            autospec=True,
+        ) as mock:
             instance = mock.return_value
             instance.get_client.return_value = FakeVaultClient(token_expiration=now)
             f = secrets_fetcher.VaultClientFactory(
