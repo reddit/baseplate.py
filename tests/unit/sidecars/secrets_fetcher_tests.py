@@ -2,12 +2,13 @@ import configparser
 import dataclasses
 import datetime
 import getpass
+import grp
 import io
 import json
+import os
 import pathlib
 import sys
 import typing
-import unittest
 import unittest.mock
 
 from pyfakefs.fake_filesystem_unittest import TestCase
@@ -24,6 +25,7 @@ else:
     UTC = timezone.utc
 
 whoami = getpass.getuser()
+group = grp.getgrgid(os.getgid()).gr_name
 
 configini = f"""
 [secret-fetcher]
@@ -34,7 +36,7 @@ vault.mount_point = aws-ec2
 
 output.path = /var/local/secrets.json
 output.owner = {whoami}
-output.group = {whoami}
+output.group = {group}
 output.mode = 0400
 
 secrets =
@@ -127,7 +129,7 @@ class Tests(TestCase):
 
     def test_sets_group(self):
         p = pathlib.Path("/var/local/secrets.json")
-        self.assertEqual(p.group(), whoami)
+        self.assertEqual(p.group(), group)
 
     def test_deletes_temporary_file(self):
         p = pathlib.Path("/var/local/secrets.json" + ".tmp")
