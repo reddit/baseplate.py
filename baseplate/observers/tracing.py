@@ -21,7 +21,7 @@ from baseplate.lib.message_queue import MessageQueue, TimedOutError
 from baseplate.observers.timeout import ServerTimeout
 
 if typing.TYPE_CHECKING:
-    SpanQueue = queue.Queue["TraceSpanObserver"]  # pylint: disable=unsubscriptable-object
+    SpanQueue = queue.Queue["TraceSpanObserver"]
 else:
     SpanQueue = queue.Queue
 
@@ -610,7 +610,6 @@ def tracing_client_from_config(
         },
     )
 
-    # pylint: disable=maybe-no-member
     return make_client(
         service_name=cfg.tracing.service_name,
         tracing_endpoint=cfg.tracing.endpoint,

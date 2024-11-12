@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 def make_server(server_config: dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
     """Make a gevent server for WSGI apps."""
-    # pylint: disable=maybe-no-member
     cfg = config.parse_config(
         server_config,
         {

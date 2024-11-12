@@ -73,7 +73,7 @@ AMQP_ACTIVE_MESSAGES = Gauge(
 )
 
 if TYPE_CHECKING:
-    WorkQueue = queue.Queue[kombu.Message]  # pylint: disable=unsubscriptable-object
+    WorkQueue = queue.Queue[kombu.Message]
 else:
     WorkQueue = queue.Queue
 

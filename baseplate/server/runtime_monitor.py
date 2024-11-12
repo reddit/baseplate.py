@@ -158,7 +158,7 @@ class _RefCycleReporter(_Reporter):
         logger.warning("Disabling automatic garbage collection to watch for reference cycles.")
         gc.disable()
 
-    def report(self, batch: metrics.Batch) -> None:  # pylint: disable=unused-argument
+    def report(self, batch: metrics.Batch) -> None:
         # run a garbage collection but keep everything we found in gc.garbage
         gc.set_debug(gc.DEBUG_SAVEALL)
         gc.collect()

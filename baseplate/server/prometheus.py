@@ -33,8 +33,8 @@ from baseplate.server.net import bind_socket
 
 if TYPE_CHECKING:
     from _typeshed.wsgi import (
-        StartResponse,  # pylint: disable=import-error,no-name-in-module
-        WSGIEnvironment,  # pylint: disable=import-error,no-name-in-module
+        StartResponse,
+        WSGIEnvironment,
     )
 
 

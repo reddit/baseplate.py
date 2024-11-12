@@ -94,7 +94,7 @@ class SignatureInfo(NamedTuple):
 
 def _compute_digest(secret_value: bytes, header: bytes, message: str) -> bytes:
     payload = header + message.encode("utf8")
-    digest = hmac.new(secret_value, payload, hashlib.sha256).digest()  # pylint: disable=no-member
+    digest = hmac.new(secret_value, payload, hashlib.sha256).digest()
     return digest
 
 
@@ -149,7 +149,7 @@ def validate_signature(secret: VersionedSecret, message: str, signature: bytes) 
         version, expiration = _HEADER_FORMAT.unpack(header)
         if version != 1:
             raise ValueError
-        if len(signature_digest) != hashlib.sha256().digest_size:  # pylint: disable=no-member
+        if len(signature_digest) != hashlib.sha256().digest_size:
             raise ValueError
     except (struct.error, KeyError, binascii.Error, TypeError, ValueError):
         raise UnreadableSignatureError

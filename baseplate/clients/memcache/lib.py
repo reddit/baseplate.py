@@ -34,7 +34,7 @@ class Flags:
     ZLIB = 1 << 3
 
 
-def decompress_and_load(  # pylint: disable=unused-argument
+def decompress_and_load(
     key: str, serialized: bytes, flags: int
 ) -> Any:
     """Deserialize data.
@@ -97,7 +97,7 @@ def make_dump_and_compress_fn(
     assert min_compress_length >= 0
     assert 0 <= compress_level <= 9
 
-    def dump_and_compress(  # pylint: disable=unused-argument
+    def dump_and_compress(
         key: str, value: Any
     ) -> tuple[bytes, int]:
         """Serialize a Python object in a way compatible with decompress_and_load().
@@ -147,7 +147,7 @@ class PickleFlags:
     ZLIB = 1 << 3
 
 
-def decompress_and_unpickle(  # pylint: disable=unused-argument
+def decompress_and_unpickle(
     key: str, serialized: bytes, flags: int
 ) -> Any:
     """Deserialize data stored by ``pylibmc``.
@@ -214,7 +214,7 @@ def make_pickle_and_compress_fn(
     assert min_compress_length >= 0
     assert 0 <= compress_level <= 9
 
-    def pickle_and_compress(  # pylint: disable=unused-argument
+    def pickle_and_compress(
         key: str, value: Any
     ) -> tuple[bytes, int]:
         """Serialize a Python object in a way compatible with decompress_and_unpickle().

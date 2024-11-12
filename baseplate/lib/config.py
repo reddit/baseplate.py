@@ -1,4 +1,3 @@
-# pylint: disable=invalid-name
 """Configuration parsing and validation.
 
 This module provides ``parse_config`` which turns a dictionary of stringy keys
@@ -174,7 +173,7 @@ class EndpointConfiguration(NamedTuple):
 
     """
 
-    family: socket.AddressFamily  # pylint: disable=no-member
+    family: socket.AddressFamily
     address: Union[InternetAddress, str]
 
     def __str__(self) -> str:
@@ -236,7 +235,7 @@ def File(mode: str = "r") -> Callable[[str], IO]:  # noqa: D401
 
     def open_file(text: str) -> IO:
         try:
-            return open(text, mode=mode, encoding="UTF-8")  # pylint: disable=R1732
+            return open(text, mode=mode, encoding="UTF-8")
         except OSError:
             raise ValueError(f"could not open file: {text}")
 

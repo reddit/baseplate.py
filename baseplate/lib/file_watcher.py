@@ -182,7 +182,6 @@ class FileWatcher(Generic[T]):
         if self._mtime < current_mtime:
             logger.debug("Loading %s.", self._path)
             try:
-                # pylint: disable=unspecified-encoding
                 with open(self._path, **self._open_options._asdict()) as f:
                     self._data = self._parser(f)
             except Exception as exc:

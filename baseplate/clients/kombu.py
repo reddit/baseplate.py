@@ -126,7 +126,7 @@ class KombuSerializer(abc.ABC, Generic[T]):
         """Deserialize the message bytes into an object for consuming."""
 
 
-class KombuThriftSerializer(KombuSerializer[T]):  # pylint: disable=unsubscriptable-object
+class KombuThriftSerializer(KombuSerializer[T]):
     """Thrift object serializer for Kombu."""
 
     def __init__(

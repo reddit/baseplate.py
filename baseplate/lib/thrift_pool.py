@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    ProtocolPool = type[queue.Queue[TProtocolBase]]  # pylint: disable=unsubscriptable-object
+    ProtocolPool = type[queue.Queue[TProtocolBase]]
 else:
     ProtocolPool = queue.Queue
 
@@ -145,7 +145,6 @@ class ThriftConnectionPool:
 
     """
 
-    # pylint: disable=too-many-arguments
     def __init__(
         self,
         endpoint: config.EndpointConfiguration,

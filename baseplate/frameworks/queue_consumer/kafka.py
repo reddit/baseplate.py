@@ -22,7 +22,7 @@ from baseplate.server.queue_consumer import (
 )
 
 if TYPE_CHECKING:
-    WorkQueue = queue.Queue[confluent_kafka.Message]  # pylint: disable=unsubscriptable-object
+    WorkQueue = queue.Queue[confluent_kafka.Message]
 else:
     WorkQueue = queue.Queue
 
@@ -347,14 +347,12 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
                 topic in all_topics
             ), f"topic '{topic}' does not exist. maybe it's misspelled or on a different kafka cluster?"  # noqa: E501
 
-        # pylint: disable=unused-argument
         def log_assign(
             consumer: confluent_kafka.Consumer, partitions: list[confluent_kafka.TopicPartition]
         ) -> None:
             for topic_partition in partitions:
                 logger.info("assigned %s/%s", topic_partition.topic, topic_partition.partition)
 
-        # pylint: disable=unused-argument
         def log_revoke(
             consumer: confluent_kafka.Consumer, partitions: list[confluent_kafka.TopicPartition]
         ) -> None:
@@ -469,7 +467,6 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
 
         self.message_handler_count += 1
 
-        # pylint: disable=unused-argument
         def commit_offset(
             context: RequestContext, data: Any, message: confluent_kafka.Message
         ) -> None:
@@ -542,7 +539,6 @@ class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
 
     """
 
-    # pylint: disable=unused-argument
     @staticmethod
     def _commit_callback(
         err: confluent_kafka.KafkaError, topic_partition_list: list[confluent_kafka.TopicPartition]

@@ -48,7 +48,6 @@ def zookeeper_client_from_config(
         },
     )
 
-    # pylint: disable=maybe-no-member
     cfg = full_cfg.zookeeper
 
     auth_data = []

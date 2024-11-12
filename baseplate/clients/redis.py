@@ -197,7 +197,6 @@ class RedisContextFactory(ContextFactory):
         )
 
 
-# pylint: disable=too-many-public-methods
 class MonitoredRedisConnection(redis.StrictRedis):
     """Redis connection that collects diagnostic information.
 
@@ -253,7 +252,6 @@ class MonitoredRedisConnection(redis.StrictRedis):
                 REQUESTS_TOTAL.labels(**result_labels).inc()
                 LATENCY_SECONDS.labels(**result_labels).observe(perf_counter() - start_time)
 
-    # pylint: disable=arguments-renamed
     def pipeline(  # type: ignore
         self, name: str, transaction: bool = True, shard_hint: Optional[str] = None
     ) -> "MonitoredRedisPipeline":
@@ -299,7 +297,6 @@ class MonitoredRedisPipeline(Pipeline):
         self.redis_client_name = redis_client_name
         super().__init__(connection_pool, response_callbacks, **kwargs)
 
-    # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         with self.server_span.make_child(self.trace_name):
             success = "true"
@@ -375,7 +372,7 @@ class MessageQueue:
 
         return message
 
-    def put(  # pylint: disable=unused-argument
+    def put(
         self, message: bytes, timeout: Optional[float] = None
     ) -> None:
         """Add a message to the queue.

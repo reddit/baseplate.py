@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 try:
     # ICSRFStoragePolicy was not added to Pyramid until version 1.9
-    from pyramid.interfaces import ICSRFStoragePolicy  # pylint: disable=no-name-in-module
+    from pyramid.interfaces import ICSRFStoragePolicy
 except ImportError:
     logger.error(
         "baseplate.frameworks.pyramid.csrf requires that you use a version of pyramid >= 1.9"

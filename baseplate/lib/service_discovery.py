@@ -97,7 +97,6 @@ class ServiceInventory:
 
         """
         try:
-            # pylint: disable=maybe-no-member
             return self._filewatcher.get_data().backends
         except WatchedFileNotAvailableError:
             return []
@@ -119,7 +118,6 @@ class ServiceInventory:
         except WatchedFileNotAvailableError:
             inventory = None
 
-        # pylint: disable=maybe-no-member
         if not inventory or not inventory.lottery:
             raise NoBackendsAvailableError
 

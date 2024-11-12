@@ -59,7 +59,6 @@ fmt: .venv
 lint: .venv
 	.venv/bin/ruff check
 	.venv/bin/ruff format --check
-	PYTHONPATH=. .venv/bin/pylint baseplate/
 	.venv/bin/mypy baseplate/
 
 .PHONY: checks

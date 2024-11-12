@@ -18,7 +18,6 @@ import urllib3.connectionpool
 
 
 class _UNIXConnection(urllib3.connectionpool.HTTPConnection):
-    # pylint: disable=super-init-not-called
     def __init__(self, url: str):
         urllib3.connectionpool.HTTPConnection.__init__(self, "localhost")
         self.url = urllib.parse.urlparse(url)

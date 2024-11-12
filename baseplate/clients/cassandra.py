@@ -12,14 +12,14 @@ from typing import (
 )
 
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.cluster import (  # pylint: disable=no-name-in-module
+from cassandra.cluster import (
     _NOT_SET,
     Cluster,
     ExecutionProfile,
     ResponseFuture,
     Session,
 )
-from cassandra.query import (  # pylint: disable=no-name-in-module
+from cassandra.query import (
     BoundStatement,
     PreparedStatement,
     SimpleStatement,
@@ -224,7 +224,6 @@ class CQLMapperContextFactory(CassandraContextFactory):
     def make_object_for_context(self, name: str, span: Span) -> "cqlmapper.connection.Connection":
         # Import inline so you can still use the regular Cassandra integration
         # without installing cqlmapper
-        # pylint: disable=redefined-outer-name
         import cqlmapper.connection
 
         session_adapter = super().make_object_for_context(name, span)
@@ -271,7 +270,7 @@ def wrap_future(
             logger.warning("Cassandra metrics callback took too long. Some metrics may be lost.")
 
         if exc:
-            raise exc  # pylint: disable=E0702
+            raise exc
 
         return result
 

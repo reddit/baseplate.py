@@ -224,7 +224,6 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
         engine = self.engine.execution_options(context_name=name, server_span=span)
         return engine
 
-    # pylint: disable=unused-argument, too-many-arguments
     def on_before_execute(
         self,
         conn: Connection,
@@ -262,7 +261,6 @@ class SQLAlchemyEngineContextFactory(ContextFactory):
 
         return annotated_statement, parameters
 
-    # pylint: disable=unused-argument, too-many-arguments
     def on_after_execute(
         self,
         conn: Connection,

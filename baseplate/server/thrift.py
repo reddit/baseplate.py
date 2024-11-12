@@ -24,7 +24,6 @@ tracer = trace.get_tracer(__name__)
 Address = Union[tuple[str, int], str]
 
 
-# pylint: disable=too-many-public-methods
 class GeventServer(StreamServer):
     def __init__(self, processor: TProcessor, *args: Any, **kwargs: Any):
         self.processor = processor
@@ -39,7 +38,6 @@ class GeventServer(StreamServer):
         )
         super().__init__(*args, **kwargs)
 
-    # pylint: disable=method-hidden,unused-argument
     def handle(self, client_socket: socket.socket, address: Address) -> None:
         client = TSocket()
         client.setHandle(client_socket)
@@ -84,7 +82,6 @@ class GeventServer(StreamServer):
 
 
 def make_server(server_config: dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
-    # pylint: disable=maybe-no-member
     cfg = config.parse_config(
         server_config,
         {

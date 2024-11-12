@@ -267,7 +267,6 @@ def main() -> NoReturn:
             )
         },
     )
-    # pylint: disable=maybe-no-member
     nodes = cfg.nodes.values()
 
     secrets = secrets_store_from_config(watcher_config, timeout=30)

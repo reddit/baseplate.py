@@ -217,7 +217,6 @@ class Batch(BaseClient):
 
     """
 
-    # pylint: disable=super-init-not-called
     def __init__(self, transport: Transport, namespace: bytes):
         self.transport = BufferedTransport(transport)
         self.namespace = namespace
@@ -590,7 +589,6 @@ def metrics_client_from_config(raw_config: config.RawConfig) -> Client:
         },
     )
 
-    # pylint: disable=maybe-no-member
     return make_client(
         namespace=cfg.metrics.namespace,
         endpoint=cfg.metrics.endpoint,

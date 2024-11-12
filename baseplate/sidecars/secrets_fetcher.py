@@ -348,7 +348,7 @@ def trigger_callback(
         if last_proc and last_proc.poll() is None:
             logger.info("Previous callback process is still running. Skipping")
         else:
-            return subprocess.Popen([callback, secrets_file])  # pylint: disable=R1732
+            return subprocess.Popen([callback, secrets_file])
     return last_proc
 
 
@@ -403,7 +403,6 @@ def main() -> None:
         },
     )
 
-    # pylint: disable=maybe-no-member
     client_factory = VaultClientFactory(
         cfg.vault.url, cfg.vault.role, cfg.vault.auth_type, cfg.vault.mount_point
     )

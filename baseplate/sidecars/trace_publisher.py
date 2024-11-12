@@ -157,7 +157,6 @@ def publish_traces() -> None:
         max_message_size=MAX_SPAN_SIZE,
     )
 
-    # pylint: disable=maybe-no-member
     inner_batch = TraceBatch(max_size=publisher_cfg.max_batch_size)
     batcher = TimeLimitedBatch(inner_batch, MAX_BATCH_AGE)
     metrics_client = metrics_client_from_config(publisher_raw_cfg)

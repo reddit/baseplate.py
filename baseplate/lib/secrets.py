@@ -122,7 +122,6 @@ def parse_secrets_fetcher(data: dict[str, Any], secret_path: str = "") -> dict[s
         raise SecretNotFoundError(secret_path)
 
 
-# pylint: disable=unused-argument
 def parse_vault_csi(data: dict[str, Any], secret_path: str = "") -> dict[str, str]:
     return data["data"]
 
@@ -145,7 +144,7 @@ class SecretsStore(ContextFactory):
         timeout: Optional[int] = None,
         backoff: Optional[float] = None,
         parser: Optional[SecretParser] = None,
-    ):  # pylint: disable=super-init-not-called
+    ):
         self.parser = parser or parse_secrets_fetcher
         self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
 
@@ -361,7 +360,7 @@ class SecretsStore(ContextFactory):
 class _CachingSecretsStore(SecretsStore):
     """Lazily load and cache the parsed data until the server span ends."""
 
-    def __init__(self, filewatcher: FileWatcher, parser: SecretParser):  # pylint: disable=super-init-not-called
+    def __init__(self, filewatcher: FileWatcher, parser: SecretParser):
         self._filewatcher = filewatcher
         self.parser = parser
 
@@ -397,7 +396,7 @@ class VaultCSISecretsStore(SecretsStore):
         self,
         path: str,
         parser: SecretParser,
-    ):  # pylint: disable=super-init-not-called
+    ):
         self.path = Path(path)
         self.parser = parser
         self.cache = {}

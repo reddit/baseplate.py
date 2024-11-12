@@ -211,7 +211,6 @@ class HotKeyTracker:
 # Unfortunately this is not provide as-is so we combine two connection pool classes to provide
 # the desired behaviour.
 class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlockingConnectionPool):
-    # pylint: disable=arguments-differ
     def get_node_by_slot(self, slot: int, read_command: bool = False) -> dict[str, Any]:
         """Get a node from the slot.
 
@@ -471,7 +470,6 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
 
         return res
 
-    # pylint: disable=arguments-differ
     def pipeline(self, name: str) -> "MonitoredClusterRedisPipeline":
         """Create a pipeline.
 
@@ -496,7 +494,6 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
         raise NotImplementedError
 
 
-# pylint: disable=abstract-method
 class MonitoredClusterRedisPipeline(ClusterPipeline):
     def __init__(
         self,
@@ -522,7 +519,6 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
 
         return res
 
-    # pylint: disable=arguments-differ
     def execute(self, **kwargs: Any) -> Any:
         with self.server_span.make_child(self.trace_name):
             success = "true"

@@ -301,7 +301,6 @@ class StaticTrustHandler(HeaderTrustHandler):
         return self.trust_headers
 
 
-# pylint: disable=too-many-ancestors
 class BaseplateRequest(RequestContext, pyramid.request.Request):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         context_config = kwargs.pop("context_config", None)

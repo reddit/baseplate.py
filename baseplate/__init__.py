@@ -212,7 +212,6 @@ class RequestContext:
         return obj
 
     # this is just here for type checking
-    # pylint: disable=useless-super-delegation
     def __setattr__(self, name: str, value: Any) -> None:
         super().__setattr__(name, value)
 
@@ -286,7 +285,6 @@ class Baseplate:
         """
         self.observers.append(observer)
 
-    # pylint: disable=cyclic-import
     def configure_observers(self) -> None:
         """Configure diagnostics observers based on application configuration.
 

@@ -28,7 +28,6 @@ class FakeFileWatcher(FileWatcher):
 
     """
 
-    # pylint: disable=super-init-not-called
     def __init__(self, data: Union[T, type[_NOT_LOADED]] = _NOT_LOADED, mtime: float = 1234):
         self.data = data
         self.mtime = mtime

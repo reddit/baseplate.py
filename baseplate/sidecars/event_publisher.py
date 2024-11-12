@@ -199,7 +199,6 @@ def publish_events() -> None:
         max_message_size=MAX_EVENT_SIZE,
     )
 
-    # pylint: disable=maybe-no-member
     serializer = SERIALIZER_BY_VERSION[cfg.collector.version]()
     batcher = TimeLimitedBatch(serializer, MAX_BATCH_AGE)
     publisher = BatchPublisher(metrics_client, cfg)

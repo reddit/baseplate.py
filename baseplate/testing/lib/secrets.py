@@ -30,7 +30,6 @@ class FakeSecretsStore(SecretsStore):
 
     """
 
-    # pylint: disable=super-init-not-called
     def __init__(self, fake_secrets: dict) -> None:
         self._filewatcher = FakeFileWatcher(fake_secrets)
         self.parser = parse_secrets_fetcher

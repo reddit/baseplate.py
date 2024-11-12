@@ -181,7 +181,6 @@ def _enumerate_service_methods(client: Any) -> Iterator[str]:
 class _PooledClientProxy:
     """A proxy which acts like a thrift client but uses a connection pool."""
 
-    # pylint: disable=too-many-arguments
     def __init__(
         self,
         client_cls: Any,
