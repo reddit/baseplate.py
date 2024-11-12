@@ -103,7 +103,7 @@ baseplate-tshell = { reference = "bin/baseplate-tshell", type = "file" }
 build_thrift = "baseplate.frameworks.thrift.command:BuildThriftCommand"
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py38"
 line-length = 100
 extend-exclude = ["baseplate/thrift", "tests/integration/test_thrift"]
 
