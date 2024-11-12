@@ -96,7 +96,7 @@ class _ContextAwareHandler:
                     if k.lower() in W3C_HEADERS:
                         header_dict[k.decode()] = v.decode()
                 except UnicodeDecodeError:
-                    self.logger.info(f"Unable to decode header {k!r}={v!r}, ignoring.")
+                    self.logger.debug(f"Unable to decode header {k!r}={v!r}, ignoring.")
 
             ctx = propagator.extract(header_dict)
             logger.debug("Extracted trace headers. [ctx=%s, header_dict=%s]", ctx, header_dict)
