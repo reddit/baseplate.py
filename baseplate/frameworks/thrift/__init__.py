@@ -82,7 +82,10 @@ class _ContextAwareHandler:
             header_dict = {}
             for k, v in headers.items():
                 try:
-                    header_dict[k.decode()] = v.decode()
+                    # this is only for w3c trace headers
+                    key = k.decode()
+                    if key == "traceparent" or key == "tracestate":
+                        header_dict[key] = v.decode()
                 except UnicodeDecodeError:
                     self.logger.info(f"Unable to decode header {k.decode()}, ignoring.")
 
