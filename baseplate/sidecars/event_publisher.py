@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import configparser
 import email.utils
@@ -5,7 +7,7 @@ import gzip
 import hashlib
 import hmac
 import logging
-from typing import Any, Optional
+from typing import Any
 
 import requests
 
@@ -54,7 +56,7 @@ class V2Batch(Batch):
         self.max_size = max_size
         self.reset()
 
-    def add(self, item: Optional[bytes]) -> None:
+    def add(self, item: bytes | None) -> None:
         if not item:
             return
 
@@ -205,7 +207,7 @@ def publish_events() -> None:
     publisher = BatchPublisher(metrics_client, cfg)
 
     while True:
-        message: Optional[bytes]
+        message: bytes | None
 
         try:
             message = event_queue.get(timeout=0.2)

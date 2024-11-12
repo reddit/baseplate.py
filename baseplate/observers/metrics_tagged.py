@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from random import random
-from typing import Any, Optional
+from typing import Any
 
 from baseplate import BaseplateObserver, LocalSpan, RequestContext, Span, SpanObserver, _ExcInfo
 from baseplate.lib import config, metrics
@@ -32,7 +34,7 @@ class TaggedMetricsBaseplateObserver(BaseplateObserver):
     @classmethod
     def from_config_and_client(
         cls, raw_config: config.RawConfig, client: metrics.Client
-    ) -> "TaggedMetricsBaseplateObserver":
+    ) -> TaggedMetricsBaseplateObserver:
         cfg = config.parse_config(
             raw_config,
             {
@@ -71,7 +73,7 @@ class TaggedMetricsServerSpanDummyObserver(SpanObserver):
     def on_incr_tag(self, key: str, delta: float) -> None:
         pass
 
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None) -> None:
         self.batch.flush()
 
     def on_child_span_created(self, span: Span) -> None:
@@ -113,7 +115,7 @@ class TaggedMetricsServerSpanObserver(SpanObserver):
             )
         span.register(observer)
 
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None) -> None:
         filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.allowlist}
 
         for key, delta in self.counters.items():
@@ -164,7 +166,7 @@ class TaggedMetricsLocalSpanObserver(SpanObserver):
             )
         span.register(observer)
 
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None) -> None:
         filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.allowlist}
 
         for key, delta in self.counters.items():
@@ -204,7 +206,7 @@ class TaggedMetricsClientSpanObserver(SpanObserver):
     def on_set_tag(self, key: str, value: Any) -> None:
         self.tags[key] = value
 
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None) -> None:
         filtered_tags = {k: v for (k, v) in self.tags.items() if k in self.allowlist}
 
         for key, delta in self.counters.items():

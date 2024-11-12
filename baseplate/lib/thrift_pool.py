@@ -15,13 +15,15 @@ A basic example of usage::
 
 """
 
+from __future__ import annotations
+
 import contextlib
 import logging
 import queue
 import socket
 import time
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from thrift.protocol import THeaderProtocol
 from thrift.protocol.TProtocol import TProtocolBase, TProtocolException, TProtocolFactory
@@ -54,7 +56,7 @@ def _make_transport(endpoint: config.EndpointConfiguration) -> TSocket:
 
 def thrift_pool_from_config(
     app_config: config.RawConfig, prefix: str, **kwargs: Any
-) -> "ThriftConnectionPool":
+) -> ThriftConnectionPool:
     """Make a ThriftConnectionPool from a configuration dictionary.
 
     The keys useful to :py:func:`thrift_pool_from_config` should be prefixed,
@@ -168,7 +170,7 @@ class ThriftConnectionPool:
         for _ in range(size):
             self.pool.put(None)
 
-    def _get_from_pool(self) -> Optional[TProtocolBase]:
+    def _get_from_pool(self) -> TProtocolBase | None:
         try:
             return self.pool.get(block=True, timeout=self.timeout)
         except queue.Empty:
@@ -203,7 +205,7 @@ class ThriftConnectionPool:
             return True
         return False
 
-    def _release(self, prot: Optional[TProtocolBase]) -> None:
+    def _release(self, prot: TProtocolBase | None) -> None:
         if prot and prot.trans.isOpen():
             self.pool.put(prot)
         else:

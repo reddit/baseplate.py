@@ -35,10 +35,12 @@ would change whenever the underlying file changes.
 
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import typing
-from typing import IO, Callable, Generic, NamedTuple, Optional, TypeVar, Union
+from typing import IO, Callable, Generic, NamedTuple, TypeVar
 
 from baseplate.lib.retry import RetryPolicy
 
@@ -54,7 +56,7 @@ class _NOT_LOADED:
 class WatchedFileNotAvailableError(Exception):
     """Raised when the watched file could not be loaded."""
 
-    def __init__(self, path: str, inner: Union[Exception, str]):
+    def __init__(self, path: str, inner: Exception | str):
         super().__init__(f"{path}: {inner}")
         self.path = path
         self.inner = inner
@@ -65,8 +67,8 @@ T = TypeVar("T")
 
 class _OpenOptions(NamedTuple):
     mode: str
-    encoding: Optional[str]
-    newline: Optional[str]
+    encoding: str | None
+    newline: str | None
 
 
 class FileWatcher(Generic[T]):
@@ -97,11 +99,11 @@ class FileWatcher(Generic[T]):
         self,
         path: str,
         parser: Callable[[IO], T],
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
         binary: bool = False,
-        encoding: Optional[str] = None,
-        newline: Optional[str] = None,
-        backoff: Optional[float] = None,
+        encoding: str | None = None,
+        newline: str | None = None,
+        backoff: float | None = None,
     ):
         if binary and encoding is not None:
             raise TypeError("'encoding' is not supported in binary mode.")
@@ -112,7 +114,7 @@ class FileWatcher(Generic[T]):
         self._path = path
         self._parser = parser
         self._mtime = 0.0
-        self._data: Union[T, type[_NOT_LOADED]] = _NOT_LOADED
+        self._data: T | type[_NOT_LOADED] = _NOT_LOADED
         self._open_options = _OpenOptions(
             mode="rb" if binary else "r",
             encoding=encoding or ("UTF-8" if not binary else None),

@@ -1,10 +1,12 @@
 """Extensions to the standard library `random` module."""
 
+from __future__ import annotations
+
 import bisect
 import random
 import typing
 from collections.abc import Iterable
-from typing import Callable, Generic, Optional, TypeVar
+from typing import Callable, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -80,7 +82,7 @@ class WeightedLottery(Generic[T]):
             raise ValueError("sample size is negative or larger than the population")
 
         already_picked: set[int] = set()
-        results: list[Optional[T]] = [None] * sample_size
+        results: list[T | None] = [None] * sample_size
 
         # we use indexes in the set so we don't add a hashability requirement
         # to the items in the population.

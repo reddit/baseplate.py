@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import base64
 import ipaddress
 import sys
 import time
-from typing import Any, Optional, Union
+from typing import Any
 
 from advocate import AddrValidator, ValidatingHTTPAdapter
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
@@ -138,7 +140,7 @@ class BaseplateSession:
     """
 
     def __init__(
-        self, adapter: HTTPAdapter, name: str, span: Span, client_name: Optional[str] = None
+        self, adapter: HTTPAdapter, name: str, span: Span, client_name: str | None = None
     ) -> None:
         self.adapter = adapter
         self.name = name
@@ -210,7 +212,7 @@ class BaseplateSession:
         """
         return request.prepare()
 
-    def request(self, method: str, url: Union[str, bytes], **kwargs: Any) -> Response:
+    def request(self, method: str, url: str | bytes, **kwargs: Any) -> Response:
         """Send a request.
 
         :param method: The HTTP method of the request, e.g. ``GET``, ``PUT``, etc.
@@ -337,7 +339,7 @@ class RequestsContextFactory(ContextFactory):
         self,
         adapter: HTTPAdapter,
         session_cls: type[BaseplateSession],
-        client_name: Optional[str] = None,
+        client_name: str | None = None,
     ) -> None:
         self.adapter = adapter
         self.session_cls = session_cls
@@ -372,7 +374,7 @@ class InternalRequestsClient(config.Parser):
 
     """
 
-    def __init__(self, client_name: Optional[str] = None, **kwargs: Any) -> None:
+    def __init__(self, client_name: str | None = None, **kwargs: Any) -> None:
         self.client_name = client_name
         self.kwargs = kwargs
 
@@ -422,7 +424,7 @@ class ExternalRequestsClient(config.Parser):
 
     """
 
-    def __init__(self, client_name: Optional[str] = None, **kwargs: Any) -> None:
+    def __init__(self, client_name: str | None = None, **kwargs: Any) -> None:
         self.client_name = client_name
         self.kwargs = kwargs
 

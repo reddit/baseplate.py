@@ -43,13 +43,15 @@ ends.
 
 """
 
+from __future__ import annotations
+
 import collections
 import errno
 import logging
 import socket
 import time
 from types import TracebackType
-from typing import Any, Optional
+from typing import Any
 
 from baseplate.lib import config
 
@@ -60,7 +62,7 @@ def _metric_join(*nodes: bytes) -> bytes:
     return b".".join(node.strip(b".") for node in nodes if node)
 
 
-def _format_tags(tags: Optional[dict[str, Any]]) -> Optional[bytes]:
+def _format_tags(tags: dict[str, Any] | None) -> bytes | None:
     if not tags:
         return None
 
@@ -153,7 +155,7 @@ class BaseClient:
         self.base_tags: dict[str, Any] = {}
         self.namespace = namespace.encode("ascii")
 
-    def timer(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Timer":
+    def timer(self, name: str, tags: dict[str, Any] | None = None) -> Timer:
         """Return a Timer with the given name.
 
         :param name: The name the timer should have.
@@ -162,7 +164,7 @@ class BaseClient:
         timer_name = _metric_join(self.namespace, name.encode("ascii"))
         return Timer(self.transport, timer_name, {**self.base_tags, **(tags or {})})
 
-    def counter(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Counter":
+    def counter(self, name: str, tags: dict[str, Any] | None = None) -> Counter:
         """Return a Counter with the given name.
 
         The sample rate is currently up to your application to enforce.
@@ -173,7 +175,7 @@ class BaseClient:
         counter_name = _metric_join(self.namespace, name.encode("ascii"))
         return Counter(self.transport, counter_name, {**self.base_tags, **(tags or {})})
 
-    def gauge(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Gauge":
+    def gauge(self, name: str, tags: dict[str, Any] | None = None) -> Gauge:
         """Return a Gauge with the given name.
 
         :param name: The name the gauge should have.
@@ -182,7 +184,7 @@ class BaseClient:
         gauge_name = _metric_join(self.namespace, name.encode("ascii"))
         return Gauge(self.transport, gauge_name, {**self.base_tags, **(tags or {})})
 
-    def histogram(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Histogram":
+    def histogram(self, name: str, tags: dict[str, Any] | None = None) -> Histogram:
         """Return a Histogram with the given name.
 
         :param name: The name the histogram should have.
@@ -195,7 +197,7 @@ class BaseClient:
 class Client(BaseClient):
     """A client for StatsD."""
 
-    def batch(self) -> "Batch":
+    def batch(self) -> Batch:
         """Return a client-like object which batches up metrics.
 
         Batching metrics can reduce the number of packets that are sent to
@@ -224,14 +226,14 @@ class Batch(BaseClient):
         self.base_tags = {}
         self.counters: dict[bytes, BatchCounter] = {}
 
-    def __enter__(self) -> "Batch":
+    def __enter__(self) -> Batch:
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         self.flush()
         return None  # don't swallow exception
@@ -257,7 +259,7 @@ class Batch(BaseClient):
         except TransportError as exc:
             logger.warning("Failed to send metrics batch: %s", exc)
 
-    def counter(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Counter":
+    def counter(self, name: str, tags: dict[str, Any] | None = None) -> Counter:
         """Return a BatchCounter with the given name.
 
         The sample rate is currently up to your application to enforce.
@@ -289,7 +291,7 @@ class Timer:
         self,
         transport: Transport,
         name: bytes,
-        tags: Optional[dict[str, Any]] = None,
+        tags: dict[str, Any] | None = None,
     ):
         self.transport = transport
         self.name = name
@@ -298,7 +300,7 @@ class Timer:
         else:
             self.tags = {}
 
-        self.start_time: Optional[float] = None
+        self.start_time: float | None = None
         self.stopped: bool = False
         self.sample_rate = 1.0
 
@@ -346,9 +348,9 @@ class Timer:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         self.stop()
         return None  # don't swallow exception
@@ -357,7 +359,7 @@ class Timer:
 class Counter:
     """A counter for counting events over time."""
 
-    def __init__(self, transport: Transport, name: bytes, tags: Optional[dict[str, Any]] = None):
+    def __init__(self, transport: Transport, name: bytes, tags: dict[str, Any] | None = None):
         self.transport = transport
         self.name = name
         self.tags = tags
@@ -417,7 +419,7 @@ class BatchCounter(Counter):
     should be applied to "counter_name".
     """
 
-    def __init__(self, transport: Transport, name: bytes, tags: Optional[dict[str, Any]] = None):
+    def __init__(self, transport: Transport, name: bytes, tags: dict[str, Any] | None = None):
         super().__init__(transport, name)
         self.packets: collections.defaultdict[float, float] = collections.defaultdict(float)
         self.tags = tags
@@ -464,7 +466,7 @@ class Histogram:
         self,
         transport: Transport,
         name: bytes,
-        tags: Optional[dict[str, Any]] = None,
+        tags: dict[str, Any] | None = None,
     ) -> None:
         self.transport = transport
         self.name = name
@@ -499,7 +501,7 @@ class Gauge:
         self,
         transport: Transport,
         name: bytes,
-        tags: Optional[dict[str, Any]] = None,
+        tags: dict[str, Any] | None = None,
     ):
         self.transport = transport
         self.name = name

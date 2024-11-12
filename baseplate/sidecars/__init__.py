@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import time
-from typing import NamedTuple, Optional
+from typing import NamedTuple
 
 
 class SerializedBatch(NamedTuple):
@@ -12,7 +14,7 @@ class BatchFull(Exception):
 
 
 class Batch:
-    def add(self, item: Optional[bytes]) -> None:
+    def add(self, item: bytes | None) -> None:
         raise NotImplementedError
 
     def serialize(self) -> SerializedBatch:
@@ -27,7 +29,7 @@ class RawJSONBatch(Batch):
         self.max_size = max_size
         self.reset()
 
-    def add(self, item: Optional[bytes]) -> None:
+    def add(self, item: bytes | None) -> None:
         if not item:
             return
 
@@ -52,7 +54,7 @@ class RawJSONBatch(Batch):
 class TimeLimitedBatch(Batch):
     def __init__(self, inner: Batch, max_age: float):
         self.batch = inner
-        self.batch_start: Optional[float] = None
+        self.batch_start: float | None = None
         self.max_age = max_age
 
     @property
@@ -61,7 +63,7 @@ class TimeLimitedBatch(Batch):
             return 0
         return time.time() - self.batch_start
 
-    def add(self, item: Optional[bytes]) -> None:
+    def add(self, item: bytes | None) -> None:
         if self.age >= self.max_age:
             raise BatchFull
 

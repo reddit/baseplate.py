@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import datetime
 import logging
 import socket
-from typing import Any, Union
+from typing import Any, Tuple, Union
 
 from form_observability import ctx
 from gevent.pool import Pool
@@ -21,7 +23,7 @@ logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
-Address = Union[tuple[str, int], str]
+Address = Union[Tuple[str, int], str]
 
 
 # pylint: disable=too-many-public-methods

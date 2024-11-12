@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import base64
 import logging
 import sys
 import time
 from collections.abc import Iterable, Iterator, Mapping
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import pyramid.events
 import pyramid.request
@@ -44,7 +46,7 @@ class SpanFinishingAppIterWrapper(Iterable):
 
     """
 
-    def __init__(self, app_iter: Iterator[bytes], span: Optional[Span] = None) -> None:
+    def __init__(self, app_iter: Iterator[bytes], span: Span | None = None) -> None:
         self.span = span
         self.app_iter = iter(app_iter)
 
@@ -119,7 +121,7 @@ def _make_baseplate_tween(
     handler: Callable[[Request], Response], _registry: Registry
 ) -> Callable[[Request], Response]:
     def baseplate_tween(request: Request) -> Response:
-        response: Optional[Response] = None
+        response: Response | None = None
 
         try:
             response = handler(request)
@@ -151,7 +153,7 @@ def _make_baseplate_tween(
     return baseplate_tween
 
 
-def manually_close_request_metrics(request: Request, response: Optional[Response] = None) -> None:
+def manually_close_request_metrics(request: Request, response: Response | None = None) -> None:
     """
     Close the request metrics and track the remaining bits of the request
 
@@ -335,8 +337,8 @@ class BaseplateConfigurator:
     def __init__(
         self,
         baseplate: Baseplate,
-        edge_context_factory: Optional[EdgeContextFactory] = None,
-        header_trust_handler: Optional[HeaderTrustHandler] = None,
+        edge_context_factory: EdgeContextFactory | None = None,
+        header_trust_handler: HeaderTrustHandler | None = None,
     ):
         self.baseplate = baseplate
         self.edge_context_factory = edge_context_factory
@@ -377,7 +379,7 @@ class BaseplateConfigurator:
                 pass
 
         if self.header_trust_handler.should_trust_edge_context_payload(request):
-            edge_payload: Optional[bytes]
+            edge_payload: bytes | None
             try:
                 edge_payload_str = request.headers["X-Edge-Request"]
                 edge_payload = base64.b64decode(edge_payload_str.encode())

@@ -18,9 +18,11 @@ A basic example of usage::
 
 """
 
+from __future__ import annotations
+
 import json
 from collections.abc import Sequence
-from typing import IO, NamedTuple, Optional
+from typing import IO, NamedTuple
 
 from baseplate.lib.config import Endpoint, EndpointConfiguration
 from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
@@ -56,7 +58,7 @@ class Backend(NamedTuple):
 
 class _Inventory(NamedTuple):
     backends: list[Backend]
-    lottery: Optional[WeightedLottery[Backend]]
+    lottery: WeightedLottery[Backend] | None
 
 
 def _parse(watched_file: IO) -> _Inventory:
@@ -112,7 +114,7 @@ class ServiceInventory:
             has no available endpoints.
 
         """
-        inventory: Optional[_Inventory]
+        inventory: _Inventory | None
 
         try:
             inventory = self._filewatcher.get_data()

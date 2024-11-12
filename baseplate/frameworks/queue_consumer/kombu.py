@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import logging
 import queue
 import socket
 import time
 from collections.abc import Sequence
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple
 
 import kombu
 from gevent.server import StreamServer
@@ -127,7 +129,7 @@ class KombuConsumerWorker(ConsumerMixin, PumpWorker):
         connection: kombu.Connection,
         queues: Sequence[kombu.Queue],
         work_queue: WorkQueue,
-        serializer: Optional[KombuSerializer] = None,
+        serializer: KombuSerializer | None = None,
         **kwargs: Any,
     ):
         self.connection = connection
@@ -158,9 +160,9 @@ class KombuMessageHandler(MessageHandler):
         baseplate: Baseplate,
         name: str,
         handler_fn: Handler,
-        error_handler_fn: Optional[ErrorHandler] = None,
+        error_handler_fn: ErrorHandler | None = None,
         retry_mode: RetryMode = RetryMode.REQUEUE,
-        retry_limit: Optional[int] = None,
+        retry_limit: int | None = None,
     ):
         self.baseplate = baseplate
         self.name = name
@@ -205,7 +207,7 @@ class KombuMessageHandler(MessageHandler):
             retry_count = 0
 
         retry_limit_val = headers.get(MESSAGE_HEADER_RETRY_LIMIT, None)
-        retry_limit: Optional[int]
+        retry_limit: int | None
         try:
             retry_limit = int(retry_limit_val)
         except (ValueError, TypeError):
@@ -326,12 +328,12 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         connection: kombu.Connection,
         queues: Sequence[kombu.Queue],
         handler_fn: Handler,
-        error_handler_fn: Optional[ErrorHandler] = None,
-        health_check_fn: Optional[HealthcheckCallback] = None,
-        serializer: Optional[KombuSerializer] = None,
-        worker_kwargs: Optional[dict[str, Any]] = None,
+        error_handler_fn: ErrorHandler | None = None,
+        health_check_fn: HealthcheckCallback | None = None,
+        serializer: KombuSerializer | None = None,
+        worker_kwargs: dict[str, Any] | None = None,
         retry_mode: RetryMode = RetryMode.REQUEUE,
-        retry_limit: Optional[int] = None,
+        retry_limit: int | None = None,
     ):
         """`KombuQueueConsumerFactory` constructor.
 
@@ -380,13 +382,13 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         queue_name: str,
         routing_keys: Sequence[str],
         handler_fn: Handler,
-        error_handler_fn: Optional[ErrorHandler] = None,
-        health_check_fn: Optional[HealthcheckCallback] = None,
-        serializer: Optional[KombuSerializer] = None,
-        worker_kwargs: Optional[dict[str, Any]] = None,
+        error_handler_fn: ErrorHandler | None = None,
+        health_check_fn: HealthcheckCallback | None = None,
+        serializer: KombuSerializer | None = None,
+        worker_kwargs: dict[str, Any] | None = None,
         retry_mode: RetryMode = RetryMode.REQUEUE,
-        retry_limit: Optional[int] = None,
-    ) -> "KombuQueueConsumerFactory":
+        retry_limit: int | None = None,
+    ) -> KombuQueueConsumerFactory:
         """Return a new `KombuQueueConsumerFactory`.
 
         This method will create the :py:class:`~kombu.Queue` s for you and is

@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import json
 import logging
 import queue
 import socket
 import time
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple
 
 import confluent_kafka
 from gevent.server import StreamServer
@@ -120,7 +122,7 @@ class KafkaMessageHandler(MessageHandler):
         name: str,
         handler_fn: Handler,
         message_unpack_fn: KafkaMessageDeserializer,
-        on_success_fn: Optional[Handler] = None,
+        on_success_fn: Handler | None = None,
         prometheus_client_name: str = "",
     ):
         self.baseplate = baseplate
@@ -217,7 +219,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         handler_fn: Handler,
         kafka_consume_batch_size: int = 1,
         message_unpack_fn: KafkaMessageDeserializer = json.loads,
-        health_check_fn: Optional[HealthcheckCallback] = None,
+        health_check_fn: HealthcheckCallback | None = None,
         prometheus_client_name: str = "",
     ):
         """`_BaseKafkaQueueConsumerFactory` constructor.
@@ -257,8 +259,8 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         handler_fn: Handler,
         kafka_consume_batch_size: int = 1,
         message_unpack_fn: KafkaMessageDeserializer = json.loads,
-        health_check_fn: Optional[HealthcheckCallback] = None,
-        kafka_config: Optional[dict[str, Any]] = None,
+        health_check_fn: HealthcheckCallback | None = None,
+        kafka_config: dict[str, Any] | None = None,
         prometheus_client_name: str = "",
     ) -> Self:
         """Return a new `_BaseKafkaQueueConsumerFactory`.
@@ -314,7 +316,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         bootstrap_servers: str,
         group_id: str,
         topics: Sequence[str],
-        kafka_config: Optional[dict[str, Any]] = None,
+        kafka_config: dict[str, Any] | None = None,
     ) -> confluent_kafka.Consumer:
         consumer_config = {
             "bootstrap.servers": bootstrap_servers,

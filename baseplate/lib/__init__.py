@@ -1,5 +1,7 @@
 """Internal library helpers."""
 
+from __future__ import annotations
+
 import inspect
 import warnings
 from typing import Any, Callable, Generic, TypeVar

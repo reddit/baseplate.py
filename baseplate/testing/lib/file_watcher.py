@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import typing
-from typing import Union
 
 from baseplate.lib.file_watcher import _NOT_LOADED, FileWatcher, T, WatchedFileNotAvailableError
 
@@ -29,7 +30,7 @@ class FakeFileWatcher(FileWatcher):
     """
 
     # pylint: disable=super-init-not-called
-    def __init__(self, data: Union[T, type[_NOT_LOADED]] = _NOT_LOADED, mtime: float = 1234):
+    def __init__(self, data: T | type[_NOT_LOADED] = _NOT_LOADED, mtime: float = 1234):
         self.data = data
         self.mtime = mtime
 

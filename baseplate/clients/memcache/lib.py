@@ -11,6 +11,8 @@ should use pickle_and_compress() and decompress_and_unpickle().
 
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import pickle

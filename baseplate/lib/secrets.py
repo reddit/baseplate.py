@@ -1,5 +1,7 @@
 """Application integration with the secret fetcher daemon."""
 
+from __future__ import annotations
+
 import base64
 import binascii
 import json
@@ -7,7 +9,7 @@ import logging
 import os
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, NamedTuple, Optional, Protocol
+from typing import Any, NamedTuple, Protocol
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -55,9 +57,9 @@ class VersionedSecret(NamedTuple):
 
     """
 
-    previous: Optional[bytes]
+    previous: bytes | None
     current: bytes
-    next: Optional[bytes]
+    next: bytes | None
 
     @property
     def all_versions(self) -> Iterator[bytes]:
@@ -71,7 +73,7 @@ class VersionedSecret(NamedTuple):
             yield self.next
 
     @classmethod
-    def from_simple_secret(cls, value: bytes) -> "VersionedSecret":
+    def from_simple_secret(cls, value: bytes) -> VersionedSecret:
         """Make a fake versioned secret from a single value.
 
         This is a backwards compatibility shim for use with APIs that take
@@ -142,9 +144,9 @@ class SecretsStore(ContextFactory):
     def __init__(
         self,
         path: str,
-        timeout: Optional[int] = None,
-        backoff: Optional[float] = None,
-        parser: Optional[SecretParser] = None,
+        timeout: int | None = None,
+        backoff: float | None = None,
+        parser: SecretParser | None = None,
     ):  # pylint: disable=super-init-not-called
         self.parser = parser or parse_secrets_fetcher
         self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
@@ -345,7 +347,7 @@ class SecretsStore(ContextFactory):
             mtime,
         )
 
-    def make_object_for_context(self, name: str, span: Span) -> "SecretsStore":
+    def make_object_for_context(self, name: str, span: Span) -> SecretsStore:
         """Return an object that can be added to the context object.
 
         This allows the secret store to be used with
@@ -445,7 +447,7 @@ class VaultCSISecretsStore(SecretsStore):
 
 
 def secrets_store_from_config(
-    app_config: config.RawConfig, timeout: Optional[int] = None, prefix: str = "secrets."
+    app_config: config.RawConfig, timeout: int | None = None, prefix: str = "secrets."
 ) -> SecretsStore:
     """Configure and return a secrets store.
 

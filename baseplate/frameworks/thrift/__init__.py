@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import random
 import sys
@@ -5,7 +7,7 @@ import time
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from logging import Logger
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from form_observability import ContextAwareTracer, ctx
 from opentelemetry import trace
@@ -279,7 +281,7 @@ def baseplateify_processor(
     processor: TProcessor,
     logger: Logger,
     baseplate: Baseplate,
-    edge_context_factory: Optional[EdgeContextFactory] = None,
+    edge_context_factory: EdgeContextFactory | None = None,
     convert_to_baseplate_error: bool = False,
 ) -> TProcessor:
     """Wrap a Thrift Processor with Baseplate's span lifecycle.
@@ -309,7 +311,7 @@ def baseplateify_processor(
                 data=iprot.get_headers()
             )
 
-            trace_info: Optional[TraceInfo]
+            trace_info: TraceInfo | None
             try:
                 sampled = bool(headers.get(b"Sampled") == b"1")
                 flags = headers.get(b"Flags", None)

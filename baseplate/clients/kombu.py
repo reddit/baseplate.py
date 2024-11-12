@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import abc
 import time
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 import kombu.serialization
 from kombu import Connection, Exchange
@@ -41,7 +43,7 @@ AMQP_PROCESSED_TOTAL = Counter(
 
 
 def connection_from_config(
-    app_config: config.RawConfig, prefix: str, secrets: Optional[SecretsStore] = None, **kwargs: Any
+    app_config: config.RawConfig, prefix: str, secrets: SecretsStore | None = None, **kwargs: Any
 ) -> Connection:
     """Make a Connection from a configuration dictionary.
 
@@ -183,15 +185,15 @@ class KombuProducer(config.Parser):
 
     def __init__(
         self,
-        max_connections: Optional[int] = None,
-        serializer: Optional[KombuSerializer] = None,
-        secrets: Optional[SecretsStore] = None,
+        max_connections: int | None = None,
+        serializer: KombuSerializer | None = None,
+        secrets: SecretsStore | None = None,
     ):
         self.max_connections = max_connections
         self.serializer = serializer
         self.secrets = secrets
 
-    def parse(self, key_path: str, raw_config: config.RawConfig) -> "KombuProducerContextFactory":
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> KombuProducerContextFactory:
         connection = connection_from_config(raw_config, prefix=f"{key_path}.", secrets=self.secrets)
         exchange = exchange_from_config(raw_config, prefix=f"{key_path}.")
         return KombuProducerContextFactory(
@@ -218,15 +220,15 @@ class KombuProducerContextFactory(ContextFactory):
         self,
         connection: Connection,
         exchange: Exchange,
-        max_connections: Optional[int] = None,
-        serializer: Optional[KombuSerializer] = None,
+        max_connections: int | None = None,
+        serializer: KombuSerializer | None = None,
     ):
         self.connection = connection
         self.exchange = exchange
         self.producers = Producers(limit=max_connections)
         self.serializer = serializer
 
-    def make_object_for_context(self, name: str, span: Span) -> "_KombuProducer":
+    def make_object_for_context(self, name: str, span: Span) -> _KombuProducer:
         return _KombuProducer(
             name, span, self.connection, self.exchange, self.producers, serializer=self.serializer
         )
@@ -240,7 +242,7 @@ class _KombuProducer:
         connection: Connection,
         exchange: Exchange,
         producers: Producers,
-        serializer: Optional[KombuSerializer] = None,
+        serializer: KombuSerializer | None = None,
     ):
         self.name = name
         self.span = span
@@ -269,7 +271,7 @@ class _KombuProducer:
             )
             AMQP_PROCESSED_TOTAL.labels(**self.prom_labels, amqp_success="false").inc()
 
-    def publish(self, body: Any, routing_key: Optional[str] = None, **kwargs: Any) -> Any:
+    def publish(self, body: Any, routing_key: str | None = None, **kwargs: Any) -> Any:
         start_time = time.perf_counter()
         if self.serializer:
             kwargs.setdefault("serializer", self.serializer.name)

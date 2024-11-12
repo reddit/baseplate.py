@@ -1,5 +1,7 @@
 """Components for processing Baseplate spans for service request tracing."""
 
+from __future__ import annotations
+
 import collections
 import json
 import logging
@@ -10,7 +12,7 @@ import threading
 import time
 import typing
 from datetime import datetime
-from typing import Any, NamedTuple, Optional
+from typing import Any, NamedTuple
 
 import requests
 from requests.exceptions import RequestException
@@ -65,13 +67,13 @@ def current_epoch_microseconds() -> int:
 class TracingClient(NamedTuple):
     service_name: str
     sample_rate: float
-    recorder: "Recorder"
+    recorder: Recorder
 
 
 def make_client(
     service_name: str,
-    tracing_endpoint: Optional[config.EndpointConfiguration] = None,
-    tracing_queue_name: Optional[str] = None,
+    tracing_endpoint: config.EndpointConfiguration | None = None,
+    tracing_queue_name: str | None = None,
     max_span_queue_size: int = 50000,
     num_span_workers: int = 5,
     span_batch_interval: float = 0.5,
@@ -178,14 +180,14 @@ class TraceSpanObserver(SpanObserver):
     Zipkin request trace.
     """
 
-    def __init__(self, service_name: str, hostname: str, span: Span, recorder: "Recorder"):
+    def __init__(self, service_name: str, hostname: str, span: Span, recorder: Recorder):
         self.service_name = service_name
         self.hostname = hostname
         self.recorder = recorder
         self.span = span
-        self.start: Optional[int] = None
-        self.end: Optional[int] = None
-        self.elapsed: Optional[int] = None
+        self.start: int | None = None
+        self.end: int | None = None
+        self.elapsed: int | None = None
         self.binary_annotations: list[dict[str, Any]] = []
         self.counters: collections.defaultdict[str, float] = collections.defaultdict(float)
         self.on_set_tag(ANNOTATIONS["COMPONENT"], "baseplate")
@@ -195,7 +197,7 @@ class TraceSpanObserver(SpanObserver):
         self.start = current_epoch_microseconds()
         self.client_send = self.start
 
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None) -> None:
         if exc_info:
             self.on_set_tag(ANNOTATIONS["ERROR"], True)
 
@@ -301,7 +303,7 @@ class TraceLocalSpanObserver(TraceSpanObserver):
         component_name: str,
         hostname: str,
         span: Span,
-        recorder: "Recorder",
+        recorder: Recorder,
     ):
         self.component_name = component_name
         super().__init__(service_name, hostname, span, recorder)
@@ -345,7 +347,7 @@ class TraceServerSpanObserver(TraceSpanObserver):
     Zipkin request trace
     """
 
-    def __init__(self, service_name: str, hostname: str, span: Span, recorder: "Recorder"):
+    def __init__(self, service_name: str, hostname: str, span: Span, recorder: Recorder):
         self.service_name = service_name
         self.span = span
         self.recorder = recorder
@@ -354,7 +356,7 @@ class TraceServerSpanObserver(TraceSpanObserver):
     def on_start(self) -> None:
         self.start = current_epoch_microseconds()
 
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None) -> None:
         if exc_info and exc_info[0] is not None and issubclass(ServerTimeout, exc_info[0]):
             self.on_set_tag("timed_out", True)
 

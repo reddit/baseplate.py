@@ -85,6 +85,8 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
 
 """
 
+from __future__ import annotations
+
 import base64
 import datetime
 import functools
@@ -98,19 +100,19 @@ from typing import (
     IO,
     Any,
     Callable,
+    Dict,
     Generic,
     NamedTuple,
     NewType,
     TypeVar,
     Union,
 )
-from typing import Optional as OptionalType
 
 
 class ConfigurationError(Exception):
     """Raised when the configuration violates the spec."""
 
-    def __init__(self, key: str, error: Union[str, Exception]):
+    def __init__(self, key: str, error: str | Exception):
         super().__init__(f"{key}: {error}")
         self.key = key
         self.error = error
@@ -128,7 +130,7 @@ def Float(text: str) -> float:  # noqa: D401
     return float(text)
 
 
-def Integer(text: OptionalType[str] = None, base: int = 10) -> Union[int, Callable[[str], int]]:  # noqa: D401
+def Integer(text: str | None = None, base: int = 10) -> int | Callable[[str], int]:  # noqa: D401
     """An integer.
 
     To prevent mistakes, this will raise an error if the user attempts
@@ -175,7 +177,7 @@ class EndpointConfiguration(NamedTuple):
     """
 
     family: socket.AddressFamily  # pylint: disable=no-member
-    address: Union[InternetAddress, str]
+    address: InternetAddress | str
 
     def __str__(self) -> str:
         return str(self.address)
@@ -288,7 +290,7 @@ InfiniteTimespanType = NewType("InfiniteTimespanType", object)
 InfiniteTimespan = InfiniteTimespanType(object())
 
 
-def TimespanOrInfinite(text: str) -> Union[datetime.timedelta, InfiniteTimespanType]:  # noqa: D401
+def TimespanOrInfinite(text: str) -> datetime.timedelta | InfiniteTimespanType:  # noqa: D401
     """A span of time or the string 'infinite' indicating forever."""
     if text == "infinite":
         return InfiniteTimespan
@@ -394,8 +396,8 @@ def TupleOf(item_parser: Callable[[str], T]) -> Callable[[str], Sequence[T]]:  #
 
 
 def DefaultFromEnv(
-    item_parser: Callable[[str], T], default_src: str, fallback: OptionalType[T] = None
-) -> Callable[[str], OptionalType[T]]:  # noqa: D401
+    item_parser: Callable[[str], T], default_src: str, fallback: T | None = None
+) -> Callable[[str], T | None]:  # noqa: D401
     """An option of type T or a default.
 
     The default is sourced from an environment variable with the name specified in ``default_src``.
@@ -406,7 +408,7 @@ def DefaultFromEnv(
     env = os.getenv(default_src) or ""
     default = Optional(item_parser, fallback)(env)
 
-    def default_from_env(text: str) -> OptionalType[T]:
+    def default_from_env(text: str) -> T | None:
         val = Optional(item_parser, default)(text)
         if val:
             return val
@@ -417,11 +419,11 @@ def DefaultFromEnv(
 
 
 def Optional(
-    item_parser: Callable[[str], T], default: OptionalType[T] = None
-) -> Callable[[str], OptionalType[T]]:  # noqa: D401
+    item_parser: Callable[[str], T], default: T | None = None
+) -> Callable[[str], T | None]:  # noqa: D401
     """An option of type T, or ``default`` if not configured."""
 
-    def optional(text: str) -> OptionalType[T]:
+    def optional(text: str) -> T | None:
         if text:
             return item_parser(text)
         return default
@@ -455,16 +457,16 @@ class ConfigNamespace(dict):
     def __getattr__(self, name: str) -> Any: ...
 
 
-ConfigSpecItem = Union["Parser", dict[str, Any], Callable[[str], T]]
-ConfigSpec = dict[str, ConfigSpecItem]
-RawConfig = dict[str, str]
+ConfigSpecItem = Union["Parser", Dict[str, Any], Callable[[str], T]]
+ConfigSpec = Dict[str, ConfigSpecItem]
+RawConfig = Dict[str, str]
 
 
 class Parser(Generic[T]):
     """Base class for configuration parsers."""
 
     @staticmethod
-    def from_spec(spec: ConfigSpecItem) -> "Parser":
+    def from_spec(spec: ConfigSpecItem) -> Parser:
         """Return a parser for the given spec object."""
         if isinstance(spec, Parser):
             return spec

@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 import logging
 import os
 import random
 from collections.abc import Iterator
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Any, Callable, NamedTuple, Optional
+from typing import Any, Callable, NamedTuple, Optional, Tuple
 
 import gevent.monkey
 from pkg_resources import DistributionNotFound, get_distribution
@@ -24,7 +26,7 @@ logger = logging.getLogger(__name__)
 class BaseplateObserver:
     """Interface for an observer that watches Baseplate."""
 
-    def on_server_span_created(self, context: "RequestContext", server_span: "ServerSpan") -> None:
+    def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         """Do something when a server span is created.
 
         :py:class:`Baseplate` calls this when a new request begins.
@@ -37,7 +39,7 @@ class BaseplateObserver:
         raise NotImplementedError
 
 
-_ExcInfo = tuple[Optional[type[BaseException]], Optional[BaseException], Optional[TracebackType]]
+_ExcInfo = Tuple[Optional[type[BaseException]], Optional[BaseException], Optional[TracebackType]]
 
 
 class SpanObserver:
@@ -55,7 +57,7 @@ class SpanObserver:
     def on_log(self, name: str, payload: Any) -> None:
         """Do something when a log entry is added to the span."""
 
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None) -> None:
         """Do something when the observed span is finished.
 
         :param exc_info: If the span ended because of an exception, the
@@ -63,7 +65,7 @@ class SpanObserver:
 
         """
 
-    def on_child_span_created(self, span: "Span") -> None:
+    def on_child_span_created(self, span: Span) -> None:
         """Do something when a child span is created.
 
         :py:class:`SpanObserver` objects call this when a new child span is
@@ -91,19 +93,19 @@ class TraceInfo(NamedTuple):
     trace_id: str
 
     #: The ID of the parent span, or None if this is the root span.
-    parent_id: Optional[str]
+    parent_id: str | None
 
     #: The ID of the current span. Should be unique within a trace.
     span_id: str
 
     #: True if this trace was selected for sampling. Will be propagated to child spans.
-    sampled: Optional[bool]
+    sampled: bool | None
 
     #: A bit field of extra flags about this trace.
-    flags: Optional[int]
+    flags: int | None
 
     @classmethod
-    def new(cls) -> "TraceInfo":
+    def new(cls) -> TraceInfo:
         """Generate IDs for a new initial server span.
 
         This span has no parent and has a random ID. It cannot be correlated
@@ -117,11 +119,11 @@ class TraceInfo(NamedTuple):
     def from_upstream(
         cls,
         trace_id: str,
-        parent_id: Optional[str],
+        parent_id: str | None,
         span_id: str,
-        sampled: Optional[bool],
-        flags: Optional[int],
-    ) -> "TraceInfo":
+        sampled: bool | None,
+        flags: int | None,
+    ) -> TraceInfo:
         """Build a TraceInfo from individual headers.
 
         :param trace_id: The ID of the trace.
@@ -169,9 +171,9 @@ class RequestContext:
     def __init__(
         self,
         context_config: dict[str, Any],
-        prefix: Optional[str] = None,
-        span: Optional["Span"] = None,
-        wrapped: Optional["RequestContext"] = None,
+        prefix: str | None = None,
+        span: Span | None = None,
+        wrapped: RequestContext | None = None,
     ):
         self.__context_config = context_config
         self.__prefix = prefix
@@ -216,7 +218,7 @@ class RequestContext:
     def __setattr__(self, name: str, value: Any) -> None:
         super().__setattr__(name, value)
 
-    def clone(self) -> "RequestContext":
+    def clone(self) -> RequestContext:
         return RequestContext(
             context_config=self.__context_config,
             prefix=self.__prefix,
@@ -241,7 +243,7 @@ class Baseplate:
 
     """
 
-    def __init__(self, app_config: Optional[config.RawConfig] = None) -> None:
+    def __init__(self, app_config: config.RawConfig | None = None) -> None:
         """Initialize the core observability framework.
 
         :param app_config: The raw configuration dictionary for your
@@ -266,7 +268,7 @@ class Baseplate:
 
         """
         self.observers: list[BaseplateObserver] = []
-        self._metrics_client: Optional[metrics.Client] = None
+        self._metrics_client: metrics.Client | None = None
         self._context_config: dict[str, Any] = {}
         self._app_config = app_config or {}
 
@@ -432,8 +434,8 @@ class Baseplate:
         return RequestContext(self._context_config)
 
     def make_server_span(
-        self, context: RequestContext, name: str, trace_info: Optional[TraceInfo] = None
-    ) -> "ServerSpan":
+        self, context: RequestContext, name: str, trace_info: TraceInfo | None = None
+    ) -> ServerSpan:
         """Return a server span representing the request we are handling.
 
         In a server, a server span represents the time spent on a single
@@ -500,7 +502,7 @@ class Baseplate:
             yield context
 
     def get_runtime_metric_reporters(self) -> dict[str, Callable[[Any], None]]:
-        specs: list[tuple[Optional[str], dict[str, Any]]] = [(None, self._context_config)]
+        specs: list[tuple[str | None, dict[str, Any]]] = [(None, self._context_config)]
         result = {}
         while specs:
             prefix, spec = specs.pop(0)
@@ -523,13 +525,13 @@ class Span:
     def __init__(
         self,
         trace_id: str,
-        parent_id: Optional[str],
+        parent_id: str | None,
         span_id: str,
-        sampled: Optional[bool],
-        flags: Optional[int],
+        sampled: bool | None,
+        flags: int | None,
         name: str,
         context: RequestContext,
-        baseplate: Optional[Baseplate] = None,
+        baseplate: Baseplate | None = None,
     ):
         self.trace_id = trace_id
         self.parent_id = parent_id
@@ -539,7 +541,7 @@ class Span:
         self.name = name
         self.context = context
         self.baseplate = baseplate
-        self.component_name: Optional[str] = None
+        self.component_name: str | None = None
         self.observers: list[SpanObserver] = []
 
     def register(self, observer: SpanObserver) -> None:
@@ -592,7 +594,7 @@ class Span:
         for observer in self.observers:
             observer.on_incr_tag(key, delta)
 
-    def log(self, name: str, payload: Optional[Any] = None) -> None:
+    def log(self, name: str, payload: Any | None = None) -> None:
         """Add a log entry to the span.
 
         Log entries are timestamped events recording notable moments in the
@@ -606,7 +608,7 @@ class Span:
         for observer in self.observers:
             observer.on_log(name, payload)
 
-    def finish(self, exc_info: Optional[_ExcInfo] = None) -> None:
+    def finish(self, exc_info: _ExcInfo | None = None) -> None:
         """Record the end of the span.
 
         :param exc_info: If the span ended because of an exception, this is
@@ -624,28 +626,26 @@ class Span:
         self.context = None  # type: ignore
         self.observers.clear()
 
-    def __enter__(self) -> "Span":
+    def __enter__(self) -> Span:
         self.start()
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         if exc_type is not None:
             self.finish(exc_info=(exc_type, value, traceback))
         else:
             self.finish()
 
-    def make_child(
-        self, name: str, local: bool = False, component_name: Optional[str] = None
-    ) -> "Span":
+    def make_child(self, name: str, local: bool = False, component_name: str | None = None) -> Span:
         """Return a child Span whose parent is this Span."""
         raise NotImplementedError
 
-    def with_tags(self, tags: dict[str, Any]) -> "Span":
+    def with_tags(self, tags: dict[str, Any]) -> Span:
         """Declare a set of tags to be added to a span before starting it in the context manager.
 
         Can be used as follow:
@@ -668,9 +668,7 @@ class ParentSpanAlreadyFinishedError(Exception):
 
 
 class LocalSpan(Span):
-    def make_child(
-        self, name: str, local: bool = False, component_name: Optional[str] = None
-    ) -> "Span":
+    def make_child(self, name: str, local: bool = False, component_name: str | None = None) -> Span:
         """Return a child Span whose parent is this Span.
 
         The child span can either be a local span representing an in-request

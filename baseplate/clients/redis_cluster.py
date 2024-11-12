@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import logging
 import random
 from datetime import timedelta
 from time import perf_counter
-from typing import Any, Optional
+from typing import Any
 
 import rediscluster
 from redis import RedisError
@@ -352,7 +354,7 @@ class ClusterRedisClient(config.Parser):
         self.kwargs = kwargs
         self.redis_client_name = client_name
 
-    def parse(self, key_path: str, raw_config: config.RawConfig) -> "ClusterRedisContextFactory":
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> ClusterRedisContextFactory:
         connection_pool = cluster_pool_from_config(raw_config, f"{key_path}.", **self.kwargs)
         return ClusterRedisContextFactory(
             connection_pool, key_path, redis_client_name=self.redis_client_name
@@ -393,7 +395,7 @@ class ClusterRedisContextFactory(ContextFactory):
         batch.gauge("pool.size").replace(size)
         batch.gauge("pool.open_connections").replace(open_connections_num)
 
-    def make_object_for_context(self, name: str, span: Span) -> "MonitoredRedisClusterConnection":
+    def make_object_for_context(self, name: str, span: Span) -> MonitoredRedisClusterConnection:
         return MonitoredRedisClusterConnection(
             name,
             span,
@@ -472,7 +474,7 @@ class MonitoredRedisClusterConnection(rediscluster.RedisCluster):
         return res
 
     # pylint: disable=arguments-differ
-    def pipeline(self, name: str) -> "MonitoredClusterRedisPipeline":
+    def pipeline(self, name: str) -> MonitoredClusterRedisPipeline:
         """Create a pipeline.
 
         This returns an object on which you can call the standard Redis
@@ -504,7 +506,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
         server_span: Span,
         connection_pool: rediscluster.ClusterConnectionPool,
         response_callbacks: dict,
-        hot_key_tracker: Optional[HotKeyTracker],
+        hot_key_tracker: HotKeyTracker | None,
         redis_client_name: str = "",
         **kwargs: Any,
     ):

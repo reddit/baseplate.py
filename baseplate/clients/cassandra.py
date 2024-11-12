@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import time
 from collections.abc import Mapping, Sequence
@@ -6,8 +8,8 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    List,
     NamedTuple,
-    Optional,
     Union,
 )
 
@@ -67,9 +69,9 @@ logger = logging.getLogger(__name__)
 
 def cluster_from_config(
     app_config: config.RawConfig,
-    secrets: Optional[SecretsStore] = None,
+    secrets: SecretsStore | None = None,
     prefix: str = "cassandra.",
-    execution_profiles: Optional[dict[str, ExecutionProfile]] = None,
+    execution_profiles: dict[str, ExecutionProfile] | None = None,
     **kwargs: Any,
 ) -> Cluster:
     """Make a Cluster from a configuration dictionary.
@@ -138,7 +140,7 @@ class CassandraClient(config.Parser):
         self.kwargs = kwargs
         self.client_name = client_name
 
-    def parse(self, key_path: str, raw_config: config.RawConfig) -> "CassandraContextFactory":
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> CassandraContextFactory:
         cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
         session = cluster.connect(keyspace=self.keyspace)
 
@@ -166,15 +168,15 @@ class CassandraContextFactory(ContextFactory):
     def __init__(
         self,
         session: Session,
-        prometheus_client_name: Optional[str] = None,
-        prometheus_cluster_name: Optional[str] = None,
+        prometheus_client_name: str | None = None,
+        prometheus_cluster_name: str | None = None,
     ):
         self.session = session
         self.prepared_statements: dict[str, PreparedStatement] = {}
         self.prometheus_client_name = prometheus_client_name
         self.prometheus_cluster_name = prometheus_cluster_name
 
-    def make_object_for_context(self, name: str, span: Span) -> "CassandraSessionAdapter":
+    def make_object_for_context(self, name: str, span: Span) -> CassandraSessionAdapter:
         return CassandraSessionAdapter(
             name,
             span,
@@ -201,7 +203,7 @@ class CQLMapperClient(config.Parser):
         self.keyspace = keyspace
         self.kwargs = kwargs
 
-    def parse(self, key_path: str, raw_config: config.RawConfig) -> "CQLMapperContextFactory":
+    def parse(self, key_path: str, raw_config: config.RawConfig) -> CQLMapperContextFactory:
         cluster = cluster_from_config(raw_config, prefix=f"{key_path}.", **self.kwargs)
         session = cluster.connect(keyspace=self.keyspace)
         return CQLMapperContextFactory(session)
@@ -221,7 +223,7 @@ class CQLMapperContextFactory(CassandraContextFactory):
 
     """
 
-    def make_object_for_context(self, name: str, span: Span) -> "cqlmapper.connection.Connection":
+    def make_object_for_context(self, name: str, span: Span) -> cqlmapper.connection.Connection:
         # Import inline so you can still use the regular Cassandra integration
         # without installing cqlmapper
         # pylint: disable=redefined-outer-name
@@ -317,7 +319,7 @@ def _on_execute_failed(exc: BaseException, args: CassandraCallbackArgs, event: E
         event.set()
 
 
-RowFactory = Callable[[list[str], list[tuple]], Any]
+RowFactory = Callable[[List[str], List[tuple]], Any]
 Query = Union[str, SimpleStatement, PreparedStatement, BoundStatement]
 Parameters = Union[Sequence[Any], Mapping[str, Any]]
 
@@ -329,8 +331,8 @@ class CassandraSessionAdapter:
         server_span: Span,
         session: Session,
         prepared_statements: dict[str, PreparedStatement],
-        prometheus_client_name: Optional[str] = None,
-        prometheus_cluster_name: Optional[str] = None,
+        prometheus_client_name: str | None = None,
+        prometheus_cluster_name: str | None = None,
     ):
         self.context_name = context_name
         self.server_span = server_span
@@ -345,9 +347,9 @@ class CassandraSessionAdapter:
     def execute(
         self,
         query: Query,
-        parameters: Optional[Parameters] = None,
-        timeout: Union[float, object] = _NOT_SET,
-        query_name: Optional[str] = None,
+        parameters: Parameters | None = None,
+        timeout: float | object = _NOT_SET,
+        query_name: str | None = None,
         **kwargs: Any,
     ) -> Any:
         return self.execute_async(
@@ -357,9 +359,9 @@ class CassandraSessionAdapter:
     def execute_async(
         self,
         query: Query,
-        parameters: Optional[Parameters] = None,
-        timeout: Union[float, object] = _NOT_SET,
-        query_name: Optional[str] = None,
+        parameters: Parameters | None = None,
+        timeout: float | object = _NOT_SET,
+        query_name: str | None = None,
         **kwargs: Any,
     ) -> ResponseFuture:
         prom_labels = CassandraPrometheusLabels(

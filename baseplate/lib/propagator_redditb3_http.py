@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import logging
 from collections.abc import Iterable
 from re import compile as re_compile
-from typing import Any, Optional
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.context import Context
@@ -32,7 +34,7 @@ class RedditB3HTTPFormat(TextMapPropagator):
     def extract(
         self,
         carrier: CarrierT,
-        context: Optional[Context] = None,
+        context: Context | None = None,
         getter: Getter = default_getter,
     ) -> Context:
         if context is None:
@@ -135,7 +137,7 @@ class RedditB3HTTPFormat(TextMapPropagator):
     def inject(
         self,
         carrier: CarrierT,
-        context: Optional[Context] = None,
+        context: Context | None = None,
         setter: Setter = default_setter,
     ) -> None:
         span = trace.get_current_span(context=context)
@@ -165,9 +167,9 @@ class RedditB3HTTPFormat(TextMapPropagator):
 
 
 def _extract_first_element(
-    items: Optional[Iterable[CarrierT]],
-    default: Optional[Any] = None,
-) -> Optional[CarrierT]:
+    items: Iterable[CarrierT] | None,
+    default: Any | None = None,
+) -> CarrierT | None:
     if items is None:
         return default
     return next(iter(items), default)

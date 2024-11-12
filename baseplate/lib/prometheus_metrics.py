@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from baseplate.lib import config
 
 # default_latency_buckets creates the default bucket values for time based histogram metrics.

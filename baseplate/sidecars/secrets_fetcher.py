@@ -61,6 +61,8 @@ write to a new file in whatever format needed, and restart other services if nec
 
 """
 
+from __future__ import annotations
+
 import argparse
 import configparser
 import datetime
@@ -72,7 +74,7 @@ import subprocess
 import time
 import urllib.parse
 import uuid
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Tuple
 
 import requests
 
@@ -112,7 +114,7 @@ def generate_nonce() -> str:
     return str(uuid.uuid4())
 
 
-def load_nonce() -> Optional[str]:
+def load_nonce() -> str | None:
     """Load the nonce from disk."""
     try:
         logger.debug("Loading nonce.")
@@ -136,7 +138,7 @@ def ttl_to_time(ttl: int) -> datetime.datetime:
     return datetime.datetime.utcnow() + datetime.timedelta(seconds=ttl)
 
 
-Authenticator = Callable[["VaultClientFactory"], tuple[str, datetime.datetime]]
+Authenticator = Callable[["VaultClientFactory"], Tuple[str, datetime.datetime]]
 
 
 class VaultClientFactory:
@@ -151,9 +153,9 @@ class VaultClientFactory:
         self.session.headers["User-Agent"] = (
             f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
         )
-        self.client: Optional[VaultClient] = None
+        self.client: VaultClient | None = None
 
-    def _make_client(self) -> "VaultClient":
+    def _make_client(self) -> VaultClient:
         """Obtain a client token from an auth backend and return a Vault client with it."""
         client_token, lease_duration = self.auth_type(self)
 
@@ -256,7 +258,7 @@ class VaultClientFactory:
             "kubernetes": VaultClientFactory._vault_kubernetes_auth,
         }
 
-    def get_client(self) -> "VaultClient":
+    def get_client(self) -> VaultClient:
         """Get an authenticated client, reauthenticating if not cached."""
         if not self.client or self.client.is_about_to_expire:
             self.client = self._make_client()
@@ -342,8 +344,8 @@ def fetch_secrets(
 
 
 def trigger_callback(
-    callback: Optional[str], secrets_file: str, last_proc: Optional[subprocess.Popen] = None
-) -> Optional[subprocess.Popen]:
+    callback: str | None, secrets_file: str, last_proc: subprocess.Popen | None = None
+) -> subprocess.Popen | None:
     if callback:
         if last_proc and last_proc.poll() is None:
             logger.info("Previous callback process is still running. Skipping")
