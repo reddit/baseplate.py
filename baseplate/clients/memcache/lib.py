@@ -34,9 +34,7 @@ class Flags:
     ZLIB = 1 << 3
 
 
-def decompress_and_load(
-    key: str, serialized: bytes, flags: int
-) -> Any:
+def decompress_and_load(key: str, serialized: bytes, flags: int) -> Any:
     """Deserialize data.
 
     This should be paired with
@@ -97,9 +95,7 @@ def make_dump_and_compress_fn(
     assert min_compress_length >= 0
     assert 0 <= compress_level <= 9
 
-    def dump_and_compress(
-        key: str, value: Any
-    ) -> tuple[bytes, int]:
+    def dump_and_compress(key: str, value: Any) -> tuple[bytes, int]:
         """Serialize a Python object in a way compatible with decompress_and_load().
 
         :param key: the memcached key.
@@ -147,9 +143,7 @@ class PickleFlags:
     ZLIB = 1 << 3
 
 
-def decompress_and_unpickle(
-    key: str, serialized: bytes, flags: int
-) -> Any:
+def decompress_and_unpickle(key: str, serialized: bytes, flags: int) -> Any:
     """Deserialize data stored by ``pylibmc``.
 
     .. warning:: This should only be used when sharing caches with applications
@@ -214,9 +208,7 @@ def make_pickle_and_compress_fn(
     assert min_compress_length >= 0
     assert 0 <= compress_level <= 9
 
-    def pickle_and_compress(
-        key: str, value: Any
-    ) -> tuple[bytes, int]:
+    def pickle_and_compress(key: str, value: Any) -> tuple[bytes, int]:
         """Serialize a Python object in a way compatible with decompress_and_unpickle().
 
         :param key: the memcached key.

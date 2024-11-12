@@ -372,9 +372,7 @@ class MessageQueue:
 
         return message
 
-    def put(
-        self, message: bytes, timeout: Optional[float] = None
-    ) -> None:
+    def put(self, message: bytes, timeout: Optional[float] = None) -> None:
         """Add a message to the queue.
 
         :param message: will be typecast to a string upon storage and will come
