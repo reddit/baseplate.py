@@ -1,28 +1,24 @@
 import logging
 import random
-
 from datetime import timedelta
 from time import perf_counter
-from typing import Any
-from typing import Dict
-from typing import List
-from typing import Optional
+from typing import Any, Optional
 
 import rediscluster
-
 from redis import RedisError
 from rediscluster.pipeline import ClusterPipeline
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.clients.redis import ACTIVE_REQUESTS
-from baseplate.clients.redis import LATENCY_SECONDS
-from baseplate.clients.redis import MAX_CONNECTIONS
-from baseplate.clients.redis import OPEN_CONNECTIONS
-from baseplate.clients.redis import PROM_LABELS_PREFIX
-from baseplate.clients.redis import REQUESTS_TOTAL
-from baseplate.lib import config
-from baseplate.lib import metrics
+from baseplate.clients.redis import (
+    ACTIVE_REQUESTS,
+    LATENCY_SECONDS,
+    MAX_CONNECTIONS,
+    OPEN_CONNECTIONS,
+    PROM_LABELS_PREFIX,
+    REQUESTS_TOTAL,
+)
+from baseplate.lib import config, metrics
 
 logger = logging.getLogger(__name__)
 randomizer = random.SystemRandom()
@@ -155,16 +151,16 @@ class HotKeyTracker:
     def should_track_key_writes(self) -> bool:
         return randomizer.random() < self.track_writes_sample_rate
 
-    def increment_keys_read_counter(self, key_list: List[str], ignore_errors: bool = True) -> None:
+    def increment_keys_read_counter(self, key_list: list[str], ignore_errors: bool = True) -> None:
         self._increment_hot_key_counter(key_list, self.reads_sorted_set_name, ignore_errors)
 
     def increment_keys_written_counter(
-        self, key_list: List[str], ignore_errors: bool = True
+        self, key_list: list[str], ignore_errors: bool = True
     ) -> None:
         self._increment_hot_key_counter(key_list, self.writes_sorted_set_name, ignore_errors)
 
     def _increment_hot_key_counter(
-        self, key_list: List[str], set_name: str, ignore_errors: bool = True
+        self, key_list: list[str], set_name: str, ignore_errors: bool = True
     ) -> None:
         if len(key_list) == 0:
             return
@@ -183,7 +179,7 @@ class HotKeyTracker:
             if not ignore_errors:
                 raise
 
-    def maybe_track_key_usage(self, args: List[str]) -> None:
+    def maybe_track_key_usage(self, args: list[str]) -> None:
         """Probabilistically track usage of the keys in this command.
 
         If we have enabled key usage tracing *and* this command is withing the
@@ -216,7 +212,7 @@ class HotKeyTracker:
 # the desired behaviour.
 class ClusterWithReadReplicasBlockingConnectionPool(rediscluster.ClusterBlockingConnectionPool):
     # pylint: disable=arguments-differ
-    def get_node_by_slot(self, slot: int, read_command: bool = False) -> Dict[str, Any]:
+    def get_node_by_slot(self, slot: int, read_command: bool = False) -> dict[str, Any]:
         """Get a node from the slot.
 
         If the command is a read command we'll try to return a random node.
@@ -260,8 +256,9 @@ def cluster_pool_from_config(
     * ``timeout``: . e.g. ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`).
         How long to wait for a connection to become available.  Additionally, will set
         ``socket_connect_timeout`` and ``socket_timeout`` if they're not set explicitly.
-    * ``socket_connect_timeout``: e.g. ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
-        How long to wait for sockets to connect.
+    * ``socket_connect_timeout``: e.g. ``200 milliseconds``
+        (:py:func:`~baseplate.lib.config.Timespan`) How long to wait for sockets to
+        connect.
     * ``socket_timeout``: e.g. ``200 milliseconds`` (:py:func:`~baseplate.lib.config.Timespan`)
         How long to wait for socket operations.
     * ``track_key_reads_sample_rate``: If greater than zero, which percentage of requests will
@@ -506,7 +503,7 @@ class MonitoredClusterRedisPipeline(ClusterPipeline):
         trace_name: str,
         server_span: Span,
         connection_pool: rediscluster.ClusterConnectionPool,
-        response_callbacks: Dict,
+        response_callbacks: dict,
         hot_key_tracker: Optional[HotKeyTracker],
         redis_client_name: str = "",
         **kwargs: Any,

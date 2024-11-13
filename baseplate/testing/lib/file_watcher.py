@@ -1,13 +1,7 @@
 import typing
-
-from typing import Tuple
-from typing import Type
 from typing import Union
 
-from baseplate.lib.file_watcher import _NOT_LOADED
-from baseplate.lib.file_watcher import FileWatcher
-from baseplate.lib.file_watcher import T
-from baseplate.lib.file_watcher import WatchedFileNotAvailableError
+from baseplate.lib.file_watcher import _NOT_LOADED, FileWatcher, T, WatchedFileNotAvailableError
 
 
 class FakeFileWatcher(FileWatcher):
@@ -35,11 +29,11 @@ class FakeFileWatcher(FileWatcher):
     """
 
     # pylint: disable=super-init-not-called
-    def __init__(self, data: Union[T, Type[_NOT_LOADED]] = _NOT_LOADED, mtime: float = 1234):
+    def __init__(self, data: Union[T, type[_NOT_LOADED]] = _NOT_LOADED, mtime: float = 1234):
         self.data = data
         self.mtime = mtime
 
-    def get_data_and_mtime(self) -> Tuple[T, float]:
+    def get_data_and_mtime(self) -> tuple[T, float]:
         if self.data is _NOT_LOADED:
             raise WatchedFileNotAvailableError("/fake-file-watcher", Exception("no value set"))
         return typing.cast(T, self.data), self.mtime

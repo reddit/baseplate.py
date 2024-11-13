@@ -1,16 +1,10 @@
 """Extensions to the standard library `random` module."""
+
 import bisect
 import random
 import typing
-
-from typing import Callable
-from typing import Generic
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Set
-from typing import TypeVar
-
+from collections.abc import Iterable
+from typing import Callable, Generic, Optional, TypeVar
 
 T = TypeVar("T")
 
@@ -49,7 +43,7 @@ class WeightedLottery(Generic[T]):
     """
 
     def __init__(self, items: Iterable[T], weight_key: Callable[[T], int]):
-        self.weights: List[int] = []
+        self.weights: list[int] = []
         self.items = list(items)
         if not self.items:
             raise ValueError("items must not be empty")
@@ -85,8 +79,8 @@ class WeightedLottery(Generic[T]):
         if not 0 <= sample_size < len(self.items):
             raise ValueError("sample size is negative or larger than the population")
 
-        already_picked: Set[int] = set()
-        results: List[Optional[T]] = [None] * sample_size
+        already_picked: set[int] = set()
+        results: list[Optional[T]] = [None] * sample_size
 
         # we use indexes in the set so we don't add a hashability requirement
         # to the items in the population.
@@ -96,4 +90,4 @@ class WeightedLottery(Generic[T]):
                 picked_index = self._pick_index()
             results[i] = self.items[picked_index]
             already_picked.add(picked_index)
-        return typing.cast(List[T], results)
+        return typing.cast(list[T], results)

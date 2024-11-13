@@ -5,24 +5,24 @@ import string
 import tempfile
 import typing
 import unittest
-
 from pathlib import Path
-from unittest.mock import mock_open
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 import gevent
 import pytest
 import typing_extensions
 
-from baseplate.lib.secrets import SecretNotFoundError
-from baseplate.lib.secrets import secrets_store_from_config
-from baseplate.lib.secrets import SecretsStore
-from baseplate.lib.secrets import VaultCSISecretsStore
+from baseplate.lib.secrets import (
+    SecretNotFoundError,
+    SecretsStore,
+    VaultCSISecretsStore,
+    secrets_store_from_config,
+)
 
-SecretType: typing_extensions.TypeAlias = typing.Dict[str, any]
+SecretType: typing_extensions.TypeAlias = dict[str, any]
 
 
-def write_secrets(secrets_data_path: Path, data: typing.Dict[str, SecretType]) -> None:
+def write_secrets(secrets_data_path: Path, data: dict[str, SecretType]) -> None:
     """Write secrets to the current data directory."""
     for key, value in data.items():
         secret_path = secrets_data_path.joinpath(key)
@@ -44,7 +44,7 @@ def write_symlinks(data_path: Path) -> None:
         human_path.symlink_to(csi_path.joinpath("..data/secret"))
 
 
-def new_fake_csi(data: typing.Dict[str, SecretType]) -> Path:
+def new_fake_csi(data: dict[str, SecretType]) -> Path:
     """Creates a simulated CSI directory with data and symlinks.
     Note that this would already be configured before the pod starts."""
     csi_dir = Path(tempfile.mkdtemp())
@@ -56,7 +56,7 @@ def new_fake_csi(data: typing.Dict[str, SecretType]) -> Path:
 
 
 def simulate_secret_update(
-    csi_dir: Path, updated_data: typing.Optional[typing.Dict[str, SecretType]] = None
+    csi_dir: Path, updated_data: typing.Optional[dict[str, SecretType]] = None
 ) -> None:
     """Simulates either TTL expiry / a secret update."""
     old_data_path = csi_dir.joinpath("..data").resolve()
@@ -226,12 +226,12 @@ class StoreTests(unittest.TestCase):
             expected_username = "".join(chars[:3])
             expected_password = "".join(chars[3:])
             new_secrets = EXAMPLE_UPDATED_SECRETS.copy()
-            new_secrets["secret/example-service/example-secret"]["data"][
-                "username"
-            ] = expected_username
-            new_secrets["secret/example-service/example-secret"]["data"][
-                "password"
-            ] = expected_password
+            new_secrets["secret/example-service/example-secret"]["data"]["username"] = (
+                expected_username
+            )
+            new_secrets["secret/example-service/example-secret"]["data"]["password"] = (
+                expected_password
+            )
             simulate_secret_update(
                 self.csi_dir,
                 updated_data=EXAMPLE_UPDATED_SECRETS,

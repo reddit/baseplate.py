@@ -1,21 +1,19 @@
 import time
 import unittest
-
 from unittest import mock
 
 try:
-    from cassandra import InvalidRequest, ConsistencyLevel
+    from cassandra import ConsistencyLevel, InvalidRequest
     from cassandra.cluster import ExecutionProfile
     from cassandra.concurrent import execute_concurrent_with_args
     from cassandra.query import dict_factory, named_tuple_factory
 except ImportError:
     raise unittest.SkipTest("cassandra-driver is not installed")
 
-from baseplate.clients.cassandra import CassandraClient
 from baseplate import Baseplate
+from baseplate.clients.cassandra import CassandraClient
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
-
 
 cassandra_endpoint = get_endpoint_or_skip_container("cassandra", 9042)
 

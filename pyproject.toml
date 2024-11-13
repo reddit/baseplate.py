@@ -17,7 +17,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8.1,<4.0"
+python = ">=3.9,<4.0"
 advocate = { version = ">=1.0.0,<2.0", optional = true }
 boto3 = ">=1.28.27"
 cassandra-driver = { version = ">=3.29.0,<4.0", optional = true }
@@ -70,12 +70,7 @@ psycopg2 = ["psycopg2", "psycogreen"]
 zookeeper = ["kazoo"]
 
 [tool.poetry.group.dev.dependencies]
-black = "21.10b0"
-# TODO: This can be removed once we upgrade to a newer Black version.
-# https://github.com/psf/black/issues/2964
-click = "<8.1.0"
 fakeredis = "*"
-flake8 = ">=7.0.0"
 lxml = "*"
 moto = "*"
 mypy = "*"
@@ -85,7 +80,6 @@ pylint = "*"
 pytest = "7.4.4"
 pytest-cov = "*"
 pytz = "*"
-reorder-python-imports = "2.4.0"
 sphinx = "*"
 sphinx-autodoc-typehints = "*"
 types-redis = "*"
@@ -94,7 +88,9 @@ types-setuptools = "*"
 webtest = "*"
 parameterized = "^0.9.0"
 opentelemetry-test-utils = "^0.47b0"
+ruff = "*"
 pyfakefs = "^5.7.1"
+
 
 [tool.poetry.scripts]
 baseplate-healthcheck = { reference = "bin/baseplate-healthcheck", type = "file" }
@@ -106,10 +102,18 @@ baseplate-tshell = { reference = "bin/baseplate-tshell", type = "file" }
 [tool.poetry.plugins."distutils.commands"]
 build_thrift = "baseplate.frameworks.thrift.command:BuildThriftCommand"
 
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+extend-exclude = ["baseplate/thrift", "tests/integration/test_thrift"]
+
+[tool.ruff.lint]
+extend-select = [
+  "I",  # isort
+  "UP",  # pyupgrade
+  "E501", # line length
+]
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.black]
-line-length = 100
-target-version = ['py38']

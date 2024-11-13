@@ -2,32 +2,22 @@ import contextlib
 import logging
 import random
 import unittest
-
 from importlib import reload
 from unittest import mock
 
 import gevent.monkey
 import pytest
 
-from baseplate import Baseplate
-from baseplate import BaseplateObserver
-from baseplate import ServerSpanObserver
-from baseplate import SpanObserver
-from baseplate import TraceInfo
+from baseplate import Baseplate, BaseplateObserver, ServerSpanObserver, SpanObserver, TraceInfo
 from baseplate.clients.thrift import ThriftClient
 from baseplate.frameworks.thrift import baseplateify_processor
 from baseplate.lib import config
 from baseplate.lib.thrift_pool import ThriftConnectionPool
-from baseplate.observers.timeout import ServerTimeout
-from baseplate.observers.timeout import TimeoutBaseplateObserver
+from baseplate.observers.timeout import ServerTimeout, TimeoutBaseplateObserver
 from baseplate.server import make_listener
 from baseplate.server.thrift import make_server
-from baseplate.thrift import BaseplateService
-from baseplate.thrift import BaseplateServiceV2
-from baseplate.thrift.ttypes import Error
-from baseplate.thrift.ttypes import ErrorCode
-from baseplate.thrift.ttypes import IsHealthyProbe
-from baseplate.thrift.ttypes import IsHealthyRequest
+from baseplate.thrift import BaseplateService, BaseplateServiceV2
+from baseplate.thrift.ttypes import Error, ErrorCode, IsHealthyProbe, IsHealthyRequest
 
 from . import FakeEdgeContextFactory
 from .test_thrift import TestService

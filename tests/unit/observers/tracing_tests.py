@@ -1,20 +1,20 @@
 import json
 import unittest
-
 from unittest import mock
 
-from baseplate import ServerSpan
-from baseplate import Span
+from baseplate import ServerSpan, Span
 from baseplate.lib.config import Endpoint
-from baseplate.observers.tracing import ANNOTATIONS
-from baseplate.observers.tracing import LoggingRecorder
-from baseplate.observers.tracing import make_client
-from baseplate.observers.tracing import NullRecorder
-from baseplate.observers.tracing import RemoteRecorder
-from baseplate.observers.tracing import TraceBaseplateObserver
-from baseplate.observers.tracing import TraceLocalSpanObserver
-from baseplate.observers.tracing import TraceServerSpanObserver
-from baseplate.observers.tracing import TraceSpanObserver
+from baseplate.observers.tracing import (
+    ANNOTATIONS,
+    LoggingRecorder,
+    NullRecorder,
+    RemoteRecorder,
+    TraceBaseplateObserver,
+    TraceLocalSpanObserver,
+    TraceServerSpanObserver,
+    TraceSpanObserver,
+    make_client,
+)
 
 
 class TraceTestBase(unittest.TestCase):
@@ -140,7 +140,6 @@ class TraceSpanObserverTests(TraceTestBase):
         self.assertTrue(component_set)
 
     def test_debug_span_tag_set_on_initialization(self):
-
         for annotation in self.test_debug_span_observer.binary_annotations:
             if annotation["key"] == ANNOTATIONS["DEBUG"]:
                 self.assertTrue(annotation["value"])

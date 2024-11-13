@@ -1,4 +1,5 @@
 """Watch nodes in ZooKeeper and sync their contents to disk on change."""
+
 import argparse
 import configparser
 import json
@@ -7,18 +8,16 @@ import os
 import random
 import sys
 import time
-
 from enum import Enum
 from pathlib import Path
-from typing import Any
-from typing import NoReturn
-from typing import Optional
+from typing import Any, NoReturn, Optional
 
 import boto3  # type: ignore
-
 from botocore import UNSIGNED  # type: ignore
-from botocore.client import ClientError  # type: ignore
-from botocore.client import Config
+from botocore.client import (  # type: ignore
+    ClientError,
+    Config,
+)
 from botocore.exceptions import EndpointConnectionError  # type: ignore
 from kazoo.client import KazooClient
 from kazoo.protocol.states import ZnodeStat
@@ -27,7 +26,6 @@ from baseplate.lib import config
 from baseplate.lib.live_data.zookeeper import zookeeper_client_from_config
 from baseplate.lib.secrets import secrets_store_from_config
 from baseplate.server import EnvironmentInterpolation
-
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +152,7 @@ def _load_from_s3(data: bytes) -> bytes:
     except KeyError as e:
         # We require all of these keys to properly read from S3.
         logger.exception(
-            "Failed to update live config: unable to fetch content from s3: source config has invalid or missing keys: %s.",
+            "Failed to update live config: unable to fetch content from s3: source config has invalid or missing keys: %s.",  # noqa: E501
             e.args[0],
         )
         raise LoaderException from e
@@ -196,7 +194,7 @@ def _load_from_s3(data: bytes) -> bytes:
         raise LoaderException from error
     except ValueError as error:
         logger.exception(
-            "Failed to update live config: params for loading from S3 are incorrect. Received error: %s",
+            "Failed to update live config: params for loading from S3 are incorrect. Received error: %s",  # noqa: E501
             error,
         )
 

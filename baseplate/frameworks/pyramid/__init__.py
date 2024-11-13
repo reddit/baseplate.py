@@ -2,38 +2,28 @@ import base64
 import logging
 import sys
 import time
-
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Iterable
-from typing import Iterator
-from typing import Mapping
-from typing import Optional
+from collections.abc import Iterable, Iterator, Mapping
+from typing import Any, Callable, Optional
 
 import pyramid.events
 import pyramid.request
 import pyramid.tweens
 import webob.request
-
 from opentelemetry import trace
 from opentelemetry.instrumentation.pyramid import PyramidInstrumentor
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from prometheus_client import Counter, Gauge, Histogram
 from pyramid.config import Configurator
 from pyramid.registry import Registry
 from pyramid.request import Request
 from pyramid.response import Response
 
-from baseplate import Baseplate
-from baseplate import RequestContext
-from baseplate import Span
-from baseplate import TraceInfo
+from baseplate import Baseplate, RequestContext, Span, TraceInfo
 from baseplate.lib.edgecontext import EdgeContextFactory
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.lib.prometheus_metrics import default_size_buckets
-from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
+from baseplate.lib.prometheus_metrics import (
+    default_latency_buckets,
+    default_size_buckets,
+    getHTTPSuccessLabel,
+)
 from baseplate.thrift.ttypes import IsHealthyProbe
 
 logger = logging.getLogger(__name__)
@@ -237,7 +227,7 @@ def manually_close_request_metrics(request: Request, response: Optional[Response
         request.reddit_tracked_endpoint = None
     else:
         logger.debug(
-            "Request metrics attempted to be closed but were never opened, no metrics will be tracked"
+            "Request metrics attempted to be closed but were never opened, no metrics will be tracked"  # noqa: E501
         )
 
 
@@ -323,7 +313,7 @@ class RequestFactory:
     def __init__(self, baseplate: Baseplate):
         self.baseplate = baseplate
 
-    def __call__(self, environ: Dict[str, str]) -> BaseplateRequest:
+    def __call__(self, environ: dict[str, str]) -> BaseplateRequest:
         return BaseplateRequest(environ, context_config=self.baseplate._context_config)
 
     def blank(self, path: str) -> BaseplateRequest:

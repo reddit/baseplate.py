@@ -2,35 +2,27 @@ import logging
 import queue
 import socket
 import time
-
+from collections.abc import Sequence
 from enum import Enum
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import NamedTuple
-from typing import Optional
-from typing import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
 
 import kombu
-
 from gevent.server import StreamServer
 from kombu.mixins import ConsumerMixin
 from kombu.transport.virtual import Channel
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from prometheus_client import Counter, Gauge, Histogram
 
-from baseplate import Baseplate
-from baseplate import RequestContext
+from baseplate import Baseplate, RequestContext
 from baseplate.clients.kombu import KombuSerializer
 from baseplate.lib.errors import KnownException
 from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.server.queue_consumer import HealthcheckCallback
-from baseplate.server.queue_consumer import make_simple_healthchecker
-from baseplate.server.queue_consumer import MessageHandler
-from baseplate.server.queue_consumer import PumpWorker
-from baseplate.server.queue_consumer import QueueConsumerFactory
+from baseplate.server.queue_consumer import (
+    HealthcheckCallback,
+    MessageHandler,
+    PumpWorker,
+    QueueConsumerFactory,
+    make_simple_healthchecker,
+)
 
 
 class AmqpConsumerPrometheusLabels(NamedTuple):
@@ -191,7 +183,7 @@ class KombuMessageHandler(MessageHandler):
         if not self._is_error_recoverable(exc):
             message.reject()
             logger.exception(
-                "Unrecoverable error while trying to process a message.  The message has been discarded."
+                "Unrecoverable error while trying to process a message.  The message has been discarded."  # noqa: E501
             )
             return
 
@@ -276,11 +268,10 @@ class KombuMessageHandler(MessageHandler):
             # We place the call to ``baseplate.make_server_span`` inside the
             # try/except block because we still want Baseplate to see and
             # handle the error (publish it to error reporting)
-            with self.baseplate.make_server_span(
-                context, self.name
-            ) as span, AMQP_ACTIVE_MESSAGES.labels(
-                **prometheus_labels._asdict()
-            ).track_inprogress():
+            with (
+                self.baseplate.make_server_span(context, self.name) as span,
+                AMQP_ACTIVE_MESSAGES.labels(**prometheus_labels._asdict()).track_inprogress(),
+            ):
                 delivery_info = message.delivery_info
                 message_body = None
                 message_body = message.decode()
@@ -317,7 +308,9 @@ class KombuMessageHandler(MessageHandler):
 
 
 class KombuQueueConsumerFactory(QueueConsumerFactory):
-    """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kombu.
+    """Factory for running a
+    :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using
+    Kombu.
 
     For simple cases where you just need a basic queue with all the default
     parameters for your message broker, you can use `KombuQueueConsumerFactory.new`.
@@ -336,7 +329,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
-        worker_kwargs: Optional[Dict[str, Any]] = None,
+        worker_kwargs: Optional[dict[str, Any]] = None,
         retry_mode: RetryMode = RetryMode.REQUEUE,
         retry_limit: Optional[int] = None,
     ):
@@ -390,7 +383,7 @@ class KombuQueueConsumerFactory(QueueConsumerFactory):
         error_handler_fn: Optional[ErrorHandler] = None,
         health_check_fn: Optional[HealthcheckCallback] = None,
         serializer: Optional[KombuSerializer] = None,
-        worker_kwargs: Optional[Dict[str, Any]] = None,
+        worker_kwargs: Optional[dict[str, Any]] = None,
         retry_mode: RetryMode = RetryMode.REQUEUE,
         retry_limit: Optional[int] = None,
     ) -> "KombuQueueConsumerFactory":
