@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from logging import Logger
 from typing import Any
 from typing import Callable
+from typing import FrozenSet
 from typing import Iterator
 from typing import Mapping
 from typing import Optional
@@ -74,7 +75,7 @@ PROM_ACTIVE = Gauge(
     ["thrift_method"],
     multiprocess_mode="livesum",
 )
-W3C_HEADERS: frozenset[bytes] = frozenset(
+W3C_HEADERS: FrozenSet[bytes] = frozenset(
     (
         b"traceparent",
         b"tracestate",
