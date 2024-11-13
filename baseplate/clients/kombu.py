@@ -1,11 +1,19 @@
 import abc
 import time
-from typing import Any, Generic, Optional, TypeVar
+
+from typing import Any
+from typing import Generic
+from typing import Optional
+from typing import Type
+from typing import TypeVar
 
 import kombu.serialization
-from kombu import Connection, Exchange
+
+from kombu import Connection
+from kombu import Exchange
 from kombu.pools import Producers
-from prometheus_client import Counter, Histogram
+from prometheus_client import Counter
+from prometheus_client import Histogram
 from thrift import TSerialization
 from thrift.protocol.TBinaryProtocol import TBinaryProtocolAcceleratedFactory
 from thrift.protocol.TProtocol import TProtocolFactory
@@ -16,6 +24,7 @@ from baseplate.clients import ContextFactory
 from baseplate.lib import config
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.secrets import SecretsStore
+
 
 T = TypeVar("T")
 
@@ -131,7 +140,7 @@ class KombuThriftSerializer(KombuSerializer[T]):  # pylint: disable=unsubscripta
 
     def __init__(
         self,
-        thrift_class: type[T],
+        thrift_class: Type[T],
         protocol_factory: TProtocolFactory = TBinaryProtocolAcceleratedFactory(),
     ):
         self.thrift_class = thrift_class

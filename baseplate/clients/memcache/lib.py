@@ -10,12 +10,14 @@ Services that need to read and write to the same memcache instances as r2
 should use pickle_and_compress() and decompress_and_unpickle().
 
 """
-
 import json
 import logging
 import pickle
 import zlib
-from typing import Any, Callable
+
+from typing import Any
+from typing import Callable
+from typing import Tuple
 
 
 class Flags:
@@ -77,7 +79,7 @@ def decompress_and_load(  # pylint: disable=unused-argument
 
 def make_dump_and_compress_fn(
     min_compress_length: int = 0, compress_level: int = 1
-) -> Callable[[str, Any], tuple[bytes, int]]:
+) -> Callable[[str, Any], Tuple[bytes, int]]:
     """Make a serializer.
 
     This should be paired with
@@ -99,7 +101,7 @@ def make_dump_and_compress_fn(
 
     def dump_and_compress(  # pylint: disable=unused-argument
         key: str, value: Any
-    ) -> tuple[bytes, int]:
+    ) -> Tuple[bytes, int]:
         """Serialize a Python object in a way compatible with decompress_and_load().
 
         :param key: the memcached key.
@@ -192,7 +194,7 @@ def decompress_and_unpickle(  # pylint: disable=unused-argument
 
 def make_pickle_and_compress_fn(
     min_compress_length: int = 0, compress_level: int = 1
-) -> Callable[[str, Any], tuple[bytes, int]]:
+) -> Callable[[str, Any], Tuple[bytes, int]]:
     """Make a serializer compatible with ``pylibmc`` readers.
 
     The resulting method is a chain of :py:func:`pickle.dumps` and ``zlib``
@@ -216,7 +218,7 @@ def make_pickle_and_compress_fn(
 
     def pickle_and_compress(  # pylint: disable=unused-argument
         key: str, value: Any
-    ) -> tuple[bytes, int]:
+    ) -> Tuple[bytes, int]:
         """Serialize a Python object in a way compatible with decompress_and_unpickle().
 
         :param key: the memcached key.

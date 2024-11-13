@@ -1,6 +1,8 @@
 import threading
 
-from baseplate import BaseplateObserver, RequestContext, Span
+from baseplate import BaseplateObserver
+from baseplate import RequestContext
+from baseplate import Span
 
 
 class LoggingBaseplateObserver(BaseplateObserver):

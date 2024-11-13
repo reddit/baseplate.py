@@ -4,29 +4,39 @@ import logging
 import socket
 import sys
 import time
+
 from collections import OrderedDict
-from collections.abc import Iterator
 from math import ceil
-from typing import Any, Callable, Optional
+from typing import Any
+from typing import Callable
+from typing import Iterator
+from typing import Optional
 
 from opentelemetry import trace
 from opentelemetry.propagators.composite import CompositePropagator
-from opentelemetry.semconv.trace import MessageTypeValues, SpanAttributes
+from opentelemetry.semconv.trace import MessageTypeValues
+from opentelemetry.semconv.trace import SpanAttributes
 from opentelemetry.trace import status
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
-from prometheus_client import Counter, Gauge, Histogram
+from prometheus_client import Counter
+from prometheus_client import Gauge
+from prometheus_client import Histogram
 from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException, TException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
 from thrift.transport.TTransport import TTransportException
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.lib import config, metrics
+from baseplate.lib import config
+from baseplate.lib import metrics
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 from baseplate.lib.propagator_redditb3_thrift import RedditB3ThriftFormat
 from baseplate.lib.retry import RetryPolicy
-from baseplate.lib.thrift_pool import ThriftConnectionPool, thrift_pool_from_config
-from baseplate.thrift.ttypes import Error, ErrorCode
+from baseplate.lib.thrift_pool import thrift_pool_from_config
+from baseplate.lib.thrift_pool import ThriftConnectionPool
+from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
 
 logger = logging.getLogger(__name__)
 
@@ -241,12 +251,9 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
 
         for time_remaining in self.retry_policy:
             try:
-                with (
-                    self.pool.connection() as prot,
-                    ACTIVE_REQUESTS.labels(
-                        thrift_method=name, thrift_client_name=self.namespace
-                    ).track_inprogress(),
-                ):
+                with self.pool.connection() as prot, ACTIVE_REQUESTS.labels(
+                    thrift_method=name, thrift_client_name=self.namespace
+                ).track_inprogress():
                     start_time = time.perf_counter()
 
                     span = self.server_span.make_child(trace_name)
@@ -268,7 +275,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                     if otel_attributes.get(SpanAttributes.NET_PEER_IP) in ["127.0.0.1", "::1"]:
                         otel_attributes[SpanAttributes.NET_PEER_NAME] = "localhost"
                     logger.debug(
-                        "Will use the following otel span attributes. [span=%s, otel_attributes=%s]",  # noqa: E501
+                        "Will use the following otel span attributes. [span=%s, otel_attributes=%s]",
                         span,
                         otel_attributes,
                     )
@@ -295,9 +302,8 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                                 if not min_timeout or self.pool.timeout < min_timeout:
                                     min_timeout = self.pool.timeout
                             if min_timeout and min_timeout > 0:
-                                # min_timeout is in float seconds, we are
-                                # converting to int milliseconds rounding up
-                                # here.
+                                # min_timeout is in float seconds, we are converting to int milliseconds
+                                # rounding up here.
                                 prot.trans.set_header(
                                     b"Deadline-Budget", str(int(ceil(min_timeout * 1000))).encode()
                                 )
@@ -318,8 +324,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                             last_error = str(exc)
                             if exc.inner is not None:
                                 last_error += f" ({exc.inner})"
-                            # we need to raise all exceptions so that self.pool.connect() self-heals
-                            raise
+                            raise  # we need to raise all exceptions so that self.pool.connect() self-heals
                         except (TApplicationException, TProtocolException):
                             # these are subclasses of TException but aren't ones that
                             # should be expected in the protocol. this is an error!
@@ -369,33 +374,27 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
                                 exception_type = exc_info[0].__name__
                             current_exc: Any = exc_info[1]
                             try:
-                                # We want the following code to execute
-                                # whenever the service raises an instance of
-                                # Baseplate's `Error` class. Unfortunately, we
-                                # cannot just rely on `isinstance` to do what
-                                # we want here because some services compile
-                                # Baseplate's thrift file on their own and
-                                # import `Error` from that. When this is done,
-                                # `isinstance` will always return `False` since
-                                # it's technically a different class. To fix
-                                # this, we optimistically try to access `code`
-                                # on `current_exc` and just catch the
-                                # `AttributeError` if the `code` attribute is
-                                # not present. Note: if the error code was not
-                                # originally defined in baseplate, or the name
-                                # associated with the error was overriden, this
-                                # cannot reflect that we will emit the status
-                                # code in both cases but the status will be
-                                # blank in the first case, and the baseplate
-                                # name in the second
+                                # We want the following code to execute whenever the
+                                # service raises an instance of Baseplate's `Error` class.
+                                # Unfortunately, we cannot just rely on `isinstance` to do
+                                # what we want here because some services compile
+                                # Baseplate's thrift file on their own and import `Error`
+                                # from that. When this is done, `isinstance` will always
+                                # return `False` since it's technically a different class.
+                                # To fix this, we optimistically try to access `code` on
+                                # `current_exc` and just catch the `AttributeError` if the
+                                # `code` attribute is not present.
+                                # Note: if the error code was not originally defined in baseplate, or the
+                                # name associated with the error was overriden, this cannot reflect that
+                                # we will emit the status code in both cases
+                                # but the status will be blank in the first case, and the baseplate name
+                                # in the second
 
-                                # Since this exception could be of any type, we
-                                # may receive exceptions that have a `code`
-                                # property that is actually not from
-                                # Baseplate's `Error` class. In order to reduce
-                                # (but not eliminate) the possibility of metric
-                                # explosion, we validate it against the
-                                # expected type for a proper Error code.
+                                # Since this exception could be of any type, we may receive exceptions
+                                # that have a `code` property that is actually not from Baseplate's
+                                # `Error` class. In order to reduce (but not eliminate) the possibility
+                                # of metric explosion, we validate it against the expected type for a
+                                # proper Error code.
                                 if isinstance(current_exc.code, int):
                                     baseplate_status_code = str(current_exc.code)
                                     baseplate_status = ErrorCode()._VALUES_TO_NAMES.get(
@@ -426,7 +425,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         # this only happens if we exhaust the retry policy
         raise TTransportException(
             type=TTransportException.TIMED_OUT,
-            message=f"retry policy exhausted while attempting {self.namespace}.{name}, last error was: {last_error}",  # noqa: E501
+            message=f"retry policy exhausted while attempting {self.namespace}.{name}, last error was: {last_error}",
         )
 
     return _call_thrift_method

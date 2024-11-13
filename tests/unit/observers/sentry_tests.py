@@ -1,22 +1,21 @@
 from typing import Any
+from typing import Dict
 
 import gevent
 import pytest
 import sentry_sdk
 
 from baseplate import Baseplate
-from baseplate.observers.sentry import (
-    SentryBaseplateObserver,
-    _SentryUnhandledErrorReporter,
-    init_sentry_client_from_config,
-)
+from baseplate.observers.sentry import _SentryUnhandledErrorReporter
+from baseplate.observers.sentry import init_sentry_client_from_config
+from baseplate.observers.sentry import SentryBaseplateObserver
 
 
 class FakeTransport:
     def __init__(self):
         self.events = []
 
-    def __call__(self, event: dict[str, Any]) -> None:
+    def __call__(self, event: Dict[str, Any]) -> None:
         self.events.append(event)
 
 

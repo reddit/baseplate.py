@@ -2,19 +2,20 @@ from contextlib import nullcontext as does_not_raise
 from unittest import mock
 
 import pytest
+
 from opentelemetry import trace
 from prometheus_client import REGISTRY
 from thrift.protocol.TProtocol import TProtocolException
-from thrift.Thrift import TApplicationException, TException
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
 from thrift.transport.TTransport import TTransportException
 
-from baseplate.frameworks.thrift import (
-    PROM_ACTIVE,
-    PROM_LATENCY,
-    PROM_REQUESTS,
-    _ContextAwareHandler,
-)
-from baseplate.thrift.ttypes import Error, ErrorCode
+from baseplate.frameworks.thrift import _ContextAwareHandler
+from baseplate.frameworks.thrift import PROM_ACTIVE
+from baseplate.frameworks.thrift import PROM_LATENCY
+from baseplate.frameworks.thrift import PROM_REQUESTS
+from baseplate.thrift.ttypes import Error
+from baseplate.thrift.ttypes import ErrorCode
 
 
 class Test_ThriftServerPrometheusMetrics:

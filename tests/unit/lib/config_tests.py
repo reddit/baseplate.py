@@ -1,6 +1,7 @@
 import socket
 import tempfile
 import unittest
+
 from unittest.mock import patch
 
 from baseplate.lib import config

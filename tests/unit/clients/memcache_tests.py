@@ -1,5 +1,6 @@
 import builtins
 import unittest
+
 from unittest import mock
 
 try:
@@ -10,10 +11,10 @@ else:
     del pymemcache
 
 from prometheus_client import REGISTRY
-
-from baseplate.clients.memcache import MonitoredMemcacheConnection, pool_from_config
-from baseplate.clients.memcache import lib as memcache_lib
 from baseplate.lib.config import ConfigurationError
+from baseplate.clients.memcache import pool_from_config
+from baseplate.clients.memcache import MonitoredMemcacheConnection
+from baseplate.clients.memcache import lib as memcache_lib
 
 
 class PrometheusInstrumentationTests(unittest.TestCase):

@@ -1,5 +1,8 @@
 import time
-from typing import NamedTuple, Optional
+
+from typing import List
+from typing import NamedTuple
+from typing import Optional
 
 
 class SerializedBatch(NamedTuple):
@@ -45,7 +48,7 @@ class RawJSONBatch(Batch):
         )
 
     def reset(self) -> None:
-        self._items: list[bytes] = []
+        self._items: List[bytes] = []
         self._size = 2  # the [] that wrap the json list
 
 

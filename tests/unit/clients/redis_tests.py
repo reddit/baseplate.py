@@ -1,8 +1,10 @@
 import os
 import unittest
+
 from unittest import mock
 
 import pytest
+
 from prometheus_client import REGISTRY
 
 try:
@@ -13,14 +15,12 @@ else:
     del redis
 from redis.exceptions import ConnectionError
 
-from baseplate.clients.redis import (
-    ACTIVE_REQUESTS,
-    LATENCY_SECONDS,
-    REQUESTS_TOTAL,
-    MonitoredRedisConnection,
-    pool_from_config,
-)
 from baseplate.lib.config import ConfigurationError
+from baseplate.clients.redis import pool_from_config
+from baseplate.clients.redis import ACTIVE_REQUESTS
+from baseplate.clients.redis import REQUESTS_TOTAL
+from baseplate.clients.redis import LATENCY_SECONDS
+from baseplate.clients.redis import MonitoredRedisConnection
 
 
 class DummyConnection:
@@ -156,13 +156,10 @@ class TestMonitoredRedisConnection:
                     )
                     == 1.0
                 ), "Expected one 'pipeline' latency request"
-                assert (
-                    mock_manager.mock_calls
-                    == [
-                        mock.call.inc(),
-                        mock.call.dec(),
-                    ]
-                ), "Instrumentation should increment and then decrement active requests exactly once"  # noqa: E501
+                assert mock_manager.mock_calls == [
+                    mock.call.inc(),
+                    mock.call.dec(),
+                ], "Instrumentation should increment and then decrement active requests exactly once"
                 assert (
                     REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, active_labels) == 0.0
                 ), "Should have 0 (and not None) active requests"
@@ -206,13 +203,10 @@ class TestMonitoredRedisConnection:
                     )
                     == 1.0
                 ), "Expected one 'pipeline' latency request"
-                assert (
-                    mock_manager.mock_calls
-                    == [
-                        mock.call.inc(),
-                        mock.call.dec(),
-                    ]
-                ), "Instrumentation should increment and then decrement active requests exactly once"  # noqa: E501
+                assert mock_manager.mock_calls == [
+                    mock.call.inc(),
+                    mock.call.dec(),
+                ], "Instrumentation should increment and then decrement active requests exactly once"
                 assert (
                     REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, active_labels) == 0.0
                 ), "Should have 0 (and not None) active requests"

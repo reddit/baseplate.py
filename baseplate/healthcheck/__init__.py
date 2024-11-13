@@ -1,5 +1,4 @@
 """Check health of a baseplate service on localhost."""
-
 import argparse
 import socket
 import sys
@@ -9,10 +8,14 @@ import urllib.parse
 import requests
 
 from baseplate.lib._requests import add_unix_socket_support
-from baseplate.lib.config import Endpoint, EndpointConfiguration, InternetAddress
+from baseplate.lib.config import Endpoint
+from baseplate.lib.config import EndpointConfiguration
+from baseplate.lib.config import InternetAddress
 from baseplate.lib.thrift_pool import ThriftConnectionPool
 from baseplate.thrift import BaseplateServiceV2
-from baseplate.thrift.ttypes import IsHealthyProbe, IsHealthyRequest
+from baseplate.thrift.ttypes import IsHealthyProbe
+from baseplate.thrift.ttypes import IsHealthyRequest
+
 
 TIMEOUT = 30  # seconds
 

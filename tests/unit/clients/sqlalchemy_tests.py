@@ -1,4 +1,5 @@
 import unittest
+
 from unittest import mock
 
 try:
@@ -6,11 +7,12 @@ try:
 except ImportError:
     raise unittest.SkipTest("sqlalchemy is not installed")
 
+from baseplate.clients.sqlalchemy import engine_from_config
+from baseplate.clients.sqlalchemy import SQLAlchemyEngineContextFactory
+from baseplate.testing.lib.secrets import FakeSecretsStore
+
 from prometheus_client import REGISTRY
 from sqlalchemy.pool import QueuePool
-
-from baseplate.clients.sqlalchemy import SQLAlchemyEngineContextFactory, engine_from_config
-from baseplate.testing.lib.secrets import FakeSecretsStore
 
 
 class EngineFromConfigTests(unittest.TestCase):
@@ -94,8 +96,7 @@ class EngineContextFactoryTest(unittest.TestCase):
         self.factory.report_runtime_metrics(batch)
 
         prom_labels = {"sql_client_name": "factory_name"}
-        # this serves to prove that we never set these metrics / go down the
-        # code path after the isinstance check
+        # this serves to prove that we never set these metrics / go down the code path after the isinstance check
         self.assertEqual(REGISTRY.get_sample_value("sql_client_pool_max_size", prom_labels), None)
         self.assertEqual(
             REGISTRY.get_sample_value("sql_client_pool_client_connections", prom_labels),

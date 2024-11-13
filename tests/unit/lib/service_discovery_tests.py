@@ -1,9 +1,12 @@
 import unittest
+
 from io import StringIO
 from unittest import mock
 
 from baseplate.lib import service_discovery
-from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.file_watcher import WatchedFileNotAvailableError
+
 
 TEST_INVENTORY_ONE = """\
 [

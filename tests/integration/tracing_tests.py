@@ -1,20 +1,21 @@
 import unittest
+
 from unittest import mock
 
 from baseplate import Baseplate
-from baseplate.observers.tracing import (
-    NullRecorder,
-    TraceBaseplateObserver,
-    TraceLocalSpanObserver,
-    TraceServerSpanObserver,
-    make_client,
-)
+from baseplate.observers.tracing import make_client
+from baseplate.observers.tracing import NullRecorder
+from baseplate.observers.tracing import TraceBaseplateObserver
+from baseplate.observers.tracing import TraceLocalSpanObserver
+from baseplate.observers.tracing import TraceServerSpanObserver
 
 try:
     import webtest
+
     from pyramid.config import Configurator
 
-    from baseplate.frameworks.pyramid import BaseplateConfigurator, StaticTrustHandler
+    from baseplate.frameworks.pyramid import BaseplateConfigurator
+    from baseplate.frameworks.pyramid import StaticTrustHandler
 except ImportError:
     raise unittest.SkipTest("pyramid/webtest is not installed")
 
@@ -93,23 +94,14 @@ class TracingTests(unittest.TestCase):
             self.assertEqual(span["parentId"], 0)
 
     def test_local_tracing_embedded(self):
-        with (
-            mock.patch.object(
-                TraceBaseplateObserver,
-                "on_server_span_created",
-                side_effect=self._register_server_mock,
-            ),
-            mock.patch.object(
-                TraceServerSpanObserver,
-                "on_child_span_created",
-                side_effect=self._register_local_mock,
-            ),
-            mock.patch.object(
-                TraceLocalSpanObserver,
-                "on_child_span_created",
-                side_effect=self._register_local_mock,
-            ),
+        with mock.patch.object(
+            TraceBaseplateObserver, "on_server_span_created", side_effect=self._register_server_mock
+        ), mock.patch.object(
+            TraceServerSpanObserver, "on_child_span_created", side_effect=self._register_local_mock
+        ), mock.patch.object(
+            TraceLocalSpanObserver, "on_child_span_created", side_effect=self._register_local_mock
         ):
+
             self.test_app.get("/local_test")
             # Verify that child span can be created within a local span context
             #  and parent IDs are inherited accordingly.

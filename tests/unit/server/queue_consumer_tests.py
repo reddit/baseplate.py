@@ -3,6 +3,7 @@ import itertools
 import os
 import socket
 import time
+
 from queue import Empty as QueueEmpty
 from queue import Queue
 from threading import Thread
@@ -10,17 +11,17 @@ from unittest import mock
 
 import pytest
 import webtest
+
 from gevent.server import StreamServer
 
 from baseplate.observers.timeout import ServerTimeout
-from baseplate.server.queue_consumer import (
-    HealthcheckApp,
-    MessageHandler,
-    PumpWorker,
-    QueueConsumer,
-    QueueConsumerFactory,
-    QueueConsumerServer,
-)
+from baseplate.server.queue_consumer import HealthcheckApp
+from baseplate.server.queue_consumer import MessageHandler
+from baseplate.server.queue_consumer import PumpWorker
+from baseplate.server.queue_consumer import QueueConsumer
+from baseplate.server.queue_consumer import QueueConsumerFactory
+from baseplate.server.queue_consumer import QueueConsumerServer
+
 
 pytestmark = pytest.mark.skipif(
     "CI" not in os.environ, reason="tests takes too long to run for normal local iteration"

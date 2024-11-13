@@ -1,5 +1,4 @@
 """Components for processing Baseplate spans for service request tracing."""
-
 import collections
 import json
 import logging
@@ -9,16 +8,31 @@ import socket
 import threading
 import time
 import typing
+
 from datetime import datetime
-from typing import Any, NamedTuple, Optional
+from typing import Any
+from typing import DefaultDict
+from typing import Dict
+from typing import List
+from typing import NamedTuple
+from typing import Optional
 
 import requests
+
 from requests.exceptions import RequestException
 
-from baseplate import BaseplateObserver, LocalSpan, RequestContext, Span, SpanObserver, _ExcInfo
-from baseplate.lib import config, warn_deprecated
-from baseplate.lib.message_queue import MessageQueue, TimedOutError
+from baseplate import _ExcInfo
+from baseplate import BaseplateObserver
+from baseplate import LocalSpan
+from baseplate import RequestContext
+from baseplate import Span
+from baseplate import SpanObserver
+from baseplate.lib import config
+from baseplate.lib import warn_deprecated
+from baseplate.lib.message_queue import MessageQueue
+from baseplate.lib.message_queue import TimedOutError
 from baseplate.observers.timeout import ServerTimeout
+
 
 if typing.TYPE_CHECKING:
     SpanQueue = queue.Queue["TraceSpanObserver"]  # pylint: disable=unsubscriptable-object
@@ -186,8 +200,8 @@ class TraceSpanObserver(SpanObserver):
         self.start: Optional[int] = None
         self.end: Optional[int] = None
         self.elapsed: Optional[int] = None
-        self.binary_annotations: list[dict[str, Any]] = []
-        self.counters: collections.defaultdict[str, float] = collections.defaultdict(float)
+        self.binary_annotations: List[Dict[str, Any]] = []
+        self.counters: DefaultDict[str, float] = collections.defaultdict(float)
         self.on_set_tag(ANNOTATIONS["COMPONENT"], "baseplate")
         super().__init__()
 
@@ -222,10 +236,10 @@ class TraceSpanObserver(SpanObserver):
     def on_incr_tag(self, key: str, delta: float) -> None:
         self.counters[key] += delta
 
-    def _endpoint_info(self) -> dict[str, str]:
+    def _endpoint_info(self) -> Dict[str, str]:
         return {"serviceName": self.service_name, "ipv4": self.hostname}
 
-    def _create_time_annotation(self, annotation_type: str, timestamp: int) -> dict[str, Any]:
+    def _create_time_annotation(self, annotation_type: str, timestamp: int) -> Dict[str, Any]:
         """Create Zipkin-compatible Annotation for a span.
 
         This should be used for generating span annotations with a time component,
@@ -235,7 +249,7 @@ class TraceSpanObserver(SpanObserver):
 
     def _create_binary_annotation(
         self, annotation_type: str, annotation_value: Any
-    ) -> dict[str, Any]:
+    ) -> Dict[str, Any]:
         """Create Zipkin-compatible BinaryAnnotation for a span.
 
         This should be used for generating span annotations that
@@ -253,8 +267,8 @@ class TraceSpanObserver(SpanObserver):
         return {"key": annotation_type, "value": annotation_value, "endpoint": endpoint_info}
 
     def _to_span_obj(
-        self, annotations: list[dict[str, Any]], binary_annotations: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+        self, annotations: List[Dict[str, Any]], binary_annotations: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         span = {
             "traceId": self.span.trace_id,
             "name": self.span.name,
@@ -268,7 +282,7 @@ class TraceSpanObserver(SpanObserver):
         span["parentId"] = self.span.parent_id or 0
         return span
 
-    def _serialize(self) -> dict[str, Any]:
+    def _serialize(self) -> Dict[str, Any]:
         """Serialize span information into Zipkin-accepted format."""
         annotations = []
 
@@ -334,7 +348,7 @@ class TraceLocalSpanObserver(TraceSpanObserver):
             )
         span.register(trace_observer)
 
-    def _serialize(self) -> dict[str, Any]:
+    def _serialize(self) -> Dict[str, Any]:
         return self._to_span_obj([], self.binary_annotations)
 
 
@@ -382,9 +396,9 @@ class TraceServerSpanObserver(TraceSpanObserver):
             )
         span.register(trace_observer)
 
-    def _serialize(self) -> dict[str, Any]:
+    def _serialize(self) -> Dict[str, Any]:
         """Serialize span information into Zipkin-accepted format."""
-        annotations: list[dict[str, Any]] = []
+        annotations: List[Dict[str, Any]] = []
 
         annotations.append(
             self._create_time_annotation(
@@ -417,7 +431,7 @@ class BaseBatchRecorder(Recorder):
             self.flush_worker.daemon = True
             self.flush_worker.start()
 
-    def flush_func(self, spans: list[dict[str, Any]]) -> None:
+    def flush_func(self, spans: List[Dict[str, Any]]) -> None:
         raise NotImplementedError
 
     def _flush_spans(self) -> None:
@@ -426,7 +440,7 @@ class BaseBatchRecorder(Recorder):
         # empties while being processed before reaching 10 spans, we flush
         # immediately.
         while True:
-            spans: list[dict[str, Any]] = []
+            spans: List[Dict[str, Any]] = []
             try:
                 while len(spans) < self.max_span_batch:
                     spans.append(self.span_queue.get_nowait()._serialize())
@@ -457,7 +471,7 @@ class LoggingRecorder(BaseBatchRecorder):
     ):
         super().__init__(max_queue_size, num_workers, max_span_batch, batch_wait_interval)
 
-    def flush_func(self, spans: list[dict[str, Any]]) -> None:
+    def flush_func(self, spans: List[Dict[str, Any]]) -> None:
         """Write a set of spans to debug log."""
         for span in spans:
             self.logger.debug("Span recording: %s", span)
@@ -475,7 +489,7 @@ class NullRecorder(BaseBatchRecorder):
     ):
         super().__init__(max_queue_size, num_workers, max_span_batch, batch_wait_interval)
 
-    def flush_func(self, spans: list[dict[str, Any]]) -> None:
+    def flush_func(self, spans: List[Dict[str, Any]]) -> None:
         return
 
 
@@ -496,13 +510,14 @@ class RemoteRecorder(BaseBatchRecorder):
         max_span_batch: int = 100,
         batch_wait_interval: float = 0.5,
     ):
+
         super().__init__(max_queue_size, num_workers, max_span_batch, batch_wait_interval)
         adapter = requests.adapters.HTTPAdapter(pool_connections=num_conns, pool_maxsize=num_conns)
         self.session = requests.Session()
         self.session.mount("http://", adapter)
         self.endpoint = f"http://{endpoint}/api/v1/spans"
 
-    def flush_func(self, spans: list[dict[str, Any]]) -> None:
+    def flush_func(self, spans: List[Dict[str, Any]]) -> None:
         """Send a set of spans to remote collector."""
         try:
             self.session.post(

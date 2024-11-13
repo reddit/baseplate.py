@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 import unittest
+
 from unittest import mock
 
 from baseplate.lib import file_watcher

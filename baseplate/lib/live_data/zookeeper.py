@@ -1,5 +1,4 @@
 """Helpers for interacting with ZooKeeper."""
-
 from typing import Optional
 
 from kazoo.client import KazooClient

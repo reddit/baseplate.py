@@ -1,18 +1,27 @@
 """Application integration with the secret fetcher daemon."""
-
 import base64
 import binascii
 import json
 import logging
 import os
-from collections.abc import Iterator
+
 from pathlib import Path
-from typing import Any, NamedTuple, Optional, Protocol
+from typing import Any
+from typing import Dict
+from typing import Iterator
+from typing import NamedTuple
+from typing import Optional
+from typing import Protocol
+from typing import Tuple
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.lib import cached_property, config, warn_deprecated
-from baseplate.lib.file_watcher import FileWatcher, WatchedFileNotAvailableError
+from baseplate.lib import cached_property
+from baseplate.lib import config
+from baseplate.lib import warn_deprecated
+from baseplate.lib.file_watcher import FileWatcher
+from baseplate.lib.file_watcher import WatchedFileNotAvailableError
+
 
 ISO_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
@@ -112,10 +121,11 @@ def _decode_secret(path: str, encoding: str, value: str) -> bytes:
 
 
 class SecretParser(Protocol):
-    def __call__(self, data: dict[str, Any], secret_path: str = "") -> dict[str, str]: ...
+    def __call__(self, data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
+        ...
 
 
-def parse_secrets_fetcher(data: dict[str, Any], secret_path: str = "") -> dict[str, str]:
+def parse_secrets_fetcher(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
     try:
         return data["secrets"][secret_path]
     except KeyError:
@@ -123,7 +133,7 @@ def parse_secrets_fetcher(data: dict[str, Any], secret_path: str = "") -> dict[s
 
 
 # pylint: disable=unused-argument
-def parse_vault_csi(data: dict[str, Any], secret_path: str = "") -> dict[str, str]:
+def parse_vault_csi(data: Dict[str, Any], secret_path: str = "") -> Dict[str, str]:
     return data["data"]
 
 
@@ -149,13 +159,13 @@ class SecretsStore(ContextFactory):
         self.parser = parser or parse_secrets_fetcher
         self._filewatcher = FileWatcher(path, json.load, timeout=timeout, backoff=backoff)
 
-    def _get_data(self) -> tuple[Any, float]:
+    def _get_data(self) -> Tuple[Any, float]:
         try:
             return self._filewatcher.get_data_and_mtime()
         except WatchedFileNotAvailableError as exc:
             raise SecretsNotAvailableError(exc)
 
-    def get_raw(self, path: str) -> dict[str, str]:
+    def get_raw(self, path: str) -> Dict[str, str]:
         """Return a dictionary of key/value pairs for the given secret path.
 
         This is the raw representation of the secret in the underlying store.
@@ -238,7 +248,7 @@ class SecretsStore(ContextFactory):
         data, _ = self._get_data()
         return data["vault"]["token"]
 
-    def get_raw_and_mtime(self, secret_path: str) -> tuple[dict[str, str], float]:
+    def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         """Return raw secret and modification time.
 
         This returns the same data as :py:meth:`get_raw` as well as a UNIX
@@ -252,7 +262,7 @@ class SecretsStore(ContextFactory):
         data, mtime = self._get_data()
         return self.parser(data, secret_path), mtime
 
-    def get_credentials_and_mtime(self, path: str) -> tuple[CredentialSecret, float]:
+    def get_credentials_and_mtime(self, path: str) -> Tuple[CredentialSecret, float]:
         """Return credentials secret and modification time.
 
         This returns the same data as :py:meth:`get_credentials` as well as a
@@ -287,7 +297,7 @@ class SecretsStore(ContextFactory):
 
         return CredentialSecret(**values), mtime
 
-    def get_simple_and_mtime(self, path: str) -> tuple[bytes, float]:
+    def get_simple_and_mtime(self, path: str) -> Tuple[bytes, float]:
         """Return simple secret and modification time.
 
         This returns the same data as :py:meth:`get_simple` as well as a UNIX
@@ -311,7 +321,7 @@ class SecretsStore(ContextFactory):
         encoding = secret_attributes.get("encoding", "identity")
         return _decode_secret(path, encoding, value), mtime
 
-    def get_versioned_and_mtime(self, path: str) -> tuple[VersionedSecret, float]:
+    def get_versioned_and_mtime(self, path: str) -> Tuple[VersionedSecret, float]:
         """Return versioned secret and modification time.
 
         This returns the same data as :py:meth:`get_versioned` as well as a
@@ -361,15 +371,17 @@ class SecretsStore(ContextFactory):
 class _CachingSecretsStore(SecretsStore):
     """Lazily load and cache the parsed data until the server span ends."""
 
-    def __init__(self, filewatcher: FileWatcher, parser: SecretParser):  # pylint: disable=super-init-not-called
+    def __init__(
+        self, filewatcher: FileWatcher, parser: SecretParser
+    ):  # pylint: disable=super-init-not-called
         self._filewatcher = filewatcher
         self.parser = parser
 
     @cached_property
-    def _data(self) -> tuple[Any, float]:
+    def _data(self) -> Tuple[Any, float]:
         return super()._get_data()
 
-    def _get_data(self) -> tuple[dict, float]:
+    def _get_data(self) -> Tuple[Dict, float]:
         return self._data
 
 
@@ -391,7 +403,7 @@ class VaultCSISecretsStore(SecretsStore):
 
     path: Path
     data_symlink: Path
-    cache: dict[str, VaultCSIEntry]
+    cache: Dict[str, VaultCSIEntry]
 
     def __init__(
         self,
@@ -406,7 +418,7 @@ class VaultCSISecretsStore(SecretsStore):
             raise ValueError(f"Expected {self.path} to be a directory.")
         if not self.data_symlink.is_dir():
             raise ValueError(
-                f"Expected {self.data_symlink} to be a directory. Verify {self.path} is the root of the Vault CSI mount."  # noqa: E501
+                f"Expected {self.data_symlink} to be a directory. Verify {self.path} is the root of the Vault CSI mount."
             )
 
     def get_vault_url(self) -> str:
@@ -423,12 +435,12 @@ class VaultCSISecretsStore(SecretsStore):
 
     def _raw_secret(self, name: str) -> Any:
         try:
-            with open(self.data_symlink.joinpath(name), encoding="UTF-8") as fp:
+            with open(self.data_symlink.joinpath(name), "r", encoding="UTF-8") as fp:
                 return self.parser(json.load(fp))
         except FileNotFoundError as exc:
             raise SecretNotFoundError(name) from exc
 
-    def get_raw_and_mtime(self, secret_path: str) -> tuple[dict[str, str], float]:
+    def get_raw_and_mtime(self, secret_path: str) -> Tuple[Dict[str, str], float]:
         mtime = self._get_mtime()
         if cache_entry := self.cache.get(secret_path):
             if cache_entry.mtime == mtime:
@@ -464,8 +476,7 @@ def secrets_store_from_config(
         to "secrets."
     :param backoff: retry backoff time for secrets file watcher. Defaults to
         None, which is mapped to DEFAULT_FILEWATCHER_BACKOFF.
-    :param provider: The secrets provider, acceptable values are 'vault' and
-        'vault_csi'. Defaults to 'vault'
+    :param provider: The secrets provider, acceptable values are 'vault' and 'vault_csi'. Defaults to 'vault'
 
     """
     assert prefix.endswith(".")

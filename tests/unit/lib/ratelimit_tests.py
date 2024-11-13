@@ -1,4 +1,5 @@
 import unittest
+
 from unittest import mock
 
 from pymemcache.client.base import PooledClient

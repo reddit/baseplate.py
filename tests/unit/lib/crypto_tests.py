@@ -1,10 +1,12 @@
 import datetime
+
 from unittest import mock
 
 import pytest
 
 from baseplate.lib import crypto
 from baseplate.lib.secrets import VersionedSecret
+
 
 TEST_SECRET = VersionedSecret(previous=b"one", current=b"two", next=b"three")
 MESSAGE = "test message"

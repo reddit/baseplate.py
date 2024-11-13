@@ -1,4 +1,5 @@
 import unittest
+
 from unittest import mock
 
 try:
@@ -6,10 +7,11 @@ try:
 except ImportError:
     raise unittest.SkipTest("pymemcache is not installed")
 
-from baseplate import Baseplate, LocalSpan, ServerSpan
 from baseplate.clients.memcache import MemcacheClient, MonitoredMemcacheConnection, make_keys_str
+from baseplate import Baseplate, LocalSpan, ServerSpan
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
+
 
 memcached_endpoint = get_endpoint_or_skip_container("memcached", 11211)
 

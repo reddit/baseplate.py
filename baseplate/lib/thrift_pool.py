@@ -14,29 +14,36 @@ A basic example of usage::
         client.do_example_thing()
 
 """
-
 import contextlib
 import logging
 import queue
 import socket
 import time
-from collections.abc import Generator
-from typing import TYPE_CHECKING, Any, Optional
+
+from typing import Any
+from typing import Generator
+from typing import Optional
+from typing import Type
+from typing import TYPE_CHECKING
 
 from thrift.protocol import THeaderProtocol
-from thrift.protocol.TProtocol import TProtocolBase, TProtocolException, TProtocolFactory
-from thrift.Thrift import TApplicationException, TException
+from thrift.protocol.TProtocol import TProtocolBase
+from thrift.protocol.TProtocol import TProtocolException
+from thrift.protocol.TProtocol import TProtocolFactory
+from thrift.Thrift import TApplicationException
+from thrift.Thrift import TException
 from thrift.transport.TSocket import TSocket
 from thrift.transport.TTransport import TTransportException
 
 from baseplate.lib import config
 from baseplate.lib.retry import RetryPolicy
 
+
 logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    ProtocolPool = type[queue.Queue[TProtocolBase]]  # pylint: disable=unsubscriptable-object
+    ProtocolPool = Type[queue.Queue[TProtocolBase]]  # pylint: disable=unsubscriptable-object
 else:
     ProtocolPool = queue.Queue
 

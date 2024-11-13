@@ -1,8 +1,11 @@
 import socket
 import unittest
+
 from unittest import mock
 
-from baseplate.lib import config, metrics
+from baseplate.lib import config
+from baseplate.lib import metrics
+
 
 EXAMPLE_ENDPOINT = config.EndpointConfiguration(socket.AF_INET, ("127.0.0.1", 1234))
 

@@ -2,7 +2,11 @@ from typing import Optional
 
 import gevent
 
-from baseplate import BaseplateObserver, RequestContext, ServerSpan, SpanObserver, _ExcInfo
+from baseplate import _ExcInfo
+from baseplate import BaseplateObserver
+from baseplate import RequestContext
+from baseplate import ServerSpan
+from baseplate import SpanObserver
 from baseplate.lib import config
 
 

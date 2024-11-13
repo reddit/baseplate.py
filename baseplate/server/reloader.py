@@ -5,15 +5,18 @@ restart the app if anything changes. This should not be used in production
 settings.
 
 """
-
 import logging
 import os
 import re
 import sys
 import threading
 import time
-from collections.abc import Iterator, Sequence
+
+from typing import Dict
+from typing import Iterator
 from typing import NoReturn
+from typing import Sequence
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,12 +38,12 @@ def _get_watched_files(extra_files: Sequence[str]) -> Iterator[str]:
 
 def _reload_when_files_change(extra_files: Sequence[str]) -> NoReturn:
     """Scan all watched files periodically and re-exec if anything changed."""
-    initial_mtimes: dict[str, float] = {}
+    initial_mtimes: Dict[str, float] = {}
     while True:
         for filename in _get_watched_files(extra_files):
             try:
                 current_mtime = os.path.getmtime(filename)
-            except OSError:
+            except os.error:
                 continue
 
             initial_mtimes.setdefault(filename, current_mtime)

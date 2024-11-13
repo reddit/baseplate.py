@@ -1,4 +1,7 @@
+from typing import Dict
+
 from baseplate.lib import config
+
 
 # default_latency_buckets creates the default bucket values for time based histogram metrics.
 # we want this to match the baseplate.go default_buckets
@@ -29,7 +32,7 @@ default_size_start = 8
 default_size_factor = 2
 default_size_count = 20
 default_size_buckets = [
-    default_size_start * default_size_factor**i for i in range(default_size_count)
+    default_size_start * default_size_factor ** i for i in range(default_size_count)
 ]
 
 
@@ -40,7 +43,7 @@ def getHTTPSuccessLabel(httpStatusCode: int) -> str:
     return str(200 <= httpStatusCode < 400).lower()
 
 
-def is_metrics_enabled(raw_config: dict[str, str]) -> bool:
+def is_metrics_enabled(raw_config: Dict[str, str]) -> bool:
     cfg = config.parse_config(
         raw_config,
         {

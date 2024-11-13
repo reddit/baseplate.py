@@ -1,15 +1,29 @@
 import logging
 import os
 import random
-from collections.abc import Iterator
+
 from contextlib import contextmanager
 from types import TracebackType
-from typing import Any, Callable, NamedTuple, Optional
+from typing import Any
+from typing import Callable
+from typing import Dict
+from typing import Iterator
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
+from typing import Type
 
 import gevent.monkey
-from pkg_resources import DistributionNotFound, get_distribution
 
-from baseplate.lib import UnknownCallerError, config, get_calling_module_name, metrics
+from pkg_resources import DistributionNotFound
+from pkg_resources import get_distribution
+
+from baseplate.lib import config
+from baseplate.lib import get_calling_module_name
+from baseplate.lib import metrics
+from baseplate.lib import UnknownCallerError
+
 
 try:
     __version__ = get_distribution(__name__).version
@@ -37,7 +51,7 @@ class BaseplateObserver:
         raise NotImplementedError
 
 
-_ExcInfo = tuple[Optional[type[BaseException]], Optional[BaseException], Optional[TracebackType]]
+_ExcInfo = Tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]
 
 
 class SpanObserver:
@@ -143,7 +157,7 @@ class TraceInfo(NamedTuple):
             raise ValueError("invalid sampled value")
 
         if flags is not None:
-            if not 0 <= flags < 2**64:
+            if not 0 <= flags < 2 ** 64:
                 raise ValueError("invalid flags value")
 
         return cls(trace_id, parent_id, span_id, sampled, flags)
@@ -168,7 +182,7 @@ class RequestContext:
 
     def __init__(
         self,
-        context_config: dict[str, Any],
+        context_config: Dict[str, Any],
         prefix: Optional[str] = None,
         span: Optional["Span"] = None,
         wrapped: Optional["RequestContext"] = None,
@@ -183,7 +197,7 @@ class RequestContext:
         # reference. so we fake it here and say "trust us".
         #
         # this would be much cleaner with a different API but this is where we are.
-        self.span: Span = span  # type: ignore
+        self.span: "Span" = span  # type: ignore
 
     def __getattr__(self, name: str) -> Any:
         try:
@@ -265,9 +279,9 @@ class Baseplate:
             ...
 
         """
-        self.observers: list[BaseplateObserver] = []
+        self.observers: List[BaseplateObserver] = []
         self._metrics_client: Optional[metrics.Client] = None
-        self._context_config: dict[str, Any] = {}
+        self._context_config: Dict[str, Any] = {}
         self._app_config = app_config or {}
 
         self.service_name = self._app_config.get("baseplate.service_name")
@@ -339,10 +353,8 @@ class Baseplate:
             skipped.append("metrics")
 
         if "tracing.service_name" in self._app_config:
-            from baseplate.observers.tracing import (
-                TraceBaseplateObserver,
-                tracing_client_from_config,
-            )
+            from baseplate.observers.tracing import tracing_client_from_config
+            from baseplate.observers.tracing import TraceBaseplateObserver
 
             tracing_client = tracing_client_from_config(self._app_config)
             self.register(TraceBaseplateObserver(tracing_client))
@@ -350,11 +362,9 @@ class Baseplate:
             skipped.append("tracing")
 
         if "sentry.dsn" in self._app_config or "SENTRY_DSN" in os.environ:
-            from baseplate.observers.sentry import (
-                SentryBaseplateObserver,
-                _SentryUnhandledErrorReporter,
-                init_sentry_client_from_config,
-            )
+            from baseplate.observers.sentry import init_sentry_client_from_config
+            from baseplate.observers.sentry import SentryBaseplateObserver
+            from baseplate.observers.sentry import _SentryUnhandledErrorReporter
 
             init_sentry_client_from_config(self._app_config)
             _SentryUnhandledErrorReporter.install()
@@ -367,7 +377,7 @@ class Baseplate:
                 "The following observers are unconfigured and won't run: %s", ", ".join(skipped)
             )
 
-    def configure_context(self, context_spec: dict[str, Any]) -> None:
+    def configure_context(self, context_spec: Dict[str, Any]) -> None:
         """Add a number of objects to each request's context object.
 
         Configure and attach multiple clients to the
@@ -499,8 +509,8 @@ class Baseplate:
         with self.make_server_span(context, name):
             yield context
 
-    def get_runtime_metric_reporters(self) -> dict[str, Callable[[Any], None]]:
-        specs: list[tuple[Optional[str], dict[str, Any]]] = [(None, self._context_config)]
+    def get_runtime_metric_reporters(self) -> Dict[str, Callable[[Any], None]]:
+        specs: List[Tuple[Optional[str], Dict[str, Any]]] = [(None, self._context_config)]
         result = {}
         while specs:
             prefix, spec = specs.pop(0)
@@ -540,7 +550,7 @@ class Span:
         self.context = context
         self.baseplate = baseplate
         self.component_name: Optional[str] = None
-        self.observers: list[SpanObserver] = []
+        self.observers: List[SpanObserver] = []
 
     def register(self, observer: SpanObserver) -> None:
         """Register an observer to receive events from this span."""
@@ -630,7 +640,7 @@ class Span:
 
     def __exit__(
         self,
-        exc_type: Optional[type[BaseException]],
+        exc_type: Optional[Type[BaseException]],
         value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:
@@ -645,7 +655,7 @@ class Span:
         """Return a child Span whose parent is this Span."""
         raise NotImplementedError
 
-    def with_tags(self, tags: dict[str, Any]) -> "Span":
+    def with_tags(self, tags: Dict[str, Any]) -> "Span":
         """Declare a set of tags to be added to a span before starting it in the context manager.
 
         Can be used as follow:

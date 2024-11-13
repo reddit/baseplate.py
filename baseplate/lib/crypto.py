@@ -29,7 +29,6 @@
 
 
 """
-
 import base64
 import binascii
 import datetime
@@ -37,6 +36,7 @@ import hashlib
 import hmac
 import struct
 import time
+
 from typing import NamedTuple
 
 from baseplate.lib.secrets import VersionedSecret
