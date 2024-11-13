@@ -35,7 +35,7 @@ reddit-cqlmapper = { version = ">=0.3.0,<1.0", optional = true }
 redis = { version = ">=2.10.0,<4.0.0", optional = true }
 redis-py-cluster = { version = ">=2.1.2,<3.0.0", optional = true }
 requests = ">=2.21.0,<3.0"
-sentry-sdk = { version = ">=1.35.0,<2.0", optional = true }
+sentry-sdk = { version = ">=1.35.0,<3.0", optional = true }
 sqlalchemy = { version = ">=1.4.49,<2", optional = true }
 thrift-unofficial = ">=0.19.0,<1.0"
 typing-extensions = "^4.11.0"
