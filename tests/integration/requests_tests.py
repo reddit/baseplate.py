@@ -11,7 +11,6 @@ import gevent
 import pytest
 import requests
 import urllib3.connection
-
 from pyramid.config import Configurator
 from pyramid.httpexceptions import HTTPNoContent
 

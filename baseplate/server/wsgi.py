@@ -3,16 +3,11 @@ from __future__ import annotations
 import datetime
 import logging
 import socket
-from typing import Any
-from typing import Dict
-from typing import Literal
+from typing import Any, Literal
 
 import gevent
-
 from gevent.pool import Pool
-from gevent.pywsgi import LoggingLogAdapter
-from gevent.pywsgi import WSGIHandler
-from gevent.pywsgi import WSGIServer
+from gevent.pywsgi import LoggingLogAdapter, WSGIHandler, WSGIServer
 from gevent.server import StreamServer
 
 from baseplate.lib import config
