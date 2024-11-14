@@ -11,6 +11,7 @@ import gevent
 import pytest
 import requests
 import urllib3.connection
+from gevent.pywsgi import WSGIServer
 from pyramid.config import Configurator
 from pyramid.httpexceptions import HTTPNoContent
 
@@ -41,7 +42,7 @@ def gevent_socket():
 @pytest.fixture
 def http_server(gevent_socket):
     class HttpServer:
-        server: gevent.pywsgi.WSGIServer
+        server: WSGIServer
 
         def __init__(self, address):
             self.url = f"http://{address[0]}:{address[1]}/"

@@ -6,6 +6,7 @@ import socket
 from typing import Any, Literal
 
 import gevent
+from gevent.event import Event
 from gevent.pool import Pool
 from gevent.pywsgi import LoggingLogAdapter, WSGIHandler, WSGIServer
 from gevent.server import StreamServer
@@ -28,10 +29,10 @@ class BaseplateWSGIServer(WSGIServer):
     behavior only works when using BaseplateWSGIHandler.
     """
 
-    shutdown_event: gevent.event.Event
+    shutdown_event: Event
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self.shutdown_event = gevent.event.Event()
+        self.shutdown_event = Event()
         super().__init__(*args, **kwargs)
 
     def stop(self, *args: Any, **kwargs: Any) -> None:
@@ -45,7 +46,7 @@ class BaseplateWSGIHandler(WSGIHandler):
     This handler may only be used with BaseplateWSGIServer.
     """
 
-    _shutdown_event: gevent.event.Event
+    _shutdown_event: Event
 
     # Flag representing whether the base class thinks the connection should be
     # closed. The base class sets `self.close_connection` based on the HTTP
