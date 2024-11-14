@@ -1,27 +1,16 @@
+from collections.abc import Iterable, Sequence
 from time import perf_counter
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Iterable
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import Union
+from typing import Any, Callable, Optional, Union
 
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from prometheus_client import Counter, Gauge, Histogram
 from pymemcache.client.base import PooledClient
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
-from baseplate.lib import config
-from baseplate.lib import metrics
+from baseplate.lib import config, metrics
 from baseplate.lib.prometheus_metrics import default_latency_buckets
 
-
-Serializer = Callable[[str, Any], Tuple[bytes, int]]
+Serializer = Callable[[str, Any], tuple[bytes, int]]
 Deserializer = Callable[[str, bytes, int], Any]
 
 
@@ -254,8 +243,8 @@ class MonitoredMemcacheConnection:
 
     @_prom_instrument
     def set_many(
-        self, values: Dict[Key, Any], expire: int = 0, noreply: Optional[bool] = None
-    ) -> List[str]:
+        self, values: dict[Key, Any], expire: int = 0, noreply: Optional[bool] = None
+    ) -> list[str]:
         with self._make_span("set_many") as span:
             span.set_tag("key_count", len(values))
             span.set_tag("keys", make_keys_str(values.keys()))
@@ -312,7 +301,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.get(key, **kwargs)
 
     @_prom_instrument
-    def get_many(self, keys: Sequence[Key]) -> Dict[Key, Any]:
+    def get_many(self, keys: Sequence[Key]) -> dict[Key, Any]:
         with self._make_span("get_many") as span:
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
@@ -321,13 +310,13 @@ class MonitoredMemcacheConnection:
     @_prom_instrument
     def gets(
         self, key: Key, default: Optional[Any] = None, cas_default: Optional[Any] = None
-    ) -> Tuple[Any, Any]:
+    ) -> tuple[Any, Any]:
         with self._make_span("gets") as span:
             span.set_tag("key", key)
             return self.pooled_client.gets(key, default=default, cas_default=cas_default)
 
     @_prom_instrument
-    def gets_many(self, keys: Sequence[Key]) -> Dict[Key, Tuple[Any, Any]]:
+    def gets_many(self, keys: Sequence[Key]) -> dict[Key, tuple[Any, Any]]:
         with self._make_span("gets_many") as span:
             span.set_tag("key_count", len(keys))
             span.set_tag("keys", make_keys_str(keys))
@@ -379,7 +368,7 @@ class MonitoredMemcacheConnection:
             return self.pooled_client.touch(key, expire=expire, noreply=noreply)
 
     @_prom_instrument
-    def stats(self, *args: str) -> Dict[str, Any]:
+    def stats(self, *args: str) -> dict[str, Any]:
         with self._make_span("stats"):
             return self.pooled_client.stats(*args)
 

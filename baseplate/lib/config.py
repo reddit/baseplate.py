@@ -84,6 +84,7 @@ server, The ``config_parser.items(...)`` step is taken care of for you and
     tempfile.close()
 
 """
+
 import base64
 import datetime
 import functools
@@ -92,19 +93,18 @@ import os
 import pwd
 import re
 import socket
-
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Generic
-from typing import IO
-from typing import NamedTuple
-from typing import NewType
+from collections.abc import Sequence
+from typing import (
+    IO,
+    Any,
+    Callable,
+    Generic,
+    NamedTuple,
+    NewType,
+    TypeVar,
+    Union,
+)
 from typing import Optional as OptionalType
-from typing import Sequence
-from typing import Set
-from typing import TypeVar
-from typing import Union
 
 
 class ConfigurationError(Exception):
@@ -128,9 +128,7 @@ def Float(text: str) -> float:  # noqa: D401
     return float(text)
 
 
-def Integer(
-    text: OptionalType[str] = None, base: int = 10
-) -> Union[int, Callable[[str], int]]:  # noqa: D401
+def Integer(text: OptionalType[str] = None, base: int = 10) -> Union[int, Callable[[str], int]]:  # noqa: D401
     """An integer.
 
     To prevent mistakes, this will raise an error if the user attempts
@@ -402,7 +400,8 @@ def DefaultFromEnv(
 
     The default is sourced from an environment variable with the name specified in ``default_src``.
     If the environment variable is not set, then the fallback will be used.
-    One of the following values must be provided: fallback, default_src, or the provided configuration
+    One of the following values must be provided: fallback, default_src, or the
+    provided configuration
     """
     env = os.getenv(default_src) or ""
     default = Optional(item_parser, fallback)(env)
@@ -453,13 +452,12 @@ class ConfigNamespace(dict):
         super().__init__()
         self.__dict__ = self
 
-    def __getattr__(self, name: str) -> Any:
-        ...
+    def __getattr__(self, name: str) -> Any: ...
 
 
-ConfigSpecItem = Union["Parser", Dict[str, Any], Callable[[str], T]]
-ConfigSpec = Dict[str, ConfigSpecItem]
-RawConfig = Dict[str, str]
+ConfigSpecItem = Union["Parser", dict[str, Any], Callable[[str], T]]
+ConfigSpec = dict[str, ConfigSpecItem]
+RawConfig = dict[str, str]
 
 
 class Parser(Generic[T]):
@@ -606,7 +604,7 @@ class DictOf(Parser[ConfigNamespace]):
         matcher = re.compile("^" + root.replace(".", r"\.") + r"([^.]+)")
 
         values = ConfigNamespace()
-        seen_subkeys: Set[str] = set()
+        seen_subkeys: set[str] = set()
         for key in raw_config:
             m = matcher.search(key)
             if not m:

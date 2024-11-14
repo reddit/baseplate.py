@@ -3,7 +3,6 @@ from __future__ import annotations
 import datetime
 import logging
 import socket
-
 from typing import Any
 from typing import Dict
 from typing import Literal
@@ -17,9 +16,7 @@ from gevent.pywsgi import WSGIServer
 from gevent.server import StreamServer
 
 from baseplate.lib import config
-from baseplate.server import _load_factory
-from baseplate.server import runtime_monitor
-
+from baseplate.server import _load_factory, runtime_monitor
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +107,7 @@ class BaseplateWSGIHandler(WSGIHandler):
         return ret
 
 
-def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
+def make_server(server_config: dict[str, str], listener: socket.socket, app: Any) -> StreamServer:
     """Make a gevent server for WSGI apps."""
     # pylint: disable=maybe-no-member
     cfg = config.parse_config(
@@ -132,10 +129,9 @@ def make_server(server_config: Dict[str, str], listener: socket.socket, app: Any
     pool = Pool()
     log = LoggingLogAdapter(logger, level=logging.DEBUG)
 
-    kwargs: Dict[str, Any] = {
+    kwargs: dict[str, Any] = {
         "handler_class": BaseplateWSGIHandler,
     }
-
     if cfg.handler:
         kwargs["handler_class"] = _load_factory(cfg.handler, default_name=None)
         if not issubclass(kwargs["handler_class"], BaseplateWSGIHandler):

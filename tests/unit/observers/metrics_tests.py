@@ -1,18 +1,14 @@
 import unittest
-
 from unittest import mock
 
-from baseplate import LocalSpan
-from baseplate import ServerSpan
-from baseplate import Span
-from baseplate.lib.metrics import Batch
-from baseplate.lib.metrics import Client
-from baseplate.lib.metrics import Counter
-from baseplate.lib.metrics import Timer
-from baseplate.observers.metrics import MetricsBaseplateObserver
-from baseplate.observers.metrics import MetricsClientSpanObserver
-from baseplate.observers.metrics import MetricsLocalSpanObserver
-from baseplate.observers.metrics import MetricsServerSpanObserver
+from baseplate import LocalSpan, ServerSpan, Span
+from baseplate.lib.metrics import Batch, Client, Counter, Timer
+from baseplate.observers.metrics import (
+    MetricsBaseplateObserver,
+    MetricsClientSpanObserver,
+    MetricsLocalSpanObserver,
+    MetricsServerSpanObserver,
+)
 
 
 class TestException(Exception):

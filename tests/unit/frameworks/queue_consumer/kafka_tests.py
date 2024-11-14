@@ -1,25 +1,23 @@
 import socket
-
 from queue import Queue
 from unittest import mock
 
 import confluent_kafka
 import pytest
-
 from gevent.server import StreamServer
 from prometheus_client import REGISTRY
 
-from baseplate import Baseplate
-from baseplate import RequestContext
-from baseplate import ServerSpan
-from baseplate.frameworks.queue_consumer.kafka import FastConsumerFactory
-from baseplate.frameworks.queue_consumer.kafka import InOrderConsumerFactory
-from baseplate.frameworks.queue_consumer.kafka import KAFKA_ACTIVE_MESSAGES
-from baseplate.frameworks.queue_consumer.kafka import KAFKA_PROCESSED_TOTAL
-from baseplate.frameworks.queue_consumer.kafka import KAFKA_PROCESSING_TIME
-from baseplate.frameworks.queue_consumer.kafka import KafkaConsumerPrometheusLabels
-from baseplate.frameworks.queue_consumer.kafka import KafkaConsumerWorker
-from baseplate.frameworks.queue_consumer.kafka import KafkaMessageHandler
+from baseplate import Baseplate, RequestContext, ServerSpan
+from baseplate.frameworks.queue_consumer.kafka import (
+    KAFKA_ACTIVE_MESSAGES,
+    KAFKA_PROCESSED_TOTAL,
+    KAFKA_PROCESSING_TIME,
+    FastConsumerFactory,
+    InOrderConsumerFactory,
+    KafkaConsumerPrometheusLabels,
+    KafkaConsumerWorker,
+    KafkaMessageHandler,
+)
 from baseplate.lib import metrics
 
 

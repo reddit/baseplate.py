@@ -42,22 +42,16 @@ ends.
 .. _StatsD: https://github.com/statsd/statsd
 
 """
+
 import collections
 import errno
 import logging
 import socket
 import time
-
 from types import TracebackType
-from typing import Any
-from typing import DefaultDict
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Type
+from typing import Any, Optional
 
 from baseplate.lib import config
-
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +60,7 @@ def _metric_join(*nodes: bytes) -> bytes:
     return b".".join(node.strip(b".") for node in nodes if node)
 
 
-def _format_tags(tags: Optional[Dict[str, Any]]) -> Optional[bytes]:
+def _format_tags(tags: Optional[dict[str, Any]]) -> Optional[bytes]:
     if not tags:
         return None
 
@@ -141,7 +135,7 @@ class BufferedTransport(Transport):
 
     def __init__(self, transport: Transport):
         self.transport = transport
-        self.buffer: List[bytes] = []
+        self.buffer: list[bytes] = []
 
     def send(self, serialized_metric: bytes) -> None:
         self.buffer.append(serialized_metric)
@@ -156,10 +150,10 @@ class BufferedTransport(Transport):
 class BaseClient:
     def __init__(self, transport: Transport, namespace: str):
         self.transport = transport
-        self.base_tags: Dict[str, Any] = {}
+        self.base_tags: dict[str, Any] = {}
         self.namespace = namespace.encode("ascii")
 
-    def timer(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Timer":
+    def timer(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Timer":
         """Return a Timer with the given name.
 
         :param name: The name the timer should have.
@@ -168,7 +162,7 @@ class BaseClient:
         timer_name = _metric_join(self.namespace, name.encode("ascii"))
         return Timer(self.transport, timer_name, {**self.base_tags, **(tags or {})})
 
-    def counter(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Counter":
+    def counter(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Counter":
         """Return a Counter with the given name.
 
         The sample rate is currently up to your application to enforce.
@@ -179,7 +173,7 @@ class BaseClient:
         counter_name = _metric_join(self.namespace, name.encode("ascii"))
         return Counter(self.transport, counter_name, {**self.base_tags, **(tags or {})})
 
-    def gauge(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Gauge":
+    def gauge(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Gauge":
         """Return a Gauge with the given name.
 
         :param name: The name the gauge should have.
@@ -188,7 +182,7 @@ class BaseClient:
         gauge_name = _metric_join(self.namespace, name.encode("ascii"))
         return Gauge(self.transport, gauge_name, {**self.base_tags, **(tags or {})})
 
-    def histogram(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Histogram":
+    def histogram(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Histogram":
         """Return a Histogram with the given name.
 
         :param name: The name the histogram should have.
@@ -228,14 +222,14 @@ class Batch(BaseClient):
         self.transport = BufferedTransport(transport)
         self.namespace = namespace
         self.base_tags = {}
-        self.counters: Dict[bytes, BatchCounter] = {}
+        self.counters: dict[bytes, BatchCounter] = {}
 
     def __enter__(self) -> "Batch":
         return self
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:
@@ -256,14 +250,14 @@ class Batch(BaseClient):
             )
             logger.warning(
                 "Metrics batch of %d bytes is too large to send, flush more often or reduce "
-                "amount done in this request. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-metrics-batch-of-n-bytes-is-too-large-to-send. Top counters: %s",
+                "amount done in this request. See https://baseplate.readthedocs.io/en/latest/guide/faq.html#what-do-i-do-about-metrics-batch-of-n-bytes-is-too-large-to-send. Top counters: %s",  # noqa: E501
                 exc.message_size,
                 ", ".join(f"{c.name.decode()}={c.total:.0f}" for c in counters_by_total[:10]),
             )
         except TransportError as exc:
             logger.warning("Failed to send metrics batch: %s", exc)
 
-    def counter(self, name: str, tags: Optional[Dict[str, Any]] = None) -> "Counter":
+    def counter(self, name: str, tags: Optional[dict[str, Any]] = None) -> "Counter":
         """Return a BatchCounter with the given name.
 
         The sample rate is currently up to your application to enforce.
@@ -295,7 +289,7 @@ class Timer:
         self,
         transport: Transport,
         name: bytes,
-        tags: Optional[Dict[str, Any]] = None,
+        tags: Optional[dict[str, Any]] = None,
     ):
         self.transport = transport
         self.name = name
@@ -343,7 +337,7 @@ class Timer:
             serialized = b"|".join([serialized, sampling_info])
         self.transport.send(serialized)
 
-    def update_tags(self, tags: Dict) -> None:
+    def update_tags(self, tags: dict) -> None:
         assert not self.stopped
         self.tags.update(tags)
 
@@ -352,7 +346,7 @@ class Timer:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         value: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> None:
@@ -363,7 +357,7 @@ class Timer:
 class Counter:
     """A counter for counting events over time."""
 
-    def __init__(self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None):
+    def __init__(self, transport: Transport, name: bytes, tags: Optional[dict[str, Any]] = None):
         self.transport = transport
         self.name = name
         self.tags = tags
@@ -423,9 +417,9 @@ class BatchCounter(Counter):
     should be applied to "counter_name".
     """
 
-    def __init__(self, transport: Transport, name: bytes, tags: Optional[Dict[str, Any]] = None):
+    def __init__(self, transport: Transport, name: bytes, tags: Optional[dict[str, Any]] = None):
         super().__init__(transport, name)
-        self.packets: DefaultDict[float, float] = collections.defaultdict(float)
+        self.packets: collections.defaultdict[float, float] = collections.defaultdict(float)
         self.tags = tags
 
     def increment(self, delta: float = 1.0, sample_rate: float = 1.0) -> None:
@@ -470,7 +464,7 @@ class Histogram:
         self,
         transport: Transport,
         name: bytes,
-        tags: Optional[Dict[str, Any]] = None,
+        tags: Optional[dict[str, Any]] = None,
     ) -> None:
         self.transport = transport
         self.name = name
@@ -505,7 +499,7 @@ class Gauge:
         self,
         transport: Transport,
         name: bytes,
-        tags: Optional[Dict[str, Any]] = None,
+        tags: Optional[dict[str, Any]] = None,
     ):
         self.transport = transport
         self.name = name

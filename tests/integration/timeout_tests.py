@@ -2,8 +2,7 @@ import gevent.monkey
 import pytest
 
 from baseplate import Baseplate
-from baseplate.observers.timeout import ServerTimeout
-from baseplate.observers.timeout import TimeoutBaseplateObserver
+from baseplate.observers.timeout import ServerTimeout, TimeoutBaseplateObserver
 
 
 def _create_baseplate_object(timeout: str):

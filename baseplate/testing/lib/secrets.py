@@ -1,8 +1,5 @@
-from typing import Dict
-
 from baseplate import Span
-from baseplate.lib.secrets import parse_secrets_fetcher
-from baseplate.lib.secrets import SecretsStore
+from baseplate.lib.secrets import SecretsStore, parse_secrets_fetcher
 from baseplate.testing.lib.file_watcher import FakeFileWatcher
 
 
@@ -34,7 +31,7 @@ class FakeSecretsStore(SecretsStore):
     """
 
     # pylint: disable=super-init-not-called
-    def __init__(self, fake_secrets: Dict) -> None:
+    def __init__(self, fake_secrets: dict) -> None:
         self._filewatcher = FakeFileWatcher(fake_secrets)
         self.parser = parse_secrets_fetcher
 

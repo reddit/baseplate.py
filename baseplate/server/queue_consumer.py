@@ -8,26 +8,17 @@ import queue
 import signal
 import socket
 import uuid
-
+from collections.abc import Sequence
 from threading import Thread
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
 
-from gevent.pywsgi import LoggingLogAdapter
-from gevent.pywsgi import WSGIServer
+from gevent.pywsgi import LoggingLogAdapter, WSGIServer
 from gevent.server import StreamServer
 
 import baseplate.lib.config
-
 from baseplate.lib.retry import RetryPolicy
 from baseplate.observers.timeout import ServerTimeout
 from baseplate.server import runtime_monitor
-
 
 logger = logging.getLogger(__name__)
 
@@ -36,15 +27,15 @@ if TYPE_CHECKING:
     # TODO: Replace with wsgiref.types once on 3.11+
     from _typeshed.wsgi import StartResponse
 
-WSGIEnvironment = Dict[str, Any]
+WSGIEnvironment = dict[str, Any]
 HealthcheckCallback = Callable[[WSGIEnvironment], bool]
 
 
 class HealthcheckApp:
-    def __init__(self, callback: Optional[HealthcheckCallback] = None) -> None:
+    def __init__(self, callback: HealthcheckCallback | None = None) -> None:
         self.callback = callback
 
-    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse) -> List[bytes]:
+    def __call__(self, environ: WSGIEnvironment, start_response: StartResponse) -> list[bytes]:
         ok = True
         if self.callback:
             ok = self.callback(environ)
@@ -57,7 +48,7 @@ class HealthcheckApp:
 
 
 def make_simple_healthchecker(
-    listener: socket.socket, callback: Optional[HealthcheckCallback] = None
+    listener: socket.socket, callback: HealthcheckCallback | None = None
 ) -> WSGIServer:
     return WSGIServer(
         listener=listener,
@@ -67,7 +58,8 @@ def make_simple_healthchecker(
 
 
 class PumpWorker(abc.ABC):
-    """Reads messages off of a message queue and puts them into a queue.Queue for handling by a MessageHandler.
+    """Reads messages off of a message queue and puts them into a queue.Queue
+    for handling by a MessageHandler.
 
     The QueueConsumerServer will run a single PumpWorker in its own thread.
     """
@@ -83,7 +75,8 @@ class PumpWorker(abc.ABC):
 
     @abc.abstractmethod
     def stop(self) -> None:
-        """Signal the PumpWorker that it should stop receiving new messages from its message queue."""
+        """Signal the PumpWorker that it should stop receiving new messages
+        from its message queue."""
 
 
 class MessageHandler(abc.ABC):
@@ -140,7 +133,8 @@ class QueueConsumerFactory(abc.ABC):
 
 
 class QueueConsumer:
-    """Wrapper around a MessageHandler object that interfaces with the work_queue and starts/stops the handle loop.
+    """Wrapper around a MessageHandler object that interfaces with the
+    work_queue and starts/stops the handle loop.
 
     This object is used by the QueueConsumerServer to wrap a MessageHandler object
     before creating a worker Thread.  This allows the MessageHandler to focus soley
@@ -232,7 +226,7 @@ class QueueConsumerServer:
         consumer_factory: QueueConsumerFactory,
         listener: socket.socket,
         stop_timeout: datetime.timedelta,
-    ) -> "QueueConsumerServer":
+    ) -> QueueConsumerServer:
         """Build a new QueueConsumerServer."""
         # We want to give some headroom on the queue so our handlers can grab
         # a new message right after they finish so we keep an extra
@@ -314,7 +308,7 @@ class QueueConsumerServer:
 
 
 def make_server(
-    server_config: Dict[str, str], listener: socket.socket, app: QueueConsumerFactory
+    server_config: dict[str, str], listener: socket.socket, app: QueueConsumerFactory
 ) -> QueueConsumerServer:
     """Make a queue consumer server for long running queue consumer apps.
 

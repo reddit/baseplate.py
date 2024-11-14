@@ -1,12 +1,8 @@
 """Internal library helpers."""
+
 import inspect
 import warnings
-
-from typing import Any
-from typing import Callable
-from typing import Generic
-from typing import Type
-from typing import TypeVar
+from typing import Any, Callable, Generic, TypeVar
 
 
 def warn_deprecated(message: str) -> None:
@@ -41,7 +37,7 @@ class cached_property(Generic[R]):
         self.__doc__ = wrapped.__doc__
         self.__name__ = wrapped.__name__
 
-    def __get__(self, instance: T, owner: Type[Any]) -> R:
+    def __get__(self, instance: T, owner: type[Any]) -> R:
         if instance is None:
             return self
         ret = self.wrapped(instance)

@@ -8,6 +8,7 @@ def patch_stdlib_queues() -> None:
     https://github.com/gevent/gevent/issues/1875
     """
     import queue
+
     import gevent.queue
 
     monkey.patch_module(queue, gevent.queue, items=["Queue", "LifoQueue", "PriorityQueue"])

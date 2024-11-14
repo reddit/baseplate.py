@@ -3,33 +3,23 @@ import logging
 import queue
 import socket
 import time
-
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import NamedTuple
-from typing import Optional
-from typing import Sequence
-from typing import TYPE_CHECKING
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
 
 import confluent_kafka
-
 from gevent.server import StreamServer
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from prometheus_client import Counter, Gauge, Histogram
 from typing_extensions import Self
 
-from baseplate import Baseplate
-from baseplate import RequestContext
+from baseplate import Baseplate, RequestContext
 from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.server.queue_consumer import HealthcheckCallback
-from baseplate.server.queue_consumer import make_simple_healthchecker
-from baseplate.server.queue_consumer import MessageHandler
-from baseplate.server.queue_consumer import PumpWorker
-from baseplate.server.queue_consumer import QueueConsumerFactory
-
+from baseplate.server.queue_consumer import (
+    HealthcheckCallback,
+    MessageHandler,
+    PumpWorker,
+    QueueConsumerFactory,
+    make_simple_healthchecker,
+)
 
 if TYPE_CHECKING:
     WorkQueue = queue.Queue[confluent_kafka.Message]  # pylint: disable=unsubscriptable-object
@@ -152,9 +142,10 @@ class KafkaMessageHandler(MessageHandler):
             # We place the call to ``baseplate.make_server_span`` inside the
             # try/except block because we still want Baseplate to see and
             # handle the error (publish it to error reporting)
-            with self.baseplate.make_server_span(
-                context, f"{self.name}.handler"
-            ) as span, KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).track_inprogress():
+            with (
+                self.baseplate.make_server_span(context, f"{self.name}.handler") as span,
+                KAFKA_ACTIVE_MESSAGES.labels(**prom_labels._asdict()).track_inprogress(),
+            ):
                 error = message.error()
                 if error:
                     prom_success = "false"
@@ -267,7 +258,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         kafka_consume_batch_size: int = 1,
         message_unpack_fn: KafkaMessageDeserializer = json.loads,
         health_check_fn: Optional[HealthcheckCallback] = None,
-        kafka_config: Optional[Dict[str, Any]] = None,
+        kafka_config: Optional[dict[str, Any]] = None,
         prometheus_client_name: str = "",
     ) -> Self:
         """Return a new `_BaseKafkaQueueConsumerFactory`.
@@ -314,7 +305,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         )
 
     @classmethod
-    def _consumer_config(cls) -> Dict[str, Any]:
+    def _consumer_config(cls) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
@@ -323,7 +314,7 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         bootstrap_servers: str,
         group_id: str,
         topics: Sequence[str],
-        kafka_config: Optional[Dict[str, Any]] = None,
+        kafka_config: Optional[dict[str, Any]] = None,
     ) -> confluent_kafka.Consumer:
         consumer_config = {
             "bootstrap.servers": bootstrap_servers,
@@ -354,18 +345,18 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
         for topic in topics:
             assert (
                 topic in all_topics
-            ), f"topic '{topic}' does not exist. maybe it's misspelled or on a different kafka cluster?"
+            ), f"topic '{topic}' does not exist. maybe it's misspelled or on a different kafka cluster?"  # noqa: E501
 
         # pylint: disable=unused-argument
         def log_assign(
-            consumer: confluent_kafka.Consumer, partitions: List[confluent_kafka.TopicPartition]
+            consumer: confluent_kafka.Consumer, partitions: list[confluent_kafka.TopicPartition]
         ) -> None:
             for topic_partition in partitions:
                 logger.info("assigned %s/%s", topic_partition.topic, topic_partition.partition)
 
         # pylint: disable=unused-argument
         def log_revoke(
-            consumer: confluent_kafka.Consumer, partitions: List[confluent_kafka.TopicPartition]
+            consumer: confluent_kafka.Consumer, partitions: list[confluent_kafka.TopicPartition]
         ) -> None:
             for topic_partition in partitions:
                 logger.info("revoked %s/%s", topic_partition.topic, topic_partition.partition)
@@ -396,7 +387,9 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
 
 
 class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
-    """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kafka.
+    """Factory for running a
+    :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using
+    Kafka.
 
     The `InOrderConsumerFactory` attempts to achieve in order, exactly once
     message processing.
@@ -406,7 +399,8 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
     that reads messages from the internal work queue, processes them with the
     `handler_fn`, and then commits each message's offset to the kafka consumer's internal state.
 
-    The Kafka Consumer will commit the offsets back to Kafka based on the auto.commit.interval.ms default which is 5 seconds
+    The Kafka Consumer will commit the offsets back to Kafka based on the
+    auto.commit.interval.ms default which is 5 seconds
 
     This one-at-a-time, in-order processing ensures that when a failure happens
     during processing we don't commit its offset (or the offset of any later
@@ -423,17 +417,23 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
 
     UPDATE: The InOrderConsumerFactory can NEVER achieve in-order, exactly once message processing.
 
-    Message processing in Kafka to enable exactly once starts at the Producer enabling transactions,
-    and downstream consumers enabling reading exclusively from the committed offsets within a transactions.
+    Message processing in Kafka to enable exactly once starts at the Producer
+    enabling transactions, and downstream consumers enabling reading
+    exclusively from the committed offsets within a transactions.
 
-    Secondly, without defined keys in the messages from the producer, messages will be sent in a round robin fashion to all partitions in the topic.
-    This means that newer messages could be consumed before older ones if the consumer of those partitions with newer messages are faster.
+    Secondly, without defined keys in the messages from the producer, messages
+    will be sent in a round robin fashion to all partitions in the topic. This
+    means that newer messages could be consumed before older ones if the
+    consumer of those partitions with newer messages are faster.
 
-    Some improvements are made instead that retain the current behaviour, but don't put as much pressure on Kafka by committing every single offset.
+    Some improvements are made instead that retain the current behaviour, but
+    don't put as much pressure on Kafka by committing every single offset.
 
     Instead of committing every single message's offset back to Kafka,
-    the consumer now commits each offset to it's local offset store, and commits the highest seen value for each partition at a defined interval (auto.commit.interval.ms).
-    "enable.auto.offset.store" is set to false to give our application explicit control of when to store offsets.
+    the consumer now commits each offset to it's local offset store, and
+    commits the highest seen value for each partition at a defined interval
+    (auto.commit.interval.ms). "enable.auto.offset.store" is set to false to
+    give our application explicit control of when to store offsets.
     """
 
     # we need to ensure that only a single message handler worker exists (max_concurrency = 1)
@@ -441,7 +441,7 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
     message_handler_count = 0
 
     @classmethod
-    def _consumer_config(cls) -> Dict[str, Any]:
+    def _consumer_config(cls) -> dict[str, Any]:
         return {
             # The consumer sends periodic heartbeats on a separate thread to
             # indicate its liveness to the broker. If no heartbeats are received by
@@ -494,7 +494,9 @@ class InOrderConsumerFactory(_BaseKafkaQueueConsumerFactory):
 
 
 class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
-    """Factory for running a :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using Kafka.
+    """Factory for running a
+    :py:class:`~baseplate.server.queue_consumer.QueueConsumerServer` using
+    Kafka.
 
     The `FastConsumerFactory` prioritizes high throughput over exactly once
     message processing.
@@ -543,7 +545,7 @@ class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
     # pylint: disable=unused-argument
     @staticmethod
     def _commit_callback(
-        err: confluent_kafka.KafkaError, topic_partition_list: List[confluent_kafka.TopicPartition]
+        err: confluent_kafka.KafkaError, topic_partition_list: list[confluent_kafka.TopicPartition]
     ) -> None:
         # called after automatic commits
         for topic_partition in topic_partition_list:
@@ -565,7 +567,7 @@ class FastConsumerFactory(_BaseKafkaQueueConsumerFactory):
                 )
 
     @classmethod
-    def _consumer_config(cls) -> Dict[str, Any]:
+    def _consumer_config(cls) -> dict[str, Any]:
         return {
             # The consumer sends periodic heartbeats on a separate thread to
             # indicate its liveness to the broker. If no heartbeats are received by

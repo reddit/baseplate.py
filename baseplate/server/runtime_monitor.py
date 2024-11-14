@@ -6,28 +6,20 @@ import os
 import socket
 import threading
 import time
-
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import NoReturn
-from typing import Optional
+from typing import Any, Callable, NoReturn
 
 import gevent.events
-
 from gevent.pool import Pool
 
-from baseplate import _ExcInfo
-from baseplate import Baseplate
-from baseplate import BaseplateObserver
-from baseplate import RequestContext
-from baseplate import ServerSpan
-from baseplate import ServerSpanObserver
-from baseplate.lib import config
-from baseplate.lib import metrics
-from baseplate.lib import prometheus_metrics
-
+from baseplate import (
+    Baseplate,
+    BaseplateObserver,
+    RequestContext,
+    ServerSpan,
+    ServerSpanObserver,
+    _ExcInfo,
+)
+from baseplate.lib import config, metrics, prometheus_metrics
 
 REPORT_INTERVAL_SECONDS = 10
 MAX_REQUEST_AGE = 60
@@ -51,7 +43,7 @@ class _OpenConnectionsReporter(_Reporter):
 
 class _ActiveRequestsObserver(BaseplateObserver, _Reporter):
     def __init__(self) -> None:
-        self.live_requests: Dict[str, float] = {}
+        self.live_requests: dict[str, float] = {}
 
     def on_server_span_created(self, context: RequestContext, server_span: ServerSpan) -> None:
         observer = _ActiveRequestsServerSpanObserver(self, server_span.trace_id)
@@ -78,7 +70,7 @@ class _ActiveRequestsServerSpanObserver(ServerSpanObserver):
     def on_start(self) -> None:
         self.reporter.live_requests[self.trace_id] = time.time()
 
-    def on_finish(self, exc_info: Optional[_ExcInfo]) -> None:
+    def on_finish(self, exc_info: _ExcInfo | None) -> None:
         self.reporter.live_requests.pop(self.trace_id, None)
 
 
@@ -89,7 +81,7 @@ class _BlockedGeventHubReporter(_Reporter):
         gevent.config.max_blocking_time = max_blocking_time
         gevent.get_hub().start_periodic_monitoring_thread()
 
-        self.times_blocked: List[int] = []
+        self.times_blocked: list[int] = []
 
     def _on_gevent_event(self, event: Any) -> None:
         if isinstance(event, gevent.events.EventLoopBlocked):
@@ -118,10 +110,10 @@ class _GCTimingReporter(_Reporter):
     def __init__(self) -> None:
         gc.callbacks.append(self._on_gc_event)
 
-        self.gc_durations: List[float] = []
-        self.current_gc_start: Optional[float] = None
+        self.gc_durations: list[float] = []
+        self.current_gc_start: float | None = None
 
-    def _on_gc_event(self, phase: str, _info: Dict[str, Any]) -> None:
+    def _on_gc_event(self, phase: str, _info: dict[str, Any]) -> None:
         if phase == "start":
             self.current_gc_start = time.time()
         elif phase == "stop":
@@ -139,7 +131,7 @@ class _GCTimingReporter(_Reporter):
 
 
 class _BaseplateReporter(_Reporter):
-    def __init__(self, reporters: Dict[str, Callable[[Any], None]]):
+    def __init__(self, reporters: dict[str, Callable[[Any], None]]):
         self.reporters = reporters
 
     def report(self, batch: metrics.Batch) -> None:
@@ -188,7 +180,7 @@ class _RefCycleReporter(_Reporter):
 
 
 def _report_runtime_metrics_periodically(
-    metrics_client: metrics.Client, reporters: List[_Reporter]
+    metrics_client: metrics.Client, reporters: list[_Reporter]
 ) -> NoReturn:
     hostname = socket.gethostname()
     pid = str(os.getpid())
@@ -218,7 +210,7 @@ def _report_runtime_metrics_periodically(
             logger.debug("Error while sending server metrics: %s", exc)
 
 
-def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
+def start(server_config: dict[str, str], application: Any, pool: Pool) -> None:
     baseplate: Baseplate | None = getattr(application, "baseplate", None)
     # As of October 1, 2022 Reddit uses Prometheus to track metrics, not Statsd
     # this checks to see if Prometheus metrics are enabled and uses this to determine
@@ -248,7 +240,7 @@ def start(server_config: Dict[str, str], application: Any, pool: Pool) -> None:
         },
     )
 
-    reporters: List[_Reporter] = []
+    reporters: list[_Reporter] = []
 
     if cfg.monitoring.concurrency:
         reporters.append(_OpenConnectionsReporter(pool))
