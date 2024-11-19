@@ -74,17 +74,37 @@ class BaseplateWSGIHandler(WSGIHandler):
         self._close_connection = value
 
     def read_requestline(self) -> str | None:
-        real_read_requestline = gevent.spawn(super().read_requestline)
-        ready = gevent.wait([self._shutdown_event, real_read_requestline], count=1)
+        real_read_requestline = super().read_requestline
+
+        # We can't let any exceptions (e.g. socket errors) raise to the top of
+        # a greenlet because they will get reported as uncaught exceptions in
+        # our Sentry observer, even though we handle the error. So, we catch
+        # any exceptions and return a tuple (result, exception) instead.
+        def wrapped_read_requestline() -> tuple[str | None, Exception | None]:
+            try:
+                return real_read_requestline(), None
+            except Exception as ex:
+                return None, ex
+
+        read_requestline = gevent.spawn(wrapped_read_requestline)
+        ready = gevent.wait([self._shutdown_event, read_requestline], count=1)
 
         if self._shutdown_event in ready:
-            real_read_requestline.kill()
+            read_requestline.kill()
+            read_requestline.join()
             # None triggers the base class to close the connection.
             return None
 
-        ret = real_read_requestline.get()
-        if isinstance(ret, BaseException):
-            raise ret
+        result = read_requestline.get()
+
+        if isinstance(result, BaseException):
+            # This shouldn't normally happen, but can with e.g. GreenletExit if
+            # the greenlet is killed.
+            raise result
+
+        ret, ex = result
+        if ex:
+            raise ex
         return ret
 
     def handle_one_request(
