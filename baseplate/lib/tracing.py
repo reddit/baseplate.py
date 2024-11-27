@@ -5,6 +5,7 @@ import gevent.pool
 
 from opentelemetry.context import Context
 from opentelemetry.sdk.trace.sampling import Decision, Sampler, SamplingResult
+from opentelemetry import trace
 from opentelemetry.trace import Link, SpanKind, TraceState
 from opentelemetry.util.types import Attributes
 from pyrate_limiter import Duration, Limiter, Rate
