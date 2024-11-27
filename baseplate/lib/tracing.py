@@ -1,5 +1,5 @@
-from collections.abc import Sequence
-from typing import Optional
+from collections.abc import Sequence, Callable
+from typing import Optional, Protocol
 
 import gevent.pool
 from opentelemetry import context
@@ -51,27 +51,29 @@ __Greenlet = gevent.Greenlet
 __IMap = gevent.pool.IMap
 __IMapUnordered = gevent.pool.IMapUnordered
 
+class Runnable(Protocol):
+    @property
+    def trace_context(self) -> Context: ...
+
+    run: Callable
 
 class TracingMixin:
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self : Runnable, *args, **kwargs) -> None: #type: ignore
         self.trace_context = context.get_current()
         super().__init__(*args, **kwargs)
 
-    def run(self) -> None:
+    def run(self : Runnable) -> None:
         context.attach(self.trace_context)
         super().run()
 
 
-class TracedGreenlet(TracingMixin, gevent.Greenlet):
-    pass
+class TracedGreenlet(TracingMixin, gevent.Greenlet): ...
 
 
-class TracedIMapUnordered(TracingMixin, gevent.pool.IMapUnordered):
-    pass
+class TracedIMapUnordered(TracingMixin, gevent.pool.IMapUnordered): ...
 
 
-class TracedIMap(TracedIMapUnordered, gevent.pool.IMap):
-    pass
+class TracedIMap(TracedIMapUnordered, gevent.pool.IMap): ...
 
 
 def patch_greenlet_tracing() -> None:
