@@ -2,10 +2,9 @@ from collections.abc import Sequence
 from typing import Optional
 
 import gevent.pool
-
+from opentelemetry import context
 from opentelemetry.context import Context
 from opentelemetry.sdk.trace.sampling import Decision, Sampler, SamplingResult
-from opentelemetry import trace
 from opentelemetry.trace import Link, SpanKind, TraceState
 from opentelemetry.util.types import Attributes
 from pyrate_limiter import Duration, Limiter, Rate
@@ -46,43 +45,43 @@ class RateLimited(Sampler):
     def get_description(self) -> str:
         return f"RateLimited(fixed rate sampling {self.rps})"
 
+
 # Greenlet tracing utils
 __Greenlet = gevent.Greenlet
 __IMap = gevent.pool.IMap
 __IMapUnordered = gevent.pool.IMapUnordered
 
-class TracingMixin:
-    def __init__(self, *args, **kwargs):
-        self.trace_context = trace.context_api.get_current()
-        super(TracingMixin, self).__init__(*args, **kwargs)
 
-    def run(self):
-        trace.context_api.attach(self.trace_context)
-        super(TracingMixin, self).run()
+class TracingMixin:
+    def __init__(self, *args, **kwargs) -> None:
+        self.trace_context = context.get_current()
+        super().__init__(*args, **kwargs)
+
+    def run(self) -> None:
+        context.attach(self.trace_context)
+        super().run()
 
 
 class TracedGreenlet(TracingMixin, gevent.Greenlet):
-    def __init__(self, *args, **kwargs):
-        super(TracedGreenlet, self).__init__(*args, **kwargs)
+    pass
 
 
 class TracedIMapUnordered(TracingMixin, gevent.pool.IMapUnordered):
-    def __init__(self, *args, **kwargs):
-        super(TracedIMapUnordered, self).__init__(*args, **kwargs)
+    pass
 
 
 class TracedIMap(TracedIMapUnordered, gevent.pool.IMap):
-    def __init__(self, *args, **kwargs):
-        super(TracedIMap, self).__init__(*args, **kwargs)
+    pass
 
 
-def patch_greenlet_tracing():
+def patch_greenlet_tracing() -> None:
     if getattr(gevent, "__rddt_patch", False):
         return
     gevent.__rddt_patch = True
     _replace(TracedGreenlet, TracedIMap, TracedIMapUnordered)
 
-def unpatch_greenlet_tracing():
+
+def unpatch_greenlet_tracing() -> None:
     if not getattr(gevent, "__rddt_patch", False):
         return
     gevent.__rddt_patch = False
@@ -90,7 +89,11 @@ def unpatch_greenlet_tracing():
     _replace(__Greenlet, __IMap, __IMapUnordered)
 
 
-def _replace(g_class, imap_class, imap_unordered_class):
+def _replace(
+    g_class: gevent.Greenlet,
+    imap_class: gevent.pool.IMap,
+    imap_unordered_class: gevent.pool.IMapUnordered,
+) -> None:
     gevent.greenlet.Greenlet = g_class
     gevent.pool.Group.greenlet_class = g_class
     gevent.pool.Greenlet = g_class

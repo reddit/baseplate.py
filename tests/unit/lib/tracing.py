@@ -8,8 +8,8 @@ from opentelemetry.test.test_base import TestBase
 
 from baseplate.lib.tracing import patch_greenlet_tracing, unpatch_greenlet_tracing
 
-
 logger = logging.getLogger(__name__)
+
 
 class PatchedTestCase(unittest.TestCase):
     def setUp(self):
@@ -20,19 +20,21 @@ class PatchedTestCase(unittest.TestCase):
         super().tearDown()
         unpatch_greenlet_tracing()
 
+
 class TestGevent(PatchedTestCase, TestBase):
     def test_context_with_patch(self):
         """Trace context is passed to greenlets"""
 
         def gr1():
-            with trace.get_tracer("gr1").start_as_current_span("child") as c:
+            with trace.get_tracer("gr1").start_as_current_span("child"):
                 select.select([], [], [], 2)
 
-        with trace.get_tracer(__name__).start_as_current_span("parent") as p:
-            gevent.joinall([
-                           gevent.spawn(gr1),
-            ])
-
+        with trace.get_tracer(__name__).start_as_current_span("parent"):
+            gevent.joinall(
+                [
+                    gevent.spawn(gr1),
+                ]
+            )
 
         finished_spans = self.get_finished_spans()
         self.assertGreater(len(finished_spans), 0)
@@ -43,14 +45,15 @@ class TestGevent(PatchedTestCase, TestBase):
         unpatch_greenlet_tracing()
 
         def gr1():
-            with trace.get_tracer("gr1").start_as_current_span("child") as c:
+            with trace.get_tracer("gr1").start_as_current_span("child"):
                 select.select([], [], [], 2)
 
-        with trace.get_tracer(__name__).start_as_current_span("parent") as p:
-            gevent.joinall([
-                           gevent.spawn(gr1),
-            ])
-
+        with trace.get_tracer(__name__).start_as_current_span("parent"):
+            gevent.joinall(
+                [
+                    gevent.spawn(gr1),
+                ]
+            )
 
         finished_spans = self.get_finished_spans()
         self.assertGreater(len(finished_spans), 0)
