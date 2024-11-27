@@ -1,4 +1,4 @@
-from collections.abc import Sequence, Callable
+from collections.abc import Callable, Sequence
 from typing import Optional, Protocol
 
 import gevent.pool
@@ -51,18 +51,20 @@ __Greenlet = gevent.Greenlet
 __IMap = gevent.pool.IMap
 __IMapUnordered = gevent.pool.IMapUnordered
 
+
 class Runnable(Protocol):
     @property
     def trace_context(self) -> Context: ...
 
     run: Callable
 
+
 class TracingMixin:
-    def __init__(self : Runnable, *args, **kwargs) -> None: #type: ignore
+    def __init__(self: Runnable, *args, **kwargs) -> None:  # type: ignore
         self.trace_context = context.get_current()
         super().__init__(*args, **kwargs)
 
-    def run(self : Runnable) -> None:
+    def run(self: Runnable) -> None:
         context.attach(self.trace_context)
         super().run()
 
