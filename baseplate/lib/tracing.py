@@ -1,6 +1,8 @@
 from collections.abc import Sequence
 from typing import Optional
 
+import gevent.pool
+
 from opentelemetry.context import Context
 from opentelemetry.sdk.trace.sampling import Decision, Sampler, SamplingResult
 from opentelemetry.trace import Link, SpanKind, TraceState
@@ -42,3 +44,53 @@ class RateLimited(Sampler):
 
     def get_description(self) -> str:
         return f"RateLimited(fixed rate sampling {self.rps})"
+
+# Greenlet tracing utils
+class TracingMixin:
+    def __init__(self, *args, **kwargs):
+        self.trace_context = trace.context_api.get_current()
+        super(TracingMixin, self).__init__(*args, **kwargs)
+
+    def run(self):
+        trace.context_api.attach(self.trace_context)
+        super(TracingMixin, self).run()
+
+
+class TracedGreenlet(TracingMixin, gevent.Greenlet):
+    def __init__(self, *args, **kwargs):
+        super(TracedGreenlet, self).__init__(*args, **kwargs)
+
+
+class TracedIMapUnordered(TracingMixin, gevent.pool.IMapUnordered):
+    def __init__(self, *args, **kwargs):
+        super(TracedIMapUnordered, self).__init__(*args, **kwargs)
+
+
+class TracedIMap(TracedIMapUnordered, gevent.pool.IMap):
+    def __init__(self, *args, **kwargs):
+        super(TracedIMap, self).__init__(*args, **kwargs)
+
+
+def patch_greenlet_tracing():
+    if getattr(gevent, "__rddt_patch", False):
+        return
+    gevent.__rddt_patch = True
+    _replace(TracedGreenlet, TracedIMap, TracedIMapUnordered)
+
+
+def _replace(g_class, imap_class, imap_unordered_class):
+    gevent.greenlet.Greenlet = g_class
+    gevent.pool.Group.greenlet_class = g_class
+    gevent.pool.Greenlet = g_class
+    gevent._imap.Greenlet = g_class
+
+    # replace gevent shortcuts
+    gevent.Greenlet = gevent.greenlet.Greenlet
+    gevent.spawn = gevent.greenlet.Greenlet.spawn
+    gevent.spawn_later = gevent.greenlet.Greenlet.spawn_later
+
+    # replace the original IMap classes with the new one
+    gevent._imap.IMap = imap_class
+    gevent.pool.IMap = imap_class
+    gevent._imap.IMapUnordered = imap_unordered_class
+    gevent.pool.IMapUnordered = imap_unordered_class
