@@ -10,7 +10,6 @@ import gevent.monkey
 from pkg_resources import DistributionNotFound, get_distribution
 
 from baseplate.lib import UnknownCallerError, config, get_calling_module_name, metrics
-from baseplate.lib.tracing import patch_greenlet_tracing
 
 try:
     __version__ = get_distribution(__name__).version
@@ -18,7 +17,6 @@ except DistributionNotFound:
     # package is not installed
     __version__ = "unknown"
 
-patch_greenlet_tracing()
 
 logger = logging.getLogger(__name__)
 

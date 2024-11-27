@@ -47,6 +47,10 @@ class RateLimited(Sampler):
         return f"RateLimited(fixed rate sampling {self.rps})"
 
 # Greenlet tracing utils
+__Greenlet = gevent.Greenlet
+__IMap = gevent.pool.IMap
+__IMapUnordered = gevent.pool.IMapUnordered
+
 class TracingMixin:
     def __init__(self, *args, **kwargs):
         self.trace_context = trace.context_api.get_current()
@@ -77,6 +81,13 @@ def patch_greenlet_tracing():
         return
     gevent.__rddt_patch = True
     _replace(TracedGreenlet, TracedIMap, TracedIMapUnordered)
+
+def unpatch_greenlet_tracing():
+    if not getattr(gevent, "__rddt_patch", False):
+        return
+    gevent.__rddt_patch = False
+
+    _replace(__Greenlet, __IMap, __IMapUnordered)
 
 
 def _replace(g_class, imap_class, imap_unordered_class):
