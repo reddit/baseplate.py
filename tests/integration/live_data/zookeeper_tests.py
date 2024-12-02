@@ -24,7 +24,10 @@ class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
     def test_create_client_no_secrets(self):
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(
-            secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
+            secrets,
+            {
+                "zookeeper.hosts": f"{zookeeper_endpoint.address.host}:{zookeeper_endpoint.address.port}",  # noqa: E501
+            },
         )
 
         client.start()
@@ -41,7 +44,7 @@ class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
         client = zookeeper_client_from_config(
             secrets,
             {
-                "zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address,
+                "zookeeper.hosts": f"{zookeeper_endpoint.address.host}:{zookeeper_endpoint.address.port}",  # noqa: E501
                 "zookeeper.credentials": "secret/zk-user",
             },
         )
@@ -57,7 +60,10 @@ class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
     def test_create_client_uses_threading_handler_when_not_gevent_patched(self):
         secrets = mock.Mock(spec=SecretsStore)
         client = zookeeper_client_from_config(
-            secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
+            secrets,
+            {
+                "zookeeper.hosts": f"{zookeeper_endpoint.address.host}:{zookeeper_endpoint.address.port}",  # noqa: E501
+            },
         )
         assert isinstance(client.handler, SequentialThreadingHandler)
 
@@ -70,6 +76,9 @@ class ZooKeeperHandlerWithPatchingTests(unittest.TestCase):
         with mock.patch("kazoo.retry.KazooRetry.__init__.__defaults__", patched_default_values):
             secrets = mock.Mock(spec=SecretsStore)
             client = zookeeper_client_from_config(
-                secrets, {"zookeeper.hosts": "%s:%d" % zookeeper_endpoint.address}
+                secrets,
+                {
+                    "zookeeper.hosts": f"{zookeeper_endpoint.address.host}:{zookeeper_endpoint.address.port}",  # noqa: E501
+                },
             )
             assert isinstance(client.handler, SequentialGeventHandler)

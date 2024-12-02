@@ -26,7 +26,9 @@ TEST_NODE_PATH = f"/writer-test-{uuid.uuid4()}"
 
 class LiveDataWriterTests(unittest.TestCase):
     def setUp(self):
-        self.zookeeper = KazooClient(hosts="%s:%d" % zookeeper_endpoint.address)
+        self.zookeeper = KazooClient(
+            hosts=f"{zookeeper_endpoint.address.host}:{zookeeper_endpoint.address.port}",
+        )
         self.zookeeper.start()
 
         try:
