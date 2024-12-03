@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Optional, Protocol
+from typing import Any, Optional, Protocol
 
 import gevent.pool
 from opentelemetry import context
@@ -60,12 +60,12 @@ class Runnable(Protocol):
 
 
 class TracingMixin:
-    def __init__(self: Runnable, *args, **kwargs) -> None:  # type: ignore
-        self.trace_context = context.get_current()
+    def __init__(self: Runnable, *args: Any, **kwargs: Any) -> None:
+        self.bp_trace_context = context.get_current()
         super().__init__(*args, **kwargs)
 
     def run(self: Runnable) -> None:
-        context.attach(self.trace_context)
+        context.attach(self.bp_trace_context)
         super().run()
 
 
