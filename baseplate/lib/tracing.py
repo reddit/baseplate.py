@@ -54,7 +54,7 @@ __IMapUnordered = gevent.pool.IMapUnordered
 
 class Runnable(Protocol):
     @property
-    def trace_context(self) -> Context: ...
+    def bp_trace_context(self) -> Context: ...
 
     run: Callable
 
