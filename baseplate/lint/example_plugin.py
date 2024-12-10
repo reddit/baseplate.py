@@ -1,7 +1,16 @@
-# Pylint documentation for writing a checker: http://pylint.pycqa.org/en/latest/how_tos/custom_checkers.html
-# This is an example of a Pylint AST checker and should not be registered to use
-# In an AST (abstract syntax tree) checker, the code will be represented as nodes of a tree
-# We will use the astroid library: https://astroid.readthedocs.io/en/latest/api/general.html to visit and leave nodes
+# Pylint documentation for writing a checker:
+# http://pylint.pycqa.org/en/latest/how_tos/custom_checkers.html
+#
+# This is an example of a Pylint AST checker and should not be registered to
+# use.
+#
+# In an AST (abstract syntax tree) checker, the code will be represented as
+# nodes of a tree
+#
+# We will use the astroid library:
+# https://astroid.readthedocs.io/en/latest/api/general.html to visit and leave
+# nodes
+#
 # Libraries needed for an AST checker
 from astroid import nodes
 from pylint.checkers import BaseChecker
@@ -9,9 +18,9 @@ from pylint.lint import PyLinter
 
 
 # Basic example of a Pylint AST (astract syntax tree) checker
-# Checks for variables that have been reassigned in a function. If it finds a reassigned variable, it will throw an error
+# Checks for variables that have been reassigned in a function. If it finds a
+# reassigned variable, it will throw an error
 class NoReassignmentChecker(BaseChecker):
-
     # Checker name
     name = "no-reassigned-variable"
     # Set priority to -1
@@ -19,7 +28,8 @@ class NoReassignmentChecker(BaseChecker):
     # Message dictionary
     msgs = {
         # message-id, consists of a letter and numbers
-        # Letter will be one of following letters (C=Convention, W=Warning, E=Error, F=Fatal, R=Refactoring)
+        # Letter will be one of following letters (C=Convention, W=Warning,
+        # E=Error, F=Fatal, R=Refactoring)
         # Numbers need to be unique and in-between 9000-9999
         # Check https://baseplate.readthedocs.io/en/stable/linters/index.html#custom-checkers-list
         # for numbers that are already in use

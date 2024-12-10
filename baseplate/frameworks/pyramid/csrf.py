@@ -1,17 +1,11 @@
 import logging
-
 from datetime import timedelta
 from typing import Any
-from typing import Tuple
 
 from zope.interface import implementer
 
-from baseplate.lib.crypto import make_signature
-from baseplate.lib.crypto import SignatureError
-from baseplate.lib.crypto import validate_signature
-from baseplate.lib.secrets import SecretsStore
-from baseplate.lib.secrets import VersionedSecret
-
+from baseplate.lib.crypto import SignatureError, make_signature, validate_signature
+from baseplate.lib.secrets import SecretsStore, VersionedSecret
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +19,7 @@ except ImportError:
     raise
 
 
-def _make_csrf_token_payload(version: int, account_id: str) -> Tuple[str, str]:
+def _make_csrf_token_payload(version: int, account_id: str) -> tuple[str, str]:
     version_str = str(version)
     payload = ".".join([version_str, account_id])
     return version_str, payload

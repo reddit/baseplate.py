@@ -1,19 +1,18 @@
 import logging
-
+from collections.abc import Iterable
 from re import compile as re_compile
-from typing import Any
-from typing import Iterable
-from typing import Optional
-from typing import Set
+from typing import Any, Optional
 
 from opentelemetry import trace
 from opentelemetry.context import Context
-from opentelemetry.propagators.textmap import CarrierT
-from opentelemetry.propagators.textmap import default_getter
-from opentelemetry.propagators.textmap import default_setter
-from opentelemetry.propagators.textmap import Getter
-from opentelemetry.propagators.textmap import Setter
-from opentelemetry.propagators.textmap import TextMapPropagator
+from opentelemetry.propagators.textmap import (
+    CarrierT,
+    Getter,
+    Setter,
+    TextMapPropagator,
+    default_getter,
+    default_setter,
+)
 from opentelemetry.trace import format_span_id
 
 logger = logging.getLogger(__name__)
@@ -76,7 +75,7 @@ class RedditB3ThriftFormat(TextMapPropagator):
             or self._id_regex.fullmatch(extracted_span_id) is None
         ):
             logger.debug(
-                "No valid b3 traces headers in request. Aborting. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",
+                "No valid b3 traces headers in request. Aborting. [carrier=%s, context=%s, trace_id=%s, span_id=%s]",  # noqa: E501
                 carrier,
                 context,
                 extracted_trace_id,
@@ -140,7 +139,7 @@ class RedditB3ThriftFormat(TextMapPropagator):
         setter.set(carrier, self.SAMPLED_KEY, "1" if sampled else "0")
 
     @property
-    def fields(self) -> Set[str]:
+    def fields(self) -> set[str]:
         return {
             self.TRACE_ID_KEY,
             self.SPAN_ID_KEY,

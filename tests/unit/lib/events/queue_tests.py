@@ -1,13 +1,8 @@
 import unittest
-
 from unittest import mock
 
-from baseplate.lib.events import EventQueue
-from baseplate.lib.events import EventQueueFullError
-from baseplate.lib.events import EventTooLargeError
-from baseplate.lib.events import MAX_EVENT_SIZE
-from baseplate.lib.message_queue import MessageQueue
-from baseplate.lib.message_queue import TimedOutError
+from baseplate.lib.events import MAX_EVENT_SIZE, EventQueue, EventQueueFullError, EventTooLargeError
+from baseplate.lib.message_queue import MessageQueue, TimedOutError
 
 
 class EventQueueTests(unittest.TestCase):

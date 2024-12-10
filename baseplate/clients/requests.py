@@ -2,29 +2,18 @@ import base64
 import ipaddress
 import sys
 import time
+from typing import Any, Optional, Union
 
-from typing import Any
-from typing import Optional
-from typing import Type
-from typing import Union
-
-from advocate import AddrValidator
-from advocate import ValidatingHTTPAdapter
+from advocate import AddrValidator, ValidatingHTTPAdapter
 from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
-from requests import PreparedRequest
-from requests import Request
-from requests import Response
-from requests import Session
+from prometheus_client import Counter, Gauge, Histogram
+from requests import PreparedRequest, Request, Response, Session
 from requests.adapters import HTTPAdapter
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
-from baseplate.lib.prometheus_metrics import default_latency_buckets
-from baseplate.lib.prometheus_metrics import getHTTPSuccessLabel
+from baseplate.lib.prometheus_metrics import default_latency_buckets, getHTTPSuccessLabel
 
 RequestsInstrumentor().instrument()
 
@@ -252,13 +241,18 @@ class BaseplateSession:
         start_time = time.perf_counter()
 
         try:
-            with self.span.make_child(f"{self.name}.request").with_tags(
-                {
-                    "http.url": request.url,
-                    "http.method": request.method.lower() if request.method else "",
-                    "http.slug": self.client_name if self.client_name is not None else self.name,
-                }
-            ) as span, ACTIVE_REQUESTS.labels(**active_request_label_values).track_inprogress():
+            with (
+                self.span.make_child(f"{self.name}.request").with_tags(
+                    {
+                        "http.url": request.url,
+                        "http.method": request.method.lower() if request.method else "",
+                        "http.slug": self.client_name
+                        if self.client_name is not None
+                        else self.name,
+                    }
+                ) as span,
+                ACTIVE_REQUESTS.labels(**active_request_label_values).track_inprogress(),
+            ):
                 self._add_span_context(span, request)
 
                 # we cannot re-use the same session every time because sessions re-use the same
@@ -342,7 +336,7 @@ class RequestsContextFactory(ContextFactory):
     def __init__(
         self,
         adapter: HTTPAdapter,
-        session_cls: Type[BaseplateSession],
+        session_cls: type[BaseplateSession],
         client_name: Optional[str] = None,
     ) -> None:
         self.adapter = adapter

@@ -1,13 +1,10 @@
 import unittest
-
 from unittest import mock
 
 import requests
 
-from baseplate.lib import config
-from baseplate.lib import metrics
-from baseplate.sidecars import event_publisher
-from baseplate.sidecars import SerializedBatch
+from baseplate.lib import config, metrics
+from baseplate.sidecars import SerializedBatch, event_publisher
 
 
 class TimeLimitedBatchTests(unittest.TestCase):

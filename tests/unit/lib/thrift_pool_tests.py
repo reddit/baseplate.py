@@ -1,20 +1,14 @@
 import queue
 import socket
 import unittest
-
 from unittest import mock
 
-from thrift.protocol import TBinaryProtocol
-from thrift.protocol import THeaderProtocol
+from thrift.protocol import TBinaryProtocol, THeaderProtocol
 from thrift.Thrift import TException
-from thrift.transport import THeaderTransport
-from thrift.transport import TSocket
-from thrift.transport import TTransport
+from thrift.transport import THeaderTransport, TSocket, TTransport
 
-from baseplate.lib import config
-from baseplate.lib import thrift_pool
+from baseplate.lib import config, thrift_pool
 from baseplate.observers.timeout import ServerTimeout
-
 
 EXAMPLE_ENDPOINT = config.EndpointConfiguration(socket.AF_INET, ("127.0.0.1", 1234))
 
