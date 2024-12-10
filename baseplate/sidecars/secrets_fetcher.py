@@ -196,7 +196,7 @@ class VaultClientFactory:
         login_data = {"jwt": token, "role": self.role}
 
         logger.debug("Obtaining Vault token via kubernetes auth.")
-        response = self.session.post(
+        response = self._make_session().post(
             urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
             timeout=5,  # seconds
@@ -241,7 +241,7 @@ class VaultClientFactory:
         login_data = {"role": self.role, "pkcs7": identity_document, "nonce": nonce}
 
         logger.debug("Obtaining Vault token via aws auth.")
-        response = self.session.post(
+        response = self._make_session().post(
             urllib.parse.urljoin(self.base_url, f"v1/auth/{self.mount_point}/login"),
             json=login_data,
             timeout=5,  # seconds
@@ -292,7 +292,7 @@ class VaultClient:
         self.token = token
         self.token_expiration = token_expiration
 
-    def close(self):
+    def close(self) -> None:
         self.session.close()
 
     @property
