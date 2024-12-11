@@ -1,7 +1,7 @@
 """Policies for retrying an operation safely."""
-import time
 
-from typing import Iterator
+import time
+from collections.abc import Iterator
 from typing import Optional
 
 

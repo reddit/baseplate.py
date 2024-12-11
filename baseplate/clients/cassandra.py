@@ -1,31 +1,30 @@
 import logging
 import time
-
+from collections.abc import Mapping, Sequence
 from threading import Event
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import List
-from typing import Mapping
-from typing import NamedTuple
-from typing import Optional
-from typing import Sequence
-from typing import Tuple
-from typing import TYPE_CHECKING
-from typing import Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    NamedTuple,
+    Optional,
+    Union,
+)
 
 from cassandra.auth import PlainTextAuthProvider
-from cassandra.cluster import _NOT_SET  # pylint: disable=no-name-in-module
-from cassandra.cluster import Cluster  # pylint: disable=no-name-in-module
-from cassandra.cluster import ExecutionProfile  # pylint: disable=no-name-in-module
-from cassandra.cluster import ResponseFuture  # pylint: disable=no-name-in-module
-from cassandra.cluster import Session  # pylint: disable=no-name-in-module
-from cassandra.query import BoundStatement  # pylint: disable=no-name-in-module
-from cassandra.query import PreparedStatement  # pylint: disable=no-name-in-module
-from cassandra.query import SimpleStatement  # pylint: disable=no-name-in-module
-from prometheus_client import Counter
-from prometheus_client import Gauge
-from prometheus_client import Histogram
+from cassandra.cluster import (  # pylint: disable=no-name-in-module
+    _NOT_SET,
+    Cluster,
+    ExecutionProfile,
+    ResponseFuture,
+    Session,
+)
+from cassandra.query import (  # pylint: disable=no-name-in-module
+    BoundStatement,
+    PreparedStatement,
+    SimpleStatement,
+)
+from prometheus_client import Counter, Gauge, Histogram
 
 from baseplate import Span
 from baseplate.clients import ContextFactory
@@ -70,7 +69,7 @@ def cluster_from_config(
     app_config: config.RawConfig,
     secrets: Optional[SecretsStore] = None,
     prefix: str = "cassandra.",
-    execution_profiles: Optional[Dict[str, ExecutionProfile]] = None,
+    execution_profiles: Optional[dict[str, ExecutionProfile]] = None,
     **kwargs: Any,
 ) -> Cluster:
     """Make a Cluster from a configuration dictionary.
@@ -171,7 +170,7 @@ class CassandraContextFactory(ContextFactory):
         prometheus_cluster_name: Optional[str] = None,
     ):
         self.session = session
-        self.prepared_statements: Dict[str, PreparedStatement] = {}
+        self.prepared_statements: dict[str, PreparedStatement] = {}
         self.prometheus_client_name = prometheus_client_name
         self.prometheus_cluster_name = prometheus_cluster_name
 
@@ -318,7 +317,7 @@ def _on_execute_failed(exc: BaseException, args: CassandraCallbackArgs, event: E
         event.set()
 
 
-RowFactory = Callable[[List[str], List[Tuple]], Any]
+RowFactory = Callable[[list[str], list[tuple]], Any]
 Query = Union[str, SimpleStatement, PreparedStatement, BoundStatement]
 Parameters = Union[Sequence[Any], Mapping[str, Any]]
 
@@ -329,7 +328,7 @@ class CassandraSessionAdapter:
         context_name: str,
         server_span: Span,
         session: Session,
-        prepared_statements: Dict[str, PreparedStatement],
+        prepared_statements: dict[str, PreparedStatement],
         prometheus_client_name: Optional[str] = None,
         prometheus_cluster_name: Optional[str] = None,
     ):

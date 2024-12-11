@@ -60,6 +60,7 @@ with the JSON file as its first and only argument. This allows you to read in th
 write to a new file in whatever format needed, and restart other services if necessary.
 
 """
+
 import argparse
 import configparser
 import datetime
@@ -71,19 +72,13 @@ import subprocess
 import time
 import urllib.parse
 import uuid
-
-from typing import Any
-from typing import Callable
-from typing import Dict
-from typing import Optional
-from typing import Tuple
+from typing import Any, Callable, Optional
 
 import requests
 
 from baseplate import __version__ as baseplate_version
 from baseplate.lib import config
 from baseplate.server import EnvironmentInterpolation
-
 
 logger = logging.getLogger(__name__)
 
@@ -96,9 +91,7 @@ Authenication failed! If this instance previously authenticated with a
 different nonce, a vault operator may need to remove the instance ID from the
 identity whitelist. See
 https://www.vaultproject.io/docs/auth/aws.html#client-nonce
-""".replace(
-    "\n", " "
-)
+""".replace("\n", " ")
 
 
 def fetch_instance_identity() -> str:
@@ -143,7 +136,7 @@ def ttl_to_time(ttl: int) -> datetime.datetime:
     return datetime.datetime.utcnow() + datetime.timedelta(seconds=ttl)
 
 
-Authenticator = Callable[["VaultClientFactory"], Tuple[str, datetime.datetime]]
+Authenticator = Callable[["VaultClientFactory"], tuple[str, datetime.datetime]]
 
 
 class VaultClientFactory:
@@ -154,19 +147,23 @@ class VaultClientFactory:
         self.role = role
         self.auth_type = auth_type
         self.mount_point = mount_point
-        self.session = requests.Session()
-        self.session.headers[
-            "User-Agent"
-        ] = f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
-        self.client: Optional["VaultClient"] = None
+        self.client: Optional[VaultClient] = None
+
+    def _make_session(self) -> requests.Session:
+        session = requests.Session()
+        session.headers["User-Agent"] = (
+            f"baseplate.py-{self.__class__.__name__}/{baseplate_version}"
+        )
+        return session
 
     def _make_client(self) -> "VaultClient":
         """Obtain a client token from an auth backend and return a Vault client with it."""
         client_token, lease_duration = self.auth_type(self)
+        session = self._make_session()
 
-        return VaultClient(self.session, self.base_url, client_token, lease_duration)
+        return VaultClient(session, self.base_url, client_token, lease_duration)
 
-    def _vault_kubernetes_auth(self) -> Tuple[str, datetime.datetime]:
+    def _vault_kubernetes_auth(self) -> tuple[str, datetime.datetime]:
         r"""Get a client token from Vault through the Kubernetes auth backend.
 
         This authenticates with Vault as a specified role using its
@@ -208,7 +205,7 @@ class VaultClientFactory:
         auth = response.json()["auth"]
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
-    def _vault_aws_auth(self) -> Tuple[str, datetime.datetime]:
+    def _vault_aws_auth(self) -> tuple[str, datetime.datetime]:
         r"""Get a client token from Vault through the AWS auth backend.
 
         This authenticates with Vault as a specified role using its AWS
@@ -256,7 +253,7 @@ class VaultClientFactory:
         return auth["client_token"], ttl_to_time(auth["lease_duration"])
 
     @staticmethod
-    def auth_types() -> Dict[str, Authenticator]:
+    def auth_types() -> dict[str, Authenticator]:
         """Return a dict of the supported auth types and respective methods."""
         return {
             "aws": VaultClientFactory._vault_aws_auth,
@@ -265,8 +262,13 @@ class VaultClientFactory:
 
     def get_client(self) -> "VaultClient":
         """Get an authenticated client, reauthenticating if not cached."""
-        if not self.client or self.client.is_about_to_expire:
+        if self.client and self.client.is_about_to_expire:
+            self.client.close()
+            self.client = None
+
+        if not self.client:
             self.client = self._make_client()
+
         return self.client
 
 
@@ -290,13 +292,16 @@ class VaultClient:
         self.token = token
         self.token_expiration = token_expiration
 
+    def close(self):
+        self.session.close()
+
     @property
     def is_about_to_expire(self) -> bool:
         """Return if the token is near expiration and in need of regeneration."""
         expiration = self.token_expiration - VAULT_TOKEN_PREFETCH_TIME
         return expiration < datetime.datetime.utcnow()
 
-    def get_secret(self, secret_name: str) -> Tuple[Any, datetime.datetime]:
+    def get_secret(self, secret_name: str) -> tuple[Any, datetime.datetime]:
         """Get the value and expiration time of a named secret."""
         logger.debug("Fetching secret %r.", secret_name)
         try:

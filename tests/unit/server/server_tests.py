@@ -2,14 +2,12 @@ import io
 import socket
 import sys
 import unittest
-
 from unittest import mock
 
 import pytest
 
 from baseplate import server
 from baseplate.lib import config
-
 
 EXAMPLE_ENDPOINT = config.EndpointConfiguration(socket.AF_INET, ("127.0.0.1", 1234))
 

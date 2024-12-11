@@ -1,16 +1,15 @@
 import unittest
-
-from datetime import datetime
-from datetime import timezone
+from datetime import datetime, timezone
 
 import pytz
 
-from baseplate.lib.datetime import datetime_to_epoch_milliseconds
-from baseplate.lib.datetime import datetime_to_epoch_seconds
-from baseplate.lib.datetime import epoch_milliseconds_to_datetime
-from baseplate.lib.datetime import epoch_seconds_to_datetime
-from baseplate.lib.datetime import get_utc_now
-
+from baseplate.lib.datetime import (
+    datetime_to_epoch_milliseconds,
+    datetime_to_epoch_seconds,
+    epoch_milliseconds_to_datetime,
+    epoch_seconds_to_datetime,
+    get_utc_now,
+)
 
 EXAMPLE_DATETIME = datetime.utcnow().replace(tzinfo=timezone.utc, microsecond=0)
 

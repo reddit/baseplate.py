@@ -7,17 +7,12 @@ except ImportError:
 
 from prometheus_client import REGISTRY
 
+from baseplate.clients.redis import ACTIVE_REQUESTS, LATENCY_SECONDS, REQUESTS_TOTAL
+from baseplate.clients.redis_cluster import ClusterRedisClient, cluster_pool_from_config
 from baseplate.lib.config import ConfigurationError
-from baseplate.clients.redis_cluster import cluster_pool_from_config
-
-from baseplate.clients.redis_cluster import ClusterRedisClient
-from baseplate.clients.redis import REQUESTS_TOTAL
-from baseplate.clients.redis import LATENCY_SECONDS
-from baseplate.clients.redis import ACTIVE_REQUESTS
 
 from . import get_endpoint_or_skip_container
 from .redis_testcase import RedisIntegrationTestCase, redis_cluster_url
-
 
 redis_endpoint = get_endpoint_or_skip_container("redis-cluster-node", 7000)
 

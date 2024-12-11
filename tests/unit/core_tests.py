@@ -1,18 +1,19 @@
 import unittest
-
 from unittest import mock
 
-from baseplate import Baseplate
-from baseplate import BaseplateObserver
-from baseplate import LocalSpan
-from baseplate import ParentSpanAlreadyFinishedError
-from baseplate import RequestContext
-from baseplate import ReusedContextObjectError
-from baseplate import ServerSpan
-from baseplate import ServerSpanObserver
-from baseplate import Span
-from baseplate import SpanObserver
-from baseplate import TraceInfo
+from baseplate import (
+    Baseplate,
+    BaseplateObserver,
+    LocalSpan,
+    ParentSpanAlreadyFinishedError,
+    RequestContext,
+    ReusedContextObjectError,
+    ServerSpan,
+    ServerSpanObserver,
+    Span,
+    SpanObserver,
+    TraceInfo,
+)
 from baseplate.clients import ContextFactory
 from baseplate.lib import config
 

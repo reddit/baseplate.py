@@ -5,15 +5,12 @@ import os
 import pwd
 import tempfile
 import unittest
-
 from pathlib import Path
 
 import boto3
-
 from moto import mock_aws
 
-from baseplate.sidecars.live_data_watcher import _generate_sharded_file_key
-from baseplate.sidecars.live_data_watcher import NodeWatcher
+from baseplate.sidecars.live_data_watcher import NodeWatcher, _generate_sharded_file_key
 
 NUM_FILE_SHARDS = 6
 
@@ -87,7 +84,7 @@ class NodeWatcherTests(unittest.TestCase):
         dest = self.output_dir.joinpath("data.txt")
         inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
 
-        new_content = b'{"live_data_watcher_load_type":"S3","bucket_name":"test_bucket","file_key":"test_file_key","sse_key":"test_decryption_key","region_name":"us-east-1"}'
+        new_content = b'{"live_data_watcher_load_type":"S3","bucket_name":"test_bucket","file_key":"test_file_key","sse_key":"test_decryption_key","region_name":"us-east-1"}'  # noqa: E501
         expected_content = b'{"foo_encrypted": "bar_encrypted"}'
         inst.on_change(new_content, None)
         self.assertEqual(expected_content, dest.read_bytes())
@@ -98,7 +95,7 @@ class NodeWatcherTests(unittest.TestCase):
         dest = self.output_dir.joinpath("data.txt")
         inst = NodeWatcher(str(dest), os.getuid(), os.getgid(), 777)
 
-        new_content = b'{"live_data_watcher_load_type":"S3","bucket_name":"test_bucket","file_key":"test_file_key","sse_key":"test_decryption_key","region_name":"us-east-1", "num_file_shards": 5}'
+        new_content = b'{"live_data_watcher_load_type":"S3","bucket_name":"test_bucket","file_key":"test_file_key","sse_key":"test_decryption_key","region_name":"us-east-1", "num_file_shards": 5}'  # noqa: E501
         expected_content = b'{"foo_encrypted": "bar_encrypted"}'
 
         # For safe measure, run this 50 times. It should succeed every time.

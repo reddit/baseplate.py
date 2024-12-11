@@ -1,6 +1,5 @@
 import socket
 import unittest
-
 from unittest import mock
 
 from baseplate.server import einhorn

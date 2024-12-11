@@ -1,4 +1,3 @@
-REORDER_PYTHON_IMPORTS := reorder-python-imports --py3-plus --separate-from-import --separate-relative
 PYTHON_SOURCE = $(shell find baseplate/ tests/ -name '*.py')
 PYTHON_EXAMPLES = $(shell find docs/ -name '*.py')
 
@@ -53,16 +52,13 @@ test: doctest .venv
 
 .PHONY: fmt
 fmt: .venv
-	.venv/bin/$(REORDER_PYTHON_IMPORTS) --exit-zero-even-if-changed $(PYTHON_SOURCE)
-	.venv/bin/black baseplate/ tests/
-	.venv/bin/$(REORDER_PYTHON_IMPORTS) --application-directories /tmp --exit-zero-even-if-changed $(PYTHON_EXAMPLES)
-	.venv/bin/black docs/  # separate so it uses its own pyproject.toml
+	.venv/bin/ruff check --fix
+	.venv/bin/ruff format
 
 .PHONY: lint
 lint: .venv
-	.venv/bin/$(REORDER_PYTHON_IMPORTS) --diff-only $(PYTHON_SOURCE)
-	.venv/bin/black --diff --check baseplate/ tests/
-	.venv/bin/flake8 baseplate tests
+	.venv/bin/ruff check
+	.venv/bin/ruff format --check
 	PYTHONPATH=. .venv/bin/pylint baseplate/
 	.venv/bin/mypy baseplate/
 

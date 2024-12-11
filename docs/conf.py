@@ -77,9 +77,7 @@ html_theme = "alabaster"
 
 # which templates to put in the sidebar.  we're just removing the relations
 # section from the defaults here, that's "next article" and "previous article"
-html_sidebars = {
-    "**": ["about.html", "searchbox.html", "navigation.html"]
-}
+html_sidebars = {"**": ["about.html", "searchbox.html", "navigation.html"]}
 
 html_theme_options = {
     "description": "Reddit's Python Service Framework",

@@ -1,23 +1,23 @@
 import os
 import unittest
-
 from unittest import mock
 
 import fakeredis
 import pytest
-
 from prometheus_client import REGISTRY
 from rediscluster.exceptions import RedisClusterException
 
-from baseplate.clients.redis_cluster import ACTIVE_REQUESTS
-from baseplate.clients.redis_cluster import cluster_pool_from_config
-from baseplate.clients.redis_cluster import HotKeyTracker
-from baseplate.clients.redis_cluster import LATENCY_SECONDS
-from baseplate.clients.redis_cluster import MonitoredRedisClusterConnection
-from baseplate.clients.redis_cluster import REQUESTS_TOTAL
+from baseplate.clients.redis_cluster import (
+    ACTIVE_REQUESTS,
+    LATENCY_SECONDS,
+    REQUESTS_TOTAL,
+    HotKeyTracker,
+    MonitoredRedisClusterConnection,
+    cluster_pool_from_config,
+)
 
 
-class DummyConnection(object):
+class DummyConnection:
     description_format = "DummyConnection<>"
 
     def __init__(self, host="localhost", port=7000, socket_timeout=None, **kwargs):
@@ -142,7 +142,8 @@ class TestMonitoredRedisConnection:
             ) as active_dec_spy_method:
                 mock_manager.attach_mock(active_dec_spy_method, "dec")
 
-                # This KeyError is the same problem as the RedisClusterException in `test_execute_command_exc_redis_err` above
+                # This KeyError is the same problem as the
+                # RedisClusterException in `test_execute_command_exc_redis_err` above
                 with pytest.raises(KeyError):
                     monitored_redis_connection.pipeline("test").set("hello", 42).set(
                         "goodbye", 23
@@ -157,10 +158,13 @@ class TestMonitoredRedisConnection:
                     )
                     == 1.0
                 ), "Expected one 'pipeline' latency request"
-                assert mock_manager.mock_calls == [
-                    mock.call.inc(),
-                    mock.call.dec(),
-                ], "Instrumentation should increment and then decrement active requests exactly once"
+                assert (
+                    mock_manager.mock_calls
+                    == [
+                        mock.call.inc(),
+                        mock.call.dec(),
+                    ]
+                ), "Instrumentation should increment and then decrement active requests exactly once"  # noqa: E501
                 print(list(REGISTRY.collect()))
                 assert (
                     REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, active_labels) == 0.0
