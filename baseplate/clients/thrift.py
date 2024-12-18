@@ -5,7 +5,7 @@ import socket
 import sys
 import time
 from collections import OrderedDict
-from collections.abc import Iterator
+from collections.abc import Iterator  # pylint: disable=import-error
 from math import ceil
 from typing import Any, Callable, Optional
 

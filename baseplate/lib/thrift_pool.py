@@ -20,7 +20,7 @@ import logging
 import queue
 import socket
 import time
-from collections.abc import Generator
+from collections.abc import Generator  # pylint: disable=import-error
 from typing import TYPE_CHECKING, Any, Optional
 
 from thrift.protocol import THeaderProtocol

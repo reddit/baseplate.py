@@ -19,7 +19,7 @@ A basic example of usage::
 """
 
 import json
-from collections.abc import Sequence
+from collections.abc import Sequence  # pylint: disable=import-error
 from typing import IO, NamedTuple, Optional
 
 from baseplate.lib.config import Endpoint, EndpointConfiguration

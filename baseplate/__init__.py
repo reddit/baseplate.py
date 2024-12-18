@@ -1,7 +1,7 @@
 import logging
 import os
 import random
-from collections.abc import Iterator
+from collections.abc import Iterator  # pylint: disable=import-error
 from contextlib import contextmanager
 from types import TracebackType
 from typing import Any, Callable, NamedTuple, Optional
