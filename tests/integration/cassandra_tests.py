@@ -41,6 +41,10 @@ class CassandraTests(unittest.TestCase):
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
 
+    def tearDown(self):
+        self.context.cassandra.cluster.shutdown()
+        self.context.cassandra_no_prof.cluster.shutdown()
+
     def test_simple_query(self):
         with self.server_span:
             self.context.cassandra.execute("SELECT * FROM system.local;")
@@ -174,6 +178,9 @@ class CassandraConcurrentTests(unittest.TestCase):
 
         self.context = baseplate.make_context_object()
         self.server_span = baseplate.make_server_span(self.context, "test")
+
+    def tearDown(self):
+        self.context.cassandra.cluster.shutdown()
 
     def test_execute_concurrent_with_args(self):
         with self.server_span:
