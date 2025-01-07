@@ -1,8 +1,12 @@
 """Internal library helpers."""
 
+from __future__ import annotations
+
 import inspect
 import warnings
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar, overload
+
+from typing_extensions import Self
 
 
 def warn_deprecated(message: str) -> None:
@@ -16,28 +20,35 @@ def warn_deprecated(message: str) -> None:
     warnings.warn(message, DeprecationWarning, stacklevel=3)
 
 
-T = TypeVar("T")
-R = TypeVar("R")
+T = TypeVar("T")  # Type of the class instance which the property is attached to.
+R = TypeVar("R")  # Return type of the wrapped method.
 
 
 # cached_property is a renamed copy of pyramid.decorator.reify
 # see COPYRIGHT for full license information
-class cached_property(Generic[R]):
+class cached_property(Generic[T, R]):
     """Like @property but the function will only be called once per instance.
 
     When used as a method decorator, this will act like @property but instead
     of calling the function each time the attribute is accessed, instead it
     will only call it on first access and then replace itself on the instance
     with the return value of the first call.
-
     """
 
-    def __init__(self, wrapped: Callable[[Any], R]):
+    wrapped: Callable[[T], R]
+
+    def __init__(self, wrapped: Callable[[T], R]) -> None:
         self.wrapped = wrapped
         self.__doc__ = wrapped.__doc__
         self.__name__ = wrapped.__name__
 
-    def __get__(self, instance: T, owner: type[Any]) -> R:
+    @overload
+    def __get__(self, instance: T, owner: type[Any]) -> R: ...
+
+    @overload
+    def __get__(self, instance: None, owner: type[Any]) -> Self: ...
+
+    def __get__(self, instance: T | None, owner: type[Any]) -> R | Self:
         if instance is None:
             return self
         ret = self.wrapped(instance)
