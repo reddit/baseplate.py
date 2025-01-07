@@ -2,7 +2,7 @@ import logging
 import random
 import sys
 import time
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping  # pylint: disable=import-error
 from contextlib import contextmanager
 from logging import Logger
 from typing import Any, Callable, Optional

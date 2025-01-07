@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import typing
-from collections.abc import Sequence
+from collections.abc import Sequence  # pylint: disable=import-error
 from time import perf_counter
 from typing import Any, Optional, Union
 

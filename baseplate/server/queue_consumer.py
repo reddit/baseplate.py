@@ -8,7 +8,7 @@ import queue
 import signal
 import socket
 import uuid
-from collections.abc import Sequence
+from collections.abc import Sequence  # pylint: disable=import-error
 from threading import Thread
 from typing import TYPE_CHECKING, Any, Callable
 

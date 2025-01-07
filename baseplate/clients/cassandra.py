@@ -1,6 +1,6 @@
 import logging
 import time
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence  # pylint: disable=import-error
 from threading import Event
 from typing import (
     TYPE_CHECKING,

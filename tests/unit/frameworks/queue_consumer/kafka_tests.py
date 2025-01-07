@@ -53,7 +53,7 @@ def name():
 
 
 class TestKafkaMessageHandler:
-    def setup(self):
+    def setup_method(self):
         KAFKA_PROCESSING_TIME.clear()
         KAFKA_PROCESSED_TOTAL.clear()
         KAFKA_ACTIVE_MESSAGES.clear()

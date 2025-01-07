@@ -25,7 +25,7 @@ def baseplate_session(request):
 
 
 class TestBaseplateSessionProm:
-    def setup(self):
+    def setup_method(self):
         ACTIVE_REQUESTS.clear()
         LATENCY_SECONDS.clear()
         REQUESTS_TOTAL.clear()

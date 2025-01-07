@@ -3,7 +3,7 @@
 import bisect
 import random
 import typing
-from collections.abc import Iterable
+from collections.abc import Iterable  # pylint: disable=import-error
 from typing import Callable, Generic, Optional, TypeVar
 
 T = TypeVar("T")

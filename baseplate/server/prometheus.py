@@ -15,7 +15,7 @@ import atexit
 import logging
 import os
 import sys
-from collections.abc import Iterable
+from collections.abc import Iterable  # pylint: disable=import-error
 from typing import TYPE_CHECKING
 
 from gevent.pywsgi import LoggingLogAdapter, WSGIServer
