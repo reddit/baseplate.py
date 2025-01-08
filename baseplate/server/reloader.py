@@ -12,7 +12,7 @@ import re
 import sys
 import threading
 import time
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Sequence  # pylint: disable=import-error
 from typing import NoReturn
 
 logger = logging.getLogger(__name__)

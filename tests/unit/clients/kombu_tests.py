@@ -132,7 +132,7 @@ class TestKombuThriftSerializer:
 
 
 class Test_KombuProducer:
-    def setup(self):
+    def setup_method(self):
         AMQP_PROCESSING_TIME.clear()
         AMQP_PROCESSED_TOTAL.clear()
 

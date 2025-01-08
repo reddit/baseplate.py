@@ -2,7 +2,7 @@ import base64
 import logging
 import sys
 import time
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping  # pylint: disable=import-error
 from typing import Any, Callable, Optional
 
 import pyramid.events

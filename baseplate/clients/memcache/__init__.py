@@ -1,4 +1,4 @@
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Sequence  # pylint: disable=import-error
 from time import perf_counter
 from typing import Any, Callable, Optional, Union
 

@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable  # pylint: disable=import-error
 from re import compile as re_compile
 from typing import Any, Optional
 

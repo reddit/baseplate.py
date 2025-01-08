@@ -6,7 +6,7 @@ This stuff is not stable yet, so it's only for baseplate-internal use.
 
 import socket
 import urllib.parse
-from collections.abc import Mapping
+from collections.abc import Mapping  # pylint: disable=import-error
 from typing import Optional
 
 import requests.adapters

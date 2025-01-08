@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
 
     container:
       image: python:${{ matrix.python-version }}
@@ -37,6 +37,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-poetry-
 
+      # TODO(ckuehl|2024-09-26): Remove this once Python 3.13 wheels are
+      # available for our dependencies.
+      - name: Install temporary Python 3.13 build dependencies
+        if: ${{ matrix.python-version == '3.13' }}
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+
       - name: Update PATH
         run: 'echo "$HOME/.local/bin" >> "$GITHUB_PATH"'
 
@@ -45,7 +53,7 @@ jobs:
           CASS_DRIVER_NO_EXTENSIONS: theytaketoolongtobuild
         run: |
           pip install pipx
-          pipx install poetry==1.8.2
+          pipx install poetry==1.8.3
           make .venv
 
       - name: Lint

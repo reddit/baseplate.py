@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Sequence  # pylint: disable=import-error
 from typing import Any, Optional, Protocol
 
 import gevent.pool
