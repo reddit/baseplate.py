@@ -10,7 +10,7 @@ from prometheus_client import Counter, Gauge, Histogram
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Connection, Engine, ExceptionContext
 from sqlalchemy.engine.interfaces import ExecutionContext
-from sqlalchemy.engine.url import make_url
+from sqlalchemy.engine.url import URL, make_url
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import QueuePool
 
@@ -87,13 +87,16 @@ def engine_from_config(
             raise TypeError("'secrets' is required if 'credentials_secret' is set")
         credentials = secrets.get_credentials(options.credentials_secret)
 
-        # support sqlalchemy 1.4+ where URL is immutable
-        # https://docs.sqlalchemy.org/en/14/changelog/migration_14.html#the-url-object-is-now-immutable
-        if hasattr(url, "set"):
-            url = url.set(username=credentials.username, password=credentials.password)
-        else:
-            url.username = credentials.username
-            url.password = credentials.password
+        # Create new URL with SQLAlchemy 2.0 compatible parameters
+        url = URL.create(
+            drivername=url.drivername,
+            username=credentials.username,
+            password=credentials.password,
+            host=url.host,
+            port=url.port,
+            database=url.database,
+            query=url.query or {},
+        )
 
     return create_engine(url, **kwargs)
 

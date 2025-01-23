@@ -30,7 +30,18 @@ class EngineFromConfigTests(unittest.TestCase):
 
     def test_url(self):
         engine = engine_from_config({"database.url": "sqlite://"})
-        self.assertEqual(engine.url, URL("sqlite"))
+        self.assertEqual(
+            engine.url,
+            URL.create(
+                "sqlite",
+                username=None,
+                password=None,
+                host=None,
+                port=None,
+                database=None,
+                query={},
+            ),
+        )
 
     @mock.patch("baseplate.clients.sqlalchemy.create_engine")
     def test_credentials(self, create_engine_mock):
@@ -45,13 +56,14 @@ class EngineFromConfigTests(unittest.TestCase):
             self.secrets,
         )
         create_engine_mock.assert_called_once_with(
-            URL(
+            URL.create(
                 drivername="postgresql",
                 username="reddit",
                 password="password",
                 host="localhost",
                 port="9000",
                 database="db",
+                query={},
             ),
             pool_recycle=60,
             pool_size=10,
