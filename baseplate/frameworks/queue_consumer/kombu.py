@@ -2,7 +2,7 @@ import logging
 import queue
 import socket
 import time
-from collections.abc import Sequence
+from collections.abc import Sequence  # pylint: disable=import-error
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
 

@@ -22,7 +22,7 @@ import threading
 import time
 import traceback
 import warnings
-from collections.abc import Mapping, MutableMapping, Sequence
+from collections.abc import Mapping, MutableMapping, Sequence  # pylint: disable=import-error
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum

@@ -1,9 +1,17 @@
+from __future__ import annotations
+
+import contextlib
+import dataclasses
 import importlib
 import logging
+import time
+import urllib.parse
 
 import gevent
 import pytest
 import requests
+import urllib3.connection
+from gevent.pywsgi import WSGIServer
 from pyramid.config import Configurator
 from pyramid.httpexceptions import HTTPNoContent
 
@@ -34,6 +42,8 @@ def gevent_socket():
 @pytest.fixture
 def http_server(gevent_socket):
     class HttpServer:
+        server: WSGIServer
+
         def __init__(self, address):
             self.url = f"http://{address[0]}:{address[1]}/"
             self.requests = []
@@ -56,8 +66,8 @@ def http_server(gevent_socket):
     configurator.add_view(http_server.handle_request, route_name="test_view", renderer="json")
     wsgi_app = configurator.make_wsgi_app()
 
-    server = make_server({"stop_timeout": "1 millisecond"}, listener, wsgi_app)
-    server_greenlet = gevent.spawn(server.serve_forever)
+    http_server.server = make_server({"stop_timeout": "1 millisecond"}, listener, wsgi_app)
+    server_greenlet = gevent.spawn(http_server.server.serve_forever)
     try:
         yield http_server
     finally:
@@ -182,3 +192,151 @@ def test_external_client_doesnt_send_headers(http_server):
         assert "X-Parent" not in http_server.requests[0].headers
         assert "X-Span" not in http_server.requests[0].headers
         assert "X-Edge-Request" not in http_server.requests[0].headers
+
+
+def _is_connected(conn: urllib3.connection.HTTPConnection) -> bool:
+    """Backport of urllib3.connection.HTTPConnection.is_connected().
+
+    Based on urllib3 v2.2.3:
+    https://github.com/urllib3/urllib3/blob/f9d37add7983d441b151146db447318dff4186c9/src/urllib3/connection.py#L299
+    """
+    if conn.sock is None:
+        return False
+    return not urllib3.util.wait_for_read(conn.sock, timeout=0.0)
+
+
+@dataclasses.dataclass
+class KeepaliveClientResult:
+    requests_completed: int = 0
+    connection_closed_time: float | None = None
+
+
+def _keepalive_client(
+    url: str, ready_event: gevent.event.Event, wait_time: float
+) -> KeepaliveClientResult:
+    """HTTP client that makes requests forever over a single keepalive connection.
+
+    Returns iff the connection is closed. Otherwise, it must be killed.
+    """
+    parsed = urllib.parse.urlparse(url)
+    with contextlib.closing(
+        urllib3.connection.HTTPConnection(parsed.hostname, parsed.port, timeout=1),
+    ) as conn:
+        ret = KeepaliveClientResult()
+        conn.connect()
+        ready_event.set()
+
+        last_request_time = None
+        while True:
+            if not _is_connected(conn):
+                print("Client lost connection to server, stopping request loop.")
+                ret.connection_closed_time = time.time()
+                break
+
+            if last_request_time is None or time.time() - last_request_time >= wait_time:
+                print("Client making request.")
+                last_request_time = time.time()
+                conn.request("GET", "/")
+                response = conn.getresponse()
+                response.close()
+
+                assert response.status == 204
+                print("Client got expected response.")
+                ret.requests_completed += 1
+
+            # Sleeping for a short time rather than the full `wait_time` so we
+            # can notice if the connection closes.
+            gevent.sleep(0.01)
+
+        return ret
+
+
+@pytest.mark.parametrize(
+    (
+        "delay_between_requests",
+        "min_expected_successful_requests",
+        "max_expected_successful_requests",
+    ),
+    (
+        # Client that sends a request every 0.1 seconds.
+        (
+            0.1,
+            # ~10 requests in 1 second.
+            5,
+            15,
+        ),
+        # Client that sends one request then sleeps forever while keeping the
+        # connection open.
+        #
+        # This is used to test that the server closes keepalive connections
+        # even if they remain idle for the entire shutdown period.
+        (
+            999999999,
+            # The client should make exactly one request.
+            1,
+            1,
+        ),
+    ),
+)
+def test_shutdown_closes_existing_keepalive_connection(
+    http_server,
+    delay_between_requests,
+    min_expected_successful_requests,
+    max_expected_successful_requests,
+):
+    """Ensure that the server closes keepalive connections when shutting down.
+
+    By default, calling `stop()` on a gevent WSGIServer prevents new
+    connections but does not close existing ones. This allows clients to
+    continue sending new requests over existing connections right up until the
+    server's stop_timeout, resulting in slow shutdown and connections being
+    killed mid-flight, which causes user-facing errors.
+
+    We work around this by subclassing WSGIHandler and (a) disabling keepalive
+    when the server is in shutdown, and (b) closing existing idle connections
+    when the server enters shutdown.
+    """
+    http_server.server.stop_timeout = 10
+
+    ready_event = gevent.event.Event()
+    client_greenlet = gevent.spawn(
+        _keepalive_client,
+        http_server.url,
+        ready_event,
+        delay_between_requests,
+    )
+    try:
+        print("Waiting for client to connect...")
+        ready_event.wait()
+
+        print("Client connected, now waiting while it makes requests.")
+        gevent.sleep(1)
+
+        print("Triggering server shutdown...")
+        shutdown_start = time.time()
+        http_server.server.stop()
+    finally:
+        # Server usually exits before the client notices the connection closed,
+        # so give it a second to finish.
+        client_greenlet.join(timeout=5)
+
+    print(f"Shutdown completed after {time.time() - shutdown_start:.1f}s.")
+
+    ret = client_greenlet.get()
+    if isinstance(ret, BaseException):
+        # This usually happens with GreenletExit.
+        raise ret
+
+    print("Requests completed:", ret.requests_completed)
+    connection_closed_delay = ret.connection_closed_time - shutdown_start
+    print("Connection closed delay:", connection_closed_delay)
+
+    assert (
+        min_expected_successful_requests
+        <= ret.requests_completed
+        <= max_expected_successful_requests
+    )
+
+    # connection_closed_time should be within ~2 seconds after the shutdown
+    # start time, but not before it.
+    assert 0 <= connection_closed_delay <= 2

@@ -1,7 +1,7 @@
 """Policies for retrying an operation safely."""
 
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator  # pylint: disable=import-error
 from typing import Optional
 
 

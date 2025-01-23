@@ -169,7 +169,7 @@ class RedisClusterIntegrationTests(RedisIntegrationTestCase):
                 expected_labels = {
                     "redis_client_name": client_name,
                     "redis_type": "cluster",
-                    "redis_command": "SET",
+                    "redis_command": "set",
                     "redis_database": "0",
                 }
                 with self.server_span:

@@ -18,7 +18,7 @@ from baseplate.frameworks.pyramid import (
 
 
 class TestPyramidHttpServerIntegrationPrometheus:
-    def setup(self):
+    def setup_method(self):
         ACTIVE_REQUESTS.clear()
         REQUESTS_TOTAL.clear()
         REQUEST_LATENCY.clear()

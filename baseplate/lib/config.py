@@ -93,7 +93,7 @@ import os
 import pwd
 import re
 import socket
-from collections.abc import Sequence
+from collections.abc import Sequence  # pylint: disable=import-error
 from typing import (
     IO,
     Any,

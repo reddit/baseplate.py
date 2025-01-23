@@ -18,7 +18,7 @@ from baseplate.thrift.ttypes import Error, ErrorCode
 
 
 class Test_ThriftServerPrometheusMetrics:
-    def setup(self):
+    def setup_method(self):
         PROM_LATENCY.clear()
         PROM_REQUESTS.clear()
         PROM_ACTIVE.clear()
