@@ -343,9 +343,9 @@ class _BaseKafkaQueueConsumerFactory(QueueConsumerFactory):
 
         all_topics = set(metadata.topics.keys())
         for topic in topics:
-            assert (
-                topic in all_topics
-            ), f"topic '{topic}' does not exist. maybe it's misspelled or on a different kafka cluster?"  # noqa: E501
+            assert topic in all_topics, (
+                f"topic '{topic}' does not exist. maybe it's misspelled or on a different kafka cluster?"  # noqa: E501
+            )
 
         # pylint: disable=unused-argument
         def log_assign(

@@ -51,9 +51,9 @@ class TestSpanObserver(SpanObserver):
 
     def assert_tag(self, key, value):
         assert key in self.tags, f"{key!r} not found in tags ({list(self.tags.keys())!r})"
-        assert (
-            self.tags[key] == value
-        ), f"tag {key!r}: expected value {value!r} but found {self.tags[key]!r}"
+        assert self.tags[key] == value, (
+            f"tag {key!r}: expected value {value!r} but found {self.tags[key]!r}"
+        )
 
     def on_log(self, name, payload):
         self.logs.append((name, payload))

@@ -49,7 +49,7 @@ def new_fake_csi(data: dict[str, SecretType]) -> Path:
     Note that this would already be configured before the pod starts."""
     csi_dir = Path(tempfile.mkdtemp())
     # Closely resembles but doesn't precisely match the actual CSI plugin
-    data_path = Path(csi_dir, f'..{datetime.datetime.today().strftime("%Y_%m_%d_%H_%M_%S.%f")}')
+    data_path = Path(csi_dir, f"..{datetime.datetime.today().strftime('%Y_%m_%d_%H_%M_%S.%f')}")
     write_secrets(data_path, data)
     write_symlinks(data_path)
     return csi_dir
@@ -61,7 +61,7 @@ def simulate_secret_update(
     """Simulates either TTL expiry / a secret update."""
     old_data_path = csi_dir.joinpath("..data").resolve()
     # Clone the data directory
-    new_data_path = Path(csi_dir, f'..{datetime.datetime.today().strftime("%Y_%m_%d_%H_%M_%S.%f")}')
+    new_data_path = Path(csi_dir, f"..{datetime.datetime.today().strftime('%Y_%m_%d_%H_%M_%S.%f')}")
     # Update the secret
     if updated_data:
         write_secrets(new_data_path, updated_data)

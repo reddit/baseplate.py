@@ -149,26 +149,25 @@ class TestMonitoredRedisConnection:
                         "goodbye", 23
                     ).execute()
                 labels = {**active_labels, "redis_success": "false"}
-                assert (
-                    REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", labels) == 1.0
-                ), "Unexpected value for REQUESTS_TOTAL metric. Expected one 'pipeline' command"
+                assert REGISTRY.get_sample_value(f"{REQUESTS_TOTAL._name}_total", labels) == 1.0, (
+                    "Unexpected value for REQUESTS_TOTAL metric. Expected one 'pipeline' command"
+                )
                 assert (
                     REGISTRY.get_sample_value(
                         f"{LATENCY_SECONDS._name}_bucket", {**labels, "le": "+Inf"}
                     )
                     == 1.0
                 ), "Expected one 'pipeline' latency request"
-                assert (
-                    mock_manager.mock_calls
-                    == [
-                        mock.call.inc(),
-                        mock.call.dec(),
-                    ]
-                ), "Instrumentation should increment and then decrement active requests exactly once"  # noqa: E501
+                assert mock_manager.mock_calls == [
+                    mock.call.inc(),
+                    mock.call.dec(),
+                ], (
+                    "Instrumentation should increment and then decrement active requests exactly once"  # noqa: E501
+                )
                 print(list(REGISTRY.collect()))
-                assert (
-                    REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, active_labels) == 0.0
-                ), "Should have 0 (and not None) active requests"
+                assert REGISTRY.get_sample_value(ACTIVE_REQUESTS._name, active_labels) == 0.0, (
+                    "Should have 0 (and not None) active requests"
+                )
 
 
 class HotKeyTrackerTests(unittest.TestCase):

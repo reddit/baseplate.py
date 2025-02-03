@@ -7,8 +7,8 @@ from baseplate import Baseplate
 
 from . import TestBaseplateObserver, get_endpoint_or_skip_container
 
-redis_url = f'redis://{get_endpoint_or_skip_container("redis", 6379)}'
-redis_cluster_url = f'redis://{get_endpoint_or_skip_container("redis-cluster-node", 7000)}'
+redis_url = f"redis://{get_endpoint_or_skip_container('redis', 6379)}"
+redis_cluster_url = f"redis://{get_endpoint_or_skip_container('redis-cluster-node', 7000)}"
 
 
 class RedisIntegrationTestConfigurationError(Exception):
