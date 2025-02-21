@@ -220,7 +220,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             thrift_client_span.get_span_context().span_id,
         )
 
-        self.assertEqual(thrift_client_span.name, "tests.integration.test_thrift.TestService/example")
+        self.assertEqual(
+            thrift_client_span.name, "tests.integration.test_thrift.TestService/example"
+        )
         self.assertSpanHasAttributes(
             thrift_client_span,
             {
@@ -240,7 +242,9 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         )
         self.assertEqual(thrift_client_span.events[0].name, "message")
 
-        self.assertEqual(thrift_server_span.name, "tests.integration.test_thrift.TestService/example")
+        self.assertEqual(
+            thrift_server_span.name, "tests.integration.test_thrift.TestService/example"
+        )
         self.assertSpanHasAttributes(
             thrift_server_span,
             {
