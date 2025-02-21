@@ -223,7 +223,7 @@ def _build_thrift_proxy_method(name: str) -> Callable[..., Any]:
         # this is technically incorrect, but we don't currently have a reliable way
         # of getting the name of the service being called, so relying on the name of
         # the client is the best we can do
-        rpc_service = self.namespace
+        rpc_service = self.client_cls.__module__
         rpc_method = name
 
         # RPC specific headers

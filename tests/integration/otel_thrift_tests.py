@@ -169,7 +169,7 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             thrift_client_span,
             {
                 SpanAttributes.RPC_SYSTEM: "thrift",
-                SpanAttributes.RPC_SERVICE: THRIFT_CLIENT_NAME,
+                SpanAttributes.RPC_SERVICE: "tests.integration.test_thrift.TestService",
                 SpanAttributes.RPC_METHOD: "example",
                 SpanAttributes.NET_PEER_NAME: "localhost",
                 SpanAttributes.NET_PEER_PORT: net_peer_port,
@@ -220,12 +220,12 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
             thrift_client_span.get_span_context().span_id,
         )
 
-        self.assertEqual(thrift_client_span.name, "example_service/example")
+        self.assertEqual(thrift_client_span.name, "tests.integration.test_thrift.TestService/example")
         self.assertSpanHasAttributes(
             thrift_client_span,
             {
                 SpanAttributes.RPC_SYSTEM: "thrift",
-                SpanAttributes.RPC_SERVICE: "example_service",
+                SpanAttributes.RPC_SERVICE: "tests.integration.test_thrift.TestService",
                 SpanAttributes.RPC_METHOD: "example",
                 SpanAttributes.NET_PEER_IP: "127.0.0.1",
                 SpanAttributes.NET_PEER_NAME: "localhost",
@@ -240,12 +240,12 @@ class ThriftTraceHeaderTests(GeventPatchedTestCase, TestBase):
         )
         self.assertEqual(thrift_client_span.events[0].name, "message")
 
-        self.assertEqual(thrift_server_span.name, "tests.integration.otel_thrift_tests/example")
+        self.assertEqual(thrift_server_span.name, "tests.integration.test_thrift.TestService/example")
         self.assertSpanHasAttributes(
             thrift_server_span,
             {
                 SpanAttributes.RPC_SYSTEM: "thrift",
-                SpanAttributes.RPC_SERVICE: "tests.integration.otel_thrift_tests",
+                SpanAttributes.RPC_SERVICE: "tests.integration.test_thrift.TestService",
                 SpanAttributes.RPC_METHOD: "example",
                 SpanAttributes.NET_HOST_IP: "127.0.0.1",
                 SpanAttributes.NET_HOST_NAME: "localhost",
