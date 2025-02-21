@@ -49,7 +49,7 @@ class GeventServer(StreamServer):
 
         otel_attributes = {
             SpanAttributes.RPC_SYSTEM: "thrift",
-            SpanAttributes.RPC_SERVICE: self.processor.__module__, #self.processor.baseplate.service_name,
+            SpanAttributes.RPC_SERVICE: self.processor.__module__,
             SpanAttributes.NET_HOST_IP: self.server_host,
             SpanAttributes.NET_HOST_PORT: self.server_port,
         }
