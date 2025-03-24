@@ -1,5 +1,8 @@
 # baseplate.py
 
+> [!CAUTION]
+> This repository has been archived and is no longer maintained.
+
 * [Documentation](https://baseplate.readthedocs.io/en/stable/)
 * [Contribution Guidelines](https://github.com/reddit/baseplate.py/blob/develop/CONTRIBUTING.md)
 

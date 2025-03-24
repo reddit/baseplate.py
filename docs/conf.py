@@ -114,3 +114,7 @@ html_show_copyright = False
 
 # -- Autodoc --
 autodoc_member_order = "bysource"
+
+rst_prolog = """.. attention::
+    baseplate.py has been archived and is no longer maintained. This documentation will not be updated.
+"""
